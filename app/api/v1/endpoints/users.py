@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -8,6 +8,7 @@ from app.schemas.user import UserResponse
 from app.schemas.auth import RegisterRequest, ErrorResponse
 
 router = APIRouter()
+security = HTTPBearer()
 
 
 @router.post(
@@ -34,17 +35,12 @@ async def create_user(
         401: {"model": ErrorResponse, "description": "인증 실패"},
         500: {"model": ErrorResponse, "description": "서버 내부 오류"},
     },
+    dependencies=[Depends(security)],
 )
 async def get_users(
-    authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
 ):
     """모든 사용자 조회 (토큰 필요)"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="토큰이 필요합니다"
-        )
-
     return await user_service.get_users()
 
 
@@ -56,16 +52,11 @@ async def get_users(
         404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
         500: {"model": ErrorResponse, "description": "서버 내부 오류"},
     },
+    dependencies=[Depends(security)],
 )
 async def get_user(
     user_id: int,
-    authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
 ):
     """특정 사용자 조회 (토큰 필요)"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="토큰이 필요합니다"
-        )
-
     return await user_service.get_user(user_id)
