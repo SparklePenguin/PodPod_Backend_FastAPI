@@ -2,14 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from typing import Optional
 from app.api.deps import get_auth_service
-from app.services.auth_service import AuthService
+from app.services.session_service import SessionService
 from app.schemas.auth import (
-    EmailLoginRequest,
-    SocialLoginRequest,
-    LoginResponse,
-    ErrorResponse,
     TokenRefreshRequest,
 )
+from app.schemas.common import ErrorResponse, SuccessResponse
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -28,7 +25,7 @@ class LoginRequest(BaseModel):
 
 @router.post(
     "/",
-    response_model=LoginResponse,
+    response_model=SuccessResponse,
     responses={
         400: {"model": ErrorResponse, "description": "잘못된 요청"},
         401: {"model": ErrorResponse, "description": "인증 실패"},
@@ -38,7 +35,7 @@ class LoginRequest(BaseModel):
 )
 async def create_session(
     login_data: LoginRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: SessionService = Depends(get_auth_service),
 ):
     """세션 생성 (이메일 로그인 + 소셜 로그인 통합)"""
     return await auth_service.login(login_data)
@@ -53,7 +50,7 @@ async def create_session(
     dependencies=[Depends(security)],
 )
 async def delete_session(
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: SessionService = Depends(get_auth_service),
     token: str = Depends(security),
 ):
     """로그아웃 (세션 삭제)"""
@@ -62,7 +59,7 @@ async def delete_session(
 
 @router.put(
     "/",
-    response_model=LoginResponse,
+    response_model=SuccessResponse,
     responses={
         401: {"model": ErrorResponse, "description": "인증 실패"},
         501: {"model": ErrorResponse, "description": "구현되지 않은 기능"},
@@ -71,7 +68,7 @@ async def delete_session(
 )
 async def refresh_session(
     refresh_data: TokenRefreshRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: SessionService = Depends(get_auth_service),
 ):
     """토큰 갱신"""
     return await auth_service.refresh_token(refresh_data.refresh_token)

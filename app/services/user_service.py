@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.user import UserCRUD
 from app.schemas.user import UserResponse, UserUpdate
-from app.schemas.auth import RegisterRequest
+from app.schemas.auth import SignUpRequest
 from app.core.security import get_password_hash
 from typing import List, Optional, Dict, Any
 
@@ -11,7 +11,7 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.user_crud = UserCRUD(db)
 
-    async def create_user(self, user_data: RegisterRequest) -> UserResponse:
+    async def create_user(self, user_data: SignUpRequest) -> UserResponse:
         # 이메일 중복 확인
         existing_user = await self.user_crud.get_by_email(user_data.email)
         if existing_user:

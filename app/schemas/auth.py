@@ -2,30 +2,28 @@ from pydantic import BaseModel
 from typing import Optional
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    expires_in: int  # 토큰 만료 시간 (초)
-
-
-class TokenData(BaseModel):
+# - MARK: 사용자 정보 응답
+class User(BaseModel):
+    id: int
     email: Optional[str] = None
+    username: Optional[str] = None
+    profile_image: Optional[str] = None
 
 
-class LoginResponse(BaseModel):
-    success: bool
-    message: str
-    data: Optional[Token] = None
-    user: Optional[dict] = None
+# - MARK: 토큰 정보 응답
+class Credential(BaseModel):
+    access_token: str
+    refresh_token: str
 
 
-class ErrorResponse(BaseModel):
-    error: str
-    status: int
-    message: str
+# - MARK: 로그인 성공 응답
+class SignInResponse(BaseModel):
+    credential: Credential
+    user: User
 
 
-class RegisterRequest(BaseModel):
+# - MARK: 회원가입 요청
+class SignUpRequest(BaseModel):
     email: str
     username: Optional[str] = None
     full_name: Optional[str] = None
@@ -33,11 +31,13 @@ class RegisterRequest(BaseModel):
     profile_image: Optional[str] = None
 
 
+# - MARK: 이메일 로그인 요청
 class EmailLoginRequest(BaseModel):
     email: str
     password: str
 
 
+# - MARK: 소셜 로그인 요청
 class SocialLoginRequest(BaseModel):
     email: str
     auth_provider: str
@@ -47,5 +47,6 @@ class SocialLoginRequest(BaseModel):
     profile_image: Optional[str] = None
 
 
+# - MARK: 토큰 갱신 요청
 class TokenRefreshRequest(BaseModel):
     refresh_token: str

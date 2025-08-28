@@ -5,7 +5,8 @@ from typing import List, Optional
 from app.api.deps import get_user_service
 from app.services.user_service import UserService
 from app.schemas.user import UserResponse
-from app.schemas.auth import RegisterRequest, ErrorResponse
+from app.schemas.auth import SignUpRequest
+from app.schemas.common import ErrorResponse
 
 router = APIRouter()
 security = HTTPBearer()
@@ -21,7 +22,7 @@ security = HTTPBearer()
     },
 )
 async def create_user(
-    user_data: RegisterRequest,
+    user_data: SignUpRequest,
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 생성 (회원가입)"""
