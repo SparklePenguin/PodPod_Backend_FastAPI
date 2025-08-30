@@ -10,7 +10,7 @@ from app.core.config import settings
 
 # - MARK: 구글 로그인 요청
 class GoogleLoginRequest(BaseModel):
-    token: str = Field(alias="token")
+    id_token: str = Field(alias="idToken")
 
     model_config = {
         "populate_by_name": True,
@@ -41,7 +41,9 @@ class GoogleOauthService:
         """Google 로그인 처리"""
         try:
             # Google 토큰 검증
-            google_user_info = self.verify_google_token(google_login_request.token)
+            google_user_info = self.verify_google_token(
+                google_login_request.id_token,
+            )
 
         except ValueError as e:
             raise HTTPException(
