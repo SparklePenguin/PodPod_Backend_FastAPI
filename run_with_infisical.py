@@ -14,11 +14,12 @@ def run_with_infisical():
     # Infisical CLI로 환경변수 로드
     try:
         print("Infisical에서 환경변수를 로드하는 중...")
-        result = subprocess.run(
+        result = subprocess.Popen(
             [
                 "infisical",
                 "run",
                 "--env=dev",
+                "--path=/backend",
                 "--",
                 "python",
                 "-m",
@@ -26,8 +27,8 @@ def run_with_infisical():
                 "main:app",
                 "--reload",
             ],
-            capture_output=True,
-            text=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
             cwd=current_dir,
         )
 

@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     APPLE_REDIRECT_URI: str = (
         "http://localhost:3000/auth/apple/callback"  # Apple Redirect URI
     )
+    APPLE_SCHEME: str = os.getenv("APPLE_SCHEME")
     APPLE_ISSUER: str = "https://appleid.apple.com"
 
 

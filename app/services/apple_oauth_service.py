@@ -1,11 +1,11 @@
 from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from typing import Optional
 import requests
 from jose import jwt, JWTError
-import base64
-import json
 import time
 
 from app.services.oauth_service import OauthService
@@ -15,10 +15,9 @@ from app.core.config import settings
 
 # - MARK: Apple 사용자 정보
 class _AppleUserInfo(BaseModel):
-    email: str = Field(alias="email")
-    firstName: str = Field(alias="firstName")
-    lastName: str = Field(alias="lastName")
-    sub: str = Field(alias="sub")
+    email: Optional[str] = Field(alias="email")
+    firstName: Optional[str] = Field(alias="firstName")
+    lastName: Optional[str] = Field(alias="lastName")
 
 
 # - MARK: Apple 로그인 요청
@@ -32,6 +31,23 @@ class AppleLoginRequest(BaseModel):
         default=None,
         alias="user",
     )
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+
+# - MARK: Apple 콜백 파라미터
+class AppleCallbackParam(BaseModel):
+    code: Optional[str] = None  # Authorization Code
+    state: Optional[str] = None  # 요청 시 전달한 state 값
+    error: Optional[str] = None  # 에러 코드
+    error_description: Optional[str] = None  # 에러 설명
+    id_token: Optional[str] = None  # ID Token (일부 경우)
+    user: Optional[_AppleUserInfo] = Field(
+        default=None,
+        alias="user",
+    )  # 사용자 정보 (첫 로그인 시)
 
     model_config = {
         "populate_by_name": True,
@@ -58,12 +74,13 @@ class AppleOauthService:
         self.oauth_service = OauthService(db)
 
     # - MARK: Apple 공개키 목록 가져오기
-    def _get_apple_public_keys(self):
+    async def _get_apple_public_keys(self):
         """Apple의 공개키 목록 가져오기"""
         try:
-            response = requests.get(self.apple_public_keys_url)
-            response.raise_for_status()
-            return response.json()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self.apple_public_keys_url)
+                response.raise_for_status()
+                return response.json()
         except Exception as e:
             raise ValueError(f"Failed to fetch Apple public keys: {str(e)}")
 
@@ -235,4 +252,57 @@ class AppleOauthService:
             oauth_provider="apple",
             oauth_user_id=str(apple_user_info["sub"]),
             oauth_user_info=apple_user_data,
+        )
+
+    async def handle_apple_callback(
+        self, params: AppleCallbackParam
+    ) -> SuccessResponse:
+        """Apple 콜백 처리 (안드로이드 웹뷰 콜백)"""
+        # 에러 처리
+        if params.error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error=params.error,
+                    status=400,
+                    message=params.error_description or "Apple authentication failed",
+                ),
+            )
+
+        # Authorization Code가 없는 경우
+        if not params.code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error="missing_authorization_code",
+                    status=400,
+                    message="Authorization code is required",
+                ),
+            )
+
+        # ID Token이 없는 경우
+        if not params.id_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=ErrorResponse(
+                    error="missing_authorization_code",
+                    status=400,
+                    message="Authorization code is required",
+                ),
+            )
+
+        # Apple 로그인 처리
+        sign_in_response = await self.sign_in_with_apple(
+            AppleLoginRequest(
+                identity_token=params.id_token,
+                authorization_code=params.code,
+                user=params.user,
+            )
+        )
+
+        # Android Deep Link로 리다이렉트
+        return RedirectResponse(
+            url=f"intent://callback?{sign_in_response.model_dump()}"
+            "#Intent;package=sparkle_penguin.podpod;"
+            f"scheme={settings.APPLE_SCHEME};end"
         )

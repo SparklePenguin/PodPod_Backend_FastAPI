@@ -9,7 +9,11 @@ from app.api.deps import (
 )
 from app.services.kakao_oauth_service import KakaoOauthService, KakaoTokenResponse
 from app.services.google_oauth_service import GoogleOauthService, GoogleLoginRequest
-from app.services.apple_oauth_service import AppleOauthService, AppleLoginRequest
+from app.services.apple_oauth_service import (
+    AppleOauthService,
+    AppleLoginRequest,
+    AppleCallbackParam,
+)
 from app.services.session_service import SessionService
 from app.schemas.auth import (
     TokenRefreshRequest,
