@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # Apple OAuth 설정
     APPLE_PUBLIC_KEYS_URL: str = "https://appleid.apple.com/auth/keys"
+    APPLE_TOKEN_URL: str = "https://appleid.apple.com/auth/token"
     APPLE_CLIENT_ID: Optional[str] = os.getenv("APPLE_CLIENT_ID")  # Apple App ID
     APPLE_TEAM_ID: Optional[str] = os.getenv("APPLE_TEAM_ID")  # Apple Team ID
     APPLE_KEY_ID: Optional[str] = os.getenv("APPLE_KEY_ID")  # Apple Key ID

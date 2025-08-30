@@ -78,18 +78,18 @@ class AppleOauthService:
         """Apple의 공개키 목록 가져오기"""
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(self.apple_public_keys_url)
+                response = await client.get(settings.APPLE_PUBLIC_KEYS_URL)
                 response.raise_for_status()
                 return response.json()
         except Exception as e:
             raise ValueError(f"Failed to fetch Apple public keys: {str(e)}")
 
     # - MARK: Apple ID 토큰 검증
-    def _verify_apple_token(self, identity_token: str) -> dict:
+    async def _verify_apple_token(self, identity_token: str) -> dict:
         """Apple ID 토큰 검증"""
         try:
             # Apple 공개키 가져오기
-            public_keys = self._get_apple_public_keys()
+            public_keys = await self._get_apple_public_keys()
 
             # 토큰 헤더에서 kid (Key ID) 추출
             token_header = jwt.get_unverified_header(identity_token)
@@ -169,7 +169,7 @@ class AppleOauthService:
             }
 
             response = requests.post(
-                self.apple_token_url,
+                settings.APPLE_TOKEN_URL,
                 data=token_data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
@@ -219,7 +219,7 @@ class AppleOauthService:
         """Apple 로그인 처리"""
         try:
             # Apple 토큰 검증
-            apple_user_info = self._verify_apple_token(
+            apple_user_info = await self._verify_apple_token(
                 apple_login_request.identity_token
             )
 
@@ -248,7 +248,7 @@ class AppleOauthService:
             apple_login_request.user.firstName + apple_login_request.user.lastName
         )
 
-        return self.oauth_service.sign_in_with_oauth(
+        return await self.oauth_service.sign_in_with_oauth(
             oauth_provider="apple",
             oauth_user_id=str(apple_user_info["sub"]),
             oauth_user_info=apple_user_data,
@@ -256,7 +256,7 @@ class AppleOauthService:
 
     async def handle_apple_callback(
         self, params: AppleCallbackParam
-    ) -> SuccessResponse:
+    ) -> RedirectResponse:
         """Apple 콜백 처리 (안드로이드 웹뷰 콜백)"""
         # 에러 처리
         if params.error:
@@ -285,9 +285,9 @@ class AppleOauthService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error="missing_authorization_code",
+                    error="missing_id_token",
                     status=400,
-                    message="Authorization code is required",
+                    message="ID token is required",
                 ),
             )
 

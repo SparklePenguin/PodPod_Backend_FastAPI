@@ -1,16 +1,11 @@
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.schemas.auth import (
-    SignInResponse,
-)
-
-
 from app.schemas.common import SuccessResponse, ErrorResponse
 from app.services.oauth_service import OauthService
 import httpx
 from fastapi import HTTPException, status
 from app.core.config import settings
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 # - MARK: 콜백 쿼리
@@ -47,9 +42,9 @@ class KakaoLoginRequest(BaseModel):
         default=[], alias="scopes"
     )  # 인증된 사용자의 정보 조회 권한 범위
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
 # - MARK: 카카오 토큰 응답 리스폰
@@ -70,9 +65,9 @@ class KakaoTokenResponse(BaseModel):
         default=[], alias="scope"
     )  # 인증된 사용자의 정보 조회 권한 범위
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-    )
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
 # - MARK: 사용자 정보 응답
@@ -139,16 +134,18 @@ class KakaoOauthService:
             oauth_user_info=oauth_user_info,
         )
 
-    async def handle_kakao_callback(self, params: KakaoCallBackParam) -> SignInResponse:
+    async def handle_kakao_callback(
+        self, params: KakaoCallBackParam
+    ) -> SuccessResponse:
         """카카오 콜백 처리"""
         # 인가 코드 요청 실패 처리
         if params.error:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error_code=params.error,
+                    error_code="kakao_oauth_error",
                     status=400,
-                    message=params.error_description,
+                    message=params.error,
                 ),
             )
 
@@ -157,9 +154,9 @@ class KakaoOauthService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error_code=params.error,
+                    error_code="missing_authorization_code",
                     status=400,
-                    message=params.error_description,
+                    message=params.error,
                 ),
             )
 
@@ -178,12 +175,12 @@ class KakaoOauthService:
                 ),
             )
 
-        return self.sign_in_with_kakao(token_response)
+        return await self.sign_in_with_kakao(token_response)
 
     # - MARK: 토큰 요청
     async def get_kakao_token(
         self, code: str, redirect_uri: str = None
-    ) -> _KakaoUserInfoResponse:
+    ) -> KakaoTokenResponse:
         """카카오 OAuth 인증 코드로 액세스 토큰을 가져옴"""
 
         # 설정에서 카카오 정보 가져오기
@@ -201,7 +198,7 @@ class KakaoOauthService:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.kakao_token_url,
-                data=token_params.dict(exclude_none=True),
+                data=token_params.model_dump(exclude_none=True),
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"
                 },
@@ -213,7 +210,7 @@ class KakaoOauthService:
                     detail=ErrorResponse(
                         error_code="get_kakao_token_failed",
                         status=response.status_code,
-                        message="get_kakao_token_failed",
+                        message=response.text,
                     ),
                 )
 
@@ -237,7 +234,7 @@ class KakaoOauthService:
                     detail=ErrorResponse(
                         error_code="get_kakao_user_info_failed",
                         status=response.status_code,
-                        message="get_kakao_user_info_failed",
+                        message=response.text,
                     ),
                 )
 
