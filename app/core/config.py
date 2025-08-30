@@ -23,5 +23,8 @@ class Settings(BaseSettings):
     KAKAO_TOKEN_URL: str = "https://kauth.kakao.com/oauth/token"
     KAKAO_USER_INFO_URL: str = "https://kapi.kakao.com/v2/user/me"
 
+    # Google OAuth 설정
+    GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
+
 
 settings = Settings()

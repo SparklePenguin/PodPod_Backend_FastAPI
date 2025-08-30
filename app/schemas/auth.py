@@ -5,14 +5,14 @@ from app.schemas.user import UserDto
 
 
 # - MARK: 토큰 정보 응답
-class Credential(BaseModel):
+class CredentialDto(BaseModel):
     access_token: str
     refresh_token: str
 
 
 # - MARK: 로그인 성공 응답
 class SignInResponse(BaseModel):
-    credential: Credential
+    credential: CredentialDto
     user: UserDto
 
 

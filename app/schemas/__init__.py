@@ -1,5 +1,5 @@
 from .auth import (
-    Credential,
+    CredentialDto,
     SignInResponse,
     SignUpRequest,
     EmailLoginRequest,
@@ -19,7 +19,7 @@ from .artist import (
 )
 
 __all__ = [
-    "Credential",
+    "CredentialDto",
     "SignInResponse",
     "SignUpRequest",
     "EmailLoginRequest",

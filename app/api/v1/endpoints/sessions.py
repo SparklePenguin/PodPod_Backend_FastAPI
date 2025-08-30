@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from typing import Optional
-from app.api.deps import get_session_service, get_kakao_oauth_service
-from app.services.kakao_oauth_service import KakaoOauthService, KakaoSignInRequest
+from app.api.deps import (
+    get_session_service,
+    get_kakao_oauth_service,
+    get_google_oauth_service,
+)
+from app.services.kakao_oauth_service import KakaoOauthService, KakaoTokenResponse
+from app.services.google_oauth_service import GoogleOauthService, GoogleLoginRequest
 from app.services.session_service import SessionService
 from app.schemas.auth import (
     TokenRefreshRequest,
@@ -35,11 +40,29 @@ class LoginRequest(BaseModel):
     },
 )
 async def kakao_login(
-    kakao_sign_in_request: KakaoSignInRequest,
+    kakao_sign_in_request: KakaoTokenResponse,
     kakao_oauth_service: KakaoOauthService = Depends(get_kakao_oauth_service),
 ):
     """카카오 로그인"""
     return await kakao_oauth_service.sign_in_with_kakao(kakao_sign_in_request)
+
+
+# - MARK: Google 로그인
+@router.post(
+    "/google",
+    response_model=SuccessResponse,
+    responses={
+        200: {"model": SuccessResponse, "description": "Google 로그인 성공"},
+        400: {"model": ErrorResponse, "description": "Google 인증 실패"},
+        500: {"model": ErrorResponse, "description": "서버 오류"},
+    },
+)
+async def google_login(
+    google_login_request: GoogleLoginRequest,
+    google_oauth_service: GoogleOauthService = Depends(get_google_oauth_service),
+):
+    """Google 로그인"""
+    return await google_oauth_service.sign_in_with_google(google_login_request)
 
 
 @router.post(
