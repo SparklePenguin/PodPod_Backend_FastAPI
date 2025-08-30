@@ -5,9 +5,11 @@ from app.api.deps import (
     get_session_service,
     get_kakao_oauth_service,
     get_google_oauth_service,
+    get_apple_oauth_service,
 )
 from app.services.kakao_oauth_service import KakaoOauthService, KakaoTokenResponse
 from app.services.google_oauth_service import GoogleOauthService, GoogleLoginRequest
+from app.services.apple_oauth_service import AppleOauthService, AppleLoginRequest
 from app.services.session_service import SessionService
 from app.schemas.auth import (
     TokenRefreshRequest,
@@ -39,7 +41,7 @@ class LoginRequest(BaseModel):
         500: {"model": ErrorResponse, "description": "서버 오류"},
     },
 )
-async def kakao_login(
+async def sign_in_with_kakao(
     kakao_sign_in_request: KakaoTokenResponse,
     kakao_oauth_service: KakaoOauthService = Depends(get_kakao_oauth_service),
 ):
@@ -57,12 +59,30 @@ async def kakao_login(
         500: {"model": ErrorResponse, "description": "서버 오류"},
     },
 )
-async def google_login(
+async def sign_in_with_google(
     google_login_request: GoogleLoginRequest,
     google_oauth_service: GoogleOauthService = Depends(get_google_oauth_service),
 ):
     """Google 로그인"""
     return await google_oauth_service.sign_in_with_google(google_login_request)
+
+
+# - MARK: Apple 로그인
+@router.post(
+    "/apple",
+    response_model=SuccessResponse,
+    responses={
+        200: {"model": SuccessResponse, "description": "Apple 로그인 성공"},
+        400: {"model": ErrorResponse, "description": "Apple 인증 실패"},
+        500: {"model": ErrorResponse, "description": "서버 오류"},
+    },
+)
+async def sign_in_with_apple(
+    apple_login_request: AppleLoginRequest,
+    apple_oauth_service: AppleOauthService = Depends(get_apple_oauth_service),
+):
+    """Apple 로그인"""
+    return await apple_oauth_service.sign_in_with_apple(apple_login_request)
 
 
 @router.post(

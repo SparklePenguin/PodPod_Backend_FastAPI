@@ -26,5 +26,18 @@ class Settings(BaseSettings):
     # Google OAuth 설정
     GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
 
+    # Apple OAuth 설정
+    APPLE_PUBLIC_KEYS_URL: str = "https://appleid.apple.com/auth/keys"
+    APPLE_CLIENT_ID: Optional[str] = os.getenv("APPLE_CLIENT_ID")  # Apple App ID
+    APPLE_TEAM_ID: Optional[str] = os.getenv("APPLE_TEAM_ID")  # Apple Team ID
+    APPLE_KEY_ID: Optional[str] = os.getenv("APPLE_KEY_ID")  # Apple Key ID
+    APPLE_PRIVATE_KEY: Optional[str] = os.getenv(
+        "APPLE_PRIVATE_KEY"
+    )  # Apple Private Key (PEM 형식)
+    APPLE_REDIRECT_URI: str = (
+        "http://localhost:3000/auth/apple/callback"  # Apple Redirect URI
+    )
+    APPLE_ISSUER: str = "https://appleid.apple.com"
+
 
 settings = Settings()
