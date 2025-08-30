@@ -1,13 +1,33 @@
 from .auth import (
+    Credential,
+    SignInResponse,
     SignUpRequest,
     EmailLoginRequest,
-    SocialLoginRequest,
     TokenRefreshRequest,
+)
+from .common import (
+    SuccessResponse,
+    ErrorResponse,
+)
+from .user import (
+    UserDto,
+    UpdateProfileRequest,
+    UpdatePreferredArtistsRequest,
+)
+from .artist import (
+    ArtistDto,
 )
 
 __all__ = [
+    "Credential",
+    "SignInResponse",
     "SignUpRequest",
     "EmailLoginRequest",
-    "SocialLoginRequest",
     "TokenRefreshRequest",
+    "SuccessResponse",
+    "ErrorResponse",
+    "UserDto",
+    "UpdateProfileRequest",
+    "UpdatePreferredArtistsRequest",
+    "ArtistDto",
 ]

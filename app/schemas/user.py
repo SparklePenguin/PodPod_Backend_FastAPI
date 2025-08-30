@@ -1,26 +1,28 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
-from datetime import datetime
+import datetime
+from typing import List, Optional
+from pydantic import BaseModel
 
 
-class UserBase(BaseModel):
-    email: EmailStr
+# - MARK: 사용자 정보 응답
+class UserDto(BaseModel):
+    id: int  # 필수값
+    email: Optional[str] = None
     username: Optional[str] = None
-    full_name: Optional[str] = None
+    nickname: Optional[str] = None
     profile_image: Optional[str] = None
+    intro: Optional[str] = None
+    needs_onboarding: bool  # 필수값
+
+    model_config = {"from_attributes": True}
 
 
-class UserUpdate(BaseModel):
+# - MARK: 프로필 업데이트 요청
+class UpdateProfileRequest(BaseModel):
     username: Optional[str] = None
-    full_name: Optional[str] = None
     profile_image: Optional[str] = None
+    intro: Optional[str] = None
 
 
-class UserResponse(UserBase):
-    id: int
-    auth_provider: str
-    is_active: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+# - MARK: 선호 아티스트 요청
+class UpdatePreferredArtistsRequest(BaseModel):
+    artist_ids: List[int] = []

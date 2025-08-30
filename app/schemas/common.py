@@ -1,12 +1,12 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Any
 
 
 # - MARK: 성공 응답
 class SuccessResponse(BaseModel):
     code: int
     message: str
-    data: Optional[dict] = None
+    data: Any = None
 
 
 # - MARK: 에러 응답

@@ -44,24 +44,27 @@ class _TokenType(str, Enum):
 
 
 # - MARK: 토큰 만료일
-_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 1
-_DEFAULT_REFRESH_TOKEN_EXPIRE_MINUTES = 7
+_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30  # 30분
+_DEFAULT_REFRESH_TOKEN_EXPIRE_MINUTES = 7 * 24 * 60  # 7일 (분 단위)
 
 
 # - MARK: 토큰 페이로드 모델
 class _TokenPayload(BaseModel):
     sub: str  # 유저 식별자
-    iat: datetime  # 발급 시간
+    iat: float  # 발급 시간 (timestamp)
     exp: datetime  # 만료 시간
     jti: str  # 토큰 고유 ID
     type: _TokenType  # 토큰 타입
 
 
 # - MARK: 액세스 토큰 생성 함수
-def create_access_token(user_id: int, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    user_id: int,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
     """액세스 토큰 생성"""
     expire = datetime.utcnow() + (
-        expires_delta or timedelta(days=_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta or timedelta(minutes=_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     payload = _TokenPayload(
         sub=str(user_id),
@@ -70,7 +73,11 @@ def create_access_token(user_id: int, expires_delta: Optional[timedelta] = None)
         jti=str(uuid.uuid4()),
         type=_TokenType.ACCESS,
     )
-    return jwt.encode(payload.dict(), settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return jwt.encode(
+        payload.model_dump(),
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
 
 
 # - MARK: 리프레시 토큰 생성 함수
@@ -79,7 +86,7 @@ def create_refresh_token(
 ) -> str:
     """리프레시 토큰 생성"""
     expire = datetime.utcnow() + (
-        expires_delta or timedelta(days=_DEFAULT_REFRESH_TOKEN_EXPIRE_MINUTES)
+        expires_delta or timedelta(minutes=_DEFAULT_REFRESH_TOKEN_EXPIRE_MINUTES)
     )
     payload = _TokenPayload(
         sub=str(user_id),
@@ -88,7 +95,11 @@ def create_refresh_token(
         jti=str(uuid.uuid4()),
         type=_TokenType.REFRESH,
     )
-    return jwt.encode(payload.dict(), settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return jwt.encode(
+        payload.model_dump(),
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
 
 
 # - MARK: 액세스 토큰 검증 함수

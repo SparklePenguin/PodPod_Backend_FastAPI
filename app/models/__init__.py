@@ -1,5 +1,5 @@
 from .user import User
-from .post import Post
-from .comment import Comment
+from .artist import Artist
+from .preferred_artist import PreferredArtist
 
-__all__ = ["User", "Post", "Comment"]
+__all__ = ["User", "Artist", "PreferredArtist"]

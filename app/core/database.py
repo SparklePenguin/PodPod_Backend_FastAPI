@@ -1,6 +1,10 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from .config import settings
+import logging
+
+# 로거 설정
+logger = logging.getLogger(__name__)
 
 # 비동기 엔진 생성
 engine = create_async_engine(settings.DATABASE_URL, echo=True)
@@ -29,7 +33,7 @@ async def init_db():
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        print("Database tables created successfully!")
+        logger.info("Database tables created successfully!")
     except Exception as e:
-        print(f"Error creating database tables: {e}")
+        logger.error(f"Error creating database tables: {e}")
         raise

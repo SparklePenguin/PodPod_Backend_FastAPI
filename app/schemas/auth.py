@@ -1,13 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 
-
-# - MARK: 사용자 정보 응답
-class User(BaseModel):
-    id: int
-    email: Optional[str] = None
-    username: Optional[str] = None
-    profile_image: Optional[str] = None
+from app.schemas.user import UserDto
 
 
 # - MARK: 토큰 정보 응답
@@ -19,32 +13,24 @@ class Credential(BaseModel):
 # - MARK: 로그인 성공 응답
 class SignInResponse(BaseModel):
     credential: Credential
-    user: User
+    user: UserDto
 
 
 # - MARK: 회원가입 요청
 class SignUpRequest(BaseModel):
-    email: str
+    email: Optional[str] = None
     username: Optional[str] = None
     full_name: Optional[str] = None
-    password: str
+    password: Optional[str] = None
     profile_image: Optional[str] = None
+    auth_provider: Optional[str] = None
+    auth_provider_id: Optional[str] = None
 
 
 # - MARK: 이메일 로그인 요청
 class EmailLoginRequest(BaseModel):
     email: str
     password: str
-
-
-# - MARK: 소셜 로그인 요청
-class SocialLoginRequest(BaseModel):
-    email: str
-    auth_provider: str
-    auth_provider_id: str
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    profile_image: Optional[str] = None
 
 
 # - MARK: 토큰 갱신 요청

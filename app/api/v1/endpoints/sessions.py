@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from typing import Optional
-from app.api.deps import get_auth_service
+from app.api.deps import get_session_service, get_kakao_oauth_service
+from app.services.kakao_oauth_service import KakaoOauthService, KakaoSignInRequest
 from app.services.session_service import SessionService
 from app.schemas.auth import (
     TokenRefreshRequest,
@@ -23,6 +24,24 @@ class LoginRequest(BaseModel):
     profile_image: Optional[str] = None
 
 
+# - MARK: 카카오 로그인
+@router.post(
+    "/kakao",
+    response_model=SuccessResponse,
+    responses={
+        200: {"model": SuccessResponse, "description": "카카오 로그인 성공"},
+        400: {"model": ErrorResponse, "description": "카카오 인증 실패"},
+        500: {"model": ErrorResponse, "description": "서버 오류"},
+    },
+)
+async def kakao_login(
+    kakao_sign_in_request: KakaoSignInRequest,
+    kakao_oauth_service: KakaoOauthService = Depends(get_kakao_oauth_service),
+):
+    """카카오 로그인"""
+    return await kakao_oauth_service.sign_in_with_kakao(kakao_sign_in_request)
+
+
 @router.post(
     "/",
     response_model=SuccessResponse,
@@ -35,7 +54,7 @@ class LoginRequest(BaseModel):
 )
 async def create_session(
     login_data: LoginRequest,
-    auth_service: SessionService = Depends(get_auth_service),
+    auth_service: SessionService = Depends(get_session_service),
 ):
     """세션 생성 (이메일 로그인 + 소셜 로그인 통합)"""
     return await auth_service.login(login_data)
@@ -50,7 +69,7 @@ async def create_session(
     dependencies=[Depends(security)],
 )
 async def delete_session(
-    auth_service: SessionService = Depends(get_auth_service),
+    auth_service: SessionService = Depends(get_session_service),
     token: str = Depends(security),
 ):
     """로그아웃 (세션 삭제)"""
@@ -68,7 +87,7 @@ async def delete_session(
 )
 async def refresh_session(
     refresh_data: TokenRefreshRequest,
-    auth_service: SessionService = Depends(get_auth_service),
+    auth_service: SessionService = Depends(get_session_service),
 ):
     """토큰 갱신"""
     return await auth_service.refresh_token(refresh_data.refresh_token)

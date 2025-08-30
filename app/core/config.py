@@ -17,14 +17,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
 
     # 카카오 OAuth 설정
-    KAKAO_CLIENT_ID: str = os.getenv("KAKAO_CLIENT_ID")
-    KAKAO_CLIENT_SECRET: str = os.getenv("KAKAO_CLIENT_SECRET")
+    KAKAO_CLIENT_ID: Optional[str] = os.getenv("KAKAO_CLIENT_ID")
+    KAKAO_CLIENT_SECRET: Optional[str] = os.getenv("KAKAO_CLIENT_SECRET")
     KAKAO_REDIRECT_URI: str = "http://localhost:3000/auth/kakao/callback"
     KAKAO_TOKEN_URL: str = "https://kauth.kakao.com/oauth/token"
     KAKAO_USER_INFO_URL: str = "https://kapi.kakao.com/v2/user/me"
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()

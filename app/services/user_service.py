@@ -1,17 +1,22 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.user import UserCRUD
-from app.schemas.user import UserResponse, UserUpdate
+from app.crud.artist import ArtistCRUD
+from app.schemas.common import ErrorResponse
+from app.schemas.user import UpdateProfileRequest, UserDto
 from app.schemas.auth import SignUpRequest
+from app.schemas.artist import ArtistDto
 from app.core.security import get_password_hash
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 
 class UserService:
     def __init__(self, db: AsyncSession):
         self.user_crud = UserCRUD(db)
+        self.artist_crud = ArtistCRUD(db)
 
-    async def create_user(self, user_data: SignUpRequest) -> UserResponse:
+    # - MARK: 사용자 생성
+    async def create_user(self, user_data: SignUpRequest) -> UserDto:
         # 이메일 중복 확인
         existing_user = await self.user_crud.get_by_email(user_data.email)
         if existing_user:
@@ -21,43 +26,26 @@ class UserService:
             )
 
         # 비밀번호 해싱
-        hashed_password = get_password_hash(user_data.password)
+        if user_data.password is not None:
+            hashed_password = get_password_hash(user_data.password)
+        else:
+            hashed_password = None  # 소셜 로그인의 경우
 
         # 사용자 생성
-        user_dict = user_data.dict(exclude={"password"})
+        user_dict = user_data.model_dump(exclude={"password"})
         user_dict["hashed_password"] = hashed_password
-        user_dict["auth_provider"] = "email"
 
         user = await self.user_crud.create(user_dict)
 
-        return UserResponse(
-            id=user.id,
-            email=user.email,
-            username=user.username,
-            full_name=user.full_name,
-            profile_image=user.profile_image,
-            auth_provider=user.auth_provider,
-            is_active=user.is_active,
-            created_at=user.created_at,
-        )
+        return UserDto.model_validate(user, from_attributes=True)
 
-    async def get_users(self) -> List[UserResponse]:
+    # - MARK: (내부용) 사용자 목록 조회
+    async def get_users(self) -> List[UserDto]:
         users = await self.user_crud.get_all()
-        return [
-            UserResponse(
-                id=user[0],
-                email=user[2],
-                username=user[1],
-                full_name=user[4],
-                profile_image=user[5],
-                auth_provider=user[11],
-                is_active=user[6],
-                created_at=user[8],
-            )
-            for user in users
-        ]
+        return [UserDto(user=user) for user in users]
 
-    async def get_user(self, user_id: int) -> UserResponse:
+    # - MARK: 사용자 조회
+    async def get_user(self, user_id: int) -> UserDto:
         user = await self.user_crud.get_by_id(user_id)
         if not user:
             raise HTTPException(
@@ -65,34 +53,75 @@ class UserService:
                 detail="사용자를 찾을 수 없습니다",
             )
 
-        return UserResponse(
-            id=user[0],
-            email=user[2],
-            username=user[1],
-            full_name=user[4],
-            profile_image=user[5],
-            auth_provider=user[11],
-            is_active=user[6],
-            created_at=user[8],
-        )
+        return UserDto.model_validate(user, from_attributes=True)
 
-    async def update_user(
-        self, user_id: int, user_data: Dict[str, Any]
-    ) -> UserResponse:
-        user = await self.user_crud.update(user_id, user_data)
+    # - MARK: (내부용) auth_provider와 auth_provider_id로 사용자 찾기
+    async def get_user_by_auth_provider_id(
+        self, auth_provider: str, auth_provider_id: str
+    ) -> Optional[UserDto]:
+        """auth_provider와 auth_provider_id로 사용자 찾기"""
+        user = await self.user_crud.get_by_auth_provider_id(
+            auth_provider, auth_provider_id
+        )
+        if not user:
+            return None
+        return UserDto.model_validate(user, from_attributes=True)
+
+    # - MARK: 프로필 업데이트
+    async def update_profile(
+        self, user_id: int, user_data: UpdateProfileRequest
+    ) -> UserDto:
+        update_data = user_data.model_dump(exclude_unset=True)
+
+        user = await self.user_crud.update_profile(user_id, update_data)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="사용자를 찾을 수 없습니다",
+                detail=ErrorResponse(
+                    error_code="user_not_found",
+                    status=status.HTTP_404_NOT_FOUND,
+                    message="사용자를 찾을 수 없습니다",
+                ),
             )
+        return UserDto.model_validate(user, from_attributes=True)
 
-        return UserResponse(
-            id=user[0],
-            email=user[2],
-            username=user[1],
-            full_name=user[4],
-            profile_image=user[5],
-            auth_provider=user[11],
-            is_active=user[6],
-            created_at=user[8],
-        )
+    # - MARK: 선호 아티스트 조회
+    async def get_preferred_artists(self, user_id: int) -> List[ArtistDto]:
+        """사용자의 선호 아티스트 목록 조회"""
+        # 아티스트 ID 목록 가져오기
+        artist_ids = await self.user_crud.get_preferred_artist_ids(user_id)
+
+        # 각 아티스트 정보 가져오기
+        artists = []
+        for artist_id in artist_ids:
+            artist = await self.artist_crud.get_by_id(artist_id)
+            if artist:
+                artists.append(ArtistDto(artist=artist))
+
+        return artists
+
+    # - MARK: 선호 아티스트 업데이트 (추가/제거)
+    async def update_preferred_artists(
+        self, user_id: int, artist_ids: List[int]
+    ) -> List[ArtistDto]:
+        """선호 아티스트 목록을 완전히 교체하여 업데이트"""
+        # 아티스트 존재 확인
+        for artist_id in artist_ids:
+            artist = await self.artist_crud.get_by_id(artist_id)
+            if not artist:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"아티스트 ID {artist_id}를 찾을 수 없습니다",
+                )
+
+        # 기존 선호 아티스트 모두 제거
+        current_artist_ids = await self.user_crud.get_preferred_artist_ids(user_id)
+        for current_artist_id in current_artist_ids:
+            await self.user_crud.remove_preferred_artist(user_id, current_artist_id)
+
+        # 새로운 선호 아티스트 추가
+        for artist_id in artist_ids:
+            await self.user_crud.add_preferred_artist(user_id, artist_id)
+
+        # 업데이트된 선호 아티스트 목록 반환
+        return await self.get_preferred_artists(user_id)

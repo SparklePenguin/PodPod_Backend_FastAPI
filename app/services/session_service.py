@@ -7,12 +7,8 @@ from app.schemas.auth import (
 from app.core.security import (
     create_access_token,
     create_refresh_token,
-    get_password_hash,
+    verify_token,
 )
-from app.core.config import settings
-from datetime import timedelta
-
-from auth import verify_token
 
 
 class SessionService:
@@ -22,14 +18,14 @@ class SessionService:
     async def create_token(self, user_id: int) -> Credential:
         """토큰 생성"""
         return Credential(
-            access_token=create_access_token(data={"sub": user_id}),
-            refresh_token=create_refresh_token(data={"sub": str(user_id)}),
+            access_token=create_access_token(user_id),
+            refresh_token=create_refresh_token(user_id),
         )
 
     async def refresh_token(self, refresh_token: str) -> Credential:
         """토큰 갱신"""
         user_id = verify_token(refresh_token)
-        Credential(
-            access_token=create_access_token(data={"sub": str(user_id)}),
-            refresh_token=create_refresh_token(data={"sub": str(user_id)}),
+        return Credential(
+            access_token=create_access_token(user_id),
+            refresh_token=create_refresh_token(user_id),
         )

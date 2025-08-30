@@ -1,19 +1,19 @@
+from typing import Dict, Any, Optional, List
 from app.schemas.auth import (
     Credential,
     SignInResponse,
     SignUpRequest,
-    User,
+    UserDto,
 )
 
 
 from app.schemas.common import SuccessResponse, ErrorResponse
 from app.services.session_service import SessionService
-import db
+from app.core.database import get_db
 import httpx
 from fastapi import HTTPException, status
 from app.core.config import settings
-from typing import Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from app.services.user_service import UserService
 
 
@@ -34,55 +34,142 @@ class _GetTokenParam(BaseModel):
     client_secret: Optional[str] = None  # 토큰 발급 시 보안 강화용 코드
 
 
-# - MARK: 토큰 응답
-class _GetTokenResponse(BaseModel):
-    token_type: str  # 토큰 타입, bearer로 고정
-    access_token: str  # 사용자 액세스 토큰 값
-    id_token: Optional[str] = None  # ID 토큰 값 (OpenID Connect)
-    expires_in: int  # 액세스 토큰과 ID 토큰의 만료 시간(초)
-    refresh_token: str  # 사용자 리프레시 토큰 값
-    refresh_token_expires_in: int  # 리프레시 토큰 만료 시간(초)
-    scope: Optional[str] = None  # 인증된 사용자의 정보 조회 권한 범위
+# - MARK: 카카오 로그인 Request & 토큰 응답 리스폰
+class KakaoSignInRequest(BaseModel):
+    token_type: str = Field(
+        default="bearer", alias="tokenType"
+    )  # 토큰 타입, bearer로 고정
+    access_token: str = Field(alias="accessToken")  # 사용자 액세스 토큰 값
+    id_token: Optional[str] = Field(
+        default=None, alias="idToken"
+    )  # ID 토큰 값 (OpenID Connect)
+    expires_in: str = Field(alias="expiresIn")  # 액세스 토큰과 ID 토큰의 만료 시간(초)
+    refresh_token: str = Field(alias="refreshToken")  # 사용자 리프레시 토큰 값
+    refresh_token_expires_in: str = Field(
+        alias="refreshTokenExpiresIn"
+    )  # 리프레시 토큰 만료 시간(초)
+    scope: List[str] = Field(
+        default=[], alias="scope"
+    )  # 인증된 사용자의 정보 조회 권한 범위
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
 
 
 # - MARK: 사용자 정보 응답
+class _Profile(BaseModel):
+    nickname: Optional[str] = None
+    thumbnail_image_url: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    is_default_image: Optional[bool] = None
+    is_default_nickname: Optional[bool] = None
+
+
+# - MARK: 카카오 사용자 정보 응답
+class _KakaoAccount(BaseModel):
+    profile_needs_agreement: Optional[bool] = None
+    profile: Optional[_Profile] = None
+    has_email: Optional[bool] = None
+    email_needs_agreement: Optional[bool] = None
+    is_email_valid: Optional[bool] = None
+    is_email_verified: Optional[bool] = None
+    email: Optional[str] = None
+    has_age_range: Optional[bool] = None
+    age_range_needs_agreement: Optional[bool] = None
+    has_birthday: Optional[bool] = None
+    birthday_needs_agreement: Optional[bool] = None
+    has_gender: Optional[bool] = None
+    gender_needs_agreement: Optional[bool] = None
+
+
+# - MARK: 카카오 사용자 정보 응답
 class _KakaoUserInfoResponse(BaseModel):
     id: int  # 카카오 회원번호
     connected_at: str  # 서비스에 연결 완료된 시각
-    properties: Dict[str, Any]  # 사용자 프로퍼티
-    kakao_account: Dict[str, Any]  # 카카오계정 정보
-
-    class _KakaoAccount(BaseModel):
-        profile_needs_agreement: Optional[bool]
-        profile: Dict[str, Any]
-        has_email: Optional[bool]
-        email_needs_agreement: Optional[bool]
-        is_email_valid: bool
-        is_email_verified: Optional[bool]
-        email: Optional[str]
-        has_age_range: Optional[bool]
-        age_range_needs_agreement: Optional[bool]
-        has_birthday: Optional[bool]
-        birthday_needs_agreement: Optional[bool]
-        has_gender: Optional[bool]
-        gender_needs_agreement: Optional[bool]
-
-    class _Profile(BaseModel):
-        nickname: Optional[str]
-        thumbnail_image_url: Optional[str]
-        profile_image_url: Optional[str]
-        is_default_image: Optional[bool]
-        is_default_nickname: Optional[bool]
+    properties: Optional[_Profile] = None  # 사용자 프로퍼티
+    kakao_account: Optional[_KakaoAccount] = None  # 카카오계정 정보
 
 
 # - MARK: 카카오 OAuth 서비스
 class KakaoOauthService:
-    def __init__(self) -> None:
+    def __init__(
+        self, user_service: UserService, session_service: SessionService
+    ) -> None:
         self.redirect_uri = settings.KAKAO_REDIRECT_URI
         self.kakao_token_url = settings.KAKAO_TOKEN_URL
         self.kakao_user_info_url = settings.KAKAO_USER_INFO_URL
 
-    async def handle_kakao_callback(self, params: KakaoCallBackParam) -> Dict[str, Any]:
+    async def sign_in_with_kakao(
+        self, kakao_sign_in_request: KakaoSignInRequest
+    ) -> SuccessResponse:
+        try:
+            kakao_user_info = await self.get_kakao_user_info(
+                kakao_sign_in_request.access_token
+            )
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ErrorResponse(
+                    error="user_info_request_failed",
+                    status=500,
+                    message=str(e),
+                ),
+            )
+
+        # 사용자 정보 저장
+        async for db in get_db():
+            user_service = UserService(db)
+
+            # 기존 사용자 확인 (auth_provider_id로)
+            existing_user = await user_service.get_user_by_auth_provider_id(
+                auth_provider="kakao", auth_provider_id=str(kakao_user_info.id)
+            )
+
+            if existing_user:
+                # 기존 사용자가 있으면 그 사용자로 로그인
+                user = existing_user
+            else:
+                # 새 사용자 생성
+                user = await user_service.create_user(
+                    SignUpRequest(
+                        email=kakao_user_info.kakao_account.email,
+                        username=kakao_user_info.kakao_account.profile.nickname,
+                        full_name=kakao_user_info.kakao_account.profile.nickname,
+                        profile_image=kakao_user_info.kakao_account.profile.profile_image_url,
+                        auth_provider="kakao",
+                        auth_provider_id=str(kakao_user_info.id),
+                    )
+                )
+
+            # 토큰 발급
+            session_service = SessionService(db)
+            token_response = await session_service.create_token(
+                user.id,
+            )
+            break
+
+        return SuccessResponse(
+            code=200,
+            message="kakao_login_success",
+            data=SignInResponse(
+                credential=Credential(
+                    access_token=token_response.access_token,
+                    refresh_token=token_response.refresh_token,
+                ),
+                user=UserDto(
+                    id=user.id,
+                    email=user.email,
+                    username=user.username,
+                    profile_image=user.profile_image,
+                    full_name=user.full_name,
+                    needs_onboarding=user.needs_onboarding,
+                ),
+            ),
+        )
+
+    async def handle_kakao_callback(self, params: KakaoCallBackParam) -> SignInResponse:
         """카카오 콜백 처리"""
         # 인가 코드 요청 실패 처리
         if params.error:
@@ -121,58 +208,12 @@ class KakaoOauthService:
                 ),
             )
 
-        try:
-            # 2. 액세스 토큰으로 사용자 정보 요청
-            kakao_user_info = await self.get_kakao_user_info(
-                token_response.access_token
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error="user_info_request_failed",
-                    status=500,
-                    message=str(e),
-                ),
-            )
-
-        # 사용자 정보 저장
-        user_service = UserService(db)
-        user = await user_service.create_user(
-            SignUpRequest(
-                email=kakao_user_info.kakao_account.email,
-                username=kakao_user_info.kakao_account.profile.nickname,
-                profile_image=kakao_user_info.kakao_account.profile.profile_image_url,
-            )
-        )
-
-        # 토큰 발급
-        session_service = SessionService(db)
-        token_response = await session_service.create_token(
-            user.id,
-        )
-
-        return SuccessResponse(
-            code=200,
-            message="kakao_login_success",
-            data=SignInResponse(
-                credential=Credential(
-                    access_token=token_response.access_token,
-                    refresh_token=token_response.refresh_token,
-                ),
-                user=User(
-                    id=user.id,
-                    email=user.email,
-                    username=user.username,
-                    profile_image=user.profile_image,
-                ),
-            ),
-        )
+        return self.sign_in_with_kakao(token_response)
 
     # - MARK: 토큰 요청
     async def get_kakao_token(
         self, code: str, redirect_uri: str = None
-    ) -> _GetTokenResponse:
+    ) -> _KakaoUserInfoResponse:
         """카카오 OAuth 인증 코드로 액세스 토큰을 가져옴"""
 
         # 설정에서 카카오 정보 가져오기
@@ -206,7 +247,7 @@ class KakaoOauthService:
                     ),
                 )
 
-            return _GetTokenResponse(**response.json())
+            return KakaoSignInRequest(**response.json())
 
     # - MARK: 사용자 정보 요청
     async def get_kakao_user_info(self, access_token: str) -> _KakaoUserInfoResponse:
