@@ -10,12 +10,12 @@
 **필드**:
 - `id` (Integer, Primary Key): 사용자 고유 ID
 - `username` (String(50), Unique, Nullable): 사용자명
-- `email` (String(100), Unique, Not Null): 이메일 주소
+- `email` (String(100), Unique, Nullable): 이메일 주소 (소셜 로그인 시 Null 허용)
 - `nickname` (String(50), Nullable): 닉네임
 - `intro` (String(200), Nullable): 자기소개
 - `hashed_password` (String(255), Nullable): 해시된 비밀번호 (소셜 로그인 시 Null)
 - `profile_image` (String(500), Nullable): 프로필 이미지 URL
-- `needs_onboarding` (Boolean): 온보딩 필요 여부
+- `needs_onboarding` (Boolean, Default: True): 온보딩 필요 여부 (새 사용자는 기본적으로 온보딩 필요)
 - `is_active` (Boolean, Default: True): 계정 활성화 상태
 - `created_at` (DateTime): 생성 시간
 - `updated_at` (DateTime): 수정 시간
@@ -102,7 +102,7 @@ preferred = PreferredArtist(
 
 ## 제약조건
 
-- `users.email`: NOT NULL, UNIQUE
+- `users.email`: UNIQUE (Nullable)
 - `users.username`: UNIQUE
 - `users.auth_provider_id`: UNIQUE
 - `artists.name`: NOT NULL

@@ -12,12 +12,12 @@ class User(Base):
     username = Column(
         String(50), unique=True, index=True, nullable=True
     )  # 소셜 로그인의 경우 nullable
-    email = Column(String(100), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=True)
     nickname = Column(String(50), nullable=True)
     intro = Column(String(200), nullable=True)
     hashed_password = Column(String(255), nullable=True)  # 소셜 로그인의 경우 nullable
     profile_image = Column(String(500))  # 프로필 이미지 URL
-    needs_onboarding = Column(Boolean)
+    needs_onboarding = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     updated_at = Column(

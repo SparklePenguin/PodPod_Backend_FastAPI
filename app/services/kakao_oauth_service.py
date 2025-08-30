@@ -67,20 +67,11 @@ class _Profile(BaseModel):
 
 
 # - MARK: 카카오 사용자 정보 응답
+# https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api#kakaoaccount
+# https://developers.kakao.com/console/app/1301346/product/login/scope
 class _KakaoAccount(BaseModel):
-    profile_needs_agreement: Optional[bool] = None
+    profile_image_needs_agreement: Optional[bool] = None
     profile: Optional[_Profile] = None
-    has_email: Optional[bool] = None
-    email_needs_agreement: Optional[bool] = None
-    is_email_valid: Optional[bool] = None
-    is_email_verified: Optional[bool] = None
-    email: Optional[str] = None
-    has_age_range: Optional[bool] = None
-    age_range_needs_agreement: Optional[bool] = None
-    has_birthday: Optional[bool] = None
-    birthday_needs_agreement: Optional[bool] = None
-    has_gender: Optional[bool] = None
-    gender_needs_agreement: Optional[bool] = None
 
 
 # - MARK: 카카오 사용자 정보 응답
@@ -134,9 +125,9 @@ class KakaoOauthService:
                 # 새 사용자 생성
                 user = await user_service.create_user(
                     SignUpRequest(
-                        email=kakao_user_info.kakao_account.email,
-                        username=kakao_user_info.kakao_account.profile.nickname,
-                        full_name=kakao_user_info.kakao_account.profile.nickname,
+                        # email=,
+                        # username=,
+                        nickname=kakao_user_info.kakao_account.profile.nickname,
                         profile_image=kakao_user_info.kakao_account.profile.profile_image_url,
                         auth_provider="kakao",
                         auth_provider_id=str(kakao_user_info.id),
@@ -162,8 +153,8 @@ class KakaoOauthService:
                     id=user.id,
                     email=user.email,
                     username=user.username,
+                    nickname=user.nickname,
                     profile_image=user.profile_image,
-                    full_name=user.full_name,
                     needs_onboarding=user.needs_onboarding,
                 ),
             ),

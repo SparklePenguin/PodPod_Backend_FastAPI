@@ -20,7 +20,7 @@ class SignInResponse(BaseModel):
 class SignUpRequest(BaseModel):
     email: Optional[str] = None
     username: Optional[str] = None
-    full_name: Optional[str] = None
+    nickname: Optional[str] = None
     password: Optional[str] = None
     profile_image: Optional[str] = None
     auth_provider: Optional[str] = None

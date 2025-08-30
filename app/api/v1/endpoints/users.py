@@ -132,10 +132,8 @@ async def update_my_preferred_artists(
     response_model=SuccessResponse,
     responses={
         200: {"model": SuccessResponse, "description": "사용자 목록 조회 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
         500: {"model": ErrorResponse, "description": "서버 내부 오류"},
     },
-    dependencies=[Depends(security)],
     tags=["internal"],
     summary="모든 사용자 조회 (내부용)",
     description="⚠️ 내부용 API - 모든 사용자 목록을 조회합니다. 개발/테스트 목적으로만 사용됩니다.",
@@ -165,11 +163,9 @@ async def get_users(
     response_model=SuccessResponse,
     responses={
         200: {"model": SuccessResponse, "description": "사용자 조회 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
         404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
         500: {"model": ErrorResponse, "description": "서버 내부 오류"},
     },
-    dependencies=[Depends(security)],
     tags=["internal"],
     summary="특정 사용자 조회 (내부용)",
     description="⚠️ 내부용 API - 특정 사용자의 정보를 조회합니다. 개발/테스트 목적으로만 사용됩니다.",
