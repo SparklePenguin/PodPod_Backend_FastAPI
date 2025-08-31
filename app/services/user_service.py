@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.user import UserCRUD
 from app.crud.artist import ArtistCRUD
 from app.schemas.common import ErrorResponse
-from app.schemas.user import UpdateProfileRequest, UserDto
+from app.schemas.user import UpdateProfileRequest, UserDto, UserDtoInternal
 from app.schemas.auth import SignUpRequest
 from app.schemas.artist import ArtistDto
 from app.core.security import get_password_hash
@@ -63,9 +63,11 @@ class UserService:
         return UserDto.model_validate(user, from_attributes=True)
 
     # - MARK: (내부용) 사용자 목록 조회
-    async def get_users(self) -> List[UserDto]:
+    async def get_users(self) -> List[UserDtoInternal]:
         users = await self.user_crud.get_all()
-        return [UserDto(user=user) for user in users]
+        return [
+            UserDtoInternal.model_validate(user, from_attributes=True) for user in users
+        ]
 
     # - MARK: 사용자 조회
     async def get_user(self, user_id: int) -> UserDto:
@@ -81,6 +83,21 @@ class UserService:
             )
 
         return UserDto.model_validate(user, from_attributes=True)
+
+    # - MARK: (내부용) 사용자 조회 (모든 정보 포함)
+    async def get_user_internal(self, user_id: int) -> UserDtoInternal:
+        user = await self.user_crud.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ErrorResponse(
+                    error_code="user_not_found",
+                    status=status.HTTP_404_NOT_FOUND,
+                    message="사용자를 찾을 수 없습니다",
+                ).model_dump(),
+            )
+
+        return UserDtoInternal.model_validate(user, from_attributes=True)
 
     # - MARK: (내부용) auth_provider와 auth_provider_id로 사용자 찾기
     async def get_user_by_auth_provider_id(
