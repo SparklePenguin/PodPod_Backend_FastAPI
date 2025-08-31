@@ -37,16 +37,14 @@ async def create_user(
         return SuccessResponse(
             code=201, message="user_created_successfully", data={"user": user}
         )
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error="user_creation_failed",
-                status=500,
+                error_code="user_creation_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
-            ),
+            ).model_dump(),
         )
 
 
@@ -151,8 +149,8 @@ async def get_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error="users_retrieval_failed",
-                status=500,
+                error_code="users_retrieval_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
             ),
         )
@@ -180,14 +178,12 @@ async def get_user(
         return SuccessResponse(
             code=200, message="user_retrieved_successfully", data={"user": user}
         )
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error="user_retrieval_failed",
-                status=500,
+                error_code="user_retrieval_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
-            ),
+            ).model_dump(),
         )

@@ -1,3 +1,4 @@
+from email import message
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2 import id_token
@@ -49,14 +50,13 @@ class GoogleOauthService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
-                    error="invalid_google_token",
-                    status=400,
+                    error_code="invalid_google_token",
+                    status=status.HTTP_400_BAD_REQUEST,
                     message=str(e),
-                ),
+                ).model_dump(),
             )
 
         # Google 사용자 정보를 OAuth 서비스 형식에 맞게 변환
-        google_user_info = google_user_info.model_dump(by_alias=True)
         google_user_info["username"] = google_user_info.get("name")
         google_user_info["image_url"] = google_user_info.get("picture")
 

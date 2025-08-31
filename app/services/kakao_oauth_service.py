@@ -116,10 +116,10 @@ class KakaoOauthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=ErrorResponse(
-                    error="user_info_request_failed",
-                    status=500,
+                    error_code="user_info_request_failed",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     message=str(e),
-                ),
+                ).model_dump(),
             )
 
         # 카카오 사용자 정보를 OAuth 서비스 형식에 맞게 변환
@@ -144,9 +144,9 @@ class KakaoOauthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
                     error_code="kakao_oauth_error",
-                    status=400,
+                    status=status.HTTP_400_BAD_REQUEST,
                     message=params.error,
-                ),
+                ).model_dump(),
             )
 
         # 인가 코드가 없는 경우
@@ -155,9 +155,9 @@ class KakaoOauthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=ErrorResponse(
                     error_code="missing_authorization_code",
-                    status=400,
+                    status=status.HTTP_400_BAD_REQUEST,
                     message=params.error,
-                ),
+                ).model_dump(),
             )
 
         # 토큰 요청
@@ -171,8 +171,10 @@ class KakaoOauthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=ErrorResponse(
-                    error="token_request_failed", status=500, message=str(e)
-                ),
+                    error_code="token_request_failed",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    message=str(e),
+                ).model_dump(),
             )
 
         return await self.sign_in_with_kakao(token_response)
@@ -206,12 +208,12 @@ class KakaoOauthService:
 
             if response.status_code != 200:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=ErrorResponse(
                         error_code="get_kakao_token_failed",
                         status=response.status_code,
                         message=response.text,
-                    ),
+                    ).model_dump(),
                 )
 
             return KakaoTokenResponse(**response.json())
@@ -230,12 +232,12 @@ class KakaoOauthService:
 
             if response.status_code != 200:
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=ErrorResponse(
                         error_code="get_kakao_user_info_failed",
                         status=response.status_code,
                         message=response.text,
-                    ),
+                    ).model_dump(),
                 )
 
             return _KakaoUserInfoResponse(**response.json())

@@ -64,8 +64,8 @@ class OauthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=ErrorResponse(
-                    error=f"{oauth_provider}_login_failed",
-                    status=500,
+                    error_code=f"{oauth_provider}_login_failed",
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     message=str(e),
-                ),
+                ).model_dump(),
             )

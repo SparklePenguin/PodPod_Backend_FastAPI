@@ -40,10 +40,10 @@ async def get_artists(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error="artists_retrieval_failed",
-                status=500,
+                error_code="artists_retrieval_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
-            ),
+            ).model_dump(),
         )
 
 
@@ -69,10 +69,10 @@ async def get_artist(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=ErrorResponse(
-                    error="artist_not_found",
-                    status=404,
+                    error_code="artist_not_found",
+                    status=status.HTTP_404_NOT_FOUND,
                     message="아티스트를 찾을 수 없습니다.",
-                ),
+                ).model_dump(),
             )
         return SuccessResponse(
             code=200, message="artist_retrieved_successfully", data={"artist": artist}
@@ -83,10 +83,10 @@ async def get_artist(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error="artist_retrieval_failed",
-                status=500,
+                error_code="artist_retrieval_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
-            ),
+            ).model_dump(),
         )
 
 
@@ -117,8 +117,8 @@ async def create_mvp_artists(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error="mvp_artists_creation_failed",
-                status=500,
+                error_code="mvp_artists_creation_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
-            ),
+            ).model_dump(),
         )

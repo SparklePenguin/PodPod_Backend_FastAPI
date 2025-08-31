@@ -10,9 +10,9 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(
-        String(50), unique=True, index=True, nullable=True
+        String(50), index=True, nullable=True
     )  # 소셜 로그인의 경우 nullable
-    email = Column(String(100), unique=True, index=True, nullable=True)
+    email = Column(String(100), index=True, nullable=True)
     nickname = Column(String(50), nullable=True)
     intro = Column(String(200), nullable=True)
     hashed_password = Column(String(255), nullable=True)  # 소셜 로그인의 경우 nullable

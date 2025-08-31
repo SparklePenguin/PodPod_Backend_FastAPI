@@ -17,13 +17,36 @@ class UserService:
 
     # - MARK: 사용자 생성
     async def create_user(self, user_data: SignUpRequest) -> UserDto:
-        # 이메일 중복 확인
+        # 이메일 중복 확인 (provider도 함께 확인)
         existing_user = await self.user_crud.get_by_email(user_data.email)
         if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="이메일이 이미 등록되어 있습니다",
-            )
+            # 같은 provider인지 확인
+            if (
+                user_data.auth_provider
+                and existing_user.auth_provider == user_data.auth_provider
+            ):
+                # 같은 provider의 같은 계정이면 중복 에러
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse(
+                        error_code="email_already_exists",
+                        status=status.HTTP_400_BAD_REQUEST,
+                        message="이미 등록된 계정입니다",
+                    ).model_dump(),
+                )
+            elif not user_data.auth_provider:
+                # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse(
+                        error_code="email_already_exists",
+                        status=status.HTTP_400_BAD_REQUEST,
+                        message="이메일이 이미 등록되어 있습니다",
+                    ).model_dump(),
+                )
+            else:
+                # 다른 OAuth provider인 경우 계속 진행 (새 계정 생성)
+                pass
 
         # 비밀번호 해싱
         if user_data.password is not None:
@@ -50,7 +73,11 @@ class UserService:
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="사용자를 찾을 수 없습니다",
+                detail=ErrorResponse(
+                    error_code="user_not_found",
+                    status=status.HTTP_404_NOT_FOUND,
+                    message="사용자를 찾을 수 없습니다",
+                ).model_dump(),
             )
 
         return UserDto.model_validate(user, from_attributes=True)
@@ -81,7 +108,7 @@ class UserService:
                     error_code="user_not_found",
                     status=status.HTTP_404_NOT_FOUND,
                     message="사용자를 찾을 수 없습니다",
-                ),
+                ).model_dump(),
             )
         return UserDto.model_validate(user, from_attributes=True)
 
@@ -111,7 +138,11 @@ class UserService:
             if not artist:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"아티스트 ID {artist_id}를 찾을 수 없습니다",
+                    detail=ErrorResponse(
+                        error_code="artist_not_found",
+                        status=status.HTTP_404_NOT_FOUND,
+                        message=f"아티스트 ID {artist_id}를 찾을 수 없습니다",
+                    ).model_dump(),
                 )
 
         # 기존 선호 아티스트 모두 제거
