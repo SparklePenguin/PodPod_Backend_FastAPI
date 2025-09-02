@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.security import HTTPBearer
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
 from app.core.database import init_db
@@ -68,6 +69,9 @@ security = HTTPBearer()
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(ValidationError, pydantic_validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
+
+# 정적 파일 서빙 설정
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # API 라우터 포함
 app.include_router(api_router, prefix="/api/v1")

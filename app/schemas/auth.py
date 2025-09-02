@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.schemas.user import UserDto
@@ -6,8 +6,10 @@ from app.schemas.user import UserDto
 
 # - MARK: 토큰 정보 응답
 class CredentialDto(BaseModel):
-    access_token: str
-    refresh_token: str
+    access_token: str = Field(..., alias="accessToken")
+    refresh_token: str = Field(..., alias="refreshToken")
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 로그인 성공 응답
@@ -26,6 +28,8 @@ class SignUpRequest(BaseModel):
     auth_provider: Optional[str] = None
     auth_provider_id: Optional[str] = None
 
+    model_config = {"populate_by_name": True}
+
 
 # - MARK: 이메일 로그인 요청
 class EmailLoginRequest(BaseModel):
@@ -35,4 +39,6 @@ class EmailLoginRequest(BaseModel):
 
 # - MARK: 토큰 갱신 요청
 class TokenRefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., alias="refreshToken")
+
+    model_config = {"populate_by_name": True}

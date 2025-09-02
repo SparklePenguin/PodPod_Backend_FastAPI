@@ -140,7 +140,7 @@ class UserService:
         for artist_id in artist_ids:
             artist = await self.artist_crud.get_by_id(artist_id)
             if artist:
-                artists.append(ArtistDto(artist=artist))
+                artists.append(ArtistDto.model_validate(artist, from_attributes=True))
 
         return artists
 

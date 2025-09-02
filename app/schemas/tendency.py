@@ -8,11 +8,11 @@ class TendencyResultDto(BaseModel):
     id: int
     type: str
     description: str
-    tendency_info: Dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
+    tendency_info: Dict[str, Any] = Field(..., alias="tendencyInfo")
+    created_at: datetime = Field(..., alias="createdAt")
+    updated_at: datetime = Field(..., alias="updatedAt")
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 # - MARK: 성향 테스트 설문 DTO
@@ -28,12 +28,12 @@ class TendencySurveyDto(BaseModel):
 
     @classmethod
     def from_orm(cls, obj):
-        # survey_data에서 questions만 추출하고 question_id 추가
+        # survey_data에서 questions만 추출하고 questionId 추가
         questions = obj.survey_data.get("questions", [])
         for question in questions:
             question_id = question.get("id")
             for answer in question.get("answers", []):
-                answer["question_id"] = question_id
+                answer["questionId"] = question_id
 
         return cls(
             id=obj.id,
@@ -48,13 +48,45 @@ class TendencySurveyDto(BaseModel):
 # - MARK: 사용자 성향 테스트 결과 DTO
 class UserTendencyResultDto(BaseModel):
     id: int
-    user_id: int
-    tendency_type: str
+    user_id: int = Field(..., alias="userId")
+    tendency_type: str = Field(..., alias="tendencyType")
     answers: Dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = Field(..., alias="createdAt")
+    updated_at: datetime = Field(..., alias="updatedAt")
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
+
+
+# - MARK: Flutter용 성향 테스트 응답 요청
+class SurveyAnswer(BaseModel):
+    question_id: int = Field(..., alias="questionId")
+    id: int = Field(..., alias="id")
+
+
+class SubmitTendencyTestRequest(BaseModel):
+    answers: List[SurveyAnswer]
+
+    model_config = {"populate_by_name": True}
+
+
+# - MARK: Flutter용 성향 테스트 결과 응답
+class TendencyInfo(BaseModel):
+    main_type: str = Field(..., alias="mainType")
+    sub_type: str = Field(..., alias="subType")
+    speech_bubbles: List[str] = Field(..., alias="speechBubbles")
+    one_line_descriptions: List[str] = Field(..., alias="oneLineDescriptions")
+    detailed_description: str = Field(..., alias="detailedDescription")
+    keywords: List[str] = Field(..., alias="keywords")
+
+    model_config = {"populate_by_name": True}
+
+
+class Tendency(BaseModel):
+    type: str
+    description: str
+    tendency_info: TendencyInfo = Field(..., alias="tendencyInfo")
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 성향 테스트 응답 요청

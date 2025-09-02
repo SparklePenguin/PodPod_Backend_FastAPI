@@ -55,18 +55,21 @@ class UserDtoInternal(BaseModel):
 
 # - MARK: 프로필 업데이트 요청
 class UpdateProfileRequest(BaseModel):
-    username: Optional[str] = Field(default=None, alias="username")
+    nickname: Optional[str] = Field(default=None, alias="nickname")
     profile_image: Optional[str] = Field(default=None, alias="profileImage")
     intro: Optional[str] = Field(default=None, alias="intro")
 
     model_config = {
         "populate_by_name": True,
-        "alias_generator": lambda x: (
-            x.replace("_", "").lower()
-            if x.startswith("_")
-            else x.replace("_", "").lower()
-        ),
     }
+
+
+# - MARK: 멀티파트 프로필 업데이트 요청
+class UpdateUserRequest(BaseModel):
+    nickname: Optional[str] = Field(default=None, alias="nickname")
+    intro: Optional[str] = Field(default=None, alias="intro")
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 선호 아티스트 요청

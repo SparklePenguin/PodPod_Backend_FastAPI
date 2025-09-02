@@ -81,7 +81,7 @@ class UserCRUD:
     # 사용자 선호 아티스트 조회 (아티스트 ID 목록 반환)
     async def get_preferred_artist_ids(self, user_id: int) -> List[int]:
         result = await self.db.execute(
-            text("SELECT artist_id FROM user_artists WHERE user_id = :user_id"),
+            text("SELECT artist_id FROM preferred_artists WHERE user_id = :user_id"),
             {"user_id": user_id},
         )
         rows = result.fetchall()
@@ -91,7 +91,7 @@ class UserCRUD:
     async def add_preferred_artist(self, user_id: int, artist_id: int) -> None:
         await self.db.execute(
             text(
-                "INSERT INTO user_artists (user_id, artist_id) VALUES (:user_id, :artist_id)"
+                "INSERT INTO preferred_artists (user_id, artist_id) VALUES (:user_id, :artist_id)"
             ),
             {"user_id": user_id, "artist_id": artist_id},
         )
@@ -101,7 +101,7 @@ class UserCRUD:
     async def remove_preferred_artist(self, user_id: int, artist_id: int) -> None:
         await self.db.execute(
             text(
-                "DELETE FROM user_artists WHERE user_id = :user_id AND artist_id = :artist_id"
+                "DELETE FROM preferred_artists WHERE user_id = :user_id AND artist_id = :artist_id"
             ),
             {"user_id": user_id, "artist_id": artist_id},
         )

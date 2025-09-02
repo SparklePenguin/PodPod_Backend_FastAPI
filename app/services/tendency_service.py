@@ -1,17 +1,150 @@
 import json
-from typing import List, Optional
+from typing import List, Optional, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.tendency import TendencyResult, TendencySurvey, UserTendencyResult
 from app.schemas.tendency import (
     TendencyResultDto,
     TendencySurveyDto,
     UserTendencyResultDto,
+    Tendency,
+    TendencyInfo,
 )
 
 
 class TendencyService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    # - MARK: Flutter용 성향 테스트 점수 계산
+    async def calculate_tendency_score_flutter(
+        self, answers: List[Dict[str, int]]
+    ) -> Tendency:
+        """
+        Flutter용 성향 테스트 답변을 받아서 점수를 계산하고 Tendency 객체를 반환
+
+        Args:
+            answers: [{"questionId": int, "answerId": int}] 형태의 답변 리스트
+
+        Returns:
+            Tendency 객체
+        """
+        # 답변을 딕셔너리 형태로 변환
+        answers_dict = {answer["questionId"]: answer["id"] for answer in answers}
+
+        # 기존 점수 계산 함수 사용
+        calculation_result = await self.calculate_tendency_score(answers_dict)
+
+        # TendencyResult 조회
+        tendency_result = await self.get_tendency_result(
+            calculation_result["tendency_type"]
+        )
+        if not tendency_result:
+            raise Exception("성향 테스트 결과를 찾을 수 없습니다")
+
+        # Tendency 객체 생성
+        return Tendency(
+            type=calculation_result["tendency_type"],  # 이미 대문자 스네이크 케이스
+            description=tendency_result.description,
+            tendency_info=TendencyInfo(
+                main_type=tendency_result.tendency_info["mainType"],
+                sub_type=tendency_result.tendency_info["subType"],
+                speech_bubbles=tendency_result.tendency_info["speechBubbles"],
+                one_line_descriptions=tendency_result.tendency_info[
+                    "oneLineDescriptions"
+                ],
+                detailed_description=tendency_result.tendency_info[
+                    "detailedDescription"
+                ],
+                keywords=tendency_result.tendency_info["keywords"],
+            ),
+        )
+
+    # - MARK: 성향 테스트 점수 계산
+    async def calculate_tendency_score(self, answers: Dict[int, int]) -> Dict[str, any]:
+        """
+        성향 테스트 답변을 받아서 점수를 계산하고 결과를 반환
+
+        Args:
+            answers: {question_id: answer_id} 형태의 답변 딕셔너리
+
+        Returns:
+            {
+                "tendency_type": "결과 타입",
+                "total_score": 총점,
+                "scores": {
+                    "안방덕메": 점수,
+                    "인싸덕메": 점수,
+                    "올출덕메": 점수,
+                    "순례덕메": 점수,
+                    "서폿덕메": 점수,
+                    "금손덕메": 점수
+                },
+                "answers": 원본 답변
+            }
+        """
+        # 설문 데이터 로드
+        survey_data = await self.get_tendency_survey()
+        if not survey_data:
+            raise Exception("설문 데이터를 찾을 수 없습니다")
+
+        # 점수 초기화
+        scores = {
+            "안방덕메": 0,
+            "인싸덕메": 0,
+            "올출덕메": 0,
+            "순례덕메": 0,
+            "서폿덕메": 0,
+            "금손덕메": 0,
+        }
+
+        # 각 답변에 대해 점수 계산
+        for question_id, answer_id in answers.items():
+            question = next(
+                (q for q in survey_data.questions if q["id"] == question_id),
+                None,
+            )
+            if not question:
+                continue
+
+            answer = next(
+                (a for a in question["answers"] if a["id"] == answer_id), None
+            )
+            if not answer:
+                continue
+
+            # 해당 덕메 타입에 점수 추가
+            tendency_type = answer["tendencyType"]
+            score = answer["score"]
+            scores[tendency_type] += score
+
+        # 총점 계산
+        total_score = sum(scores.values())
+
+        # 가장 높은 점수의 덕메 타입을 결과로 선택
+        max_score = max(scores.values())
+        result_types = [
+            tendency_type
+            for tendency_type, score in scores.items()
+            if score == max_score
+        ]
+
+        # 결과 타입 매핑 (한글 -> 영문)
+        type_mapping = {
+            "안방덕메": "QUIET_MATE",
+            "인싸덕메": "TOGETHER_MATE",
+            "올출덕메": "FIELD_MATE",
+            "순례덕메": "PILGRIM_MATE",
+            "서폿덕메": "SUPPORT_MATE",
+            "금손덕메": "CREATIVE_MATE",
+        }
+
+        # 결과 반환
+        return {
+            "tendency_type": type_mapping.get(result_types[0], "quietMate"),
+            "total_score": total_score,
+            "scores": scores,
+            "answers": answers,
+        }
 
     # - MARK: 성향 테스트 결과 조회
     async def get_tendency_results(self) -> List[TendencyResultDto]:
@@ -32,8 +165,21 @@ class TendencyService:
         """특정 성향 테스트 결과 조회"""
         from sqlalchemy import select
 
+        # 대문자 스네이크 케이스 타입을 기존 타입으로 매핑
+        type_mapping = {
+            "QUIET_MATE": "quietMate",
+            "TOGETHER_MATE": "togetherMate",
+            "FIELD_MATE": "fieldMate",
+            "PILGRIM_MATE": "pilgrimMate",
+            "SUPPORT_MATE": "supportMate",
+            "CREATIVE_MATE": "creativeMate",
+        }
+
+        # 매핑된 타입으로 조회
+        mapped_type = type_mapping.get(tendency_type, tendency_type)
+
         result = await self.db.execute(
-            select(TendencyResult).where(TendencyResult.type == tendency_type)
+            select(TendencyResult).where(TendencyResult.type == mapped_type)
         )
         tendency_result = result.scalar_one_or_none()
 
@@ -75,7 +221,7 @@ class TendencyService:
     # - MARK: 사용자 성향 테스트 결과 저장
     async def save_user_tendency_result(
         self, user_id: int, tendency_type: str, answers: dict
-    ) -> UserTendencyResultDto:
+    ) -> None:
         """사용자의 성향 테스트 결과 저장"""
         # 기존 결과가 있으면 업데이트, 없으면 새로 생성
         existing_result = await self.get_user_tendency_result(user_id)
@@ -97,9 +243,6 @@ class TendencyService:
             self.db.add(new_result)
 
         await self.db.commit()
-        await self.db.refresh(new_result if not existing_result else existing_result)
-
-        return await self.get_user_tendency_result(user_id)
 
     # - MARK: (내부용) MVP 성향 테스트 데이터 생성
     async def create_mvp_tendency_data(self) -> dict:
