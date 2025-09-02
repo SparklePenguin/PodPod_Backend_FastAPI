@@ -48,16 +48,18 @@ class OauthService:
             # 토큰 발급
             token_response = await self.session_service.create_token(user.id)
 
+            sign_in_response = SignInResponse(
+                credential=CredentialDto(
+                    access_token=token_response.access_token,
+                    refresh_token=token_response.refresh_token,
+                ),
+                user=UserDto.model_validate(user, from_attributes=True),
+            )
+
             return SuccessResponse(
                 code=200,
                 message=f"{oauth_provider}_login_success",
-                data=SignInResponse(
-                    credential=CredentialDto(
-                        access_token=token_response.access_token,
-                        refresh_token=token_response.refresh_token,
-                    ),
-                    user=UserDto.model_validate(user, from_attributes=True),
-                ),
+                data=sign_in_response.model_dump(by_alias=True),
             )
 
         except Exception as e:

@@ -1,0 +1,87 @@
+import os
+import uuid
+from pathlib import Path
+from fastapi import UploadFile
+from typing import Optional
+
+
+async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
+    """파일을 서버에 저장하고 파일 경로를 반환"""
+    try:
+        # 파일 확장자 추출
+        file_extension = (
+            Path(upload_file.filename).suffix if upload_file.filename else ""
+        )
+
+        # 고유한 파일명 생성
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+        # 업로드 디렉토리 생성
+        upload_dir = Path(destination)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        # 파일 저장 경로
+        file_path = upload_dir / unique_filename
+
+        # 파일 저장
+        with open(file_path, "wb") as buffer:
+            content = await upload_file.read()
+            buffer.write(content)
+
+        # 파일 URL 반환 (상대 경로)
+        return f"/uploads/{unique_filename}"
+
+    except Exception as e:
+        raise Exception(f"파일 업로드 실패: {str(e)}")
+
+
+async def delete_upload_file(file_path: str) -> bool:
+    """업로드된 파일 삭제"""
+    try:
+        if file_path and file_path.startswith("/uploads/"):
+            # 상대 경로를 절대 경로로 변환
+            absolute_path = Path(".") / file_path.lstrip("/")
+            if absolute_path.exists():
+                absolute_path.unlink()
+                return True
+        return False
+    except Exception as e:
+        print(f"파일 삭제 실패: {str(e)}")
+        return False
+
+
+def is_valid_image_file(file: UploadFile) -> bool:
+    """이미지 파일인지 검증"""
+    if not file.content_type:
+        return False
+
+    valid_image_types = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+    ]
+
+    return file.content_type in valid_image_types
+
+
+async def upload_profile_image(image: UploadFile) -> Optional[str]:
+    """프로필 이미지 업로드"""
+    if not image:
+        return None
+
+    # 이미지 파일 검증
+    if not is_valid_image_file(image):
+        raise ValueError("유효하지 않은 이미지 파일입니다")
+
+    # 파일 크기 검증 (5MB 제한)
+    content = await image.read()
+    if len(content) > 5 * 1024 * 1024:  # 5MB
+        raise ValueError("이미지 파일 크기는 5MB를 초과할 수 없습니다")
+
+    # 파일 포인터를 다시 처음으로
+    await image.seek(0)
+
+    # 파일 저장
+    return await save_upload_file(image, "uploads/profile_images")

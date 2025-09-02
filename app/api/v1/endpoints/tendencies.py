@@ -1,22 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 
 from app.api.deps import get_db
 from app.services.tendency_service import TendencyService
-from app.schemas.tendency import (
-    TendencyResultDto,
-    TendencySurveyDto,
-    UserTendencyResultDto,
-    TendencyTestRequest,
-    TendencyResultRequest,
-)
 from app.schemas.common import SuccessResponse, ErrorResponse
 
 router = APIRouter()
 
 
-def get_tendency_service(db: AsyncSession = Depends(get_db)) -> TendencyService:
+def get_tendency_service(db=Depends(get_db)) -> TendencyService:
     return TendencyService(db)
 
 
@@ -43,7 +34,7 @@ async def get_tendency_results(
         return SuccessResponse(
             code=200,
             message="tendency_results_retrieved_successfully",
-            data={"tendency_results": results},
+            data=results,
         )
     except Exception as e:
         raise HTTPException(
@@ -86,7 +77,7 @@ async def get_tendency_result(
         return SuccessResponse(
             code=200,
             message="tendency_result_retrieved_successfully",
-            data={"tendency_result": result},
+            data=result,
         )
     except HTTPException:
         raise

@@ -90,7 +90,7 @@ async def sign_in_with_apple(
 
 
 @router.post(
-    "/",
+    "",
     response_model=SuccessResponse,
     responses={
         400: {"model": ErrorResponse, "description": "잘못된 요청"},
@@ -108,8 +108,10 @@ async def create_session(
 
 
 @router.delete(
-    "/",
+    "",
+    response_model=SuccessResponse,
     responses={
+        200: {"model": SuccessResponse, "description": "로그아웃 성공"},
         401: {"model": ErrorResponse, "description": "인증 실패"},
         500: {"model": ErrorResponse, "description": "서버 내부 오류"},
     },
@@ -124,7 +126,7 @@ async def delete_session(
 
 
 @router.put(
-    "/",
+    "",
     response_model=SuccessResponse,
     responses={
         401: {"model": ErrorResponse, "description": "인증 실패"},
@@ -137,4 +139,41 @@ async def refresh_session(
     auth_service: SessionService = Depends(get_session_service),
 ):
     """토큰 갱신"""
-    return await auth_service.refresh_token(refresh_data.refresh_token)
+    from app.core.security import (
+        TokenExpiredError,
+        TokenInvalidError,
+        TokenDecodeError,
+        TokenBlacklistedError,
+    )
+    from app.schemas.common import ErrorResponse
+
+    try:
+        credential = await auth_service.refresh_token(refresh_data.refresh_token)
+        return SuccessResponse(
+            code=200,
+            message="token_refreshed_successfully",
+            data=credential.model_dump(by_alias=True),
+        )
+    except (
+        TokenExpiredError,
+        TokenInvalidError,
+        TokenDecodeError,
+        TokenBlacklistedError,
+    ) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ErrorResponse(
+                error_code=e.code,
+                status=e.status,
+                message=e.message,
+            ).model_dump(),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error_code="token_refresh_failed",
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                message=f"토큰 갱신 실패: {str(e)}",
+            ).model_dump(),
+        )
