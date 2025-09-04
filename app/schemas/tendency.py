@@ -27,8 +27,8 @@ class TendencySurveyDto(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm(cls, obj):
-        # survey_data에서 questions만 추출하고 questionId 추가
+    def from_survey_data(cls, obj):
+        """survey_data에서 questions만 추출하고 questionId 추가"""
         questions = obj.survey_data.get("questions", [])
         for question in questions:
             question_id = question.get("id")

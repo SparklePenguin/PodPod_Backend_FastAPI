@@ -190,7 +190,7 @@ class TendencyService:
         if not survey:
             return None
 
-        return TendencySurveyDto.model_validate(survey, from_attributes=True)
+        return TendencySurveyDto.from_survey_data(survey)
 
     # - MARK: 사용자 성향 테스트 결과 조회
     async def get_user_tendency_result(
