@@ -724,4 +724,68 @@ mapped_type = tendency_type
 
 ---
 
+## 🆕 DB 스키마 업데이트 - state 컬럼 추가 (2025-09-05)
+
+### 10. "table users has no column named state" 에러 해결
+
+#### 10.1 문제 원인
+User 모델에 `state` 컬럼을 추가했지만 실제 데이터베이스 스키마가 업데이트되지 않음:
+
+```
+sqlite3.OperationalError: table users has no column named state
+[SQL: INSERT INTO users (..., state, ...) VALUES (...)]
+```
+
+#### 10.2 해결 방법
+
+**Option 1: Alembic 마이그레이션 (권장)**
+```bash
+# 마이그레이션 파일 생성
+alembic revision --autogenerate -m "Add state column to users table"
+
+# 마이그레이션 적용
+alembic upgrade head
+```
+
+**Option 2: 직접 SQL 실행 (빠른 해결)**
+```sql
+-- state 컬럼 추가
+ALTER TABLE users ADD COLUMN state VARCHAR(50) DEFAULT 'PREFERRED_ARTISTS';
+
+-- 기존 사용자 state 값 설정
+UPDATE users SET state = 'PREFERRED_ARTISTS' WHERE state IS NULL;
+
+-- 확인
+PRAGMA table_info(users);
+SELECT id, nickname, state FROM users;
+```
+
+#### 10.3 적용 순서
+1. **현재 스키마 확인**
+   ```sql
+   PRAGMA table_info(users);
+   ```
+
+2. **컬럼 추가**
+   ```sql
+   ALTER TABLE users ADD COLUMN state VARCHAR(50) DEFAULT 'PREFERRED_ARTISTS';
+   ```
+
+3. **기존 데이터 업데이트**
+   ```sql
+   UPDATE users SET state = 'PREFERRED_ARTISTS' WHERE state IS NULL;
+   ```
+
+4. **확인 및 테스트**
+   - 사용자 생성/조회 API 테스트
+   - 새 사용자 가입 시 state 값 확인
+
+#### 10.4 ⚠️ 다른 환경 적용 시 주의사항
+1. **백업**: 프로덕션 DB는 반드시 백업 후 진행
+2. **마이그레이션**: 가능하면 Alembic을 통한 정식 마이그레이션 권장
+3. **기본값**: 기존 사용자들의 state 기본값 설정 확인
+4. **테스트**: 사용자 관련 모든 API 동작 확인
+
+---
+
 이 가이드를 따라하면 다른 환경에서도 동일한 기능을 구현할 수 있습니다! 🚀
