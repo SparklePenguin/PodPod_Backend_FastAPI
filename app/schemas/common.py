@@ -13,4 +13,4 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error_code: str
     status: int
-    message: str
+    message: str = "Unknown error"  # 기본값 설정

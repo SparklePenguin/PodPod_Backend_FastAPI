@@ -165,18 +165,9 @@ class TendencyService:
         """특정 성향 테스트 결과 조회"""
         from sqlalchemy import select
 
-        # 대문자 스네이크 케이스 타입을 기존 타입으로 매핑
-        type_mapping = {
-            "QUIET_MATE": "quietMate",
-            "TOGETHER_MATE": "togetherMate",
-            "FIELD_MATE": "fieldMate",
-            "PILGRIM_MATE": "pilgrimMate",
-            "SUPPORT_MATE": "supportMate",
-            "CREATIVE_MATE": "creativeMate",
-        }
-
-        # 매핑된 타입으로 조회
-        mapped_type = type_mapping.get(tendency_type, tendency_type)
+        # DB의 타입이 모두 대문자 언더스코어 형식으로 통일됨
+        # 매핑 없이 직접 사용 (모든 타입이 UPPER_CASE 형식)
+        mapped_type = tendency_type
 
         result = await self.db.execute(
             select(TendencyResult).where(TendencyResult.type == mapped_type)

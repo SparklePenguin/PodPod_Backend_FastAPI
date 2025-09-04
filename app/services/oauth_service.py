@@ -53,7 +53,7 @@ class OauthService:
                     access_token=token_response.access_token,
                     refresh_token=token_response.refresh_token,
                 ),
-                user=UserDto.model_validate(user, from_attributes=True),
+                user=user,  # user는 이미 UserDto 타입
             )
 
             return SuccessResponse(
