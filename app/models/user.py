@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.core.database import Base
+from app.models.user_state import UserState
 
 
 # 사용자 모델 (소셜 로그인 지원)
@@ -17,7 +18,9 @@ class User(Base):
     intro = Column(String(200), nullable=True)
     hashed_password = Column(String(255), nullable=True)  # 소셜 로그인의 경우 nullable
     profile_image = Column(String(500))  # 프로필 이미지 URL
-    needs_onboarding = Column(Boolean, default=True)
+    state = Column(
+        Enum(UserState), default=UserState.PREFERRED_ARTISTS
+    )  # 사용자 온보딩 상태
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     updated_at = Column(

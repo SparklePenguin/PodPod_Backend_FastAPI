@@ -19,7 +19,6 @@ class KakaoCallBackParam(BaseModel):
 # - MARK: 토큰 요청 파라미터
 class _GetTokenParam(BaseModel):
     grant_type: str = "authorization_code"  # authorization_code로 고정
-    client_id: str  # 앱 REST API 키
     redirect_uri: str  # 인가 코드가 리다이렉트된 URI
     code: str  # 인가 코드 요청으로 얻은 인가 코드
     client_secret: Optional[str] = None  # 토큰 발급 시 보안 강화용 코드
@@ -124,9 +123,17 @@ class KakaoOauthService:
 
         # 카카오 사용자 정보를 OAuth 서비스 형식에 맞게 변환
         oauth_user_info = kakao_user_info.model_dump(by_alias=True)
-        oauth_user_info["image_url"] = (
-            kakao_user_info.kakao_account.profile.profile_image_url
-        )
+
+        # 프로필 이미지 URL 안전하게 추출
+        image_url = None
+        if (
+            kakao_user_info.kakao_account
+            and kakao_user_info.kakao_account.profile
+            and kakao_user_info.kakao_account.profile.profile_image_url
+        ):
+            image_url = kakao_user_info.kakao_account.profile.profile_image_url
+
+        oauth_user_info["image_url"] = image_url
 
         return await self.oauth_service.sign_in_with_oauth(
             oauth_provider="kakao",
@@ -145,7 +152,7 @@ class KakaoOauthService:
                 detail=ErrorResponse(
                     error_code="kakao_oauth_error",
                     status=status.HTTP_400_BAD_REQUEST,
-                    message=params.error,
+                    message=params.error or "카카오 OAuth 인증 실패",
                 ).model_dump(),
             )
 
@@ -156,7 +163,7 @@ class KakaoOauthService:
                 detail=ErrorResponse(
                     error_code="missing_authorization_code",
                     status=status.HTTP_400_BAD_REQUEST,
-                    message=params.error,
+                    message=params.error or "인가 코드가 필요합니다",
                 ).model_dump(),
             )
 

@@ -1,6 +1,7 @@
 import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from app.models.user_state import UserState
 
 
 # - MARK: 사용자 정보 응답
@@ -11,7 +12,12 @@ class UserDto(BaseModel):
     nickname: Optional[str] = Field(default=None, alias="nickname")
     profile_image: Optional[str] = Field(default=None, alias="profileImage")
     intro: Optional[str] = Field(default=None, alias="intro")
-    needs_onboarding: bool = Field(alias="needsOnboarding")  # 필수값
+    state: UserState = Field(
+        default=UserState.PREFERRED_ARTISTS, alias="state"
+    )  # 사용자 온보딩 상태
+    tendency_type: Optional[str] = Field(
+        default=None, alias="tendencyType"
+    )  # 성향 타입
     created_at: Optional[datetime.datetime] = Field(default=None, alias="createdAt")
     updated_at: Optional[datetime.datetime] = Field(default=None, alias="updatedAt")
 
