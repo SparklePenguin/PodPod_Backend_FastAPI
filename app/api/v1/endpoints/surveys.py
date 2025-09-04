@@ -95,7 +95,7 @@ async def submit_tendency_test(
         # Tendency 객체 생성
         tendency = await tendency_service.calculate_tendency_score_flutter(
             [
-                {"questionId": answer.question_id, "id": answer.id}
+                {"questionId": answer.question_id, "answerId": answer.id}
                 for answer in score_request.answers
             ]
         )

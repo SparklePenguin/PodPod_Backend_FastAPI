@@ -29,7 +29,7 @@ class TendencyService:
             Tendency 객체
         """
         # 답변을 딕셔너리 형태로 변환
-        answers_dict = {answer["questionId"]: answer["id"] for answer in answers}
+        answers_dict = {answer["questionId"]: answer["answerId"] for answer in answers}
 
         # 기존 점수 계산 함수 사용
         calculation_result = await self.calculate_tendency_score(answers_dict)
@@ -140,7 +140,7 @@ class TendencyService:
 
         # 결과 반환
         return {
-            "tendency_type": type_mapping.get(result_types[0], "quietMate"),
+            "tendency_type": type_mapping.get(result_types[0], "QUIET_MATE"),
             "total_score": total_score,
             "scores": scores,
             "answers": answers,
@@ -190,7 +190,7 @@ class TendencyService:
         if not survey:
             return None
 
-        return TendencySurveyDto.from_orm(survey)
+        return TendencySurveyDto.model_validate(survey, from_attributes=True)
 
     # - MARK: 사용자 성향 테스트 결과 조회
     async def get_user_tendency_result(
