@@ -41,7 +41,7 @@ class UserDtoInternal(BaseModel):
     profile_image: Optional[str] = Field(default=None, alias="profileImage")
     intro: Optional[str] = Field(default=None, alias="intro")
     hashed_password: Optional[str] = Field(default=None, alias="hashedPassword")
-    needs_onboarding: bool = Field(alias="needsOnboarding")  # 필수값
+    state: UserState = Field(default=UserState.PREFERRED_ARTISTS, alias="state")  # 사용자 온보딩 상태
     is_active: bool = Field(alias="isActive")  # 필수값
     auth_provider: Optional[str] = Field(default=None, alias="authProvider")
     auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")
