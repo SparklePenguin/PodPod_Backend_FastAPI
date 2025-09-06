@@ -146,3 +146,76 @@ Infisical을 통해 다음 환경변수들을 관리합니다:
 - **Authentication**: JWT, OAuth (Google, Apple, Kakao)
 - **Environment Management**: Infisical
 - **Configuration**: YAML
+
+## 📝 Git 커밋 컨벤션
+
+### 🎯 커밋 메시지 형식
+```
+<type>(<scope>): <subject>
+```
+
+### 🔹 Types (타입)
+- **feat**: 새로운 기능 추가
+- **fix**: 버그 수정
+- **docs**: 문서 수정
+- **style**: 코드 포맷팅, 세미콜론 누락 등 (기능 변경 없음)
+- **refactor**: 코드 리팩토링
+- **test**: 테스트 코드 추가/수정
+- **chore**: 빌드 프로세스, 보조 도구 변경
+- **perf**: 성능 개선
+- **ci**: CI/CD 설정 변경
+- **build**: 빌드 시스템 변경
+- **revert**: 이전 커밋 되돌리기
+
+### 🔹 Scopes (범위)
+- **api**: API 엔드포인트
+- **db**: 데이터베이스 관련
+- **auth**: 인증/인가
+- **user**: 사용자 관련
+- **artist**: 아티스트 관련
+- **tendency**: 성향 테스트 관련
+- **config**: 설정 파일
+- **logging**: 로깅 시스템
+- **middleware**: 미들웨어
+- **deps**: 의존성
+- **docker**: Docker 관련
+- **docs**: 문서
+
+### 💡 Examples (예시)
+```bash
+feat(api): add user profile update endpoint
+fix(db): resolve MySQL connection timeout issue
+docs(readme): update installation instructions
+refactor(auth): simplify OAuth flow
+test(user): add user registration tests
+chore(deps): update FastAPI to v0.104.0
+```
+
+### 📋 Subject Guidelines (제목 가이드라인)
+- 50자 이내로 작성
+- 첫 글자는 소문자
+- 마침표로 끝내지 않음
+- 명령형으로 작성 (예: "add" not "added")
+
+### 🚀 자동화된 Git 훅
+프로젝트에는 다음 Git 훅이 설정되어 있습니다:
+
+#### 1. **prepare-commit-msg**: 자동 템플릿 제공
+- `git commit` 입력 시 자동으로 커밋 메시지 템플릿이 표시됩니다
+- 타입, 스코프, 예시가 포함된 가이드라인 제공
+
+#### 2. **commit-msg**: 메시지 규칙 검증
+- 커밋 메시지 형식 자동 검증
+- 잘못된 형식일 경우 커밋 거부
+- 경고 메시지로 개선 사항 안내
+
+### 🔧 훅 설정 방법
+```bash
+# 실행 권한 부여 (이미 설정됨)
+chmod +x .git/hooks/prepare-commit-msg
+chmod +x .git/hooks/commit-msg
+
+# 커밋 테스트
+git add .
+git commit  # 템플릿이 자동으로 표시됩니다
+```
