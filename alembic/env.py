@@ -3,6 +3,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from app.core.database import Base
+import os
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -54,8 +55,32 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # MySQL용 동기 엔진 생성
+    configuration = config.get_section(config.config_ini_section, {})
+    
+    # 환경변수에서 MySQL 설정 가져오기 (Infisical에서 주입됨)
+    mysql_user = os.getenv("MYSQL_USER", "root")
+    mysql_password = os.getenv("MYSQL_PASSWORD")  # 필수: Infisical에서 주입되어야 함
+    mysql_host = os.getenv("MYSQL_HOST", "localhost")
+    mysql_port = os.getenv("MYSQL_PORT", "3306")
+    mysql_database = os.getenv("MYSQL_DATABASE", "podpod")
+    
+    # 필수 환경변수 검증
+    if not mysql_password:
+        raise ValueError(
+            "MYSQL_PASSWORD 환경변수가 설정되지 않았습니다. "
+            "Infisical을 사용하여 환경변수를 주입해주세요. "
+            "직접 환경변수 설정은 지원되지 않습니다."
+        )
+    
+    # 비밀번호에 @ 문자가 있으면 URL 인코딩
+    import urllib.parse
+    encoded_password = urllib.parse.quote(mysql_password, safe='')
+    
+    configuration["sqlalchemy.url"] = f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}:{mysql_port}/{mysql_database}"
+    
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

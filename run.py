@@ -3,13 +3,12 @@
 PodPod FastAPI 서버 실행 스크립트
 
 사용법:
-    ./run                   # 기본 실행 (Infisical 자동 사용)
-    ./run --no-infisical    # Infisical 사용 안함
+    ./run                   # Infisical을 사용하여 실행 (필수)
     ./run --host HOST --port PORT  # 호스트/포트 변경
     ./run --no-reload       # 자동 리로드 비활성화
 
 주의: 이 스크립트는 run 스크립트를 통해 실행되어야 합니다.
-기본적으로 Infisical을 사용하여 환경변수를 로드합니다.
+Infisical을 통해서만 환경변수를 로드합니다.
 """
 import subprocess
 import sys
@@ -103,13 +102,10 @@ def run_server(config, use_infisical=False):
                 cwd=current_dir,
             )
         else:
-            print("서버를 시작하는 중...")
-            result = subprocess.Popen(
-                uvicorn_cmd,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                cwd=current_dir,
-            )
+            # 이 코드는 실행되지 않음 (Infisical이 항상 사용됨)
+            print("❌ 오류: Infisical을 통해서만 서버를 실행할 수 있습니다.")
+            print("💡 해결방법: ./run (Infisical 자동 사용)")
+            sys.exit(1)
         
         return result.wait()
         
@@ -126,8 +122,7 @@ def run_server(config, use_infisical=False):
 
 def main():
     parser = argparse.ArgumentParser(description="PodPod FastAPI 서버 실행")
-    parser.add_argument("--infisical", action="store_true", help="Infisical을 사용하여 환경변수 로드 (기본값)")
-    parser.add_argument("--no-infisical", action="store_true", help="Infisical 사용 안함")
+    # Infisical은 항상 사용하므로 옵션 제거
     parser.add_argument("--host", help="서버 호스트 (기본값: 127.0.0.1)")
     parser.add_argument("--port", type=int, help="서버 포트 (기본값: 8000)")
     parser.add_argument("--no-reload", action="store_true", help="자동 리로드 비활성화")
@@ -153,16 +148,8 @@ def main():
         print("run 스크립트를 사용하여 실행하세요: ./run")
         return 1
     
-    # Infisical 사용 여부 결정
-    infisical_config = config.get("infisical", {})
-    default_use_infisical = infisical_config.get("enabled", False)
-    
-    if args.no_infisical:
-        use_infisical = False
-    elif args.infisical:
-        use_infisical = True
-    else:
-        use_infisical = default_use_infisical
+    # Infisical은 항상 사용
+    use_infisical = True
     
     # 서버 실행
     return run_server(config, use_infisical=use_infisical)

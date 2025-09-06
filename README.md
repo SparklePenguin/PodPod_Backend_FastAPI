@@ -15,7 +15,7 @@
 ### 방법 2: 가상환경이 이미 활성화된 경우
 ```bash
 # 가상환경 활성화
-source podpod/bin/activate
+source venv/bin/activate
 
 # 서버 실행
 python3 run.py
@@ -99,12 +99,12 @@ infisical:
 
 ### 1. 가상환경 생성
 ```bash
-python3 -m venv podpod
+python3 -m venv venv
 ```
 
 ### 2. 가상환경 활성화
 ```bash
-source podpod/bin/activate
+source venv/bin/activate
 ```
 
 ### 3. 의존성 설치
@@ -140,7 +140,7 @@ Infisical을 통해 다음 환경변수들을 관리합니다:
 ## 🛠️ 기술 스택
 
 - **Framework**: FastAPI
-- **Database**: SQLite (개발), PostgreSQL (프로덕션)
+- **Database**: MySQL
 - **ORM**: SQLAlchemy
 - **Migration**: Alembic
 - **Authentication**: JWT, OAuth (Google, Apple, Kakao)

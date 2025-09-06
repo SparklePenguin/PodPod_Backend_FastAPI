@@ -4,8 +4,28 @@ import os
 
 
 class Settings(BaseSettings):
-    # 데이터베이스 설정
-    DATABASE_URL: str = "sqlite+aiosqlite:///./podpod.db"
+    # 데이터베이스 설정 (Infisical에서 가져옴 - 필수 환경변수)
+    MYSQL_USER: str = "root"
+    MYSQL_PASSWORD: str  # 필수: Infisical에서 MYSQL_PASSWORD로 주입되어야 함
+    MYSQL_HOST: str = "localhost"
+    MYSQL_PORT: int = 3306
+    MYSQL_DATABASE: str = "podpod"
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # 필수 환경변수 검증
+        if not self.MYSQL_PASSWORD:
+            raise ValueError(
+                "MYSQL_PASSWORD 환경변수가 설정되지 않았습니다. "
+                "Infisical을 사용하여 환경변수를 주입해주세요. "
+                "직접 환경변수 설정은 지원되지 않습니다."
+            )
+    
+    @property
+    def DATABASE_URL(self) -> str:
+        import urllib.parse
+        encoded_password = urllib.parse.quote(self.MYSQL_PASSWORD, safe='')
+        return f"mysql+aiomysql://{self.MYSQL_USER}:{encoded_password}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
 
     # JWT 설정
     SECRET_KEY: str = "your-secret-key-here"
@@ -38,7 +58,7 @@ class Settings(BaseSettings):
     APPLE_REDIRECT_URI: str = (
         "http://localhost:3000/auth/apple/callback"  # Apple Redirect URI
     )
-    APPLE_SCHEME: str = os.getenv("APPLE_SCHEME")
+    APPLE_SCHEME: Optional[str] = os.getenv("APPLE_SCHEME")
     APPLE_ISSUER: str = "https://appleid.apple.com"
 
 

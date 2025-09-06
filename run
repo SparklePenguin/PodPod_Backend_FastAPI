@@ -7,13 +7,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # 가상환경 경로
-VENV_PATH="./podpod"
+VENV_PATH="./venv"
 
 # 가상환경이 존재하는지 확인
 if [ ! -d "$VENV_PATH" ]; then
-    echo "가상환경 'podpod'를 찾을 수 없습니다."
+    echo "가상환경 'venv'를 찾을 수 없습니다."
     echo "다음 명령어로 가상환경을 생성하세요:"
-    echo "python3 -m venv podpod"
+    echo "python3 -m venv venv"
     exit 1
 fi
 

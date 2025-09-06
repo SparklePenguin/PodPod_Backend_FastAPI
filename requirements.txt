@@ -32,4 +32,7 @@ Mako==1.3.10
 # YAML 설정 파일 지원
 PyYAML==6.0.1
 
+# MySQL 드라이버
+aiomysql==0.2.0
+
 
