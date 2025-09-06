@@ -39,7 +39,7 @@ class ArtistCRUD:
         return result.fetchone()
 
     async def create_from_json(
-        self, json_file_path: str = "mvp_artists.json"
+        self, json_file_path: str = "mvp/artists.json"
     ) -> List[Artist]:
         """JSON 파일에서 아티스트들을 생성"""
         created_artists = []
@@ -71,4 +71,4 @@ class ArtistCRUD:
 
     async def create_mvp_artists(self) -> List[Artist]:
         """MVP 아티스트들을 생성 (기본 JSON 파일 사용)"""
-        return await self.create_from_json("mvp_artists.json")
+        return await self.create_from_json("mvp/artists.json")

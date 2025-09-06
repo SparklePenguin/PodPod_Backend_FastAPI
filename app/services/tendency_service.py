@@ -240,11 +240,11 @@ class TendencyService:
         """MVP 성향 테스트 데이터 생성 (내부용)"""
         try:
             # 성향 테스트 결과 데이터 로드
-            with open("mvp_tend_test_result.json", "r", encoding="utf-8") as f:
+            with open("mvp/tendency_results.json", "r", encoding="utf-8") as f:
                 tendency_results = json.load(f)
 
             # 성향 테스트 설문 데이터 로드
-            with open("mvp_tend_test_survey.json", "r", encoding="utf-8") as f:
+            with open("mvp/tendency_test.json", "r", encoding="utf-8") as f:
                 survey_data = json.load(f)
 
             # 기존 데이터 삭제

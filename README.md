@@ -65,6 +65,10 @@ PodPod_Backend_FastAPI/
 │   └── utils/             # 유틸리티 함수
 ├── alembic/               # 데이터베이스 마이그레이션
 ├── logs/                  # 로그 파일
+├── mvp/                   # MVP 데이터 파일들
+│   ├── artists.json
+│   ├── tendency_results.json
+│   └── tendency_test.json
 ├── uploads/               # 업로드된 파일
 ├── config.yaml            # 서버 설정 파일
 ├── run.py                 # 서버 실행 스크립트
