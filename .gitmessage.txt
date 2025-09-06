@@ -1,0 +1,56 @@
+# 🎯 PodPod Backend FastAPI - Commit Message Template
+
+# 📝 Format: <type>(<scope>): <subject>
+
+# 🔹 Types:
+#   feat     - 새로운 기능 추가
+#   fix      - 버그 수정
+#   docs     - 문서 수정
+#   style    - 코드 포맷팅, 세미콜론 누락 등 (기능 변경 없음)
+#   refactor - 코드 리팩토링
+#   test     - 테스트 코드 추가/수정
+#   chore    - 빌드 프로세스, 보조 도구 변경
+#   perf     - 성능 개선
+#   ci       - CI/CD 설정 변경
+#   build    - 빌드 시스템 변경
+#   revert   - 이전 커밋 되돌리기
+
+# 🔹 Scopes:
+#   api      - API 엔드포인트
+#   db       - 데이터베이스 관련
+#   auth     - 인증/인가
+#   user     - 사용자 관련
+#   artist   - 아티스트 관련
+#   tendency - 성향 테스트 관련
+#   config   - 설정 파일
+#   logging  - 로깅 시스템
+#   middleware - 미들웨어
+#   deps     - 의존성
+#   docker   - Docker 관련
+#   docs     - 문서
+
+# 🔹 Examples:
+#   feat(api): add user profile update endpoint
+#   fix(db): resolve MySQL connection timeout issue
+#   docs(readme): update installation instructions
+#   refactor(auth): simplify OAuth flow
+#   test(user): add user registration tests
+#   chore(deps): update FastAPI to v0.104.0
+
+# 📋 Subject Guidelines:
+#   - 50자 이내로 작성
+#   - 첫 글자는 소문자
+#   - 마침표로 끝내지 않음
+#   - 명령형으로 작성 (예: "add" not "added")
+
+# 💡 Body (선택사항):
+#   - 72자마다 줄바꿈
+#   - 변경 이유와 이전 동작과의 차이점 설명
+
+# 🚀 Footer (선택사항):
+#   - Breaking Changes: BREAKING CHANGE: <description>
+#   - Issues: Closes #123, Fixes #456
+
+# ---
+# 위 주석을 모두 삭제하고 커밋 메시지를 작성하세요
+# ---

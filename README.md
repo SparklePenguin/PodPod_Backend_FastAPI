@@ -219,3 +219,28 @@ chmod +x .git/hooks/commit-msg
 git add .
 git commit  # 템플릿이 자동으로 표시됩니다
 ```
+
+### 🎨 VSCode 통합
+VSCode에서도 커밋 메시지 템플릿이 자동으로 표시됩니다:
+
+#### **설정된 기능:**
+- **Git 커밋 메시지 템플릿**: VSCode Git 패널에서 커밋 시 자동으로 템플릿 표시
+- **Python 환경**: 가상환경 자동 활성화 및 Python 인터프리터 설정
+- **코드 포맷팅**: Black 포맷터 자동 적용
+- **린팅**: Flake8 린터 활성화
+- **파일 연결**: YAML, SQL, INI 파일 자동 인식
+- **검색 최적화**: 불필요한 디렉토리 제외
+
+#### **VSCode 확장 프로그램 권장:**
+- **Python**: Python 언어 지원
+- **Black Formatter**: 코드 포맷팅
+- **Flake8**: 코드 린팅
+- **YAML**: YAML 파일 지원
+- **SQL**: SQL 파일 지원
+- **GitLens**: Git 기능 강화
+
+#### **사용법:**
+1. VSCode에서 프로젝트 열기
+2. Source Control 패널 (Ctrl+Shift+G) 열기
+3. 변경사항 스테이징 후 커밋 메시지 입력란에 템플릿이 자동 표시
+4. 템플릿을 참고하여 커밋 메시지 작성
