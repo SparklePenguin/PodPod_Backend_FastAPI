@@ -23,12 +23,6 @@ python3 run.py
 
 ### 실행 옵션들
 
-#### Infisical 없이 실행
-```bash
-./run --no-infisical
-# 또는
-python3 run.py --no-infisical
-```
 
 #### 호스트/포트 변경
 ```bash
@@ -197,50 +191,3 @@ chore(deps): update FastAPI to v0.104.0
 - 마침표로 끝내지 않음
 - 명령형으로 작성 (예: "add" not "added")
 
-### 🚀 자동화된 Git 훅
-프로젝트에는 다음 Git 훅이 설정되어 있습니다:
-
-#### 1. **prepare-commit-msg**: 자동 템플릿 제공
-- `git commit` 입력 시 자동으로 커밋 메시지 템플릿이 표시됩니다
-- 타입, 스코프, 예시가 포함된 가이드라인 제공
-
-#### 2. **commit-msg**: 메시지 규칙 검증
-- 커밋 메시지 형식 자동 검증
-- 잘못된 형식일 경우 커밋 거부
-- 경고 메시지로 개선 사항 안내
-
-### 🔧 훅 설정 방법
-```bash
-# 실행 권한 부여 (이미 설정됨)
-chmod +x .git/hooks/prepare-commit-msg
-chmod +x .git/hooks/commit-msg
-
-# 커밋 테스트
-git add .
-git commit  # 템플릿이 자동으로 표시됩니다
-```
-
-### 🎨 VSCode 통합
-VSCode에서도 커밋 메시지 템플릿이 자동으로 표시됩니다:
-
-#### **설정된 기능:**
-- **Git 커밋 메시지 템플릿**: VSCode Git 패널에서 커밋 시 자동으로 템플릿 표시
-- **Python 환경**: 가상환경 자동 활성화 및 Python 인터프리터 설정
-- **코드 포맷팅**: Black 포맷터 자동 적용
-- **린팅**: Flake8 린터 활성화
-- **파일 연결**: YAML, SQL, INI 파일 자동 인식
-- **검색 최적화**: 불필요한 디렉토리 제외
-
-#### **VSCode 확장 프로그램 권장:**
-- **Python**: Python 언어 지원
-- **Black Formatter**: 코드 포맷팅
-- **Flake8**: 코드 린팅
-- **YAML**: YAML 파일 지원
-- **SQL**: SQL 파일 지원
-- **GitLens**: Git 기능 강화
-
-#### **사용법:**
-1. VSCode에서 프로젝트 열기
-2. Source Control 패널 (Ctrl+Shift+G) 열기
-3. 변경사항 스테이징 후 커밋 메시지 입력란에 템플릿이 자동 표시
-4. 템플릿을 참고하여 커밋 메시지 작성
