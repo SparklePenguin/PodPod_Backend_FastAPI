@@ -7,7 +7,8 @@ from contextlib import asynccontextmanager
 from app.core.database import init_db
 from app.api import api_router
 from app.core.config import settings
-from app.core.logging_config import setup_logging
+from app.core.logging_config import setup_logging, get_logger
+from app.middleware.logging_middleware import LoggingMiddleware
 from app.core.exceptions import (
     validation_exception_handler,
     pydantic_validation_exception_handler,
@@ -38,29 +39,34 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="소셜 로그인을 지원하는 FastAPI 백엔드",
     lifespan=lifespan,
-    openapi_tags=[
-        {
-            "name": "users",
-            "description": "사용자 관리 API",
-        },
-        {
-            "name": "sessions",
-            "description": "세션 관리 API (로그인/로그아웃)",
-        },
-        {
-            "name": "artists",
-            "description": "아티스트 관리 API",
-        },
-        {
-            "name": "oauths",
-            "description": "OAuth 인증 API",
-        },
-        {
-            "name": "internal",
-            "description": "⚠️ 내부용 API - 개발/테스트 목적으로만 사용됩니다.",
-        },
-    ],
 )
+
+# 로깅 미들웨어 추가
+app.add_middleware(LoggingMiddleware)
+
+# OpenAPI 태그 설정
+app.openapi_tags = [
+    {
+        "name": "users",
+        "description": "사용자 관리 API",
+    },
+    {
+        "name": "sessions",
+        "description": "세션 관리 API (로그인/로그아웃)",
+    },
+    {
+        "name": "artists",
+        "description": "아티스트 관리 API",
+    },
+    {
+        "name": "oauths",
+        "description": "OAuth 인증 API",
+    },
+    {
+        "name": "internal",
+        "description": "⚠️ 내부용 API - 개발/테스트 목적으로만 사용됩니다.",
+    },
+]
 
 # 보안 스키마 정의
 security = HTTPBearer()
