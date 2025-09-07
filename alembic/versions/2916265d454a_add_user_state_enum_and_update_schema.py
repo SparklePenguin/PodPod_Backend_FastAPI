@@ -17,116 +17,53 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # SQLite에서는 ALTER COLUMN을 지원하지 않으므로 테이블을 재생성해야 함
+    # MySQL에서는 ALTER COLUMN을 지원하므로 더 간단하게 처리 가능
     
-    # 1. 기존 데이터 백업을 위한 임시 테이블 생성
+    # 1. UserState ENUM 타입 생성
+    userstate_enum = sa.Enum('PREFERRED_ARTISTS', 'TENDENCY_TEST', 'PROFILE_SETTING', 'COMPLETED', name='userstate')
+    userstate_enum.create(op.get_bind())
+    
+    # 2. state 컬럼 추가 (기본값: PREFERRED_ARTISTS)
+    op.add_column('users', sa.Column('state', userstate_enum, nullable=False, server_default='PREFERRED_ARTISTS'))
+    
+    # 3. 기존 데이터의 state 값 업데이트 (needs_onboarding 컬럼이 있다면)
+    # MySQL에서는 컬럼 존재 여부를 확인하고 업데이트
     op.execute("""
-        CREATE TABLE users_backup AS 
-        SELECT id, username, email, nickname, intro, hashed_password, 
-               profile_image, is_active, created_at, updated_at, 
-               auth_provider, auth_provider_id,
-               CASE 
-                   WHEN needs_onboarding = 1 THEN 'PREFERRED_ARTISTS'
-                   ELSE 'COMPLETED'
-               END as state
-        FROM users
+        UPDATE users 
+        SET state = CASE 
+            WHEN needs_onboarding = 1 THEN 'PREFERRED_ARTISTS'
+            ELSE 'COMPLETED'
+        END
+        WHERE needs_onboarding IS NOT NULL
     """)
     
-    # 2. 기존 users 테이블 삭제
-    op.drop_table('users')
-    
-    # 3. 새로운 users 테이블 생성 (state 컬럼 포함)
-    op.create_table('users',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('username', sa.String(length=50), nullable=True),
-        sa.Column('email', sa.String(length=100), nullable=True),
-        sa.Column('nickname', sa.String(length=50), nullable=True),
-        sa.Column('intro', sa.String(length=200), nullable=True),
-        sa.Column('hashed_password', sa.String(length=255), nullable=True),
-        sa.Column('profile_image', sa.String(length=500), nullable=True),
-        sa.Column('state', sa.Enum('PREFERRED_ARTISTS', 'TENDENCY_TEST', 'PROFILE_SETTING', 'COMPLETED', name='userstate'), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.Column('auth_provider', sa.String(length=20), nullable=True),
-        sa.Column('auth_provider_id', sa.String(length=100), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    
-    # 4. 인덱스 재생성
-    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
-    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=False)
-    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=False)
-    op.create_index(op.f('ix_users_auth_provider_id'), 'users', ['auth_provider_id'], unique=True)
-    
-    # 5. 백업 데이터를 새 테이블로 복사
-    op.execute("""
-        INSERT INTO users (id, username, email, nickname, intro, hashed_password, 
-                          profile_image, state, is_active, created_at, updated_at, 
-                          auth_provider, auth_provider_id)
-        SELECT id, username, email, nickname, intro, hashed_password, 
-               profile_image, state, is_active, created_at, updated_at, 
-               auth_provider, auth_provider_id
-        FROM users_backup
-    """)
-    
-    # 6. 백업 테이블 삭제
-    op.drop_table('users_backup')
+    # 4. needs_onboarding 컬럼 제거 (존재한다면)
+    # MySQL에서는 컬럼 존재 여부를 확인하고 삭제
+    try:
+        op.drop_column('users', 'needs_onboarding')
+    except Exception:
+        # 컬럼이 존재하지 않으면 무시
+        pass
 
 
 def downgrade() -> None:
-    # SQLite에서는 ALTER COLUMN을 지원하지 않으므로 테이블을 재생성해야 함
+    # MySQL에서는 ALTER COLUMN을 지원하므로 더 간단하게 처리 가능
     
-    # 1. 기존 데이터 백업을 위한 임시 테이블 생성
+    # 1. needs_onboarding 컬럼 추가
+    op.add_column('users', sa.Column('needs_onboarding', sa.Boolean(), nullable=False, server_default='1'))
+    
+    # 2. 기존 데이터의 needs_onboarding 값 업데이트
     op.execute("""
-        CREATE TABLE users_backup AS 
-        SELECT id, username, email, nickname, intro, hashed_password, 
-               profile_image, is_active, created_at, updated_at, 
-               auth_provider, auth_provider_id,
-               CASE 
-                   WHEN state = 'COMPLETED' THEN 0
-                   ELSE 1
-               END as needs_onboarding
-        FROM users
+        UPDATE users 
+        SET needs_onboarding = CASE 
+            WHEN state = 'COMPLETED' THEN 0
+            ELSE 1
+        END
     """)
     
-    # 2. 기존 users 테이블 삭제
-    op.drop_table('users')
+    # 3. state 컬럼 제거
+    op.drop_column('users', 'state')
     
-    # 3. 새로운 users 테이블 생성 (needs_onboarding 컬럼 포함)
-    op.create_table('users',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('username', sa.String(length=50), nullable=True),
-        sa.Column('email', sa.String(length=100), nullable=True),
-        sa.Column('nickname', sa.String(length=50), nullable=True),
-        sa.Column('intro', sa.String(length=200), nullable=True),
-        sa.Column('hashed_password', sa.String(length=255), nullable=True),
-        sa.Column('profile_image', sa.String(length=500), nullable=True),
-        sa.Column('needs_onboarding', sa.Boolean(), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.Column('auth_provider', sa.String(length=20), nullable=True),
-        sa.Column('auth_provider_id', sa.String(length=100), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    
-    # 4. 인덱스 재생성
-    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
-    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=False)
-    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=False)
-    op.create_index(op.f('ix_users_auth_provider_id'), 'users', ['auth_provider_id'], unique=True)
-    
-    # 5. 백업 데이터를 새 테이블로 복사
-    op.execute("""
-        INSERT INTO users (id, username, email, nickname, intro, hashed_password, 
-                          profile_image, needs_onboarding, is_active, created_at, updated_at, 
-                          auth_provider, auth_provider_id)
-        SELECT id, username, email, nickname, intro, hashed_password, 
-               profile_image, needs_onboarding, is_active, created_at, updated_at, 
-               auth_provider, auth_provider_id
-        FROM users_backup
-    """)
-    
-    # 6. 백업 테이블 삭제
-    op.drop_table('users_backup')
+    # 4. UserState ENUM 타입 삭제
+    userstate_enum = sa.Enum(name='userstate')
+    userstate_enum.drop(op.get_bind())

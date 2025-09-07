@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import json
 import os
@@ -13,14 +13,13 @@ class ArtistCRUD:
 
     async def get_by_id(self, artist_id: int) -> Optional[Artist]:
         result = await self.db.execute(
-            text("SELECT * FROM artists WHERE id = :artist_id"),
-            {"artist_id": artist_id},
+            select(Artist).where(Artist.id == artist_id)
         )
-        return result.fetchone()
+        return result.scalar_one_or_none()
 
     async def get_all(self) -> List[Artist]:
-        result = await self.db.execute(text("SELECT * FROM artists"))
-        return result.fetchall()
+        result = await self.db.execute(select(Artist))
+        return result.scalars().all()
 
     async def create(self, artist_data: dict) -> Artist:
         """아티스트 생성"""
@@ -33,10 +32,9 @@ class ArtistCRUD:
     async def get_by_name(self, name: str) -> Optional[Artist]:
         """이름으로 아티스트 찾기"""
         result = await self.db.execute(
-            text("SELECT * FROM artists WHERE name = :name"),
-            {"name": name},
+            select(Artist).where(Artist.name == name)
         )
-        return result.fetchone()
+        return result.scalar_one_or_none()
 
     async def create_from_json(
         self, json_file_path: str = "mvp/artists.json"
