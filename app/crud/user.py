@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from app.models.user import User
 from app.models.preferred_artist import PreferredArtist
@@ -12,16 +13,12 @@ class UserCRUD:
 
     # 사용자 조회
     async def get_by_id(self, user_id: int) -> Optional[User]:
-        result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
+        result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
     # (내부 사용) 이메일로 사용자 조회
     async def get_by_email(self, email: str) -> Optional[User]:
-        result = await self.db.execute(
-            select(User).where(User.email == email)
-        )
+        result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
     # (내부 사용) auth_provider와 auth_provider_id로 사용자 조회
@@ -31,7 +28,7 @@ class UserCRUD:
         result = await self.db.execute(
             select(User).where(
                 User.auth_provider == auth_provider,
-                User.auth_provider_id == auth_provider_id
+                User.auth_provider_id == auth_provider_id,
             )
         )
         return result.scalar_one_or_none()
@@ -58,18 +55,17 @@ class UserCRUD:
 
         # None이 아닌 값들만 필터링
         filtered_data = {k: v for k, v in update_data.items() if v is not None}
-        
+
         if not filtered_data:
             return await self.get_by_id(user_id)
 
         # updated_at 자동 업데이트를 위해 추가
         from datetime import datetime, timezone
+
         filtered_data["updated_at"] = datetime.now(timezone.utc)
 
         await self.db.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(**filtered_data)
+            update(User).where(User.id == user_id).values(**filtered_data)
         )
         await self.db.commit()
         return await self.get_by_id(user_id)
@@ -83,16 +79,31 @@ class UserCRUD:
 
     # 사용자 선호 아티스트 추가
     async def add_preferred_artist(self, user_id: int, artist_id: int) -> None:
+        # 이미 존재하면 중복 추가 방지
+        exists_q = await self.db.execute(
+            select(PreferredArtist).where(
+                PreferredArtist.user_id == user_id,
+                PreferredArtist.artist_id == artist_id,
+            )
+        )
+        if exists_q.scalar_one_or_none() is not None:
+            return
+
         preferred_artist = PreferredArtist(user_id=user_id, artist_id=artist_id)
         self.db.add(preferred_artist)
-        await self.db.commit()
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            await self.db.rollback()
+            # FK/유니크 충돌 시 무시 (상위 레이어에서 검증 권장)
+            return
 
     # 사용자 선호 아티스트 제거
     async def remove_preferred_artist(self, user_id: int, artist_id: int) -> None:
         await self.db.execute(
             delete(PreferredArtist).where(
                 PreferredArtist.user_id == user_id,
-                PreferredArtist.artist_id == artist_id
+                PreferredArtist.artist_id == artist_id,
             )
         )
         await self.db.commit()

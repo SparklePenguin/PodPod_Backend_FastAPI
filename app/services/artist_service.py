@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.artist import ArtistCRUD
 from app.schemas.artist import ArtistDto
-from app.schemas.common import ErrorResponse
+from app.schemas.common import PageDto
 
 
 class ArtistService:
@@ -22,7 +22,7 @@ class ArtistService:
     # - MARK: 아티스트 목록 조회
     async def get_artists(
         self, page: int = 1, page_size: int = 20, is_active: bool = True
-    ) -> dict:
+    ) -> PageDto:
         """아티스트 목록 조회 (페이지네이션 및 필터링 지원)"""
         artists, total_count = await self.artist_crud.get_all(
             page=page, page_size=page_size, is_active=is_active
@@ -41,17 +41,15 @@ class ArtistService:
         has_next = page < total_pages
         has_prev = page > 1
 
-        return {
-            "artists": artist_dtos,
-            "pagination": {
-                "current_page": page,
-                "page_size": page_size,
-                "total_count": total_count,
-                "total_pages": total_pages,
-                "has_next": has_next,
-                "has_prev": has_prev,
-            },
-        }
+        return PageDto(
+            items=artist_dtos,
+            current_page=page,
+            page_size=page_size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
+        )
 
     # 사용하지 않는 내부 생성/업데이트 메서드 제거됨
 

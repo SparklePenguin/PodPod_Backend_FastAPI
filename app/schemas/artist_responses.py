@@ -2,15 +2,15 @@ from typing import List
 from pydantic import BaseModel, Field
 
 from .artist import ArtistDto
-from .common import PaginationDto, SuccessResponse
+from .common import SuccessResponse, PageDto
 
 
-# - MARK: 아티스트 목록 데이터
-class ArtistsListData(BaseModel):
-    artists: List[ArtistDto] = Field(alias="artists", example=[])
-    pagination: PaginationDto = Field(
-        alias="pagination",
-        example=PaginationDto(
+# - MARK: 아티스트 목록 응답
+class ArtistsListResponse(SuccessResponse):
+    data: PageDto[ArtistDto] = Field(
+        alias="data",
+        example=PageDto(
+            items=[],
             current_page=1,
             page_size=20,
             total_count=0,
@@ -19,15 +19,6 @@ class ArtistsListData(BaseModel):
             has_prev=False,
         ),
     )
-
-    model_config = {
-        "from_attributes": True,
-        "populate_by_name": True,
-    }
-
-
-class ArtistsListResponse(SuccessResponse):
-    data: ArtistsListData
 
 
 # - MARK: 아티스트 상세 데이터

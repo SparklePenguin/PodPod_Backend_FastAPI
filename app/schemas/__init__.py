@@ -8,7 +8,8 @@ from .auth import (
 from .common import (
     SuccessResponse,
     ErrorResponse,
-    PaginationDto,
+    PageDto,
+    PageResponse,
 )
 from .artist_image import ArtistImageDto
 from .artist_name import ArtistNameDto
@@ -35,5 +36,6 @@ __all__ = [
     "ArtistDto",
     "ArtistImageDto",
     "ArtistNameDto",
-    "PaginationDto",
+    "PageDto",
+    "PageResponse",
 ]
