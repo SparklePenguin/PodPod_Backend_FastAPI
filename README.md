@@ -184,10 +184,3 @@ refactor(auth): simplify OAuth flow
 test(user): add user registration tests
 chore(deps): update FastAPI to v0.104.0
 ```
-
-### 📋 Subject Guidelines (제목 가이드라인)
-- 50자 이내로 작성
-- 첫 글자는 소문자
-- 마침표로 끝내지 않음
-- 명령형으로 작성 (예: "add" not "added")
-

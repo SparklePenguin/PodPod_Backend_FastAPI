@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     MYSQL_HOST: str = "localhost"
     MYSQL_PORT: int = 3306
     MYSQL_DATABASE: str = "podpod"
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 필수 환경변수 검증
@@ -20,11 +20,12 @@ class Settings(BaseSettings):
                 "Infisical을 사용하여 환경변수를 주입해주세요. "
                 "직접 환경변수 설정은 지원되지 않습니다."
             )
-    
+
     @property
     def DATABASE_URL(self) -> str:
         import urllib.parse
-        encoded_password = urllib.parse.quote(self.MYSQL_PASSWORD, safe='')
+
+        encoded_password = urllib.parse.quote(self.MYSQL_PASSWORD, safe="")
         return f"mysql+aiomysql://{self.MYSQL_USER}:{encoded_password}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
 
     # JWT 설정

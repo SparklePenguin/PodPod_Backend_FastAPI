@@ -7,7 +7,6 @@ from app.utils.file_upload import upload_profile_image
 from app.services.user_service import UserService
 from app.schemas.user import (
     UpdateProfileRequest,
-    UpdateUserRequest,
     UpdatePreferredArtistsRequest,
     UserDto,
     UserDtoInternal,

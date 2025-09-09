@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 
 from app.core.database import get_db
 from app.services.artist_service import ArtistService
-from app.schemas.artist import ArtistDto
 from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.artist_responses import (
+    ArtistsListResponse,
+    ArtistDetailResponse,
+    ArtistsSyncResponse,
+)
 
 router = APIRouter()
 
@@ -17,24 +20,28 @@ def get_artist_service(db: AsyncSession = Depends(get_db)) -> ArtistService:
 # - MARK: 공개 API
 @router.get(
     "/",
-    response_model=SuccessResponse,
+    response_model=ArtistsListResponse,
     responses={
-        200: {"model": SuccessResponse, "description": "아티스트 목록 조회 성공"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
+        200: {"model": ArtistsListResponse, "description": "BLIP+MVP 동기화 성공"},
     },
     summary="아티스트 목록 조회",
-    description="모든 아티스트 목록을 조회합니다.",
+    description="아티스트 목록을 페이지네이션과 필터링으로 조회합니다. 기본적으로 활성화된 아티스트만 반환합니다.",
 )
 async def get_artists(
+    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
+    page_size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
+    is_active: bool = Query(True, description="활성화 상태 필터 (true/false)"),
     artist_service: ArtistService = Depends(get_artist_service),
 ):
-    """아티스트 목록 조회"""
+    """아티스트 목록 조회 (페이지네이션 및 is_active 필터링 지원)"""
     try:
-        artists = await artist_service.get_artists()
+        result = await artist_service.get_artists(
+            page=page, page_size=page_size, is_active=is_active
+        )
         return SuccessResponse(
             code=200,
             message="artists_retrieved_successfully",
-            data={"artists": artists},
+            data=result,
         )
     except Exception as e:
         raise HTTPException(
@@ -49,14 +56,13 @@ async def get_artists(
 
 @router.get(
     "/{artist_id}",
-    response_model=SuccessResponse,
+    response_model=ArtistDetailResponse,
     responses={
-        200: {"model": SuccessResponse, "description": "아티스트 조회 성공"},
+        200: {"model": ArtistDetailResponse, "description": "아티스트 조회 성공"},
         404: {"model": ErrorResponse, "description": "아티스트를 찾을 수 없음"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
     },
     summary="특정 아티스트 조회",
-    description="특정 아티스트의 정보를 조회합니다.",
+    description="ID로 특정 아티스트의 상세 정보를 조회합니다. 이미지, 멤버, 다국어 이름 등 모든 관련 데이터를 포함합니다.",
 )
 async def get_artist(
     artist_id: int,
@@ -93,31 +99,31 @@ async def get_artist(
 # - MARK: 내부용 API
 @router.post(
     "/mvp",
-    response_model=SuccessResponse,
+    response_model=ArtistsSyncResponse,
     responses={
-        200: {"model": SuccessResponse, "description": "MVP 아티스트 생성 성공"},
+        200: {"model": ArtistsSyncResponse, "description": "BLIP+MVP 동기화 성공"},
         500: {"model": ErrorResponse, "description": "서버 오류"},
     },
     tags=["internal"],
     summary="MVP 아티스트 생성 (내부용)",
-    description="⚠️ 내부용 API - MVP 아티스트들을 생성합니다. 개발/테스트 목적으로만 사용됩니다.",
+    description="⚠️ 내부용 API - BLIP 전체 데이터와 MVP 목록을 병합하여 동기화합니다.",
 )
-async def create_mvp_artists(
+async def sync_mvp_artists(
     artist_service: ArtistService = Depends(get_artist_service),
 ):
-    """MVP 아티스트들 생성 (내부용)"""
+    """BLIP+MVP 병합 동기화 (내부용)"""
     try:
-        artists = await artist_service.create_mvp_artists()
-        return SuccessResponse(
+        result = await artist_service.sync_blip_and_mvp()
+        return ArtistsSyncResponse(
             code=200,
-            message="mvp_artists_created_successfully",
-            data={"artists": artists},
+            message="artists_synced_successfully",
+            data=result,
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ErrorResponse(
-                error_code="mvp_artists_creation_failed",
+                error_code="artists_sync_failed",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=str(e),
             ).model_dump(),

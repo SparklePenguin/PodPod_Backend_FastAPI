@@ -8,7 +8,10 @@ from .auth import (
 from .common import (
     SuccessResponse,
     ErrorResponse,
+    PaginationDto,
 )
+from .artist_image import ArtistImageDto
+from .artist_name import ArtistNameDto
 from .user import (
     UserDto,
     UpdateProfileRequest,
@@ -30,4 +33,7 @@ __all__ = [
     "UpdateProfileRequest",
     "UpdatePreferredArtistsRequest",
     "ArtistDto",
+    "ArtistImageDto",
+    "ArtistNameDto",
+    "PaginationDto",
 ]

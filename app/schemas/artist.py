@@ -1,25 +1,30 @@
-# - MARK: 아티스트 정보 응답
-from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
+from .artist_image import ArtistImageDto
+from .artist_name import ArtistNameDto
 
 
-# - MARK: 아티스트 정보 응답
+# 아티스트 정보 응답
 class ArtistDto(BaseModel):
-    id: int = Field(alias="id")  # 필수값
-    type: Optional[str] = Field(default=None, alias="type")
-    name: str = Field(alias="name")  # 필수값
-    profile_image: Optional[str] = Field(default=None, alias="profileImage")
-    created_at: Optional[datetime] = Field(default=None, alias="createdAt")
-    updated_at: Optional[datetime] = Field(default=None, alias="updatedAt")
+    id: int = Field(alias="id", example=0)
+    name: str = Field(alias="name", example="string")
+
+    # BLIP API 관련 필드들
+    unit_id: Optional[int] = Field(default=None, alias="unitId", example=None)
+    blip_artist_id: Optional[int] = Field(
+        default=None, alias="blipArtistId", example=None
+    )
+
+    # 관계 데이터 (리스트 그대로 노출)
+    images: Optional[List[ArtistImageDto]] = Field(
+        default=None, alias="images", example=None
+    )
+    names: Optional[List[ArtistNameDto]] = Field(
+        default=None, alias="names", example=None
+    )
 
     model_config = {
         "from_attributes": True,
         "populate_by_name": True,
-        "alias_generator": lambda x: (
-            x.replace("_", "").lower()
-            if x.startswith("_")
-            else x.replace("_", "").lower()
-        ),
     }
