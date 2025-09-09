@@ -1,5 +1,13 @@
 from fastapi import APIRouter
-from .endpoints import users, sessions, oauths, artists, tendencies, surveys
+from .endpoints import (
+    users,
+    sessions,
+    oauths,
+    artists,
+    tendencies,
+    surveys,
+    artist_schedules,
+)
 
 api_router = APIRouter()
 
@@ -14,6 +22,9 @@ api_router.include_router(oauths.router, prefix="/oauths", tags=["oauths"])
 
 # 아티스트 관련 라우터
 api_router.include_router(artists.router, prefix="/artists", tags=["artists"])
+api_router.include_router(
+    artist_schedules.router, prefix="/artist", tags=["artistSchedule"]
+)
 
 # 성향 테스트 관련 라우터
 api_router.include_router(tendencies.router, prefix="/tendencies", tags=["tendencies"])
