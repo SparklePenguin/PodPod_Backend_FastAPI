@@ -7,7 +7,7 @@ from app.services.user_service import UserService
 from app.services.session_service import SessionService
 from app.schemas.auth import CredentialDto, SignUpRequest, SignInResponse
 from app.schemas.user import UserDto
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 
 
 # - MARK: OAuth 서비스
@@ -21,7 +21,7 @@ class OauthService:
     # - MARK: OAuth 로그인 처리 (범용)
     async def sign_in_with_oauth(
         self, oauth_provider: str, oauth_user_id: str, oauth_user_info: Dict[str, Any]
-    ) -> SuccessResponse:
+    ) -> dict:
         """OAuth 로그인 처리 (범용)"""
         try:
             # 기존 사용자 확인 (auth_provider_id로)
@@ -56,18 +56,10 @@ class OauthService:
                 user=user,  # user는 이미 UserDto 타입
             )
 
-            return SuccessResponse(
-                code=200,
-                message=f"{oauth_provider}_login_success",
-                data=sign_in_response.model_dump(by_alias=True),
-            )
+            return sign_in_response
 
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=f"{oauth_provider}_login_failed",
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=str(e),
-                ).model_dump(),
+                detail=str(e),
             )

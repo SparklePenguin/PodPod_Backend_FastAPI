@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Query, HTTPException, status, Depends
+from fastapi import APIRouter, Query, Depends
 from fastapi.security import HTTPBearer
 from typing import Optional
 from app.services.kakao_oauth_service import KakaoOauthService, KakaoCallBackParam
 from app.services.apple_oauth_service import AppleOauthService, AppleCallbackParam
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
+from app.core.http_status import HttpStatus
 from app.api.deps import get_kakao_oauth_service, get_apple_oauth_service
 
 router = APIRouter()
@@ -13,11 +14,12 @@ security = HTTPBearer()
 # - MARK: 카카오 OAuth 콜백
 @router.get(
     "/kakao/callback",
-    response_model=SuccessResponse,  # 응답 모델 명시
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "카카오 로그인 성공"},
-        400: {"model": ErrorResponse, "description": "카카오 인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "카카오 로그인 성공",
+        },
     },
 )
 async def kakao_callback(
@@ -38,17 +40,19 @@ async def kakao_callback(
         error_description=error_description,
         state=state,
     )
-    return await kakao_oauth_service.handle_kakao_callback(params)
+    result = await kakao_oauth_service.handle_kakao_callback(params)
+    return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
 # - MARK: Apple 콜백
 @router.get(
     "/apple/callback",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "Apple 콜백 처리 성공"},
-        400: {"model": ErrorResponse, "description": "Apple 콜백 처리 실패"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "Apple 콜백 처리 성공",
+        },
     },
 )
 async def apple_callback(
@@ -80,4 +84,5 @@ async def apple_callback(
         user=user_dict,
     )
 
-    return await apple_oauth_service.handle_apple_callback(callback_params)
+    result = await apple_oauth_service.handle_apple_callback(callback_params)
+    return BaseResponse.ok(data=result.model_dump(by_alias=True))

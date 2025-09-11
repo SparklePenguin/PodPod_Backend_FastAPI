@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # 앱 설정
     APP_NAME: str = "PodPod API"
     APP_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = "development"  # development, production
 
     # 카카오 OAuth 설정
     KAKAO_CLIENT_ID: Optional[str] = os.getenv("KAKAO_CLIENT_ID")

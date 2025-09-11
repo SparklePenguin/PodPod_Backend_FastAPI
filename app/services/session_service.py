@@ -11,7 +11,7 @@ from app.core.security import (
     add_token_to_blacklist,
     verify_password,
 )
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 
 
 class SessionService:
@@ -43,11 +43,7 @@ class SessionService:
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=ErrorResponse(
-                    error_code="invalid_credentials",
-                    status=401,
-                    message="이메일 또는 비밀번호가 잘못되었습니다.",
-                ).model_dump(),
+                detail="이메일 또는 비밀번호가 잘못되었습니다.",
             )
 
         # 비밀번호 확인 (일반 로그인의 경우)
@@ -55,11 +51,7 @@ class SessionService:
             if not verify_password(login_data.password, user.hashed_password):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=ErrorResponse(
-                        error_code="invalid_credentials",
-                        status=401,
-                        message="이메일 또는 비밀번호가 잘못되었습니다.",
-                    ).model_dump(),
+                    detail="이메일 또는 비밀번호가 잘못되었습니다.",
                 )
 
         # 토큰 생성
@@ -71,21 +63,9 @@ class SessionService:
             user=UserDto.model_validate(user, from_attributes=True),
         )
 
-        return SuccessResponse(
-            code=200,
-            message="login_successful",
-            data=sign_in_response.model_dump(by_alias=True),
-        )
+        return sign_in_response
 
     async def logout(self, access_token: str):
         """로그아웃 (토큰 무효화)"""
         # 액세스 토큰을 블랙리스트에 추가하여 무효화
         add_token_to_blacklist(access_token)
-
-        from app.schemas.common import SuccessResponse
-
-        return SuccessResponse(
-            code=200,
-            message="logout_successful",
-            data={"message": "토큰이 무효화되었습니다."},
-        )

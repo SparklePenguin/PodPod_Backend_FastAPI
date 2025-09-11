@@ -12,7 +12,7 @@ from jose import jwt, JWTError
 import time
 
 from app.services.oauth_service import OauthService
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 from app.core.config import settings
 
 
@@ -242,7 +242,7 @@ class AppleOauthService:
         self,
         apple_login_request: AppleLoginRequest,
         audience: str = "com.sparkle-penguin.podpod",
-    ) -> SuccessResponse:
+    ) -> dict:
         """Apple 로그인 처리"""
         try:
             # Apple 토큰 검증
@@ -263,11 +263,7 @@ class AppleOauthService:
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="invalid_apple_token",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=str(e),
-                ).model_dump(),
+                detail=str(e),
             )
 
         # Apple 사용자 정보를 OAuth 서비스 형식에 맞게 변환
@@ -294,33 +290,21 @@ class AppleOauthService:
         if params.error:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=params.error,
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=params.error_description or "Apple authentication failed",
-                ).model_dump(),
+                detail=params.error_description or "Apple authentication failed",
             )
 
         # Authorization Code가 없는 경우
         if not params.code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="missing_authorization_code",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message="Authorization code is required",
-                ).model_dump(),
+                detail="Authorization code is required",
             )
 
         # ID Token이 없는 경우
         if not params.id_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="missing_id_token",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message="ID token is required",
-                ).model_dump(),
+                detail="ID token is required",
             )
 
         # Apple 로그인 처리

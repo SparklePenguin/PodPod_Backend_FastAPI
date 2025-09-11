@@ -5,7 +5,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from pydantic import BaseModel, Field
 from app.services.oauth_service import OauthService
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 from app.core.config import settings
 
 
@@ -38,7 +38,7 @@ class GoogleOauthService:
 
     async def sign_in_with_google(
         self, google_login_request: GoogleLoginRequest
-    ) -> SuccessResponse:
+    ) -> dict:
         """Google 로그인 처리"""
         try:
             # Google 토큰 검증
@@ -49,11 +49,7 @@ class GoogleOauthService:
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="invalid_google_token",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=str(e),
-                ).model_dump(),
+                detail=str(e),
             )
 
         # Google 사용자 정보를 OAuth 서비스 형식에 맞게 변환

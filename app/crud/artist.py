@@ -1,5 +1,5 @@
 from typing import List, Optional
-from app.schemas.artist_responses import ArtistsSyncData
+from app.schemas.artist_sync_dto import ArtistsSyncDto
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -302,7 +302,7 @@ class ArtistCRUD:
 
         await self.db.commit()
 
-        return ArtistsSyncData(
+        return ArtistsSyncDto(
             artist_created=artist_created_count,
             artist_updated=artist_updated_count,
             unit_created=unit_created_count,

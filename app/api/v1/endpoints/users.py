@@ -12,7 +12,8 @@ from app.schemas.user import (
     UserDtoInternal,
 )
 from app.schemas.auth import SignUpRequest
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
+from app.core.http_status import HttpStatus
 
 router = APIRouter()
 
@@ -20,13 +21,12 @@ router = APIRouter()
 # - MARK: 공개 API
 @router.post(
     "",
-    response_model=SuccessResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=BaseResponse[UserDto],
     responses={
-        201: {"model": UserDto, "description": "사용자 생성 성공"},
-        400: {"model": ErrorResponse, "description": "이메일 중복"},
-        422: {"model": ErrorResponse, "description": "입력 데이터 검증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.CREATED: {
+            "model": BaseResponse[UserDto],
+            "description": "사용자 생성 성공",
+        },
     },
 )
 async def create_user(
@@ -34,31 +34,19 @@ async def create_user(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 생성 (회원가입)"""
-    try:
-        user = await user_service.create_user(user_data)
-        return SuccessResponse(
-            code=201, message="user_created_successfully", data={"user": user}
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_creation_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    user = await user_service.create_user(user_data)
+    return BaseResponse.ok(code=HttpStatus.CREATED, data=user)
 
 
 # - MARK: 인증 필요 API
 @router.get(
     "",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[UserDto],
     responses={
-        200: {"model": UserDto, "description": "사용자 정보 조회 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "사용자 정보 조회 성공",
+        },
     },
 )
 async def get_user_info(
@@ -67,33 +55,20 @@ async def get_user_info(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 정보 조회 (토큰 필요)"""
-    try:
-        # user_id가 제공되지 않으면 현재 사용자 정보 반환
-        target_user_id = user_id if user_id is not None else current_user_id
-        user = await user_service.get_user(target_user_id)
-        return SuccessResponse(
-            code=200, message="user_retrieved_successfully", data=user
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_retrieval_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    # user_id가 제공되지 않으면 현재 사용자 정보 반환
+    target_user_id = user_id if user_id is not None else current_user_id
+    user = await user_service.get_user(target_user_id)
+    return BaseResponse.ok(data=user)
 
 
 @router.put(
     "",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[UserDto],
     responses={
-        200: {"model": UserDto, "description": "사용자 업데이트 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
-        422: {"model": ErrorResponse, "description": "입력 데이터 검증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "사용자 업데이트 성공",
+        },
     },
 )
 async def update_user_profile(
@@ -104,62 +79,39 @@ async def update_user_profile(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 정보 업데이트 (토큰 필요, 멀티파트 지원)"""
-    try:
-        # 이미지 파일 처리
-        profile_image_url = None
-        if image:
-            try:
-                profile_image_url = await upload_profile_image(image)
-            except ValueError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
-                        error_code="invalid_image_file",
-                        status=status.HTTP_400_BAD_REQUEST,
-                        message=str(e),
-                    ).model_dump(),
-                )
-            except Exception as e:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=ErrorResponse(
-                        error_code="image_upload_failed",
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        message=f"이미지 업로드 실패: {str(e)}",
-                    ).model_dump(),
-                )
-
-        # UpdateProfileRequest 생성
-        profile_data = UpdateProfileRequest(
-            nickname=nickname, intro=intro, profile_image=profile_image_url
-        )
-
-        user = await user_service.update_profile(current_user_id, profile_data)
-        return SuccessResponse(
-            code=200,
-            message="user_updated_successfully",
-            data=user.model_dump(by_alias=True),
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_update_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    # 이미지 파일 처리
+    profile_image_url = None
+    if image:
+        try:
+            profile_image_url = await upload_profile_image(image)
+        except ValueError as e:
+            return BaseResponse.error(
+                code=HttpStatus.BAD_REQUEST,
                 message=str(e),
-            ).model_dump(),
-        )
+            )
+        except Exception as e:
+            return BaseResponse.error(
+                code=HttpStatus.INTERNAL_SERVER_ERROR,
+                message=f"이미지 업로드 실패: {str(e)}",
+            )
+
+    # UpdateProfileRequest 생성
+    profile_data = UpdateProfileRequest(
+        nickname=nickname, intro=intro, profile_image=profile_image_url
+    )
+
+    user = await user_service.update_profile(current_user_id, profile_data)
+    return BaseResponse.ok(data=user)
 
 
 @router.get(
     "/preferred-artists",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "선호 아티스트 조회 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "선호 아티스트 조회 성공",
+        },
     },
 )
 async def get_user_preferred_artists(
@@ -167,31 +119,26 @@ async def get_user_preferred_artists(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 선호 아티스트 조회 (토큰 필요)"""
-    try:
-        artists = await user_service.get_preferred_artists(current_user_id)
-        return SuccessResponse(
-            code=200,
-            message="preferred_artists_retrieved_successfully",
-            data={"artists": artists},
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="preferred_artists_retrieval_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    artists = await user_service.get_preferred_artists(current_user_id)
+    return BaseResponse.ok(data={"artists": artists})
 
 
 @router.put(
     "/preferred-artists",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "선호 아티스트 업데이트 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "선호 아티스트 업데이트 성공",
+        },
+        HttpStatus.UNAUTHORIZED: {
+            "model": BaseResponse[None],
+            "description": "인증 실패",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
 )
 async def update_user_preferred_artists(
@@ -200,34 +147,29 @@ async def update_user_preferred_artists(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 선호 아티스트 업데이트 (토큰 필요)"""
-    try:
-        artists = await user_service.update_preferred_artists(
-            current_user_id, artists_data.artist_ids
-        )
-        return SuccessResponse(
-            code=200,
-            message="preferred_artists_updated_successfully",
-            data={"artists": artists},
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="preferred_artists_update_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    artists = await user_service.update_preferred_artists(
+        current_user_id, artists_data.artist_ids
+    )
+    return BaseResponse.ok(data={"artists": artists})
 
 
 # - MARK: 사용자 관리 API
 @router.get(
     "/{user_id}",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[UserDto],
     responses={
-        200: {"model": UserDto, "description": "사용자 조회 성공"},
-        404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "사용자 조회 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
 )
 async def get_user_by_id(
@@ -235,30 +177,29 @@ async def get_user_by_id(
     user_service: UserService = Depends(get_user_service),
 ):
     """특정 사용자 조회"""
-    try:
-        user = await user_service.get_user(user_id)
-        return SuccessResponse(
-            code=200, message="user_retrieved_successfully", data=user
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_retrieval_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    user = await user_service.get_user(user_id)
+    return BaseResponse.ok(data=user)
 
 
 @router.delete(
     "/{user_id}",
-    response_model=SuccessResponse,
+    status_code=HttpStatus.NO_CONTENT,
     responses={
-        200: {"model": SuccessResponse, "description": "사용자 삭제 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.NO_CONTENT: {
+            "description": "사용자 삭제 성공 (No Content)",
+        },
+        HttpStatus.UNAUTHORIZED: {
+            "model": BaseResponse[None],
+            "description": "인증 실패",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
 )
 async def delete_user(
@@ -267,42 +208,29 @@ async def delete_user(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 삭제 (토큰 필요)"""
-    try:
-        # TODO: 사용자 삭제 로직 구현
-        # 현재는 자신의 계정만 삭제 가능하도록 제한
-        if user_id != current_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=ErrorResponse(
-                    error_code="forbidden",
-                    status=status.HTTP_403_FORBIDDEN,
-                    message="자신의 계정만 삭제할 수 있습니다",
-                ).model_dump(),
-            )
-
-        # TODO: 실제 삭제 로직 구현
-        return SuccessResponse(code=200, message="user_deleted_successfully", data={})
-    except HTTPException:
-        raise
-    except Exception as e:
+    # TODO: 사용자 삭제 로직 구현. 현재는 자신의 계정만 삭제 가능
+    if user_id != current_user_id:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_deletion_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
+            status_code=HttpStatus.FORBIDDEN,
+            detail="자신의 계정만 삭제할 수 있습니다",
         )
+    return BaseResponse.ok(code=HttpStatus.NO_CONTENT)
 
 
 # - MARK: 사용자 차단 API
 @router.post(
     "/blocks/{user_id}",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[None],
     responses={
-        200: {"model": SuccessResponse, "description": "사용자 차단 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {"model": BaseResponse[None], "description": "사용자 차단 성공"},
+        HttpStatus.UNAUTHORIZED: {
+            "model": BaseResponse[None],
+            "description": "인증 실패",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
 )
 async def block_user(
@@ -311,27 +239,26 @@ async def block_user(
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 차단 (토큰 필요)"""
-    try:
-        # TODO: 사용자 차단 로직 구현
-        return SuccessResponse(code=200, message="user_blocked_successfully", data={})
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_block_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    # TODO: 사용자 차단 로직 구현
+    return BaseResponse.ok(data=None)
 
 
 @router.get(
     "/blocks",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "차단된 사용자 목록 조회 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "차단된 사용자 목록 조회 성공",
+        },
+        HttpStatus.UNAUTHORIZED: {
+            "model": BaseResponse[None],
+            "description": "인증 실패",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
 )
 async def get_blocked_users(
@@ -339,32 +266,26 @@ async def get_blocked_users(
     user_service: UserService = Depends(get_user_service),
 ):
     """차단된 사용자 목록 조회 (토큰 필요)"""
-    try:
-        # TODO: 차단된 사용자 목록 조회 로직 구현
-        blocked_users = []  # 실제 구현 필요
-        return SuccessResponse(
-            code=200,
-            message="blocked_users_retrieved_successfully",
-            data={"users": blocked_users},
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="blocked_users_retrieval_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    # TODO: 차단된 사용자 목록 조회 로직 구현
+    blocked_users: List[UserDto] = []  # 실제 구현 필요
+    return BaseResponse.ok(data={"users": blocked_users})
 
 
 @router.delete(
     "/blocks/{user_id}",
-    response_model=SuccessResponse,
+    status_code=HttpStatus.NO_CONTENT,
     responses={
-        200: {"model": SuccessResponse, "description": "사용자 차단 해제 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.NO_CONTENT: {
+            "description": "사용자 차단 해제 성공 (No Content)",
+        },
+        HttpStatus.UNAUTHORIZED: {
+            "model": BaseResponse[None],
+            "description": "인증 실패",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
 )
 async def unblock_user(
@@ -372,28 +293,22 @@ async def unblock_user(
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
-    """사용자 차단 해제 (토큰 필요)"""
-    try:
-        # TODO: 사용자 차단 해제 로직 구현
-        return SuccessResponse(code=200, message="user_unblocked_successfully", data={})
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_unblock_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    return BaseResponse.ok(code=HttpStatus.NO_CONTENT)
 
 
 # - MARK: 내부용 API
 @router.get(
     "/internal/all",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "사용자 목록 조회 성공"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "사용자 목록 조회 성공",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
     tags=["internal"],
     summary="모든 사용자 조회 (내부용)",
@@ -403,29 +318,26 @@ async def get_all_users(
     user_service: UserService = Depends(get_user_service),
 ):
     """모든 사용자 조회 (내부용)"""
-    try:
-        users = await user_service.get_users()
-        return SuccessResponse(
-            code=200, message="users_retrieved_successfully", data={"users": users}
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="users_retrieval_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    users = await user_service.get_users()
+    return BaseResponse.ok(data={"users": users})
 
 
 @router.get(
     "/internal/{user_id}",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[UserDtoInternal],
     responses={
-        200: {"model": UserDtoInternal, "description": "사용자 조회 성공"},
-        404: {"model": ErrorResponse, "description": "사용자를 찾을 수 없음"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDtoInternal],
+            "description": "사용자 조회 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
     },
     tags=["internal"],
     summary="특정 사용자 조회 (내부용)",
@@ -436,17 +348,5 @@ async def get_user_by_id(
     user_service: UserService = Depends(get_user_service),
 ):
     """특정 사용자 조회 (내부용)"""
-    try:
-        user = await user_service.get_user_internal(user_id)
-        return SuccessResponse(
-            code=200, message="user_retrieved_successfully", data=user
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="user_retrieval_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=str(e),
-            ).model_dump(),
-        )
+    user = await user_service.get_user_internal(user_id)
+    return BaseResponse.ok(data=user)

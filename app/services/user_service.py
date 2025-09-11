@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.user import UserCRUD
 from app.crud.artist import ArtistCRUD
-from app.schemas.common import ErrorResponse
+from app.schemas.common import BaseResponse
 from app.schemas.user import UpdateProfileRequest, UserDto, UserDtoInternal
 from app.schemas.auth import SignUpRequest
 from app.schemas.artist import ArtistDto
@@ -30,7 +30,7 @@ class UserService:
                 # 같은 provider의 같은 계정이면 중복 에러
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
+                    detail=BaseResponse(
                         error_code="email_already_exists",
                         status=status.HTTP_400_BAD_REQUEST,
                         message="이미 등록된 계정입니다",
@@ -40,7 +40,7 @@ class UserService:
                 # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=ErrorResponse(
+                    detail=BaseResponse(
                         error_code="email_already_exists",
                         status=status.HTTP_400_BAD_REQUEST,
                         message="이메일이 이미 등록되어 있습니다",
@@ -94,7 +94,7 @@ class UserService:
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
+                detail=BaseResponse(
                     error_code="user_not_found",
                     status=status.HTTP_404_NOT_FOUND,
                     message="사용자를 찾을 수 없습니다",
@@ -111,7 +111,7 @@ class UserService:
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
+                detail=BaseResponse(
                     error_code="user_not_found",
                     status=status.HTTP_404_NOT_FOUND,
                     message="사용자를 찾을 수 없습니다",
@@ -130,7 +130,7 @@ class UserService:
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=ErrorResponse(
+                detail=BaseResponse(
                     error_code="user_not_found",
                     status=status.HTTP_404_NOT_FOUND,
                     message="사용자를 찾을 수 없습니다",
@@ -166,7 +166,7 @@ class UserService:
             if not artist:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=ErrorResponse(
+                    detail=BaseResponse(
                         error_code="artist_not_found",
                         status=status.HTTP_404_NOT_FOUND,
                         message=f"아티스트 ID {artist_id}를 찾을 수 없습니다",

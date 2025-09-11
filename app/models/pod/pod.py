@@ -1,0 +1,73 @@
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+)
+from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
+from sqlalchemy import Date, Time, Text
+from app.core.database import Base
+
+
+class Pod(Base):
+    __tablename__ = "pods"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+    )
+    owner_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+    selected_artist_id = Column(
+        Integer,
+        ForeignKey("artists.id"),
+        nullable=True,
+        index=True,
+    )
+    title = Column(String(100), nullable=False)
+    description = Column(String(500), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    thumbnail_url = Column(String(500), nullable=True)
+    sub_category = Column(Text, nullable=True)
+    capacity = Column(Integer, nullable=False)
+    place = Column(String(200), nullable=False)
+    address = Column(String(300), nullable=False)
+    sub_address = Column(String(300), nullable=True)
+    meeting_date = Column(Date, nullable=False)
+    meeting_time = Column(Time, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(
+        DateTime,
+        default=datetime.now(timezone.utc),
+    )
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc),
+    )
+
+    owner = relationship("User")
+    members = relationship(
+        "PodMember",
+        back_populates="pod",
+        cascade="all, delete-orphan",
+    )
+    ratings = relationship(
+        "PodRating",
+        back_populates="pod",
+        cascade="all, delete-orphan",
+    )
+    views = relationship(
+        "PodView",
+        back_populates="pod",
+        cascade="all, delete-orphan",
+    )

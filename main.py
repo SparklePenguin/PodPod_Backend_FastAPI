@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.security import HTTPBearer
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
@@ -10,8 +10,8 @@ from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.middleware.logging_middleware import LoggingMiddleware
 from app.core.exceptions import (
+    http_exception_handler,
     validation_exception_handler,
-    pydantic_validation_exception_handler,
     general_exception_handler,
 )
 import logging
@@ -72,8 +72,8 @@ app.openapi_tags = [
 security = HTTPBearer()
 
 # 예외 핸들러 등록
+app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(ValidationError, pydantic_validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # 정적 파일 서빙 설정

@@ -8,6 +8,7 @@ from .endpoints import (
     surveys,
     artist_schedules,
 )
+from .endpoints.pod import pods, recruitments, pod_likes
 
 api_router = APIRouter()
 
@@ -23,7 +24,7 @@ api_router.include_router(oauths.router, prefix="/oauths", tags=["oauths"])
 # 아티스트 관련 라우터
 api_router.include_router(artists.router, prefix="/artists", tags=["artists"])
 api_router.include_router(
-    artist_schedules.router, prefix="/artist", tags=["artistSchedule"]
+    artist_schedules.router, prefix="/artist/schedules", tags=["artistSchedule"]
 )
 
 # 성향 테스트 관련 라우터
@@ -31,3 +32,9 @@ api_router.include_router(tendencies.router, prefix="/tendencies", tags=["tenden
 
 # 설문 관련 라우터
 api_router.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
+
+
+# 파티 관련 라우터
+api_router.include_router(pods.router, prefix="/pods", tags=["pods"])
+api_router.include_router(recruitments, prefix="/recruitments", tags=["recruitments"])
+api_router.include_router(pod_likes, prefix="/pods", tags=["podLikes"])

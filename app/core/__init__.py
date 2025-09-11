@@ -3,8 +3,8 @@ from .config import settings
 from .database import init_db
 from .logging_config import setup_logging
 from .exceptions import (
+    http_exception_handler,
     validation_exception_handler,
-    pydantic_validation_exception_handler,
     general_exception_handler,
 )
 
@@ -12,7 +12,7 @@ __all__ = [
     "settings",
     "init_db",
     "setup_logging",
+    "http_exception_handler",
     "validation_exception_handler",
-    "pydantic_validation_exception_handler",
     "general_exception_handler",
 ]

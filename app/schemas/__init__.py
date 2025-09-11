@@ -5,12 +5,6 @@ from .auth import (
     EmailLoginRequest,
     TokenRefreshRequest,
 )
-from .common import (
-    SuccessResponse,
-    ErrorResponse,
-    PageDto,
-    PageResponse,
-)
 from .artist_image import ArtistImageDto
 from .artist_name import ArtistNameDto
 from .user import (
@@ -21,6 +15,7 @@ from .user import (
 from .artist import (
     ArtistDto,
 )
+from .artist_sync_dto import ArtistsSyncDto
 
 __all__ = [
     "CredentialDto",
@@ -28,14 +23,11 @@ __all__ = [
     "SignUpRequest",
     "EmailLoginRequest",
     "TokenRefreshRequest",
-    "SuccessResponse",
-    "ErrorResponse",
     "UserDto",
     "UpdateProfileRequest",
     "UpdatePreferredArtistsRequest",
     "ArtistDto",
     "ArtistImageDto",
     "ArtistNameDto",
-    "PageDto",
-    "PageResponse",
+    "ArtistsSyncDto",
 ]
