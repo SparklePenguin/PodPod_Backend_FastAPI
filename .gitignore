@@ -265,3 +265,6 @@ temp/
 ehthumbs.db
 Icon?
 Thumbs.db
+
+# Uploaded files
+uploads/
