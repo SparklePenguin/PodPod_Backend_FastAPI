@@ -21,7 +21,7 @@ class PodCRUD:
         description: Optional[str],
         image_url: Optional[str],
         thumbnail_url: Optional[str],
-        sub_category: List[str],
+        sub_categories: List[str],
         capacity: int,
         place: str,
         address: str,
@@ -37,8 +37,10 @@ class PodCRUD:
             description=description,
             image_url=image_url,
             thumbnail_url=thumbnail_url,
-            sub_category=(
-                json.dumps(sub_category, ensure_ascii=False) if sub_category else None
+            sub_categories=(
+                json.dumps(sub_categories, ensure_ascii=False)
+                if sub_categories
+                else None
             ),
             capacity=capacity,
             place=place,

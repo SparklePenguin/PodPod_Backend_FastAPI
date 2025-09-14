@@ -10,6 +10,7 @@ from typing import (
     Any,
     Dict,
     Union,
+    List,
     get_origin,
     get_args,
 )
@@ -68,12 +69,19 @@ class FormParser:
             parsed_data = FormParser._parse_individual_fields(form_data, model_class)
             return model_class(**parsed_data)
         except (ValueError, TypeError) as e:
+            # 더 명확한 오류 메시지 생성
+            missing_fields = FormParser._get_missing_fields(form_data, model_class)
+            if missing_fields:
+                error_msg = f"필수 필드가 누락되었습니다: {', '.join(missing_fields)}"
+            else:
+                error_msg = f"Invalid form data: {str(e)}"
+
             raise RequestValidationError(
                 [
                     {
                         "type": "value_error",
                         "loc": ("body",),
-                        "msg": f"Invalid form data: {str(e)}",
+                        "msg": error_msg,
                     }
                 ]
             )
@@ -104,7 +112,28 @@ class FormParser:
                 field_value, field_info.annotation
             )
 
-        return parsed_data
+            return parsed_data
+
+    @staticmethod
+    def _get_missing_fields(
+        form_data: Dict[str, Any], model_class: Type[T]
+    ) -> List[str]:
+        """누락된 필수 필드들을 찾아서 반환"""
+        missing_fields = []
+        model_fields = model_class.model_fields
+
+        for field_name, field_info in model_fields.items():
+            # alias가 있으면 alias로, 없으면 field_name으로 form_data에서 가져오기
+            form_field_name = field_info.alias or field_name
+            field_value = form_data.get(form_field_name)
+
+            # 필수 필드이고 값이 없으면 누락된 필드로 추가
+            if field_info.is_required() and (field_value is None or field_value == ""):
+                # 클라이언트가 이해하기 쉬운 필드명 사용 (alias 우선)
+                display_name = field_info.alias or field_name
+                missing_fields.append(display_name)
+
+        return missing_fields
 
     @staticmethod
     def _parse_field_value(value: str, field_type: type) -> Any:

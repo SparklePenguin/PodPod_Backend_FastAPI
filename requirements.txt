@@ -35,4 +35,7 @@ PyYAML==6.0.1
 # MySQL 드라이버
 aiomysql==0.2.0
 
+# 이미지 처리
+Pillow==10.4.0
+
 

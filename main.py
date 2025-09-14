@@ -12,6 +12,7 @@ from app.middleware.logging_middleware import LoggingMiddleware
 from app.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
+    value_error_handler,
     general_exception_handler,
 )
 import logging
@@ -74,6 +75,7 @@ security = HTTPBearer()
 # 예외 핸들러 등록
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(ValueError, value_error_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # 정적 파일 서빙 설정

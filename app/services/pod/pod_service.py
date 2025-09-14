@@ -19,26 +19,31 @@ class PodService:
         self,
         owner_id: int,
         req: PodCreateRequest,
-        image: Optional[UploadFile] = None,
-        thumbnail: Optional[UploadFile] = None,
-    ) -> Optional[Pod]:
+        images: list[UploadFile] = None,
+    ) -> Optional[PodDto]:
         image_url = None
         thumbnail_url = None
 
-        # 이미지 저장 (썸네일, 이미지)
-        if image is not None:
-            image_url = await save_upload_file(image, "uploads/pods/images")
-        if thumbnail is not None:
-            thumbnail_url = await save_upload_file(thumbnail, "uploads/pods/thumbnails")
+        # 이미지 저장 및 최적화
+        if images:
+            first_image = images[0]
+            image_url = await save_upload_file(first_image, "uploads/pods/images")
+
+            # 첫 번째 이미지에서 썸네일 생성
+            try:
+                thumbnail_url = await self._create_thumbnail_from_image(first_image)
+            except ValueError as e:
+                # 썸네일 생성 실패 시 메인 이미지 URL을 썸네일로 사용
+                thumbnail_url = image_url
 
         # 파티 생성
-        return await self.crud.create_pod(
+        pod = await self.crud.create_pod(
             owner_id=owner_id,
             title=req.title,
             description=req.description,
             image_url=image_url,
             thumbnail_url=thumbnail_url,
-            sub_category=req.sub_category,
+            sub_categories=req.sub_categories,
             capacity=req.capacity,
             place=req.place,
             address=req.address,
@@ -47,6 +52,52 @@ class PodService:
             meeting_time=req.meetingTime,
             selected_artist_id=req.selected_artist_id,
         )
+
+        # Pod 모델을 PodDto로 변환
+        if pod:
+            return PodDto.model_validate(pod)
+        return None
+
+    async def _create_thumbnail_from_image(self, image: UploadFile) -> str:
+        """이미지에서 썸네일을 생성하여 저장"""
+        from PIL import Image
+        import io
+        import uuid
+        import os
+
+        # 이미지 읽기
+        image_content = await image.read()
+
+        # 이미지 파일 검증
+        if not image_content:
+            raise ValueError("이미지 파일이 비어있습니다")
+
+        try:
+            img = Image.open(io.BytesIO(image_content))
+        except Exception as e:
+            raise ValueError(f"이미지 파일을 읽을 수 없습니다: {str(e)}")
+
+        # 썸네일 크기 (300x300)
+        thumbnail_size = (300, 300)
+
+        # 썸네일 생성 (비율 유지하며 리사이즈)
+        img.thumbnail(thumbnail_size, Image.Resampling.LANCZOS)
+
+        # 썸네일 저장
+        thumbnail_filename = f"{uuid.uuid4()}.jpg"
+        thumbnail_path = f"uploads/pods/thumbnails/{thumbnail_filename}"
+
+        # 디렉토리 생성
+        os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
+
+        # RGB로 변환 (JPEG 저장을 위해)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        # 썸네일 저장
+        img.save(thumbnail_path, "JPEG", quality=85, optimize=True)
+
+        return thumbnail_path
 
     # - MARK: 파티 상세 조회
     async def get_pod_detail(self, pod_id: int) -> Optional[Pod]:

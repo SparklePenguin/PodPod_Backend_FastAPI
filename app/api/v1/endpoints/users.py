@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
 from app.api.deps import get_user_service, get_current_user_id
+from app.schemas.artist import ArtistDto
 from app.utils.file_upload import upload_profile_image
 from app.services.user_service import UserService
 from app.schemas.user import (
@@ -106,10 +107,10 @@ async def update_user_profile(
 
 @router.get(
     "/preferred-artists",
-    response_model=BaseResponse[dict],
+    response_model=BaseResponse[List[ArtistDto]],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[dict],
+            "model": BaseResponse[List[ArtistDto]],
             "description": "선호 아티스트 조회 성공",
         },
     },
@@ -120,7 +121,7 @@ async def get_user_preferred_artists(
 ):
     """사용자 선호 아티스트 조회 (토큰 필요)"""
     artists = await user_service.get_preferred_artists(current_user_id)
-    return BaseResponse.ok(data={"artists": artists})
+    return BaseResponse.ok(data=artists)
 
 
 @router.put(

@@ -31,12 +31,49 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """클라이언트 요청 데이터 검증 실패 → 422 Unprocessable Entity"""
     logger.error(f"Request Validation Error: {exc.errors()}")
+
+    # 더 명확한 오류 메시지 생성
+    error_messages = []
+    for error in exc.errors():
+        if error["type"] == "missing":
+            field_name = error["loc"][-1] if error["loc"] else "unknown"
+            error_messages.append(f"{field_name} 필드가 필요합니다")
+        elif error["type"] == "value_error":
+            # form parser에서 생성한 명확한 메시지 사용
+            if "필수 필드가 누락되었습니다" in error["msg"]:
+                error_messages.append(error["msg"])
+            else:
+                error_messages.append(
+                    f"데이터 형식이 올바르지 않습니다: {error['msg']}"
+                )
+        else:
+            error_messages.append(error["msg"])
+
+    # 중복 제거하고 하나의 메시지로 합치기
+    unique_messages = list(set(error_messages))
+    if len(unique_messages) == 1:
+        message = unique_messages[0]
+    else:
+        message = f"요청 데이터에 문제가 있습니다: {'; '.join(unique_messages)}"
+
     response = BaseResponse.error(
         code=HttpStatus.UNPROCESSABLE_ENTITY,
-        message="요청 데이터 검증에 실패했습니다.",
+        message=message,
     )
     return JSONResponse(
         status_code=HttpStatus.UNPROCESSABLE_ENTITY, content=response.model_dump()
+    )
+
+
+async def value_error_handler(request: Request, exc: ValueError):
+    """ValueError 처리 → 400 Bad Request"""
+    logger.error(f"Value Error: {str(exc)}")
+    response = BaseResponse.error(
+        code=HttpStatus.BAD_REQUEST,
+        message=str(exc),
+    )
+    return JSONResponse(
+        status_code=HttpStatus.BAD_REQUEST, content=response.model_dump()
     )
 
 

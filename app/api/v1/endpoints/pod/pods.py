@@ -1,8 +1,12 @@
+# List import 제거 (Python 3.9+에서는 list 사용)
 from typing import Optional
 from fastapi import (
     APIRouter,
     Depends,
     Request,
+    Form,
+    File,
+    UploadFile,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,13 +17,11 @@ from app.schemas.pod import (
     PodCreateRequest,
     PodDto,
 )
-from app.schemas.pod.pod_openapi_schemas import POD_CREATE_REQUEST_SCHEMA
 from app.schemas.common import (
     BaseResponse,
     PageDto,
 )
 from app.core.http_status import HttpStatus
-from app.utils.form_parser import parse_form_to_model
 
 
 router = APIRouter()
@@ -41,38 +43,70 @@ def get_pod_service(
             "description": "파티 생성 성공",
         },
     },
-    openapi_extra=POD_CREATE_REQUEST_SCHEMA,
 )
 async def create_pod(
-    request: Request,
+    title: str = Form(..., description="파티 제목"),
+    description: Optional[str] = Form(
+        ...,
+        description="파티 설명",
+    ),
+    sub_categories: list[str] = Form(
+        [],
+        alias="subCategories",
+        description="서브 카테고리 (예: ['EXCHANGE', 'SALE', 'GROUP_PURCHASE'] 등)",
+    ),
+    capacity: int = Form(..., description="최대 인원수"),
+    place: str = Form(..., description="장소명"),
+    address: str = Form(..., description="주소"),
+    sub_address: Optional[str] = Form(
+        None, alias="subAddress", description="상세 주소"
+    ),
+    meeting_date: str = Form(
+        ...,
+        alias="meetingDate",
+        description="만남 날짜 (YYYY-MM-DD)",
+    ),
+    meeting_time: str = Form(
+        ...,
+        alias="meetingTime",
+        description="만남 시간 (HH:MM)",
+    ),
+    selected_artist_id: int = Form(
+        ...,
+        alias="selectedArtistId",
+        description="선택된 아티스트 ID",
+    ),
+    images: list[UploadFile] = File(..., description="파티 이미지 리스트"),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
 ):
-    # Form 데이터를 PodCreateRequest로 파싱
-    req = await parse_form_to_model(request, PodCreateRequest, "req")
+    # sub_categories는 이미 리스트이므로 그대로 사용
+    sub_category_list = sub_categories
 
-    # 파일 업로드 처리
-    form_data = await request.form()
+    # 날짜와 시간 파싱
+    from datetime import date, time
 
-    # 파일 필드들을 UploadFile 객체로 가져오기
-    image = None
-    thumbnail = None
+    parsed_meeting_date = date.fromisoformat(meeting_date)
+    parsed_meeting_time = time.fromisoformat(meeting_time)
 
-    if "image" in form_data:
-        image_file = form_data["image"]
-        if hasattr(image_file, "filename") and image_file.filename:
-            image = image_file
-
-    if "thumbnail" in form_data:
-        thumbnail_file = form_data["thumbnail"]
-        if hasattr(thumbnail_file, "filename") and thumbnail_file.filename:
-            thumbnail = thumbnail_file
+    # PodCreateRequest 객체 생성
+    req = PodCreateRequest(
+        title=title,
+        description=description,
+        sub_categories=sub_category_list,
+        capacity=capacity,
+        place=place,
+        address=address,
+        sub_address=sub_address,
+        meetingDate=parsed_meeting_date,
+        meetingTime=parsed_meeting_time,
+        selected_artist_id=selected_artist_id,
+    )
 
     pod = await service.create_pod(
         owner_id=user_id,
         req=req,
-        image=image,
-        thumbnail=thumbnail,
+        images=images,
     )
     if pod is None:
         return BaseResponse.error(

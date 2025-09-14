@@ -37,7 +37,7 @@ class Pod(Base):
     description = Column(String(500), nullable=True)
     image_url = Column(String(500), nullable=True)
     thumbnail_url = Column(String(500), nullable=True)
-    sub_category = Column(Text, nullable=True)
+    sub_categories = Column(Text, nullable=True)
     capacity = Column(Integer, nullable=False)
     place = Column(String(200), nullable=False)
     address = Column(String(300), nullable=False)

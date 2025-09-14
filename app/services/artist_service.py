@@ -22,7 +22,7 @@ class ArtistService:
     # - MARK: 아티스트 목록 조회
     async def get_artists(
         self, page: int = 1, page_size: int = 20, is_active: bool = True
-    ) -> PageDto:
+    ) -> PageDto[ArtistDto]:
         """아티스트 목록 조회 (페이지네이션 및 필터링 지원)"""
         artists, total_count = await self.artist_crud.get_all(
             page=page, page_size=page_size, is_active=is_active
@@ -41,7 +41,7 @@ class ArtistService:
         has_next = page < total_pages
         has_prev = page > 1
 
-        return PageDto(
+        return PageDto[ArtistDto](
             items=artist_dtos,
             current_page=page,
             page_size=page_size,
