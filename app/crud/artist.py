@@ -302,10 +302,11 @@ class ArtistCRUD:
 
         await self.db.commit()
 
-        return ArtistsSyncDto(
+        result = ArtistsSyncDto(
             artist_created=artist_created_count,
             artist_updated=artist_updated_count,
             unit_created=unit_created_count,
             unit_updated=unit_updated_count,
             left_mvp_names=list(mvp_names),
         )
+        return result.model_dump()
