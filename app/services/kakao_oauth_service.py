@@ -2,8 +2,8 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.common import BaseResponse
 from app.services.oauth_service import OauthService
+from app.core.error_codes import raise_error
 import httpx
-from fastapi import HTTPException, status
 from app.core.config import settings
 from pydantic import BaseModel, Field
 
@@ -112,9 +112,8 @@ class KakaoOauthService:
             )
 
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
+            raise_error(
+                "OAUTH_USER_INFO_FETCH_FAILED", additional_data={"details": str(e)}
             )
 
         # 카카오 사용자 정보를 OAuth 서비스 형식에 맞게 변환
@@ -141,16 +140,15 @@ class KakaoOauthService:
         """카카오 콜백 처리"""
         # 인가 코드 요청 실패 처리
         if params.error:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=params.error or "카카오 OAuth 인증 실패",
+            raise_error(
+                "OAUTH_AUTHENTICATION_FAILED", additional_data={"error": params.error}
             )
 
         # 인가 코드가 없는 경우
         if not params.code:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=params.error or "인가 코드가 필요합니다",
+            raise_error(
+                "OAUTH_AUTHENTICATION_FAILED",
+                additional_data={"error": "인가 코드가 필요합니다"},
             )
 
         # 토큰 요청
@@ -161,10 +159,7 @@ class KakaoOauthService:
             )
 
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
+            raise_error("EXTERNAL_API_CALL_FAILED", additional_data={"details": str(e)})
 
         return await self.sign_in_with_kakao(token_response)
 
@@ -196,9 +191,9 @@ class KakaoOauthService:
             )
 
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=response.text,
+                raise_error(
+                    "EXTERNAL_API_CALL_FAILED",
+                    additional_data={"details": response.text},
                 )
 
             return KakaoTokenResponse(**response.json())
@@ -216,9 +211,9 @@ class KakaoOauthService:
             )
 
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=response.text,
+                raise_error(
+                    "EXTERNAL_API_CALL_FAILED",
+                    additional_data={"details": response.text},
                 )
 
             return _KakaoUserInfoResponse(**response.json())

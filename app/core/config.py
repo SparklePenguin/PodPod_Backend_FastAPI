@@ -63,5 +63,13 @@ class Settings(BaseSettings):
     APPLE_SCHEME: Optional[str] = os.getenv("APPLE_SCHEME")
     APPLE_ISSUER: str = "https://appleid.apple.com"
 
+    # Google Sheets 설정
+    GOOGLE_CREDENTIALS_PATH: str = "credentials.json"
+    GOOGLE_SHEETS_ID: Optional[str] = os.getenv("GOOGLE_SHEETS_ID")
+    GOOGLE_SHEETS_RANGE: str = os.getenv(
+        "GOOGLE_SHEETS_RANGE", "1xxx: 인증/로그인 관련 오류!A:F"
+    )
+    GOOGLE_SHEETS_CREDENTIALS: Optional[str] = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+
 
 settings = Settings()

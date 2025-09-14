@@ -10,6 +10,8 @@ from app.core.security import get_password_hash
 from app.models.user_state import UserState
 from typing import List, Optional
 
+from app.core.error_codes import raise_error
+
 
 class UserService:
     def __init__(self, db: AsyncSession):
@@ -28,24 +30,10 @@ class UserService:
                 and existing_user.auth_provider == user_data.auth_provider
             ):
                 # 같은 provider의 같은 계정이면 중복 에러
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=BaseResponse(
-                        error_code="email_already_exists",
-                        status=status.HTTP_400_BAD_REQUEST,
-                        message="이미 등록된 계정입니다",
-                    ).model_dump(),
-                )
+                raise_error("SAME_OAUTH_PROVIDER_EXISTS")
             elif not user_data.auth_provider:
                 # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=BaseResponse(
-                        error_code="email_already_exists",
-                        status=status.HTTP_400_BAD_REQUEST,
-                        message="이메일이 이미 등록되어 있습니다",
-                    ).model_dump(),
-                )
+                raise_error("EMAIL_ALREADY_EXISTS")
             else:
                 # 다른 OAuth provider인 경우 계속 진행 (새 계정 생성)
                 pass
@@ -92,14 +80,7 @@ class UserService:
     async def get_user(self, user_id: int) -> UserDto:
         user = await self.user_crud.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=BaseResponse(
-                    error_code="user_not_found",
-                    status=status.HTTP_404_NOT_FOUND,
-                    message="사용자를 찾을 수 없습니다",
-                ).model_dump(),
-            )
+            raise_error("USER_NOT_FOUND")
 
         # UserDto 생성 시 상태 정보 포함
         user_data = await self._prepare_user_dto_data(user)
@@ -109,14 +90,7 @@ class UserService:
     async def get_user_internal(self, user_id: int) -> UserDtoInternal:
         user = await self.user_crud.get_by_id(user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=BaseResponse(
-                    error_code="user_not_found",
-                    status=status.HTTP_404_NOT_FOUND,
-                    message="사용자를 찾을 수 없습니다",
-                ).model_dump(),
-            )
+            raise_error("USER_NOT_FOUND")
 
         return UserDtoInternal.model_validate(user, from_attributes=True)
 
@@ -128,14 +102,7 @@ class UserService:
 
         user = await self.user_crud.update_profile(user_id, update_data)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=BaseResponse(
-                    error_code="user_not_found",
-                    status=status.HTTP_404_NOT_FOUND,
-                    message="사용자를 찾을 수 없습니다",
-                ).model_dump(),
-            )
+            raise_error("USER_NOT_FOUND")
         # UserDto 생성 시 상태 정보 포함
         user_data = await self._prepare_user_dto_data(user)
         return UserDto.model_validate(user_data, from_attributes=False)
@@ -164,13 +131,8 @@ class UserService:
         for artist_id in artist_ids:
             artist = await self.artist_crud.get_by_id(artist_id)
             if not artist:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=BaseResponse(
-                        error_code="artist_not_found",
-                        status=status.HTTP_404_NOT_FOUND,
-                        message=f"아티스트 ID {artist_id}를 찾을 수 없습니다",
-                    ).model_dump(),
+                raise_error(
+                    "ARTIST_NOT_FOUND", additional_data={"artist_id": artist_id}
                 )
 
         # 기존 선호 아티스트 모두 제거

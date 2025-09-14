@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.pod import PodCRUD
+from app.core.error_codes import raise_error
 
 
 class RecruitmentService:
@@ -11,11 +12,7 @@ class RecruitmentService:
     async def apply_to_pod(self, pod_id: int, user_id: int) -> dict:
         pod = await self.crud.get_pod_by_id(pod_id)
         if pod is None:
-            from fastapi import HTTPException, status
-
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="pod_not_found"
-            )
+            raise_error("POD_NOT_FOUND")
         already = any(m.user_id == user_id for m in pod.members)
         if already:
             return {"applied": True, "alreadyMember": True}

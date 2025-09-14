@@ -94,17 +94,15 @@ def run_server(config, use_infisical=False):
                 "env",
                 "dev",
             )
-            path = infisical_config.get(
-                "path",
-                "/backend",
-            )
 
             print("Infisical에서 환경변수를 로드하는 중...")
+            # 모든 폴더에서 환경변수 가져오기 (Backend, GoogleSheet 포함)
             cmd = [
                 "infisical",
                 "run",
                 f"--env={env}",
-                f"--path={path}",
+                "--path=/",
+                "--recursive",
                 "--",
             ] + uvicorn_cmd
 

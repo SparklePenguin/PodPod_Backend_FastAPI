@@ -14,15 +14,23 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
     # HTTPException의 detail이 이미 BaseResponse 형태인지 확인
     if isinstance(exc.detail, dict) and "code" in exc.detail:
-        response = BaseResponse.error(
-            code=HttpStatus(exc.status_code),
-            message=exc.detail["message"],
+        response = BaseResponse(
+            data=None,
+            error=exc.detail.get("error_code", "HTTP_ERROR"),
+            error_code=exc.detail["code"],
+            http_status=exc.status_code,
+            message_ko=exc.detail["message"],
+            message_en=exc.detail["message"],
         )
     else:
         # 일반적인 HTTPException의 경우 BaseResponse 형태로 변환
-        response = BaseResponse.error(
-            code=HttpStatus(exc.status_code),
-            message=str(exc.detail),
+        response = BaseResponse(
+            data=None,
+            error="HTTP_ERROR",
+            error_code=exc.status_code,
+            http_status=exc.status_code,
+            message_ko=str(exc.detail),
+            message_en=str(exc.detail),
         )
 
     return JSONResponse(status_code=exc.status_code, content=response.model_dump())
@@ -56,9 +64,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     else:
         message = f"요청 데이터에 문제가 있습니다: {'; '.join(unique_messages)}"
 
-    response = BaseResponse.error(
-        code=HttpStatus.UNPROCESSABLE_ENTITY,
-        message=message,
+    response = BaseResponse(
+        data=None,
+        error="REQUEST_VALIDATION_ERROR",
+        error_code=4220,
+        http_status=HttpStatus.UNPROCESSABLE_ENTITY,
+        message_ko=message,
+        message_en="Request validation failed",
     )
     return JSONResponse(
         status_code=HttpStatus.UNPROCESSABLE_ENTITY, content=response.model_dump()
@@ -68,9 +80,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def value_error_handler(request: Request, exc: ValueError):
     """ValueError 처리 → 400 Bad Request"""
     logger.error(f"Value Error: {str(exc)}")
-    response = BaseResponse.error(
-        code=HttpStatus.BAD_REQUEST,
-        message=str(exc),
+    response = BaseResponse(
+        data=None,
+        error="VALIDATION_ERROR",
+        error_code=4000,
+        http_status=HttpStatus.BAD_REQUEST,
+        message_ko=str(exc),
+        message_en=str(exc),
     )
     return JSONResponse(
         status_code=HttpStatus.BAD_REQUEST, content=response.model_dump()
@@ -80,9 +96,13 @@ async def value_error_handler(request: Request, exc: ValueError):
 async def general_exception_handler(request: Request, exc: Exception):
     """예상치 못한 일반적인 예외 → 500 Internal Server Error"""
     logger.error(f"Unhandled Exception: {type(exc).__name__}: {str(exc)}")
-    response = BaseResponse.error(
-        code=HttpStatus.INTERNAL_SERVER_ERROR,
-        message="서버 내부 오류가 발생했습니다.",
+    response = BaseResponse(
+        data=None,
+        error="INTERNAL_SERVER_ERROR",
+        error_code=5001,
+        http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+        message_ko="서버 내부 오류가 발생했습니다.",
+        message_en="Internal server error occurred.",
     )
     return JSONResponse(
         status_code=HttpStatus.INTERNAL_SERVER_ERROR, content=response.model_dump()

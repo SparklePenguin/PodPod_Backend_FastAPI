@@ -9,6 +9,7 @@ from app.schemas.tendency import (
     Tendency,
     TendencyInfo,
 )
+from app.core.error_codes import raise_error
 
 
 class TendencyService:
@@ -39,7 +40,7 @@ class TendencyService:
             calculation_result["tendency_type"]
         )
         if not tendency_result:
-            raise Exception("성향 테스트 결과를 찾을 수 없습니다")
+            raise_error("TENDENCY_RESULT_NOT_FOUND")
 
         # Tendency 객체 생성
         return Tendency(
@@ -277,4 +278,9 @@ class TendencyService:
 
         except Exception as e:
             await self.db.rollback()
-            raise Exception(f"MVP 성향 테스트 데이터 생성 실패: {str(e)}")
+            raise_error(
+                "INTERNAL_SERVER_ERROR",
+                additional_data={
+                    "details": f"MVP 성향 테스트 데이터 생성 실패: {str(e)}"
+                },
+            )

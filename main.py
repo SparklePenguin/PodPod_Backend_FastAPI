@@ -9,6 +9,7 @@ from app.api import api_router
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger
 from app.middleware.logging_middleware import LoggingMiddleware
+from app.core.startup import startup_events, sync_startup_events
 from app.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
@@ -26,13 +27,24 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     try:
+        # 동기 시작 이벤트
+        sync_startup_events()
+
+        # 비동기 시작 이벤트
+        await startup_events()
+
+        # 데이터베이스 초기화
         await init_db()
         logger.info("Database initialized successfully!")
+
     except Exception as e:
-        logger.error(f"Database initialization error: {e}")
+        logger.error(f"Application startup failed: {e}")
+        raise
+
     yield
+
     # Shutdown
-    pass
+    logger.info("Application shutdown")
 
 
 app = FastAPI(
