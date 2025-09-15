@@ -310,3 +310,92 @@ class ArtistCRUD:
             left_mvp_names=list(mvp_names),
         )
         return result.model_dump()
+
+    # - MARK: 아티스트 이미지 업데이트
+    async def update_artist_images(
+        self, artist_id: int, images_data: list
+    ) -> tuple[bool, str]:
+        """아티스트의 이미지들을 일괄 업데이트합니다.
+
+        Args:
+            artist_id: 아티스트 ID
+            images_data: 업데이트할 이미지 데이터 리스트
+
+        Returns:
+            tuple[bool, str]: (성공 여부, 메시지)
+        """
+        try:
+            # 아티스트 존재 확인
+            artist = await self.get_by_id(artist_id)
+            if not artist:
+                return False, f"아티스트를 찾을 수 없습니다. ID: {artist_id}"
+
+            # 기존 이미지들 삭제
+            await self.db.execute(
+                ArtistImage.__table__.delete().where(ArtistImage.artist_id == artist_id)
+            )
+
+            # 새 이미지들 추가
+            for image_data in images_data:
+                new_image = ArtistImage(
+                    artist_id=artist_id,
+                    unit_id=artist.unit_id,
+                    path=image_data.get("path"),
+                    file_id=image_data.get("file_id"),
+                    is_animatable=image_data.get("is_animatable", False),
+                    size=image_data.get("size"),
+                    blip_unit_id=artist.blip_unit_id,
+                    blip_artist_id=artist.blip_artist_id,
+                )
+                self.db.add(new_image)
+
+            await self.db.commit()
+            return (
+                True,
+                f"아티스트 {artist.name}의 이미지가 성공적으로 업데이트되었습니다.",
+            )
+
+        except Exception as e:
+            await self.db.rollback()
+            return False, f"이미지 업데이트 실패: {str(e)}"
+
+    async def update_single_artist_image(
+        self, image_id: int, image_data: dict
+    ) -> tuple[bool, str]:
+        """단일 아티스트 이미지를 업데이트합니다.
+
+        Args:
+            image_id: 이미지 ID
+            image_data: 업데이트할 이미지 데이터
+
+        Returns:
+            tuple[bool, str]: (성공 여부, 메시지)
+        """
+        try:
+            # 이미지 존재 확인
+            result = await self.db.execute(
+                select(ArtistImage).where(ArtistImage.id == image_id)
+            )
+            image = result.scalar_one_or_none()
+
+            if not image:
+                return False, f"이미지를 찾을 수 없습니다. ID: {image_id}"
+
+            # 이미지 데이터 업데이트
+            if "path" in image_data:
+                image.path = image_data["path"]
+            if "file_id" in image_data:
+                image.file_id = image_data["file_id"]
+            if "is_animatable" in image_data:
+                image.is_animatable = image_data["is_animatable"]
+            if "size" in image_data:
+                image.size = image_data["size"]
+
+            self.db.add(image)
+            await self.db.commit()
+
+            return True, f"이미지 ID {image_id}가 성공적으로 업데이트되었습니다."
+
+        except Exception as e:
+            await self.db.rollback()
+            return False, f"이미지 업데이트 실패: {str(e)}"
