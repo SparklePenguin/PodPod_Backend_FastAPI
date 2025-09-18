@@ -67,7 +67,13 @@ async def get_artist(
     """특정 아티스트 조회"""
     artist = await artist_service.get_artist(artist_id)
     if not artist:
-        return BaseResponse.error(code=HttpStatus.NOT_FOUND, message="artist_not_found")
+        return BaseResponse.error(
+            error_key="ARTIST_NOT_FOUND",
+            error_code=4006,
+            http_status=HttpStatus.NOT_FOUND,
+            message_ko="아티스트를 찾을 수 없습니다.",
+            message_en="Artist not found.",
+        )
     return BaseResponse.ok(data=artist)
 
 

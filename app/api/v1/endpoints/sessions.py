@@ -131,7 +131,7 @@ async def delete_session(
 ):
     """로그아웃 (세션 삭제)"""
     await auth_service.logout(token.credentials)
-    return BaseResponse.ok(code=HttpStatus.NO_CONTENT)
+    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
 @router.put(
@@ -165,9 +165,18 @@ async def refresh_session(
         TokenDecodeError,
         TokenBlacklistedError,
     ) as e:
-        return BaseResponse.error(code=HttpStatus.UNAUTHORIZED, message=e.message)
+        return BaseResponse.error(
+            error_key="TOKEN_INVALID",
+            error_code=1002,
+            http_status=HttpStatus.UNAUTHORIZED,
+            message_ko=e.message,
+            message_en=e.message,
+        )
     except Exception as e:
         return BaseResponse.error(
-            code=HttpStatus.INTERNAL_SERVER_ERROR,
-            message=f"토큰 갱신 실패: {str(e)}",
+            error_key="TOKEN_REFRESH_FAILED",
+            error_code=5001,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=f"토큰 갱신 실패: {str(e)}",
+            message_en=f"Token refresh failed: {str(e)}",
         )

@@ -21,6 +21,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             http_status=exc.status_code,
             message_ko=exc.detail["message"],
             message_en=exc.detail["message"],
+            devNote=exc.detail.get("devNote", "HTTP error occurred"),
         )
     else:
         # 일반적인 HTTPException의 경우 BaseResponse 형태로 변환
@@ -31,6 +32,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             http_status=exc.status_code,
             message_ko=str(exc.detail),
             message_en=str(exc.detail),
+            devNote="HTTP error occurred",
         )
 
     return JSONResponse(status_code=exc.status_code, content=response.model_dump())
@@ -71,6 +73,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         http_status=HttpStatus.UNPROCESSABLE_ENTITY,
         message_ko=message,
         message_en="Request validation failed",
+        devNote="Request validation failed",
     )
     return JSONResponse(
         status_code=HttpStatus.UNPROCESSABLE_ENTITY, content=response.model_dump()
@@ -87,6 +90,7 @@ async def value_error_handler(request: Request, exc: ValueError):
         http_status=HttpStatus.BAD_REQUEST,
         message_ko=str(exc),
         message_en=str(exc),
+        devNote="Request validation failed",
     )
     return JSONResponse(
         status_code=HttpStatus.BAD_REQUEST, content=response.model_dump()
@@ -103,6 +107,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         http_status=HttpStatus.INTERNAL_SERVER_ERROR,
         message_ko="서버 내부 오류가 발생했습니다.",
         message_en="Internal server error occurred.",
+        devNote="Unhandled server error",
     )
     return JSONResponse(
         status_code=HttpStatus.INTERNAL_SERVER_ERROR, content=response.model_dump()

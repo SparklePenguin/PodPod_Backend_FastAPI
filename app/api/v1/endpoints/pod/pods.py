@@ -7,6 +7,7 @@ from fastapi import (
     Form,
     File,
     UploadFile,
+    Query,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -110,11 +111,15 @@ async def create_pod(
     )
     if pod is None:
         return BaseResponse.error(
-            code=HttpStatus.BAD_REQUEST,
+            error_key="POD_CREATION_FAILED",
+            error_code=4001,
+            http_status=HttpStatus.BAD_REQUEST,
+            message_ko="파티 생성에 실패했습니다.",
+            message_en="Failed to create pod.",
         )
     return BaseResponse.ok(
         data=pod,
-        code=HttpStatus.CREATED,
+        http_status=HttpStatus.CREATED,
     )
 
 
@@ -132,7 +137,7 @@ async def create_pod(
     description="현재 선택된 아티스트 기준으로 마감되지 않은 인기 파티를 조회합니다.",
 )
 async def get_trending_pods(
-    selected_artist_id: int,
+    selected_artist_id: int = Query(..., alias="selectedArtistId"),
     page: int = 1,
     size: int = 20,
     current_user_id: int = Depends(get_current_user_id),
@@ -173,7 +178,7 @@ async def get_trending_pods(
     description="현재 선택된 아티스트 기준으로 마감되지 않은 마감 직전 파티를 조회합니다.",
 )
 async def get_closing_soon_pods(
-    selected_artist_id: int,
+    selected_artist_id: int = Query(..., alias="selectedArtistId"),
     location: Optional[str] = None,
     page: int = 1,
     size: int = 20,
@@ -215,7 +220,7 @@ async def get_closing_soon_pods(
     description="이전 매칭 사용자와 유사한 모임을 기반으로 파티를 추천합니다.",
 )
 async def get_history_based_pods(
-    selected_artist_id: int,
+    selected_artist_id: int = Query(..., alias="selectedArtistId"),
     page: int = 1,
     size: int = 20,
     current_user_id: int = Depends(get_current_user_id),
@@ -260,7 +265,7 @@ async def get_history_based_pods(
     description="최근 일주일 기준 인기 카테고리 기반으로 파티를 추천합니다.",
 )
 async def get_popular_category_pods(
-    selected_artist_id: int,
+    selected_artist_id: int = Query(..., alias="selectedArtistId"),
     location: Optional[str] = None,
     page: int = 1,
     size: int = 20,
@@ -346,4 +351,4 @@ async def delete_pod(
     pod_service: PodService = Depends(get_pod_service),
 ):
     await pod_service.delete_pod(pod_id)
-    return BaseResponse.ok(code=HttpStatus.NO_CONTENT)
+    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)

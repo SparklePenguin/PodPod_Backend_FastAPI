@@ -36,7 +36,7 @@ async def create_user(
 ):
     """사용자 생성 (회원가입)"""
     user = await user_service.create_user(user_data)
-    return BaseResponse.ok(code=HttpStatus.CREATED, data=user)
+    return BaseResponse.ok(data=user, http_status=HttpStatus.CREATED)
 
 
 # - MARK: 인증 필요 API
@@ -215,7 +215,7 @@ async def delete_user(
             status_code=HttpStatus.FORBIDDEN,
             detail="자신의 계정만 삭제할 수 있습니다",
         )
-    return BaseResponse.ok(code=HttpStatus.NO_CONTENT)
+    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
 # - MARK: 사용자 차단 API
@@ -294,7 +294,7 @@ async def unblock_user(
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
-    return BaseResponse.ok(code=HttpStatus.NO_CONTENT)
+    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
 # - MARK: 내부용 API
