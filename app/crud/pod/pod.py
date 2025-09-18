@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, case
 from app.models.pod import Pod, PodMember
 from app.models.pod.pod_rating import PodRating
 from app.models.pod.pod_view import PodView
@@ -187,9 +187,7 @@ class PodCRUD:
             .where(base_conditions)
             .order_by(
                 # 24시간 이내 마감 모임 우선
-                func.case(
-                    (Pod.meeting_date <= twenty_four_hours_later.date(), 0), else_=1
-                ),
+                case((Pod.meeting_date <= twenty_four_hours_later.date(), 0), else_=1),
                 Pod.meeting_date.asc(),
                 Pod.meeting_time.asc(),
             )
@@ -236,7 +234,7 @@ class PodCRUD:
         # 1순위: 참여한 팟(평점 4점 이상, 90일 이내)의 개설자가 개설한 팟
         # 사용자가 참여한 파티 조회 (PodMember + PodRating 테이블 사용)
         participated_pods_query = (
-            select(Pod.id, Pod.owner_id, Pod.sub_category, Pod.address)
+            select(Pod.id, Pod.owner_id, Pod.sub_categories, Pod.address)
             .join(PodMember, Pod.id == PodMember.pod_id)
             .join(PodRating, Pod.id == PodRating.pod_id)
             .where(
@@ -262,9 +260,9 @@ class PodCRUD:
         # 참여한 파티의 카테고리들
         participated_categories = []
         for pod in participated_pods:
-            if pod.sub_category:
+            if pod.sub_categories:
                 try:
-                    categories = json.loads(pod.sub_category)
+                    categories = json.loads(pod.sub_categories)
                     participated_categories.extend(categories)
                 except:
                     pass
@@ -302,9 +300,9 @@ class PodCRUD:
 
         # 카테고리 우선순위 추가
         if participated_categories:
-            category_priority = func.case(
+            category_priority = case(
                 *[
-                    (Pod.sub_category.contains(cat), 0)
+                    (Pod.sub_categories.contains(cat), 0)
                     for cat in participated_categories
                 ],
                 else_=1,
@@ -313,7 +311,7 @@ class PodCRUD:
 
         # 지역 우선순위 추가
         if participated_locations:
-            location_priority = func.case(
+            location_priority = case(
                 *[(Pod.address.contains(loc), 0) for loc in participated_locations],
                 else_=1,
             )
@@ -339,9 +337,9 @@ class PodCRUD:
 
             # 카테고리 우선순위 추가
             if participated_categories:
-                category_priority = func.case(
+                category_priority = case(
                     *[
-                        (Pod.sub_category.contains(cat), 0)
+                        (Pod.sub_categories.contains(cat), 0)
                         for cat in participated_categories
                     ],
                     else_=1,
@@ -352,7 +350,7 @@ class PodCRUD:
 
             # 지역 우선순위 추가
             if participated_locations:
-                location_priority = func.case(
+                location_priority = case(
                     *[(Pod.address.contains(loc), 0) for loc in participated_locations],
                     else_=1,
                 )
@@ -404,15 +402,15 @@ class PodCRUD:
 
         # 최근 일주일 기준 가장 많이 개설된 카테고리 조회
         popular_categories_by_creation_query = (
-            select(Pod.sub_category, func.count(Pod.id).label("creation_count"))
+            select(Pod.sub_categories, func.count(Pod.id).label("creation_count"))
             .where(
                 and_(
                     Pod.is_active == True,
                     Pod.created_at >= one_week_ago,
-                    Pod.sub_category.isnot(None),
+                    Pod.sub_categories.isnot(None),
                 )
             )
-            .group_by(Pod.sub_category)
+            .group_by(Pod.sub_categories)
             .order_by(func.count(Pod.id).desc())
             .limit(5)
         )
@@ -422,16 +420,16 @@ class PodCRUD:
 
         # 최근 일주일 기준 가장 조회가 많은 카테고리 조회
         popular_categories_by_views_query = (
-            select(Pod.sub_category, func.count(PodView.id).label("view_count"))
+            select(Pod.sub_categories, func.count(PodView.id).label("view_count"))
             .join(PodView, Pod.id == PodView.pod_id)
             .where(
                 and_(
                     Pod.is_active == True,
                     PodView.created_at >= one_week_ago,
-                    Pod.sub_category.isnot(None),
+                    Pod.sub_categories.isnot(None),
                 )
             )
-            .group_by(Pod.sub_category)
+            .group_by(Pod.sub_categories)
             .order_by(func.count(PodView.id).desc())
             .limit(5)
         )
@@ -446,20 +444,20 @@ class PodCRUD:
         # 1순위: 개설 기준 인기 카테고리
         for category_row in popular_categories_by_creation:
             if (
-                category_row.sub_category
-                and category_row.sub_category not in seen_categories
+                category_row.sub_categories
+                and category_row.sub_categories not in seen_categories
             ):
-                popular_categories.append(category_row.sub_category)
-                seen_categories.add(category_row.sub_category)
+                popular_categories.append(category_row.sub_categories)
+                seen_categories.add(category_row.sub_categories)
 
         # 2순위: 조회 기준 인기 카테고리 (개설 기준에 없는 것만)
         for category_row in popular_categories_by_views:
             if (
-                category_row.sub_category
-                and category_row.sub_category not in seen_categories
+                category_row.sub_categories
+                and category_row.sub_categories not in seen_categories
             ):
-                popular_categories.append(category_row.sub_category)
-                seen_categories.add(category_row.sub_category)
+                popular_categories.append(category_row.sub_categories)
+                seen_categories.add(category_row.sub_categories)
 
         # 페이지네이션 계산
         offset = (page - 1) * size
@@ -467,9 +465,9 @@ class PodCRUD:
         # 인기 카테고리 기반 파티 조회
         if popular_categories:
             # 카테고리 우선순위 설정
-            category_priority = func.case(
+            category_priority = case(
                 *[
-                    (Pod.sub_category == cat, idx)
+                    (Pod.sub_categories == cat, idx)
                     for idx, cat in enumerate(popular_categories)
                 ],
                 else_=len(popular_categories),

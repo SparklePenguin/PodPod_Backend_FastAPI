@@ -28,8 +28,8 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
             content = await upload_file.read()
             buffer.write(content)
 
-        # 파일 URL 반환 (상대 경로)
-        return f"/uploads/{unique_filename}"
+        # 파일 URL 반환 (상대 경로) - destination 경로를 포함
+        return f"/{destination}/{unique_filename}"
 
     except Exception as e:
         raise Exception(f"파일 업로드 실패: {str(e)}")
