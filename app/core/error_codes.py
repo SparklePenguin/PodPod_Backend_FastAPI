@@ -17,6 +17,29 @@ import json
 import asyncio
 from functools import lru_cache
 from datetime import datetime, timedelta
+from dataclasses import dataclass
+
+
+@dataclass
+class ErrorInfo:
+    """에러 정보를 담는 객체"""
+
+    error_key: str
+    code: int
+    message_ko: str
+    message_en: str
+    dev_note: str = None
+
+    @property
+    def message(self) -> str:
+        """기본 메시지 (한국어)"""
+        return self.message_ko
+
+    def get_message(self, language: str = "ko") -> str:
+        """언어에 따른 메시지 반환"""
+        if language == "en":
+            return self.message_en
+        return self.message_ko
 
 
 # 에러 코드 정의 (JSON 파일에서 로드됨)
@@ -161,23 +184,28 @@ def get_cached_error_codes() -> Dict[str, Dict[str, Any]]:
     return ERROR_CODES.copy()
 
 
-def get_error_info(error_key: str, language: str = "ko") -> Dict[str, Any]:
+def get_error_info(error_key: str, language: str = "ko") -> ErrorInfo:
     """
     에러 키로 에러 정보를 가져옵니다.
 
     Args:
         error_key: 에러 키 (예: "INVALID_CREDENTIALS")
-        language: 언어 ("ko" 또는 "en")
+        language: 언어 ("ko" 또는 "en") - 현재는 사용되지 않음 (객체에서 메서드로 처리)
 
     Returns:
-        에러 정보 딕셔너리
+        ErrorInfo 객체
     """
     if error_key not in ERROR_CODES:
         raise ValueError(f"Unknown error key: {error_key}")
 
-    error_info = ERROR_CODES[error_key].copy()
-    error_info["message"] = error_info[f"message_{language}"]
-    return error_info
+    error_data = ERROR_CODES[error_key]
+    return ErrorInfo(
+        error_key=error_key,
+        code=error_data["code"],
+        message_ko=error_data["message_ko"],
+        message_en=error_data["message_en"],
+        dev_note=error_data.get("dev_note"),
+    )
 
 
 def raise_error(
@@ -198,15 +226,17 @@ def raise_error(
 
     detail = {
         "error_code": error_key,
-        "code": error_info["code"],
-        "message": error_info["message"],
+        "code": error_info.code,
+        "message": error_info.get_message(language),
     }
 
     if additional_data:
         detail.update(additional_data)
 
+    # HTTP 상태 코드는 에러 코드에서 가져와야 하는데, 현재 구조에서는 없으므로 기본값 사용
+    # TODO: 에러 코드에 http_status 필드 추가 필요
     raise HTTPException(
-        status_code=error_info["http_status"],
+        status_code=HttpStatus.BAD_REQUEST,  # 임시로 BAD_REQUEST 사용
         detail=detail,
     )
 
@@ -229,9 +259,9 @@ def get_error_response(
 
     response = {
         "error_code": error_key,
-        "code": error_info["code"],
-        "message": error_info["message"],
-        "dev_note": error_info.get("dev_note"),
+        "code": error_info.code,
+        "message": error_info.get_message(language),
+        "dev_note": error_info.dev_note,
     }
 
     if additional_data:

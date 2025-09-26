@@ -23,6 +23,7 @@ from app.schemas.common import (
     PageDto,
 )
 from app.core.http_status import HttpStatus
+from app.core.error_codes import get_error_info
 
 
 router = APIRouter()
@@ -110,12 +111,13 @@ async def create_pod(
         images=images,
     )
     if pod is None:
+        error_info = get_error_info("POD_CREATION_FAILED")
         return BaseResponse.error(
-            error_key="POD_CREATION_FAILED",
-            error_code=4001,
+            error_key=error_info.error_key,
+            error_code=error_info.code,
             http_status=HttpStatus.BAD_REQUEST,
-            message_ko="파티 생성에 실패했습니다.",
-            message_en="Failed to create pod.",
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
         )
     return BaseResponse.ok(
         data=pod,
@@ -311,8 +313,13 @@ async def get_pod_detail(
 ):
     pod = await pod_service.get_pod_detail(pod_id)
     if pod is None:
+        error_info = get_error_info("POD_NOT_FOUND")
         return BaseResponse.error(
-            code=HttpStatus.NOT_FOUND,
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.NOT_FOUND,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
         )
     return BaseResponse.ok(data=pod)
 
