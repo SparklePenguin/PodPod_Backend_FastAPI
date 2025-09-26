@@ -129,8 +129,14 @@ class PodService:
             user_id, selected_artist_id, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환
-        pod_dtos = [PodDto.model_validate(pod) for pod in pods]
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        pod_dtos = []
+        for pod in pods:
+            pod_dto = PodDto.model_validate(pod)
+            # 참여자 수 계산
+            joined_count = await self.crud.get_joined_users_count(pod.id)
+            pod_dto.joined_users_count = joined_count
+            pod_dtos.append(pod_dto)
 
         # TODO: 실제 total_count를 가져오는 로직 추가 필요
         total_count = len(pod_dtos)  # 임시로 현재 페이지 아이템 수 사용
@@ -167,8 +173,14 @@ class PodService:
             user_id, selected_artist_id, location, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환
-        pod_dtos = [PodDto.model_validate(pod) for pod in pods]
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        pod_dtos = []
+        for pod in pods:
+            pod_dto = PodDto.model_validate(pod)
+            # 참여자 수 계산
+            joined_count = await self.crud.get_joined_users_count(pod.id)
+            pod_dto.joined_users_count = joined_count
+            pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0
@@ -202,8 +214,14 @@ class PodService:
             user_id, selected_artist_id, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환
-        pod_dtos = [PodDto.model_validate(pod) for pod in pods]
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        pod_dtos = []
+        for pod in pods:
+            pod_dto = PodDto.model_validate(pod)
+            # 참여자 수 계산
+            joined_count = await self.crud.get_joined_users_count(pod.id)
+            pod_dto.joined_users_count = joined_count
+            pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0
@@ -238,8 +256,14 @@ class PodService:
             user_id, selected_artist_id, location, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환
-        pod_dtos = [PodDto.model_validate(pod) for pod in pods]
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        pod_dtos = []
+        for pod in pods:
+            pod_dto = PodDto.model_validate(pod)
+            # 참여자 수 계산
+            joined_count = await self.crud.get_joined_users_count(pod.id)
+            pod_dto.joined_users_count = joined_count
+            pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0

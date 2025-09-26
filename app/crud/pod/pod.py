@@ -611,3 +611,10 @@ class PodCRUD:
             .limit(limit)
         )
         return [row[0] for row in result.fetchall()]
+
+    async def get_joined_users_count(self, pod_id: int) -> int:
+        """파티 참여자 수 조회"""
+        result = await self.db.execute(
+            select(func.count(PodMember.id)).where(PodMember.pod_id == pod_id)
+        )
+        return result.scalar() or 0

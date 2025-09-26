@@ -321,7 +321,13 @@ async def get_pod_detail(
             message_ko=error_info.message_ko,
             message_en=error_info.message_en,
         )
-    return BaseResponse.ok(data=pod)
+
+    # PodDto로 변환하고 참여자 수 추가
+    pod_dto = PodDto.model_validate(pod)
+    joined_count = await pod_service.crud.get_joined_users_count(pod.id)
+    pod_dto.joined_users_count = joined_count
+
+    return BaseResponse.ok(data=pod_dto)
 
 
 # - MARK: 파티 수정
