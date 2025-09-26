@@ -6,7 +6,7 @@ source venv/bin/activate
 # 마이그레이션 실행
 echo "마이그레이션을 실행 중입니다..."
 infisical run --env=dev \ 
---path=/backend \ 
+--path=/Backend \ 
 -- ./venv/bin/alembic upgrade heads
 
 if [ $? -eq 0 ]; then

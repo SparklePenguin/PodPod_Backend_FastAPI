@@ -9,7 +9,7 @@ execute_sql() {
     echo "실행 중인 쿼리: $query"
     
     # infisical로 환경변수 주입하여 mysql 실행
-    infisical run --env=dev --path=/backend -- \
+    infisical run --env=dev --path=/Backend -- \
     sh -c "
     mysql \
         -h localhost \

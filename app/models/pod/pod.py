@@ -5,11 +5,13 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Enum,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from sqlalchemy import Date, Time, Text
 from app.core.database import Base
+from .pod_status import PodStatus
 
 
 class Pod(Base):
@@ -44,6 +46,7 @@ class Pod(Base):
     sub_address = Column(String(300), nullable=True)
     meeting_date = Column(Date, nullable=False)
     meeting_time = Column(Time, nullable=False)
+    status = Column(Enum(PodStatus), default=PodStatus.RECRUITING, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(
         DateTime,

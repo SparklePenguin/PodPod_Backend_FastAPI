@@ -6,6 +6,7 @@ from app.schemas.common import PageDto
 from app.utils.file_upload import save_upload_file
 from fastapi import UploadFile
 from app.models.pod import Pod
+from app.models.pod.pod_status import PodStatus
 import math
 
 
@@ -20,6 +21,7 @@ class PodService:
         owner_id: int,
         req: PodCreateRequest,
         images: list[UploadFile] = None,
+        status: PodStatus = PodStatus.RECRUITING,
     ) -> Optional[PodDto]:
         image_url = None
         thumbnail_url = None
@@ -51,6 +53,7 @@ class PodService:
             meeting_date=req.meetingDate,
             meeting_time=req.meetingTime,
             selected_artist_id=req.selected_artist_id,
+            status=status,
         )
 
         # Pod 모델을 PodDto로 변환

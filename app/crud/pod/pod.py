@@ -4,6 +4,7 @@ from sqlalchemy import select, and_, or_, func, desc, case
 from app.models.pod import Pod, PodMember
 from app.models.pod.pod_rating import PodRating
 from app.models.pod.pod_view import PodView
+from app.models.pod.pod_status import PodStatus
 from app.models.user import User
 from datetime import date, time, datetime, timedelta, timezone
 import json
@@ -29,6 +30,7 @@ class PodCRUD:
         meeting_date: date,
         meeting_time: time,
         selected_artist_id: Optional[int] = None,
+        status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         pod = Pod(
             owner_id=owner_id,
@@ -48,6 +50,7 @@ class PodCRUD:
             sub_address=sub_address,
             meeting_date=meeting_date,
             meeting_time=meeting_time,
+            status=status,
         )
         self.db.add(pod)
         await self.db.flush()
@@ -108,9 +111,11 @@ class PodCRUD:
         now = datetime.now()
         seven_days_ago = now - timedelta(days=7)
 
-        # 기본 조건: 마감되지 않은 파티
+        # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
-            Pod.is_active == True, Pod.meeting_date >= now.date()  # 마감되지 않은 파티
+            Pod.is_active == True,
+            Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
+            Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
         )
 
         # 페이지네이션 계산
@@ -169,9 +174,11 @@ class PodCRUD:
         now = datetime.now()
         twenty_four_hours_later = now + timedelta(hours=24)
 
-        # 기본 조건: 마감되지 않은 파티
+        # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
-            Pod.is_active == True, Pod.meeting_date >= now.date()  # 마감되지 않은 파티
+            Pod.is_active == True,
+            Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
+            Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
         )
 
         # 지역 조건 추가 (선택사항)

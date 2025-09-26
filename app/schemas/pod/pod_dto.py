@@ -8,6 +8,7 @@ from app.models.pod.pod_enums import (
     TourSubCategory,
     EtcSubCategory,
 )
+from app.models.pod.pod_status import PodStatus
 
 
 class PodDto(BaseModel):
@@ -56,6 +57,12 @@ class PodDto(BaseModel):
         default=None,
         alias="selectedArtistId",
         example=1,
+    )
+    status: PodStatus = Field(
+        default=PodStatus.RECRUITING,
+        alias="status",
+        example="RECRUITING",
+        description="파티 상태 (RECRUITING: 모집중, FULL: 인원 가득참, COMPLETED: 모집 완료, CLOSED: 종료)",
     )
 
     # 개인화 필드
