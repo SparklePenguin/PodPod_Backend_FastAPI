@@ -618,3 +618,12 @@ class PodCRUD:
             select(func.count(PodMember.id)).where(PodMember.pod_id == pod_id)
         )
         return result.scalar() or 0
+
+    async def get_like_count(self, pod_id: int) -> int:
+        """파티 좋아요 수 조회"""
+        from app.models.pod.pod_like import PodLike
+
+        result = await self.db.execute(
+            select(func.count(PodLike.id)).where(PodLike.pod_id == pod_id)
+        )
+        return result.scalar() or 0

@@ -71,6 +71,7 @@ class PodDto(BaseModel):
     # 통계 및 메타데이터 필드
     view_count: int = Field(default=0, alias="viewCount", example=0)
     joined_users_count: int = Field(default=0, alias="joinedUsersCount", example=0)
+    like_count: int = Field(default=0, alias="likeCount", example=0)
     created_at: datetime.datetime = Field(
         alias="createdAt", example="2025-01-01T00:00:00"
     )

@@ -129,13 +129,16 @@ class PodService:
             user_id, selected_artist_id, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
             pod_dto = PodDto.model_validate(pod)
             # 참여자 수 계산
             joined_count = await self.crud.get_joined_users_count(pod.id)
             pod_dto.joined_users_count = joined_count
+            # 좋아요 수 계산
+            like_count = await self.crud.get_like_count(pod.id)
+            pod_dto.like_count = like_count
             pod_dtos.append(pod_dto)
 
         # TODO: 실제 total_count를 가져오는 로직 추가 필요
@@ -173,13 +176,16 @@ class PodService:
             user_id, selected_artist_id, location, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
             pod_dto = PodDto.model_validate(pod)
             # 참여자 수 계산
             joined_count = await self.crud.get_joined_users_count(pod.id)
             pod_dto.joined_users_count = joined_count
+            # 좋아요 수 계산
+            like_count = await self.crud.get_like_count(pod.id)
+            pod_dto.like_count = like_count
             pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
@@ -214,13 +220,16 @@ class PodService:
             user_id, selected_artist_id, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
             pod_dto = PodDto.model_validate(pod)
             # 참여자 수 계산
             joined_count = await self.crud.get_joined_users_count(pod.id)
             pod_dto.joined_users_count = joined_count
+            # 좋아요 수 계산
+            like_count = await self.crud.get_like_count(pod.id)
+            pod_dto.like_count = like_count
             pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
@@ -256,13 +265,16 @@ class PodService:
             user_id, selected_artist_id, location, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수 포함)
+        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
             pod_dto = PodDto.model_validate(pod)
             # 참여자 수 계산
             joined_count = await self.crud.get_joined_users_count(pod.id)
             pod_dto.joined_users_count = joined_count
+            # 좋아요 수 계산
+            like_count = await self.crud.get_like_count(pod.id)
+            pod_dto.like_count = like_count
             pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)

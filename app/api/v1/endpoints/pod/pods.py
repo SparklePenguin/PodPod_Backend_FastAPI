@@ -322,10 +322,12 @@ async def get_pod_detail(
             message_en=error_info.message_en,
         )
 
-    # PodDto로 변환하고 참여자 수 추가
+    # PodDto로 변환하고 참여자 수, 좋아요 수 추가
     pod_dto = PodDto.model_validate(pod)
     joined_count = await pod_service.crud.get_joined_users_count(pod.id)
     pod_dto.joined_users_count = joined_count
+    like_count = await pod_service.crud.get_like_count(pod.id)
+    pod_dto.like_count = like_count
 
     return BaseResponse.ok(data=pod_dto)
 
