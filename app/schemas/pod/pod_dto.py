@@ -64,6 +64,12 @@ class PodDto(BaseModel):
         example="RECRUITING",
         description="파티 상태 (RECRUITING: 모집중, FULL: 인원 가득참, COMPLETED: 모집 완료, CLOSED: 종료)",
     )
+    chat_channel_url: Optional[str] = Field(
+        default=None,
+        alias="chatChannelUrl",
+        example="pod_20_chat",
+        description="Sendbird 채팅방 URL",
+    )
 
     # 개인화 필드
     is_liked: bool = Field(default=False, alias="isLiked", example=False)

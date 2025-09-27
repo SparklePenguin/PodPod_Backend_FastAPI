@@ -47,6 +47,7 @@ class Pod(Base):
     meeting_date = Column(Date, nullable=False)
     meeting_time = Column(Time, nullable=False)
     status = Column(Enum(PodStatus), default=PodStatus.RECRUITING, nullable=False)
+    chat_channel_url = Column(String(255), nullable=True, comment="Sendbird 채팅방 URL")
     is_active = Column(Boolean, default=True)
     created_at = Column(
         DateTime,

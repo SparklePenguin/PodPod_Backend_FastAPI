@@ -38,8 +38,8 @@ class PodService:
                 # 썸네일 생성 실패 시 메인 이미지 URL을 썸네일로 사용
                 thumbnail_url = image_url
 
-        # 파티 생성
-        pod = await self.crud.create_pod(
+        # 파티 생성 (채팅방 포함)
+        pod = await self.crud.create_pod_with_chat(
             owner_id=owner_id,
             title=req.title,
             description=req.description,

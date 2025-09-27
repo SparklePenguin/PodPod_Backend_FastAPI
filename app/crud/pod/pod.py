@@ -627,3 +627,71 @@ class PodCRUD:
             select(func.count(PodLike.id)).where(PodLike.pod_id == pod_id)
         )
         return result.scalar() or 0
+
+    async def create_pod_with_chat(
+        self,
+        owner_id: int,
+        title: str,
+        description: Optional[str],
+        image_url: Optional[str],
+        thumbnail_url: Optional[str],
+        sub_categories: List[str],
+        capacity: int,
+        place: str,
+        address: str,
+        sub_address: Optional[str],
+        meeting_date: date,
+        meeting_time: time,
+        selected_artist_id: Optional[int] = None,
+        status: PodStatus = PodStatus.RECRUITING,
+    ) -> Pod:
+        """파티 생성 (채팅방 포함)"""
+        # 파티 생성
+        pod = await self.create_pod(
+            owner_id=owner_id,
+            title=title,
+            description=description,
+            image_url=image_url,
+            thumbnail_url=thumbnail_url,
+            sub_categories=sub_categories,
+            capacity=capacity,
+            place=place,
+            address=address,
+            sub_address=sub_address,
+            meeting_date=meeting_date,
+            meeting_time=meeting_time,
+            selected_artist_id=selected_artist_id,
+            status=status,
+        )
+
+        # Sendbird 채팅방 생성
+        try:
+            from app.services.sendbird_service import SendbirdService
+
+            sendbird_service = SendbirdService()
+
+            # 채널 URL 생성 (pod_{pod_id}_chat 형식)
+            channel_url = f"pod_{pod.id}_chat"
+
+            # 채널 생성
+            channel_data = await sendbird_service.create_group_channel(
+                channel_url=channel_url,
+                name=f"{title} 채팅방",
+                user_ids=[str(owner_id)],  # 파티 생성자만 초기 멤버
+                data={"pod_id": pod.id, "pod_title": title, "type": "pod_chat"},
+            )
+
+            if channel_data:
+                # 채팅방 URL을 파티에 저장
+                pod.chat_channel_url = channel_url
+                await self.db.commit()
+                await self.db.refresh(pod)
+
+        except ValueError as e:
+            print(f"Sendbird 설정 오류: {e}")
+            # Sendbird 설정이 없으면 채팅방 없이 파티만 생성
+        except Exception as e:
+            print(f"Sendbird 채팅방 생성 실패: {e}")
+            # 채팅방 생성 실패해도 파티는 생성됨
+
+        return pod

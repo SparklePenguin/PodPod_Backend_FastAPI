@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     MYSQL_PORT: int = 3306
     MYSQL_DATABASE: str = "podpod"
 
+    # Sendbird 설정
+    SENDBIRD_APP_ID: Optional[str] = os.getenv("SENDBIRD_APP_ID")
+    SENDBIRD_API_TOKEN: Optional[str] = os.getenv("SENDBIRD_API_TOKEN")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 필수 환경변수 검증
@@ -39,8 +43,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"  # development, production
 
     # 카카오 OAuth 설정
-    KAKAO_CLIENT_ID: Optional[str] = os.getenv("KAKAO_CLIENT_ID")
-    KAKAO_CLIENT_SECRET: Optional[str] = os.getenv("KAKAO_CLIENT_SECRET")
+    KAKAO_CLIENT_ID: str = os.getenv("KAKAO_CLIENT_ID")
+    KAKAO_CLIENT_SECRET: str = os.getenv("KAKAO_CLIENT_SECRET")
     KAKAO_REDIRECT_URI: str = "http://localhost:3000/auth/kakao/callback"
     KAKAO_TOKEN_URL: str = "https://kauth.kakao.com/oauth/token"
     KAKAO_USER_INFO_URL: str = "https://kapi.kakao.com/v2/user/me"
