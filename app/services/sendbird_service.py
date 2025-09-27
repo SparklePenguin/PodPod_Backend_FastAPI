@@ -5,6 +5,7 @@ from sendbird_platform_sdk.model.create_a_group_channel_request import (
 )
 from sendbird_platform_sdk.model.join_a_channel_request import JoinAChannelRequest
 from sendbird_platform_sdk.model.leave_a_channel_request import LeaveAChannelRequest
+from sendbird_platform_sdk.model.sendbird_user import SendbirdUser
 from typing import Optional, Dict, Any, List
 from app.core.config import settings
 
@@ -49,11 +50,14 @@ class SendbirdService:
             with sendbird_platform_sdk.ApiClient(self.configuration) as api_client:
                 api_instance = group_channel_api.GroupChannelApi(api_client)
 
+                # SendbirdUser 객체들 생성
+                users = [SendbirdUser(user_id=user_id) for user_id in user_ids]
+
                 # CreateAGroupChannelRequest 객체 생성
                 create_channel_request = CreateAGroupChannelRequest(
+                    users=users,
                     channel_url=channel_url,
                     name=name,
-                    user_ids=user_ids,
                     is_distinct=False,  # 동일한 사용자들로 여러 채널 생성 가능
                     is_public=False,  # 비공개 채널
                     is_super=False,  # 일반 채널
@@ -64,7 +68,9 @@ class SendbirdService:
                     create_channel_request.cover_url = cover_url
 
                 if data:
-                    create_channel_request.data = data
+                    import json
+
+                    create_channel_request.data = json.dumps(data)
 
                 # 채널 생성
                 api_response = api_instance.create_a_group_channel(
@@ -76,9 +82,13 @@ class SendbirdService:
 
         except sendbird_platform_sdk.ApiException as e:
             print(f"Sendbird API 오류: {e.status} - {e.reason}")
+            print(f"오류 상세: {e.body}")
             return None
         except Exception as e:
             print(f"Sendbird API 요청 실패: {e}")
+            import traceback
+
+            traceback.print_exc()
             return None
 
     async def add_members_to_channel(

@@ -695,3 +695,37 @@ class PodCRUD:
             # 채팅방 생성 실패해도 파티는 생성됨
 
         return pod
+
+    async def get_pods_without_chat_channel(self) -> List[Pod]:
+        """채팅방 URL이 없는 파티들 조회"""
+        result = await self.db.execute(
+            select(Pod).where(Pod.chat_channel_url.is_(None))
+        )
+        return result.scalars().all()
+
+    async def update_chat_channel_url(self, pod_id: int, channel_url: str) -> bool:
+        """파티의 채팅방 URL 업데이트"""
+        try:
+            result = await self.db.execute(select(Pod).where(Pod.id == pod_id))
+            pod = result.scalar_one_or_none()
+
+            if pod:
+                pod.chat_channel_url = channel_url
+                await self.db.commit()
+                return True
+            return False
+        except Exception as e:
+            await self.db.rollback()
+            raise e
+
+    async def get_all_pods(self) -> List[Pod]:
+        """모든 파티 조회"""
+        result = await self.db.execute(select(Pod).order_by(Pod.id))
+        return result.scalars().all()
+
+    async def get_pods_with_chat_channels(self) -> List[Pod]:
+        """채팅방 URL이 있는 파티들 조회"""
+        result = await self.db.execute(
+            select(Pod).where(Pod.chat_channel_url.is_not(None)).order_by(Pod.id)
+        )
+        return result.scalars().all()
