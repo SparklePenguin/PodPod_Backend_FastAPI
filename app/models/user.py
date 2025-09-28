@@ -37,3 +37,11 @@ class User(Base):
 
     # 관계 설정
     preferred_artists = relationship("PreferredArtist", back_populates="user")
+
+    # 팔로우 관계
+    following = relationship(
+        "Follow", foreign_keys="Follow.follower_id", back_populates="follower"
+    )
+    followers = relationship(
+        "Follow", foreign_keys="Follow.following_id", back_populates="following"
+    )

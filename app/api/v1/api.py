@@ -7,6 +7,7 @@ from .endpoints import (
     tendencies,
     surveys,
     artist_schedules,
+    follow,
 )
 from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
@@ -39,6 +40,9 @@ api_router.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
 api_router.include_router(pods.router, prefix="/pods", tags=["pods"])
 api_router.include_router(recruitments, prefix="/recruitments", tags=["recruitments"])
 api_router.include_router(pod_likes, prefix="/pods", tags=["podLikes"])
+
+# 팔로우 관련 라우터
+api_router.include_router(follow.router, prefix="/follow", tags=["follow"])
 
 # 관리자 관련 라우터
 api_router.include_router(admin_router)
