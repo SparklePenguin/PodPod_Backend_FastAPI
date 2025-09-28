@@ -102,9 +102,9 @@ class BaseResponse(BaseModel, Generic[T]):
         return cls(
             data=None,
             error=error_key,
-            error_code=error_info["code"],
-            http_status=error_info["http_status"],
-            message_ko=error_info["message_ko"],
-            message_en=error_info["message_en"],
+            error_code=error_info.code,
+            http_status=error_info.http_status,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
             dev_note=error_response.get("dev_note"),
         )

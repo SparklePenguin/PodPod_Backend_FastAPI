@@ -28,6 +28,7 @@ class ErrorInfo:
     code: int
     message_ko: str
     message_en: str
+    http_status: int
     dev_note: str = None
 
     @property

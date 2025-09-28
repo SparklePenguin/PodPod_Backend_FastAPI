@@ -1,4 +1,5 @@
 import sendbird_platform_sdk
+import json
 from sendbird_platform_sdk.api import group_channel_api
 from sendbird_platform_sdk.model.create_a_group_channel_request import (
     CreateAGroupChannelRequest,
@@ -84,6 +85,90 @@ class SendbirdService:
             print(f"Sendbird API 오류: {e.status} - {e.reason}")
             print(f"오류 상세: {e.body}")
             return None
+        except Exception as e:
+            print(f"Sendbird API 요청 실패: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return None
+
+    async def get_channel_metadata(self, channel_url: str) -> Optional[Dict[str, Any]]:
+        """
+        채널 메타데이터 조회
+
+        Args:
+            channel_url: 채널 URL
+
+        Returns:
+            채널 메타데이터 또는 None
+        """
+        try:
+            print(f"채널 메타데이터 조회 시도: {channel_url}")
+
+            # 원시 HTTP 요청으로 직접 처리
+            import httpx
+
+            url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/group_channels/{channel_url}"
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, headers=headers)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"채널 메타데이터 조회 성공: {result}")
+                    return result
+                else:
+                    print(
+                        f"Sendbird API 오류: {response.status_code} - {response.text}"
+                    )
+                    return None
+
+        except Exception as e:
+            print(f"Sendbird API 요청 실패: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return None
+
+    async def update_channel_metadata(
+        self, channel_url: str, data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        채널 메타데이터 업데이트
+
+        Args:
+            channel_url: 채널 URL
+            data: 업데이트할 메타데이터
+
+        Returns:
+            업데이트된 채널 정보 또는 None
+        """
+        try:
+            print(f"채널 메타데이터 업데이트 시도: {channel_url}")
+
+            # 원시 HTTP 요청으로 직접 처리
+            import httpx
+
+            url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/group_channels/{channel_url}"
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            # 업데이트할 데이터 준비 (이미 JSON 문자열로 받음)
+            update_data = {"data": data}
+
+            async with httpx.AsyncClient() as client:
+                response = await client.put(url, headers=headers, json=update_data)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"채널 메타데이터 업데이트 성공: {result}")
+                    return result
+                else:
+                    print(
+                        f"Sendbird API 오류: {response.status_code} - {response.text}"
+                    )
+                    return None
+
         except Exception as e:
             print(f"Sendbird API 요청 실패: {e}")
             import traceback

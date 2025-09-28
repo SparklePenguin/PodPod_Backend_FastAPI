@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
+from datetime import datetime
+import json
 from app.core.database import get_db
 from app.crud.pod.pod import PodCRUD
 from app.services.sendbird_service import SendbirdService
@@ -76,7 +78,27 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                     channel_url=channel_url,
                     name=f"{pod.title} 채팅방",
                     user_ids=[str(pod.owner_id)],  # 파티 생성자만 초기 멤버
-                    data={"pod_id": pod.id, "pod_title": pod.title, "type": "pod_chat"},
+                    data=json.dumps(
+                        {
+                            "id": pod.id,
+                            "title": pod.title,
+                            "place": pod.place,
+                            "meetingDate": (
+                                int(
+                                    datetime.combine(
+                                        pod.meeting_date, pod.meeting_time
+                                    ).timestamp()
+                                    * 1000
+                                )
+                            ),
+                            "subCategories": (
+                                json.loads(pod.sub_categories)
+                                if pod.sub_categories
+                                else []
+                            ),
+                        },
+                        ensure_ascii=False,
+                    ),
                 )
 
                 if channel_data:
@@ -291,4 +313,189 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_db)):
             http_status=HttpStatus.INTERNAL_SERVER_ERROR,
             message_ko=f"서버 오류: {str(e)}",
             message_en=f"Internal server error: {str(e)}",
+        )
+
+
+@router.get("/channel-metadata/{channel_url}")
+async def get_channel_metadata(
+    channel_url: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """채널 메타데이터 확인"""
+    try:
+        # Sendbird 서비스 초기화
+        try:
+            sendbird_service = SendbirdService()
+        except ValueError as e:
+            return BaseResponse.error(
+                error_key="SENDBIRD_CONFIG_ERROR",
+                error_code=1001,
+                http_status=HttpStatus.BAD_REQUEST,
+                message_ko="Sendbird 설정이 누락되었습니다.",
+                message_en="Sendbird configuration is missing.",
+            )
+        except Exception as e:
+            return BaseResponse.error(
+                error_key="SENDBIRD_SERVICE_ERROR",
+                error_code=1002,
+                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
+                message_en=f"Failed to initialize Sendbird service: {str(e)}",
+            )
+
+        metadata = await sendbird_service.get_channel_metadata(channel_url)
+
+        if metadata:
+            return BaseResponse.ok(
+                data={"channel_url": channel_url, "metadata": metadata},
+                http_status=HttpStatus.OK,
+            )
+        else:
+            return BaseResponse(
+                data=None,
+                error="CHANNEL_NOT_FOUND",
+                error_code=404,
+                http_status=HttpStatus.NOT_FOUND,
+                message_ko="채널을 찾을 수 없습니다",
+                message_en="Channel not found",
+                dev_note=None,
+            )
+
+    except Exception as e:
+        return BaseResponse(
+            data=None,
+            error="METADATA_FETCH_FAILED",
+            error_code=500,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko="메타데이터 조회 실패",
+            message_en="Failed to fetch metadata",
+            dev_note=None,
+        )
+
+
+@router.put("/update-metadata")
+async def update_channel_metadata(
+    db: AsyncSession = Depends(get_db),
+):
+    """기존 채팅방들의 메타데이터 업데이트"""
+    try:
+        pod_crud = PodCRUD(db)
+
+        # Sendbird 서비스 초기화
+        try:
+            sendbird_service = SendbirdService()
+        except ValueError as e:
+            return BaseResponse(
+                data=None,
+                error="SENDBIRD_CONFIG_ERROR",
+                error_code=1001,
+                http_status=HttpStatus.BAD_REQUEST,
+                message_ko="Sendbird 설정이 누락되었습니다.",
+                message_en="Sendbird configuration is missing.",
+                dev_note=None,
+            )
+        except Exception as e:
+            return BaseResponse(
+                data=None,
+                error="SENDBIRD_SERVICE_ERROR",
+                error_code=1002,
+                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
+                message_en=f"Failed to initialize Sendbird service: {str(e)}",
+                dev_note=None,
+            )
+
+        # 채팅방 URL이 있는 파티들 조회
+        pods_with_channels = await pod_crud.get_pods_with_chat_channels()
+
+        if not pods_with_channels:
+            return BaseResponse.ok(
+                data={"message": "업데이트할 채팅방이 없습니다."},
+                http_status=HttpStatus.OK,
+            )
+
+        success_count = 0
+        error_count = 0
+        results = []
+
+        for pod in pods_with_channels:
+            try:
+                # 새로운 메타데이터 생성
+                new_metadata = json.dumps(
+                    {
+                        "id": pod.id,
+                        "title": pod.title,
+                        "place": pod.place,
+                        "meetingDate": (
+                            int(
+                                datetime.combine(
+                                    pod.meeting_date, pod.meeting_time
+                                ).timestamp()
+                                * 1000
+                            )
+                        ),
+                        "subCategories": (
+                            json.loads(pod.sub_categories) if pod.sub_categories else []
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
+
+                # Sendbird 채널 메타데이터 업데이트
+                update_result = await sendbird_service.update_channel_metadata(
+                    pod.chat_channel_url, new_metadata
+                )
+
+                if update_result:
+                    success_count += 1
+                    results.append(
+                        {
+                            "pod_id": pod.id,
+                            "title": pod.title,
+                            "channel_url": pod.chat_channel_url,
+                            "status": "updated",
+                        }
+                    )
+                else:
+                    error_count += 1
+                    results.append(
+                        {
+                            "pod_id": pod.id,
+                            "title": pod.title,
+                            "channel_url": pod.chat_channel_url,
+                            "status": "failed",
+                            "error": "메타데이터 업데이트 실패",
+                        }
+                    )
+
+            except Exception as e:
+                error_count += 1
+                results.append(
+                    {
+                        "pod_id": pod.id,
+                        "title": pod.title,
+                        "status": "failed",
+                        "error": str(e),
+                    }
+                )
+
+        return BaseResponse.ok(
+            data={
+                "message": f"메타데이터 업데이트 완료: 성공 {success_count}개, 실패 {error_count}개",
+                "success_count": success_count,
+                "error_count": error_count,
+                "results": results,
+            },
+            http_status=HttpStatus.OK,
+        )
+
+    except Exception as e:
+        return BaseResponse(
+            data=None,
+            error="INTERNAL_SERVER_ERROR",
+            error_code=5000,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=f"서버 오류: {str(e)}",
+            message_en=f"Internal server error: {str(e)}",
+            dev_note=None,
         )
