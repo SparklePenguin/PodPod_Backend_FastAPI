@@ -56,9 +56,9 @@ async def follow_user(
         )
 
 
-@router.delete("/{following_id}", response_model=BaseResponse[bool])
+@router.delete("/{followingId}", response_model=BaseResponse[bool])
 async def unfollow_user(
-    following_id: int = Path(..., description="팔로우 취소할 사용자 ID"),
+    followingId: int = Path(..., description="팔로우 취소할 사용자 ID"),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -66,7 +66,7 @@ async def unfollow_user(
     try:
         follow_service = FollowService(db)
         success = await follow_service.unfollow_user(
-            follower_id=current_user_id, following_id=following_id
+            follower_id=current_user_id, following_id=followingId
         )
 
         if not success:
@@ -157,9 +157,9 @@ async def get_followers_list(
         )
 
 
-@router.get("/stats/{user_id}", response_model=BaseResponse[FollowStatsResponse])
+@router.get("/stats/{userId}", response_model=BaseResponse[FollowStatsResponse])
 async def get_follow_stats(
-    user_id: int = Path(..., description="사용자 ID"),
+    userId: int = Path(..., description="사용자 ID"),
     current_user_id: Optional[int] = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -167,7 +167,7 @@ async def get_follow_stats(
     try:
         follow_service = FollowService(db)
         stats = await follow_service.get_follow_stats(
-            user_id=user_id, current_user_id=current_user_id
+            user_id=userId, current_user_id=current_user_id
         )
 
         return BaseResponse.ok(
@@ -188,13 +188,13 @@ async def get_follow_stats(
 
 
 @router.get("/pods", response_model=BaseResponse[list[PodDto]])
-async def get_following_pods(
+async def get_following_users_pods(
     page: int = Query(1, ge=1, description="페이지 번호"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기"),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """팔로우하는 사용자가 만든 파티 목록 조회"""
+    """팔로우하는 사용자들이 만든 파티 목록 조회"""
     try:
         follow_service = FollowService(db)
         pods = await follow_service.get_following_pods(

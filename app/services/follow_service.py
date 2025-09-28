@@ -57,10 +57,10 @@ class FollowService:
 
         return FollowListResponse(
             users=users,
-            total_count=total_count,
+            totalCount=total_count,
             page=page,
             size=size,
-            has_next=has_next,
+            hasNext=has_next,
         )
 
     async def get_followers_list(
@@ -86,10 +86,10 @@ class FollowService:
 
         return FollowListResponse(
             users=users,
-            total_count=total_count,
+            totalCount=total_count,
             page=page,
             size=size,
-            has_next=has_next,
+            hasNext=has_next,
         )
 
     async def get_follow_stats(
@@ -99,9 +99,9 @@ class FollowService:
         stats = await self.crud.get_follow_stats(user_id, current_user_id)
 
         return FollowStatsResponse(
-            following_count=stats["following_count"],
-            followers_count=stats["followers_count"],
-            is_following=stats["is_following"],
+            followingCount=stats["following_count"],
+            followersCount=stats["followers_count"],
+            isFollowing=stats["is_following"],
         )
 
     async def get_following_pods(
