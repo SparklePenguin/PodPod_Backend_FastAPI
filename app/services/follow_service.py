@@ -21,9 +21,9 @@ class FollowService:
         self.crud = FollowCRUD(db)
         self.pod_crud = PodCRUD(db)
 
-    async def follow_user(self, follower_id: int, following_id: int) -> FollowResponse:
+    async def follow_user(self, follower_id: int, followingId: int) -> FollowResponse:
         """사용자 팔로우"""
-        follow = await self.crud.create_follow(follower_id, following_id)
+        follow = await self.crud.create_follow(follower_id, followingId)
 
         if not follow:
             raise ValueError("팔로우에 실패했습니다.")

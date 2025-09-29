@@ -6,9 +6,7 @@ from datetime import datetime
 class FollowRequest(BaseModel):
     """팔로우 요청 스키마"""
 
-    followingId: int = Field(
-        ..., alias="following_id", description="팔로우할 사용자 ID", example=1
-    )
+    followingId: int = Field(..., description="팔로우할 사용자 ID", example=1)
 
 
 class FollowResponse(BaseModel):

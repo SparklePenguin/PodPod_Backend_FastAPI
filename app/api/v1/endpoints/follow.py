@@ -28,7 +28,7 @@ async def follow_user(
     try:
         follow_service = FollowService(db)
         follow = await follow_service.follow_user(
-            follower_id=current_user_id, following_id=request.following_id
+            follower_id=current_user_id, followingId=request.followingId
         )
 
         return BaseResponse.ok(
