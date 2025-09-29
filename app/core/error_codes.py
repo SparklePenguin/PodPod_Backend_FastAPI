@@ -205,6 +205,7 @@ def get_error_info(error_key: str, language: str = "ko") -> ErrorInfo:
         code=error_data["code"],
         message_ko=error_data["message_ko"],
         message_en=error_data["message_en"],
+        http_status=error_data["http_status"],
         dev_note=error_data.get("dev_note"),
     )
 

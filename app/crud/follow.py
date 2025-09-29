@@ -2,9 +2,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, desc
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Tuple
+from datetime import datetime
 from app.models.follow import Follow
 from app.models.user import User
 from app.models.pod.pod import Pod
+from app.models.tendency import UserTendencyResult
 
 
 class FollowCRUD:
@@ -60,14 +62,15 @@ class FollowCRUD:
 
     async def get_following_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> Tuple[List[User], int]:
+    ) -> Tuple[List[Tuple[User, datetime, Optional[str]]], int]:
         """팔로우하는 사용자 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로우하는 사용자 목록 조회
+        # 팔로우하는 사용자 목록 조회 (성향 타입 포함)
         query = (
-            select(User, Follow.created_at)
+            select(User, Follow.created_at, UserTendencyResult.tendency_type)
             .join(Follow, User.id == Follow.following_id)
+            .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
             .where(Follow.follower_id == user_id)
             .order_by(desc(Follow.created_at))
             .offset(offset)
@@ -85,14 +88,15 @@ class FollowCRUD:
 
     async def get_followers_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> Tuple[List[User], int]:
+    ) -> Tuple[List[Tuple[User, datetime, Optional[str]]], int]:
         """팔로워 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로워 목록 조회
+        # 팔로워 목록 조회 (성향 타입 포함)
         query = (
-            select(User, Follow.created_at)
+            select(User, Follow.created_at, UserTendencyResult.tendency_type)
             .join(Follow, User.id == Follow.follower_id)
+            .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
             .where(Follow.following_id == user_id)
             .order_by(desc(Follow.created_at))
             .offset(offset)
@@ -171,15 +175,16 @@ class FollowCRUD:
 
     async def get_recommended_users(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> List[User]:
+    ) -> List[Tuple[User, Optional[str]]]:
         """추천 유저 목록 조회 (현재는 랜덤 유저 반환)"""
         offset = (page - 1) * size
 
-        # 현재 사용자가 팔로우하지 않은 다른 사용자들을 랜덤으로 조회
+        # 현재 사용자가 팔로우하지 않은 다른 사용자들을 랜덤으로 조회 (성향 타입 포함)
         subquery = select(Follow.following_id).where(Follow.follower_id == user_id)
 
         query = (
-            select(User)
+            select(User, UserTendencyResult.tendency_type)
+            .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
             .where(
                 and_(
                     User.id != user_id,  # 자기 자신 제외
@@ -192,6 +197,6 @@ class FollowCRUD:
         )
 
         result = await self.db.execute(query)
-        users = result.scalars().all()
+        users = result.all()
 
         return users

@@ -10,6 +10,7 @@ from app.schemas.follow import (
     FollowStatsResponse,
 )
 from app.schemas.pod.pod_dto import PodDto
+from app.schemas.common.page_dto import PageDto
 from app.core.error_codes import get_error_info
 
 
@@ -21,9 +22,9 @@ class FollowService:
         self.crud = FollowCRUD(db)
         self.pod_crud = PodCRUD(db)
 
-    async def follow_user(self, follower_id: int, followingId: int) -> FollowResponse:
+    async def follow_user(self, follower_id: int, following_id: int) -> FollowResponse:
         """사용자 팔로우"""
-        follow = await self.crud.create_follow(follower_id, followingId)
+        follow = await self.crud.create_follow(follower_id, following_id)
 
         if not follow:
             raise ValueError("팔로우에 실패했습니다.")
@@ -36,60 +37,74 @@ class FollowService:
 
     async def get_following_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> FollowListResponse:
+    ) -> PageDto[UserFollowDto]:
         """팔로우하는 사용자 목록 조회"""
         following_data, total_count = await self.crud.get_following_list(
             user_id, page, size
         )
 
         users = []
-        for user, created_at in following_data:
+        for user, created_at, tendency_type in following_data:
             user_dto = UserFollowDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
                 intro=user.intro,
+                tendency_type=tendency_type,
                 created_at=created_at,
             )
             users.append(user_dto)
 
         has_next = (page * size) < total_count
 
-        return FollowListResponse(
-            users=users,
-            totalCount=total_count,
-            page=page,
-            size=size,
-            hasNext=has_next,
+        # PageDto 생성
+        total_pages = (total_count + size - 1) // size
+        has_next = page < total_pages
+        has_prev = page > 1
+
+        return PageDto(
+            items=users,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
         )
 
     async def get_followers_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> FollowListResponse:
+    ) -> PageDto[UserFollowDto]:
         """팔로워 목록 조회"""
         followers_data, total_count = await self.crud.get_followers_list(
             user_id, page, size
         )
 
         users = []
-        for user, created_at in followers_data:
+        for user, created_at, tendency_type in followers_data:
             user_dto = UserFollowDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
                 intro=user.intro,
+                tendency_type=tendency_type,
                 created_at=created_at,
             )
             users.append(user_dto)
 
-        has_next = (page * size) < total_count
+        # PageDto 생성
+        total_pages = (total_count + size - 1) // size
+        has_next = page < total_pages
+        has_prev = page > 1
 
-        return FollowListResponse(
-            users=users,
-            totalCount=total_count,
-            page=page,
-            size=size,
-            hasNext=has_next,
+        return PageDto(
+            items=users,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
         )
 
     async def get_follow_stats(
@@ -99,14 +114,14 @@ class FollowService:
         stats = await self.crud.get_follow_stats(user_id, current_user_id)
 
         return FollowStatsResponse(
-            followingCount=stats["following_count"],
-            followersCount=stats["followers_count"],
-            isFollowing=stats["is_following"],
+            following_count=stats["following_count"],
+            followers_count=stats["followers_count"],
+            is_following=stats["is_following"],
         )
 
     async def get_following_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> List[PodDto]:
+    ) -> PageDto[PodDto]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
         pods, total_count = await self.crud.get_following_pods(user_id, page, size)
 
@@ -122,23 +137,51 @@ class FollowService:
 
             pod_dtos.append(pod_dto)
 
-        return pod_dtos
+        # PageDto 생성
+        total_pages = (total_count + size - 1) // size
+        has_next = page < total_pages
+        has_prev = page > 1
+
+        return PageDto(
+            items=pod_dtos,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
+        )
 
     async def get_recommended_users(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> List[UserFollowDto]:
+    ) -> PageDto[UserFollowDto]:
         """추천 유저 목록 조회 (현재는 랜덤 유저 반환)"""
         recommended_users = await self.crud.get_recommended_users(user_id, page, size)
 
         users = []
-        for user in recommended_users:
+        for user, tendency_type in recommended_users:
             user_dto = UserFollowDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
                 intro=user.intro,
-                created_at=user.created_at,
+                tendency_type=tendency_type,
+                created_at=None,  # 추천 유저는 팔로우 관계가 없으므로 created_at이 없음
             )
             users.append(user_dto)
 
-        return users
+        # 추천 유저는 총 개수를 정확히 알 수 없으므로 간단하게 처리
+        total_count = len(users)
+        total_pages = 1 if total_count > 0 else 0
+        has_next = False  # 추천 유저는 한 페이지만 제공
+        has_prev = False
+
+        return PageDto(
+            items=users,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
+        )
