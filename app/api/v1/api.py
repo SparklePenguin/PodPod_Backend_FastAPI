@@ -8,7 +8,7 @@ from .endpoints import (
     surveys,
     artist_schedules,
     follow,
-
+    artist_suggestions,
     pod_reviews,
 )
 from .endpoints.pod import pods, recruitments, pod_likes
@@ -29,6 +29,9 @@ api_router.include_router(oauths.router, prefix="/oauths", tags=["oauths"])
 api_router.include_router(artists.router, prefix="/artists", tags=["artists"])
 api_router.include_router(
     artist_schedules.router, prefix="/artist/schedules", tags=["artistSchedule"]
+)
+api_router.include_router(
+    artist_suggestions.router, prefix="/artist-suggestions", tags=["artistSuggestions"]
 )
 
 # 성향 테스트 관련 라우터

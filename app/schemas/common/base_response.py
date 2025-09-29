@@ -27,7 +27,7 @@ class BaseResponse(BaseModel, Generic[T]):
         example=None,
     )
     # 에러 정보 필드들 (실패 시에만 포함)
-    error: Optional[str] = Field(
+    error_key: Optional[str] = Field(
         alias="error",
         description="에러 코드 키",
         example=None,
@@ -59,6 +59,23 @@ class BaseResponse(BaseModel, Generic[T]):
         return cls(
             data=data,
             http_status=http_status,
+            message_ko=message_ko,
+            message_en=message_en,
+            error=None,
+            error_code=None,
+            dev_note=None,
+        )
+
+    @classmethod
+    def created(
+        cls,
+        data: T = None,
+        message_ko: Optional[str] = None,
+        message_en: Optional[str] = None,
+    ) -> "BaseResponse[T]":
+        return cls(
+            data=data,
+            http_status=201,
             message_ko=message_ko,
             message_en=message_en,
             error=None,

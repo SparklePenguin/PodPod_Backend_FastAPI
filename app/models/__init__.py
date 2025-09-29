@@ -9,6 +9,7 @@ from .tendency import (
     UserTendencyResult,
 )
 from .pod_review import PodReview
+from .artist_suggestion import ArtistSuggestion
 
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "TendencySurvey",
     "UserTendencyResult",
     "PodReview",
+    "ArtistSuggestion",
 ]
