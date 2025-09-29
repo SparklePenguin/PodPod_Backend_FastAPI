@@ -56,9 +56,15 @@ class PodService:
             status=status,
         )
 
-        # Pod 모델을 PodDto로 변환
+        # Pod 모델을 PodDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
-            return PodDto.model_validate(pod)
+            pod_dto = PodDto.model_validate(pod)
+            # 통계 필드 설정 (다른 조회 API들과 동일한 방식)
+            pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
+            pod_dto.like_count = await self.crud.get_like_count(pod.id)
+            pod_dto.view_count = await self.crud.get_view_count(pod.id)
+            pod_dto.is_liked = await self.crud.is_liked_by_user(pod.id, owner_id)
+            return pod_dto
         return None
 
     async def _create_thumbnail_from_image(self, image: UploadFile) -> str:

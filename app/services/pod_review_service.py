@@ -10,7 +10,10 @@ from app.schemas.pod_review import (
 from app.schemas.follow import UserFollowDto
 from app.schemas.common import PageDto
 from app.models.pod_review import PodReview
+from app.core.logging_config import get_logger
 import math
+
+logger = get_logger("pod_review_service")
 
 
 class PodReviewService:

@@ -50,13 +50,15 @@ async def get_current_user_id(token: str = Depends(security)) -> int:
         payload = jwt.decode(
             token.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id: int = payload.get("sub")
-        if user_id is None:
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             )
+        # JWT의 sub 필드는 문자열이므로 정수로 변환
+        user_id = int(user_id_str)
         return user_id
-    except JWTError:
+    except (JWTError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
         )

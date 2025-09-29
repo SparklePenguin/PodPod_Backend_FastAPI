@@ -753,3 +753,23 @@ class PodCRUD:
         total_count = count_result.scalar()
 
         return pods, total_count
+
+    async def get_view_count(self, pod_id: int) -> int:
+        """파티 조회수 조회"""
+        from app.models.pod.pod_view import PodView
+
+        result = await self.db.execute(
+            select(func.count(PodView.id)).where(PodView.pod_id == pod_id)
+        )
+        return result.scalar() or 0
+
+    async def is_liked_by_user(self, pod_id: int, user_id: int) -> bool:
+        """사용자가 파티를 좋아요했는지 확인"""
+        from app.models.pod.pod_like import PodLike
+
+        result = await self.db.execute(
+            select(PodLike).where(
+                and_(PodLike.pod_id == pod_id, PodLike.user_id == user_id)
+            )
+        )
+        return result.scalar_one_or_none() is not None
