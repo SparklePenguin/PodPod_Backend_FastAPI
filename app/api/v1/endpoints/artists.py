@@ -1,15 +1,24 @@
-from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
+from typing import Dict, Any, Optional
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Query,
+    Path,
+    File,
+    UploadFile,
+    Form,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.artist_service import ArtistService
 from app.schemas.common import BaseResponse, PageDto
-from app.schemas.artist import ArtistDto
+from app.schemas.artist import ArtistDto, ArtistSimpleDto
 from app.schemas.artist_image import (
     ArtistImageDto,
     UpdateArtistImageRequest,
-    BulkUpdateArtistImagesRequest,
 )
 from app.crud.artist import ArtistCRUD
 from app.core.http_status import HttpStatus
@@ -19,6 +28,32 @@ router = APIRouter()
 
 def get_artist_service(db: AsyncSession = Depends(get_db)) -> ArtistService:
     return ArtistService(db)
+
+
+# - MARK: 아티스트 목록 조회 (간소화)
+@router.get(
+    "/simple",
+    response_model=BaseResponse[PageDto[ArtistSimpleDto]],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[PageDto[ArtistSimpleDto]],
+            "description": "아티스트 목록 조회 성공 (간소화)",
+        },
+    },
+    summary="아티스트 목록 조회 (간소화)",
+    description="아티스트 목록을 간소화된 형태로 조회합니다. ArtistUnit의 artist_id에 해당하는 아티스트 정보(unitId, artistId, 이름)를 반환합니다.",
+)
+async def get_artists_simple(
+    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
+    page_size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
+    is_active: bool = Query(True, description="활성화 상태 필터 (true/false)"),
+    artist_service: ArtistService = Depends(get_artist_service),
+):
+    """아티스트 목록 조회 (간소화 - ArtistUnit의 artist_id에 해당하는 아티스트 정보)"""
+    page_data = await artist_service.get_artists_simple(
+        page=page, page_size=page_size, is_active=is_active
+    )
+    return BaseResponse.ok(data=page_data)
 
 
 # - MARK: 아티스트 목록 조회
@@ -96,63 +131,15 @@ async def sync_mvp_artists(
     return BaseResponse.ok(data=result)
 
 
-# - MARK: 아티스트 이미지 관리 (내부용)
-@router.put(
-    "/{artist_id}/images",
-    response_model=BaseResponse[Dict[str, Any]],
-    tags=["internal"],
-    summary="아티스트 이미지 일괄 업데이트",
-    description="⚠️ 내부용 API - 특정 아티스트의 모든 이미지를 일괄 업데이트합니다.",
-)
-async def bulk_update_artist_images(
-    artist_id: int = Path(..., description="아티스트 ID"),
-    request: BulkUpdateArtistImagesRequest = ...,
-    db: AsyncSession = Depends(get_db),
-):
-    """아티스트의 모든 이미지를 일괄 업데이트합니다."""
-    try:
-        artist_crud = ArtistCRUD(db)
-
-        # 이미지 데이터를 딕셔너리 형태로 변환
-        images_data = [image.model_dump() for image in request.images]
-
-        success, message = await artist_crud.update_artist_images(
-            artist_id, images_data
-        )
-
-        if not success:
-            raise HTTPException(
-                status_code=HttpStatus.BAD_REQUEST,
-                detail=message,
-            )
-
-        return BaseResponse.ok(
-            data={
-                "message": message,
-                "artist_id": artist_id,
-                "updated_count": len(images_data),
-            },
-            http_status=HttpStatus.OK,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
-            detail=f"아티스트 이미지 업데이트 실패: {str(e)}",
-        )
-
-
 @router.get(
-    "/{artist_id}/images",
+    "/{artistId}/images",
     response_model=BaseResponse[list[ArtistImageDto]],
     tags=["internal"],
     summary="아티스트 이미지 목록 조회",
     description="⚠️ 내부용 API - 특정 아티스트의 모든 이미지를 조회합니다.",
 )
 async def get_artist_images(
-    artist_id: int = Path(..., description="아티스트 ID"),
+    artist_id: int = Path(..., description="아티스트 ID", alias="artistId"),
     db: AsyncSession = Depends(get_db),
 ):
     """아티스트의 모든 이미지를 조회합니다."""
@@ -185,33 +172,76 @@ async def get_artist_images(
         )
 
 
-@router.put(
-    "/artist-images/{image_id}",
+@router.post(
+    "/{artistId}/images",
     response_model=BaseResponse[Dict[str, Any]],
     tags=["internal"],
-    summary="단일 아티스트 이미지 업데이트",
-    description="⚠️ 내부용 API - 특정 아티스트 이미지를 업데이트합니다.",
+    summary="아티스트 이미지 생성",
+    description="⚠️ 내부용 API - 특정 아티스트에 새로운 이미지를 생성합니다. 이미지 파일 업로드 지원.",
 )
-async def update_single_artist_image(
-    image_id: int = Path(..., description="이미지 ID"),
-    request: UpdateArtistImageRequest = ...,
+async def create_artist_image(
+    artist_id: int = Path(..., description="아티스트 ID", alias="artistId"),
+    # Form 파라미터 (alias 작동 안함):
+    image: Optional[UploadFile] = File(None, description="이미지 파일"),
+    path: Optional[str] = Form(None, description="이미지 경로"),
+    fileId: Optional[str] = Form(None, description="파일 ID"),
+    isAnimatable: bool = Form(False, description="애니메이션 가능 여부"),
+    size: Optional[str] = Form(None, description="이미지 크기"),
     db: AsyncSession = Depends(get_db),
 ):
-    """단일 아티스트 이미지를 업데이트합니다."""
+    """아티스트에 새로운 이미지를 생성합니다. 이미지 파일 또는 폼 데이터로 생성 가능합니다."""
     try:
         artist_crud = ArtistCRUD(db)
+        image_data = {}
 
-        # 요청 데이터를 딕셔너리로 변환 (None 값 제외)
-        image_data = {k: v for k, v in request.model_dump().items() if v is not None}
+        # 이미지 파일이 제공된 경우
+        if image:
+            from app.utils.file_upload import upload_artist_image
+
+            try:
+                upload_result = await upload_artist_image(image)
+                image_data.update(upload_result)
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=HttpStatus.BAD_REQUEST,
+                    detail=str(e),
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+                    detail=f"이미지 업로드 실패: {str(e)}",
+                )
+
+        # 폼 데이터가 제공된 경우 (빈 문자열은 제외)
+        # file_id는 Form에서 제공된 경우에만 덮어쓰기 (기존 이미지 찾기용)
+        print(
+            f"DEBUG: Form 데이터 - path: '{path}', fileId: '{fileId}', isAnimatable: {isAnimatable}, size: '{size}'"
+        )
+        form_data = {}
+        if path is not None and path.strip():
+            form_data["path"] = path
+        if fileId is not None:
+            form_data["file_id"] = fileId
+            print(f"DEBUG: Form fileId 추가됨: {fileId}")
+        if isAnimatable is not None:
+            form_data["is_animatable"] = isAnimatable
+        if size is not None and size.strip():
+            form_data["size"] = size
+
+        if form_data:
+            print(f"DEBUG: Form 데이터로 업데이트: {form_data}")
+            image_data.update(form_data)
+
+        print(f"DEBUG: 최종 image_data: {image_data}")
 
         if not image_data:
             raise HTTPException(
                 status_code=HttpStatus.BAD_REQUEST,
-                detail="업데이트할 데이터가 없습니다.",
+                detail="생성할 데이터가 없습니다. 이미지 파일 또는 폼 데이터를 제공해주세요.",
             )
 
-        success, message = await artist_crud.update_single_artist_image(
-            image_id, image_data
+        success, message, created_image = await artist_crud.create_artist_image(
+            artist_id, image_data
         )
 
         if not success:
@@ -221,8 +251,13 @@ async def update_single_artist_image(
             )
 
         return BaseResponse.ok(
-            data={"message": message, "image_id": image_id},
-            http_status=HttpStatus.OK,
+            data={
+                "message": message,
+                "artist_id": artist_id,
+                "image_id": created_image.id,
+                "created_data": image_data,
+            },
+            http_status=HttpStatus.CREATED,
         )
 
     except HTTPException:
@@ -230,5 +265,5 @@ async def update_single_artist_image(
     except Exception as e:
         raise HTTPException(
             status_code=HttpStatus.INTERNAL_SERVER_ERROR,
-            detail=f"아티스트 이미지 업데이트 실패: {str(e)}",
+            detail=f"아티스트 이미지 생성 실패: {str(e)}",
         )

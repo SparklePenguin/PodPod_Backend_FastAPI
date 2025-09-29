@@ -85,3 +85,59 @@ async def upload_profile_image(image: UploadFile) -> Optional[str]:
 
     # 파일 저장
     return await save_upload_file(image, "uploads/profile_images")
+
+
+def is_animatable_image(filename: str) -> bool:
+    """이미지가 애니메이션 가능한지 확인 (GIF, WebP 등)"""
+    if not filename:
+        return False
+
+    extension = Path(filename).suffix.lower()
+    animatable_extensions = [".gif", ".webp", ".apng"]
+    return extension in animatable_extensions
+
+
+def get_file_size_string(size_bytes: int) -> str:
+    """파일 크기를 문자열로 변환"""
+    if size_bytes < 1024:
+        return f"{size_bytes}B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f}KB"
+    else:
+        return f"{size_bytes / (1024 * 1024):.1f}MB"
+
+
+async def upload_artist_image(image: UploadFile) -> dict:
+    """아티스트 이미지 업로드 및 메타데이터 분석"""
+    if not image:
+        raise ValueError("이미지 파일이 필요합니다")
+
+    # 이미지 파일 검증
+    if not is_valid_image_file(image):
+        raise ValueError("유효하지 않은 이미지 파일입니다")
+
+    # 파일 크기 검증 (10MB 제한)
+    content = await image.read()
+    file_size = len(content)
+    if file_size > 10 * 1024 * 1024:  # 10MB
+        raise ValueError("이미지 파일 크기는 10MB를 초과할 수 없습니다")
+
+    # 파일 포인터를 다시 처음으로
+    await image.seek(0)
+
+    # 파일 저장
+    file_path = await save_upload_file(image, "uploads/artists")
+
+    # 파일 ID 생성 (UUID)
+    file_id = str(uuid.uuid4())
+
+    # 메타데이터 분석
+    is_animatable = is_animatable_image(image.filename)
+    size_string = get_file_size_string(file_size)
+
+    return {
+        "path": file_path,
+        "file_id": file_id,
+        "is_animatable": is_animatable,
+        "size": size_string,
+    }

@@ -5,6 +5,18 @@ from .artist_image import ArtistImageDto
 from .artist_name import ArtistNameDto
 
 
+# 아티스트 간소화 정보 응답 (unitId, artistId, 이름)
+class ArtistSimpleDto(BaseModel):
+    unit_id: int = Field(alias="unitId", example=0)
+    artist_id: int = Field(alias="artistId", example=0)
+    name: str = Field(alias="name", example="string")
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
+
+
 # 아티스트 정보 응답
 class ArtistDto(BaseModel):
     id: int = Field(alias="id", example=0)

@@ -18,17 +18,15 @@ class ArtistImageDto(BaseModel):
     }
 
 
-# 아티스트 이미지 업데이트 요청
+# 아티스트 이미지 업데이트 요청 (기존 - JSON 데이터)
 class UpdateArtistImageRequest(BaseModel):
-    path: Optional[str] = Field(default=None, description="이미지 경로")
-    file_id: Optional[str] = Field(default=None, description="파일 ID")
+    path: Optional[str] = Field(default=None, description="이미지 경로", alias="path")
+    file_id: Optional[str] = Field(default=None, description="파일 ID", alias="fileId")
     is_animatable: Optional[bool] = Field(
-        default=None, description="애니메이션 가능 여부"
+        default=None, description="애니메이션 가능 여부", alias="isAnimatable"
     )
-    size: Optional[str] = Field(default=None, description="이미지 크기")
+    size: Optional[str] = Field(default=None, description="이미지 크기", alias="size")
 
-
-# 아티스트 이미지 일괄 업데이트 요청
-class BulkUpdateArtistImagesRequest(BaseModel):
-    artist_id: int = Field(description="아티스트 ID")
-    images: List[UpdateArtistImageRequest] = Field(description="업데이트할 이미지 목록")
+    class Config:
+        from_attributes = True
+        populate_by_name = True
