@@ -96,7 +96,7 @@ async def create_artist_suggestion_name_only(
 )
 async def get_artist_ranking(
     limit: Optional[int] = Query(
-        default=10, ge=1, le=100, description="조회할 순위 개수"
+        default=10, ge=1, le=100, description="조회할 순위 개수", alias="limit"
     ),
     service: ArtistSuggestionService = Depends(get_artist_suggestion_service),
 ):
@@ -127,7 +127,7 @@ async def get_artist_ranking(
     },
 )
 async def get_suggestion(
-    suggestion_id: int = Path(..., description="제안 ID"),
+    suggestion_id: int = Path(..., description="제안 ID", alias="suggestionId"),
     service: ArtistSuggestionService = Depends(get_artist_suggestion_service),
 ):
     """아티스트 제안 조회"""
@@ -152,8 +152,8 @@ async def get_suggestion(
     },
 )
 async def get_suggestions(
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, description="페이지 번호", alias="page"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기", alias="size"),
     service: ArtistSuggestionService = Depends(get_artist_suggestion_service),
 ):
     """아티스트 제안 목록 조회"""
@@ -175,9 +175,9 @@ async def get_suggestions(
     },
 )
 async def get_suggestions_by_artist_name(
-    artist_name: str = Path(..., description="아티스트명"),
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    artist_name: str = Path(..., description="아티스트명", alias="artistName"),
+    page: int = Query(1, ge=1, description="페이지 번호", alias="page"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기", alias="size"),
     service: ArtistSuggestionService = Depends(get_artist_suggestion_service),
 ):
     """특정 아티스트 제안 목록 조회"""
