@@ -289,3 +289,35 @@ class PodService:
             has_next=page < total_pages,
             has_prev=page > 1,
         )
+
+    # - MARK: 특정 유저가 개설한 파티 목록 조회
+    async def get_user_pods(
+        self, user_id: int, page: int = 1, size: int = 20
+    ) -> PageDto[PodDto]:
+        """특정 유저가 개설한 파티 목록 조회"""
+        pods, total_count = await self.crud.get_user_pods(user_id, page, size)
+
+        pod_dtos = []
+        for pod in pods:
+            # 각 파티의 참여자 수와 좋아요 수 계산
+            joined_users_count = await self.crud.get_joined_users_count(pod.id)
+            like_count = await self.crud.get_like_count(pod.id)
+
+            pod_dto = PodDto.model_validate(pod)
+            pod_dto.joined_users_count = joined_users_count
+            pod_dto.like_count = like_count
+
+            pod_dtos.append(pod_dto)
+
+        # PageDto 생성
+        total_pages = math.ceil(total_count / size) if total_count > 0 else 0
+
+        return PageDto[PodDto](
+            items=pod_dtos,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1,
+        )

@@ -99,7 +99,45 @@ async def value_error_handler(request: Request, exc: ValueError):
 
 async def general_exception_handler(request: Request, exc: Exception):
     """예상치 못한 일반적인 예외 → 500 Internal Server Error"""
-    logger.error(f"Unhandled Exception: {type(exc).__name__}: {str(exc)}")
+    import traceback
+
+    # 요청 본문 읽기
+    request_body = None
+    try:
+        if hasattr(request, "_body") and request._body:
+            request_body = request._body.decode("utf-8")
+        elif request.method in ["POST", "PUT", "PATCH"]:
+            # 미들웨어에서 이미 읽었을 수 있지만, 다시 시도
+            body = await request.body()
+            if body:
+                request_body = body.decode("utf-8")
+    except Exception as e:
+        request_body = f"Failed to read request body: {str(e)}"
+
+    # 상세한 에러 정보 로깅
+    error_details = {
+        "exception_type": type(exc).__name__,
+        "exception_message": str(exc),
+        "traceback": traceback.format_exc(),
+        "request_url": str(request.url),
+        "request_method": request.method,
+        "request_headers": dict(request.headers),
+        "request_body": request_body,
+        "query_params": str(request.query_params),
+        "client_ip": request.client.host if request.client else None,
+    }
+
+    logger.error(
+        f"Unhandled Exception: {type(exc).__name__}: {str(exc)}", extra=error_details
+    )
+
+    # 개발 환경에서는 더 자세한 정보 제공
+    dev_note = f"Exception: {type(exc).__name__}: {str(exc)}"
+    if hasattr(exc, "__traceback__"):
+        import traceback
+
+        dev_note += f"\nTraceback: {traceback.format_exc()}"
+
     response = BaseResponse(
         data=None,
         error="INTERNAL_SERVER_ERROR",
@@ -107,7 +145,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         http_status=HttpStatus.INTERNAL_SERVER_ERROR,
         message_ko="서버 내부 오류가 발생했습니다.",
         message_en="Internal server error occurred.",
-        devNote="Unhandled server error",
+        devNote=dev_note,
     )
     return JSONResponse(
         status_code=HttpStatus.INTERNAL_SERVER_ERROR, content=response.model_dump()

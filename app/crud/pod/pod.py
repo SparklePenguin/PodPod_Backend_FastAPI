@@ -729,3 +729,27 @@ class PodCRUD:
             select(Pod).where(Pod.chat_channel_url.is_not(None)).order_by(Pod.id)
         )
         return result.scalars().all()
+
+    async def get_user_pods(
+        self, user_id: int, page: int = 1, size: int = 20
+    ) -> tuple[List[Pod], int]:
+        """특정 유저가 개설한 파티 목록 조회"""
+        offset = (page - 1) * size
+
+        # 특정 유저가 개설한 파티 목록 조회
+        query = (
+            select(Pod)
+            .where(Pod.owner_id == user_id)
+            .order_by(desc(Pod.created_at))
+            .offset(offset)
+            .limit(size)
+        )
+        result = await self.db.execute(query)
+        pods = result.scalars().all()
+
+        # 총 파티 수 조회
+        count_query = select(func.count(Pod.id)).where(Pod.owner_id == user_id)
+        count_result = await self.db.execute(count_query)
+        total_count = count_result.scalar()
+
+        return pods, total_count

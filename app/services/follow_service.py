@@ -29,7 +29,11 @@ class FollowService:
         if not follow:
             raise ValueError("팔로우에 실패했습니다.")
 
-        return FollowResponse.model_validate(follow)
+        return FollowResponse(
+            follower_id=follow.follower_id,
+            following_id=follow.following_id,
+            created_at=follow.created_at,
+        )
 
     async def unfollow_user(self, follower_id: int, following_id: int) -> bool:
         """사용자 팔로우 취소"""
@@ -51,7 +55,7 @@ class FollowService:
                 profile_image=user.profile_image,
                 intro=user.intro,
                 tendency_type=tendency_type,
-                created_at=created_at,
+                is_following=True,  # 팔로우하는 사용자 목록이므로 항상 True
             )
             users.append(user_dto)
 
@@ -73,7 +77,11 @@ class FollowService:
         )
 
     async def get_followers_list(
-        self, user_id: int, page: int = 1, size: int = 20
+        self,
+        user_id: int,
+        current_user_id: Optional[int] = None,
+        page: int = 1,
+        size: int = 20,
     ) -> PageDto[UserFollowDto]:
         """팔로워 목록 조회"""
         followers_data, total_count = await self.crud.get_followers_list(
@@ -82,13 +90,20 @@ class FollowService:
 
         users = []
         for user, created_at, tendency_type in followers_data:
+            # 현재 사용자가 해당 팔로워를 팔로우하고 있는지 확인
+            is_following = False
+            if current_user_id:
+                is_following = await self.crud.check_follow_exists(
+                    current_user_id, user.id
+                )
+
             user_dto = UserFollowDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
                 intro=user.intro,
                 tendency_type=tendency_type,
-                created_at=created_at,
+                is_following=is_following,
             )
             users.append(user_dto)
 
@@ -132,8 +147,8 @@ class FollowService:
             like_count = await self.pod_crud.get_like_count(pod.id)
 
             pod_dto = PodDto.model_validate(pod)
-            pod_dto.joinedUsersCount = joined_users_count
-            pod_dto.likeCount = like_count
+            pod_dto.joined_users_count = joined_users_count
+            pod_dto.like_count = like_count
 
             pod_dtos.append(pod_dto)
 
@@ -166,7 +181,7 @@ class FollowService:
                 profile_image=user.profile_image,
                 intro=user.intro,
                 tendency_type=tendency_type,
-                created_at=None,  # 추천 유저는 팔로우 관계가 없으므로 created_at이 없음
+                is_following=False,  # 추천 유저는 팔로우하지 않은 유저만 추천
             )
             users.append(user_dto)
 

@@ -44,7 +44,15 @@ class ErrorInfo:
 
 
 # 에러 코드 정의 (JSON 파일에서 로드됨)
-ERROR_CODES: Dict[str, Dict[str, Any]] = {}
+ERROR_CODES: Dict[str, Dict[str, Any]] = {
+    "BAD_REQUEST": {
+        "code": 4000,
+        "message_ko": "잘못된 요청입니다.",
+        "message_en": "Bad request.",
+        "http_status": 400,
+        "dev_note": "클라이언트 요청이 올바르지 않습니다.",
+    }
+}
 
 # 캐시 파일 경로
 CACHE_FILE = "error_codes_backup.json"

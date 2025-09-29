@@ -75,3 +75,8 @@ class Pod(Base):
         back_populates="pod",
         cascade="all, delete-orphan",
     )
+    reviews = relationship(
+        "PodReview",
+        back_populates="pod",
+        cascade="all, delete-orphan",
+    )

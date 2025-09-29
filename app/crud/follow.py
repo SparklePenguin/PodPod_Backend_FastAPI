@@ -60,6 +60,14 @@ class FollowCRUD:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
+    async def check_follow_exists(self, follower_id: int, following_id: int) -> bool:
+        """팔로우 관계 존재 여부 확인"""
+        query = select(Follow).where(
+            and_(Follow.follower_id == follower_id, Follow.following_id == following_id)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none() is not None
+
     async def get_following_list(
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[Tuple[User, datetime, Optional[str]]], int]:

@@ -150,7 +150,10 @@ async def get_followers_list(
     try:
         follow_service = FollowService(db)
         followers_list = await follow_service.get_followers_list(
-            user_id=current_user_id, page=page, size=size
+            user_id=current_user_id,
+            current_user_id=current_user_id,
+            page=page,
+            size=size,
         )
 
         return BaseResponse.ok(

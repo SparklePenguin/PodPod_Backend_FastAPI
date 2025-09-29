@@ -21,6 +21,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # 요청 ID 생성
         request_id = str(uuid.uuid4())
 
+        # 요청 본문 읽기 (POST, PUT, PATCH 요청의 경우)
+        request_body = None
+        if request.method in ["POST", "PUT", "PATCH"]:
+            try:
+                body = await request.body()
+                if body:
+                    request_body = body.decode("utf-8")
+            except Exception:
+                request_body = "Failed to read request body"
+
         # 요청 정보 로깅
         logger.info(
             f"요청 시작: {request.method} {request.url.path}",
@@ -29,6 +39,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "endpoint": request.url.path,
                 "query_params": str(request.query_params),
+                "headers": dict(request.headers),
+                "request_body": request_body,
                 "client_ip": request.client.host if request.client else None,
                 "user_agent": request.headers.get("user-agent"),
             },

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
+import logging
 
 from app.api.deps import get_user_service, get_current_user_id
 from app.schemas.artist import ArtistDto
@@ -15,6 +16,7 @@ from app.schemas.user import (
 from app.schemas.auth import SignUpRequest
 from app.schemas.common import BaseResponse
 from app.core.http_status import HttpStatus
+from app.core.logging_config import get_logger
 
 router = APIRouter()
 
@@ -351,3 +353,37 @@ async def get_user_by_id(
     """특정 사용자 조회 (내부용)"""
     user = await user_service.get_user_internal(user_id)
     return BaseResponse.ok(data=user)
+
+
+# - MARK: 로깅 테스트 엔드포인트
+@router.get(
+    "/debug/logging-test",
+    response_model=BaseResponse[dict],
+    tags=["internal"],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "로깅 테스트 성공",
+        },
+    },
+)
+async def test_logging():
+    """로깅 시스템 테스트 엔드포인트"""
+    logger = get_logger("test")
+
+    # 다양한 레벨의 로그 테스트
+    logger.debug("DEBUG 메시지 테스트")
+    logger.info("INFO 메시지 테스트")
+    logger.warning("WARNING 메시지 테스트")
+    logger.error("ERROR 메시지 테스트")
+
+    # 예외 로깅 테스트
+    try:
+        raise ValueError("테스트 예외 - 로깅 시스템 확인용")
+    except Exception as e:
+        logger.error("예외 발생 테스트", exc_info=True)
+
+    return BaseResponse.ok(
+        data={"message": "로깅 테스트 완료", "timestamp": "2025-09-30"},
+        message_ko="로깅 테스트가 완료되었습니다.",
+    )

@@ -3,7 +3,12 @@ from .artist import Artist
 from .artist_image import ArtistImage
 from .artist_name import ArtistName
 from .preferred_artist import PreferredArtist
-from .tendency import (TendencyResult, TendencySurvey, UserTendencyResult,)
+from .tendency import (
+    TendencyResult,
+    TendencySurvey,
+    UserTendencyResult,
+)
+from .pod_review import PodReview
 
 
 __all__ = [
@@ -15,4 +20,5 @@ __all__ = [
     "TendencyResult",
     "TendencySurvey",
     "UserTendencyResult",
+    "PodReview",
 ]

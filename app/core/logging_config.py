@@ -43,6 +43,16 @@ class JSONFormatter(logging.Formatter):
             log_entry["status_code"] = record.status_code
         if hasattr(record, "duration"):
             log_entry["duration"] = record.duration
+        if hasattr(record, "headers"):
+            log_entry["headers"] = record.headers
+        if hasattr(record, "request_body"):
+            log_entry["request_body"] = record.request_body
+        if hasattr(record, "query_params"):
+            log_entry["query_params"] = record.query_params
+        if hasattr(record, "client_ip"):
+            log_entry["client_ip"] = record.client_ip
+        if hasattr(record, "user_agent"):
+            log_entry["user_agent"] = record.user_agent
 
         # 예외 정보가 있으면 포함
         if record.exc_info:
@@ -69,7 +79,7 @@ def setup_logging():
 
     # 콘솔 핸들러 (개발용 - 텍스트 포맷)
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)  # DEBUG 레벨로 변경
     console_handler.setFormatter(text_format)
 
     # 애플리케이션 로그 파일 핸들러 (JSON 포맷)
@@ -80,7 +90,7 @@ def setup_logging():
         backupCount=30,  # 30일 보관
         encoding="utf-8",
     )
-    app_handler.setLevel(logging.INFO)
+    app_handler.setLevel(logging.DEBUG)  # DEBUG 레벨로 변경
     app_handler.setFormatter(JSONFormatter())
 
     # 에러 로그 파일 핸들러 (JSON 포맷)

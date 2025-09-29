@@ -22,7 +22,10 @@ class FollowResponse(BaseModel):
     )
     created_at: datetime = Field(..., alias="createdAt", description="팔로우 생성 시간")
 
-    model_config = {"from_attributes": True}
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
 
 
 class UserFollowDto(BaseModel):
@@ -37,8 +40,8 @@ class UserFollowDto(BaseModel):
     tendency_type: Optional[str] = Field(
         None, alias="tendencyType", description="덕메 성향 타입", example="ACTIVE"
     )
-    created_at: Optional[datetime] = Field(
-        None, alias="createdAt", description="팔로우 생성 시간"
+    is_following: bool = Field(
+        default=False, alias="isFollowing", description="팔로우 여부", example=False
     )
 
     model_config = {

@@ -45,3 +45,6 @@ class User(Base):
     followers = relationship(
         "Follow", foreign_keys="Follow.following_id", back_populates="following"
     )
+
+    # 파티 후기 관계
+    pod_reviews = relationship("PodReview", back_populates="user")

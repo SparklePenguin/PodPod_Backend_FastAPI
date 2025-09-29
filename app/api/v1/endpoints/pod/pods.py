@@ -367,3 +367,43 @@ async def delete_pod(
 ):
     await pod_service.delete_pod(pod_id)
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
+
+
+@router.get(
+    "/user/{user_id}",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="특정 유저가 개설한 파티 목록 조회",
+    description="특정 유저가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "특정 유저의 파티 목록 조회 성공",
+        },
+    },
+)
+async def get_user_pods(
+    user_id: int,
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """특정 유저가 개설한 파티 목록 조회"""
+    try:
+        user_pods = await pod_service.get_user_pods(user_id, page, size)
+
+        return BaseResponse.ok(
+            data=user_pods,
+            http_status=HttpStatus.OK,
+            message_ko="유저의 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved user's pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="유저의 파티 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving user's pods.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=None,
+        )
