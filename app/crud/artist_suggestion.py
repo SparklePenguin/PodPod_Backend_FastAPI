@@ -14,10 +14,11 @@ class ArtistSuggestionCRUD:
         artist_name: str,
         reason: Optional[str] = None,
         email: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> ArtistSuggestion:
         """아티스트 제안 생성"""
         suggestion = ArtistSuggestion(
-            artist_name=artist_name, reason=reason, email=email
+            artist_name=artist_name, reason=reason, email=email, user_id=user_id
         )
         self.db.add(suggestion)
         await self.db.commit()
@@ -55,7 +56,7 @@ class ArtistSuggestionCRUD:
 
         return suggestions, total_count
 
-    async def get_artist_ranking(self, limit: int = 50) -> List[dict]:
+    async def get_artist_ranking(self, limit: int = 10) -> List[dict]:
         """아티스트별 요청 순위 조회"""
         query = (
             select(
@@ -99,3 +100,13 @@ class ArtistSuggestionCRUD:
         total_count = count_result.scalar() or 0
 
         return suggestions, total_count
+
+    async def check_duplicate_suggestion(self, artist_name: str, user_id: int) -> bool:
+        """사용자가 해당 아티스트에 대해 이미 제안했는지 확인"""
+        query = select(ArtistSuggestion).where(
+            ArtistSuggestion.artist_name == artist_name,
+            ArtistSuggestion.user_id == user_id,
+        )
+        result = await self.db.execute(query)
+        suggestion = result.first()
+        return suggestion is not None

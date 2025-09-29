@@ -10,6 +10,7 @@ from app.schemas.artist_suggestion import (
 )
 from app.schemas.common import PageDto
 from app.core.logging_config import get_logger
+from app.core.exceptions import BusinessException
 
 logger = get_logger("artist_suggestion_service")
 
@@ -20,25 +21,54 @@ class ArtistSuggestionService:
         self.crud = ArtistSuggestionCRUD(db)
 
     async def create_suggestion(
-        self, request: ArtistSuggestionCreateRequest
+        self, request: ArtistSuggestionCreateRequest, user_id: int
     ) -> ArtistSuggestionDto:
         """아티스트 제안 생성"""
-        logger.info(f"아티스트 제안 생성 요청: {request.artist_name}")
+        logger.info(
+            f"아티스트 제안 생성 요청: {request.artist_name} (user_id: {user_id})"
+        )
+
+        # 중복 체크
+        is_duplicate = await self.crud.check_duplicate_suggestion(
+            request.artist_name, user_id
+        )
+        if is_duplicate:
+            raise BusinessException(
+                error_code="DUPLICATE_ARTIST_SUGGESTION",
+                message_ko=f"'{request.artist_name}' 아티스트에 대한 제안을 이미 하셨습니다.",
+                status_code=409,
+            )
 
         suggestion = await self.crud.create_suggestion(
-            artist_name=request.artist_name, reason=request.reason, email=request.email
+            artist_name=request.artist_name,
+            reason=request.reason,
+            email=request.email,
+            user_id=user_id,
         )
 
         return ArtistSuggestionDto.model_validate(suggestion)
 
     async def create_suggestion_name_only(
-        self, request: ArtistSuggestionNameOnlyRequest
+        self, request: ArtistSuggestionNameOnlyRequest, user_id: int
     ) -> ArtistSuggestionDto:
         """아티스트명만으로 제안 생성"""
-        logger.info(f"아티스트명만으로 제안 생성 요청: {request.artist_name}")
+        logger.info(
+            f"아티스트명만으로 제안 생성 요청: {request.artist_name} (user_id: {user_id})"
+        )
+
+        # 중복 체크
+        is_duplicate = await self.crud.check_duplicate_suggestion(
+            request.artist_name, user_id
+        )
+        if is_duplicate:
+            raise BusinessException(
+                error_code="DUPLICATE_ARTIST_SUGGESTION",
+                message_ko=f"'{request.artist_name}' 아티스트에 대한 제안을 이미 하셨습니다.",
+                status_code=409,
+            )
 
         suggestion = await self.crud.create_suggestion(
-            artist_name=request.artist_name, reason=None, email=None
+            artist_name=request.artist_name, reason=None, email=None, user_id=user_id
         )
 
         return ArtistSuggestionDto.model_validate(suggestion)
@@ -78,7 +108,7 @@ class ArtistSuggestionService:
         )
 
     async def get_artist_ranking(
-        self, limit: int = 50
+        self, limit: int = 10
     ) -> List[ArtistSuggestionRankingDto]:
         """아티스트별 요청 순위 조회"""
         logger.info(f"아티스트 순위 조회 요청 (상위 {limit}개)")

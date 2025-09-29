@@ -12,6 +12,7 @@ class ArtistSuggestion(Base):
     artist_name = Column(String(100), nullable=False, index=True, comment="아티스트명")
     reason = Column(Text, nullable=True, comment="추천 이유")
     email = Column(String(255), nullable=True, comment="이메일 주소")
+    user_id = Column(Integer, nullable=True, index=True, comment="제안한 사용자 ID")
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), comment="생성일시"
     )

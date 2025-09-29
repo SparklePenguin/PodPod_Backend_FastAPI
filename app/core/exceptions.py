@@ -8,6 +8,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class BusinessException(Exception):
+    """비즈니스 로직 예외"""
+
+    def __init__(
+        self,
+        error_code: str,
+        message_ko: str,
+        message_en: str = None,
+        status_code: int = 400,
+        dev_note: str = None,
+    ):
+        self.error_code = error_code
+        self.message_ko = message_ko
+        self.message_en = message_en or message_ko
+        self.status_code = status_code
+        self.dev_note = dev_note or "Business logic error"
+        super().__init__(self.message_ko)
+
+
 async def http_exception_handler(request: Request, exc: HTTPException):
     """HTTPException 처리 → BaseResponse 패턴으로 응답"""
     logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}")
@@ -95,6 +114,22 @@ async def value_error_handler(request: Request, exc: ValueError):
     return JSONResponse(
         status_code=HttpStatus.BAD_REQUEST, content=response.model_dump()
     )
+
+
+async def business_exception_handler(request: Request, exc: BusinessException):
+    """BusinessException 처리 → BaseResponse 패턴으로 응답"""
+    logger.warning(f"Business Exception: {exc.error_code} - {exc.message_ko}")
+
+    response = BaseResponse(
+        data=None,
+        error=exc.error_code,
+        error_code=4090,  # 중복 제안 에러 코드
+        http_status=exc.status_code,
+        message_ko=exc.message_ko,
+        message_en=exc.message_en,
+        devNote=exc.dev_note,
+    )
+    return JSONResponse(status_code=exc.status_code, content=response.model_dump())
 
 
 async def general_exception_handler(request: Request, exc: Exception):

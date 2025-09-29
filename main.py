@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.security import HTTPBearer
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
 from app.core.database import init_db
@@ -14,7 +15,9 @@ from app.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
     value_error_handler,
+    business_exception_handler,
     general_exception_handler,
+    BusinessException,
 )
 import logging
 
@@ -54,6 +57,33 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS 미들웨어 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React 개발 서버
+        "http://localhost:3001",  # 추가 React 포트
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://localhost:8000",  # FastAPI 자체
+        "http://127.0.0.1:8000",
+        "*",  # 개발 환경에서는 모든 origin 허용
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+    ],
+)
+
 # 로깅 미들웨어 추가
 app.add_middleware(LoggingMiddleware)
 
@@ -72,6 +102,10 @@ app.openapi_tags = [
         "description": "아티스트 관리 API",
     },
     {
+        "name": "artistSuggestions",
+        "description": "아티스트 제안 관리 API - 사용자들이 원하는 아티스트를 제안하고 순위를 조회할 수 있습니다",
+    },
+    {
         "name": "oauths",
         "description": "OAuth 인증 API",
     },
@@ -88,6 +122,7 @@ security = HTTPBearer()
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(ValueError, value_error_handler)
+app.add_exception_handler(BusinessException, business_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # 정적 파일 서빙 설정

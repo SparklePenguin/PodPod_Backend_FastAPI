@@ -61,7 +61,7 @@ class BaseResponse(BaseModel, Generic[T]):
             http_status=http_status,
             message_ko=message_ko,
             message_en=message_en,
-            error=None,
+            error_key=None,
             error_code=None,
             dev_note=None,
         )
@@ -78,7 +78,7 @@ class BaseResponse(BaseModel, Generic[T]):
             http_status=201,
             message_ko=message_ko,
             message_en=message_en,
-            error=None,
+            error_key=None,
             error_code=None,
             dev_note=None,
         )
@@ -95,7 +95,7 @@ class BaseResponse(BaseModel, Generic[T]):
     ) -> "BaseResponse[None]":
         return cls(
             data=None,
-            error=error_key,
+            error_key=error_key,
             error_code=error_code,
             http_status=http_status,
             message_ko=message_ko,
@@ -118,7 +118,7 @@ class BaseResponse(BaseModel, Generic[T]):
 
         return cls(
             data=None,
-            error=error_key,
+            error_key=error_key,
             error_code=error_info.code,
             http_status=error_info.http_status,
             message_ko=error_info.message_ko,
