@@ -327,3 +327,29 @@ class PodService:
             has_next=page < total_pages,
             has_prev=page > 1,
         )
+
+    # - MARK: 파티 좋아요 관련 메서드
+    async def like_pod(self, pod_id: int, user_id: int) -> bool:
+        """파티 좋아요"""
+        from app.crud.pod.pod_like import PodLikeCRUD
+
+        like_crud = PodLikeCRUD(self.db)
+        return await like_crud.like_pod(pod_id, user_id)
+
+    async def unlike_pod(self, pod_id: int, user_id: int) -> bool:
+        """파티 좋아요 취소"""
+        from app.crud.pod.pod_like import PodLikeCRUD
+
+        like_crud = PodLikeCRUD(self.db)
+        return await like_crud.unlike_pod(pod_id, user_id)
+
+    async def like_status(self, pod_id: int, user_id: int) -> dict:
+        """파티 좋아요 상태 조회"""
+        from app.crud.pod.pod_like import PodLikeCRUD
+
+        like_crud = PodLikeCRUD(self.db)
+
+        is_liked = await like_crud.is_liked(pod_id, user_id)
+        like_count = await like_crud.like_count(pod_id)
+
+        return {"liked": is_liked, "count": like_count}
