@@ -51,6 +51,11 @@ class ArtistScheduleService:
             self._convert_to_dto(schedule) for schedule in result["items"]
         ]
 
+        # 페이지네이션 필드 추가
+        result["currentPage"] = result["page"]
+        result["hasNext"] = result["page"] < result["total_pages"]
+        result["hasPrev"] = result["page"] > 1
+
         return result
 
     async def import_schedules_from_json(

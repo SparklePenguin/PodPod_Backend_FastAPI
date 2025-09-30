@@ -32,7 +32,7 @@ class ArtistScheduleCRUD:
             artist_id=request.artist_id,
             unit_id=request.unit_id,
             artist_ko_name=request.artist_ko_name,
-            type=request.type,
+            type=request.type.value,  # Enum을 정수값으로 변환
             start_time=request.start_time,
             end_time=request.end_time,
             text=request.text,
@@ -147,35 +147,112 @@ class ArtistScheduleCRUD:
         return result.scalar_one_or_none()
 
     async def find_artist_by_member_ko_name(self, ko_name: str) -> Optional[Artist]:
-        """멤버 한글명으로 아티스트 찾기"""
+        """멤버 한글명으로 아티스트 찾기 (첫 번째 결과만 반환)"""
         query = (
             select(Artist)
             .join(ArtistName)
             .where(and_(ArtistName.code == "ko", ArtistName.name == ko_name))
+            .limit(1)  # 첫 번째 결과만 가져오기
         )
 
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def find_existing_schedule(
+        self, artist_id: int, title: str, start_time: int
+    ) -> Optional[ArtistSchedule]:
+        """중복 스케줄 찾기"""
+        query = select(ArtistSchedule).where(
+            and_(
+                ArtistSchedule.artist_id == artist_id,
+                ArtistSchedule.title == title,
+                ArtistSchedule.start_time == start_time,
+            )
+        )
+
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def update_existing_schedule(
+        self, schedule_id: int, request: ArtistScheduleCreateRequest
+    ) -> ArtistSchedule:
+        """기존 스케줄 업데이트"""
+        schedule = await self.get_schedule_by_id(schedule_id)
+        if not schedule:
+            raise ValueError(f"Schedule with id {schedule_id} not found")
+
+        # 기본 필드 업데이트
+        schedule.artist_id = request.artist_id
+        schedule.unit_id = request.unit_id
+        schedule.artist_ko_name = request.artist_ko_name
+        schedule.type = request.type
+        schedule.start_time = request.start_time
+        schedule.end_time = request.end_time
+        schedule.text = request.text
+        schedule.title = request.title
+        schedule.channel = request.channel
+        schedule.location = request.location
+
+        # 기존 멤버와 콘텐츠 삭제
+        for member in schedule.members:
+            await self.db.delete(member)
+        for content in schedule.contents:
+            await self.db.delete(content)
+
+        # 새 멤버들 추가
+        for member_req in request.members:
+            member = ScheduleMember(
+                schedule_id=schedule.id,
+                artist_id=member_req.artist_id,
+                ko_name=member_req.ko_name,
+                en_name=member_req.en_name,
+            )
+            self.db.add(member)
+
+        # 새 콘텐츠들 추가
+        for content_req in request.contents:
+            content = ScheduleContent(
+                schedule_id=schedule.id,
+                type=content_req.type,
+                path=content_req.path,
+                title=content_req.title,
+            )
+            self.db.add(content)
+
+        await self.db.commit()
+        await self.db.refresh(schedule)
+
+        return schedule
 
     async def import_schedules_from_json(
         self, schedule_data: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """JSON 데이터에서 스케줄 가져오기"""
         imported_count = 0
+        updated_count = 0
         skipped_count = 0
         error_count = 0
         unmatched_artists = set()
 
-        for item in schedule_data:
+        for i, item in enumerate(schedule_data):
             try:
+                # 진행 상황 로깅 (100개마다)
+                if i % 100 == 0:
+                    print(
+                        f"Processing item {i+1}/{len(schedule_data)}: {item.get('artist_ko_name', 'Unknown')}"
+                    )
+
                 # artist_ko_name이 없으면 스킵
                 if not item.get("artist_ko_name"):
                     skipped_count += 1
                     continue
 
                 # 아티스트 찾기
+                print(f"Looking for artist: {item['artist_ko_name']}")
                 artist = await self.find_artist_by_ko_name(item["artist_ko_name"])
+                print(f"Found artist: {artist}")
                 if not artist:
+                    print(f"Artist not found: {item['artist_ko_name']}")
                     unmatched_artists.add(item["artist_ko_name"])
                     skipped_count += 1
                     continue
@@ -233,20 +310,38 @@ class ArtistScheduleCRUD:
                     )
                     schedule_request.contents.append(content_request)
 
-                # 스케줄 생성
-                await self.create_schedule(schedule_request)
-                imported_count += 1
+                # 중복 스케줄 체크
+                existing_schedule = await self.find_existing_schedule(
+                    artist.id, schedule_request.title, schedule_request.start_time
+                )
+
+                if existing_schedule:
+                    # 기존 스케줄 업데이트
+                    await self.update_existing_schedule(
+                        existing_schedule.id, schedule_request
+                    )
+                    updated_count += 1
+                    print(f"Updated schedule: {schedule_request.title}")
+                else:
+                    # 새 스케줄 생성
+                    await self.create_schedule(schedule_request)
+                    imported_count += 1
+                    print(f"Created new schedule: {schedule_request.title}")
 
             except Exception as e:
+                import traceback
+
                 print(
                     f"Error importing schedule for {item.get('artist_ko_name', 'Unknown')}: {e}"
                 )
                 print(f"Item data: {item}")
+                print(f"Full traceback: {traceback.format_exc()}")
                 error_count += 1
                 continue
 
         return {
             "imported_count": imported_count,
+            "updated_count": updated_count,
             "skipped_count": skipped_count,
             "error_count": error_count,
             "total_processed": len(schedule_data),

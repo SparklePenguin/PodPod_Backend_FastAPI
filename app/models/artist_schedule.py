@@ -38,7 +38,7 @@ class ArtistSchedule(Base):
         String(100), nullable=False, index=True, comment="아티스트 한글명"
     )
     type = Column(
-        Enum(ScheduleType),
+        Integer,
         nullable=False,
         comment="일정 유형",
     )

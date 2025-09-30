@@ -69,7 +69,7 @@ async def get_artist_schedules(
             unit_id=unit_id,
             schedule_type=schedule_type,
         )
-        return BaseResponse.success(result, "아티스트 스케줄 목록 조회 성공")
+        return BaseResponse.ok(result, message_ko="아티스트 스케줄 목록 조회 성공")
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -108,7 +108,7 @@ async def get_artist_schedule(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="아티스트 스케줄을 찾을 수 없습니다.",
             )
-        return BaseResponse.success(schedule, "아티스트 스케줄 상세 조회 성공")
+        return BaseResponse.ok(schedule, message_ko="아티스트 스케줄 상세 조회 성공")
     except HTTPException:
         raise
     except Exception as e:
@@ -141,7 +141,7 @@ async def import_artist_schedules_from_json(
     try:
         # JSON 파일 경로
         json_file_path = os.path.join(
-            os.path.dirname(__file__), "../../../mvp/kpop_schedule_2025.json"
+            os.path.dirname(__file__), "../../../../mvp/kpop_schedule_2025.json"
         )
 
         if not os.path.exists(json_file_path):
@@ -157,8 +157,10 @@ async def import_artist_schedules_from_json(
         # 데이터 가져오기 실행
         result = await artist_schedule_service.import_schedules_from_json(schedule_data)
 
-        return BaseResponse.success(
-            result, "JSON 파일에서 아티스트 스케줄 데이터 가져오기 성공"
+        print(f"Import result: {result}")
+
+        return BaseResponse.ok(
+            result, message_ko="JSON 파일에서 아티스트 스케줄 데이터 가져오기 성공"
         )
     except HTTPException:
         raise
@@ -192,7 +194,9 @@ async def create_artist_schedule(
     """새로운 아티스트 스케줄을 생성합니다."""
     try:
         schedule = await artist_schedule_service.create_schedule(request)
-        return BaseResponse.success(schedule, "아티스트 스케줄 생성 성공")
+        return BaseResponse.ok(
+            schedule, message_ko="아티스트 스케줄 생성 성공", http_status=201
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
