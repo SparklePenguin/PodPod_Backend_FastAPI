@@ -10,6 +10,7 @@ from .endpoints import (
     follow,
     artist_suggestions,
     pod_reviews,
+    locations,
 )
 from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
@@ -49,6 +50,9 @@ api_router.include_router(follow.router, prefix="/follow", tags=["follow"])
 
 # 후기 관련 라우터
 api_router.include_router(pod_reviews.router, prefix="/reviews", tags=["reviews"])
+
+# 지역 관련 라우터
+api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
 
 # 관리자 관련 라우터
 api_router.include_router(admin_router)
