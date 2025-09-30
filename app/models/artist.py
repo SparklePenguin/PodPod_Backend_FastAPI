@@ -31,3 +31,8 @@ class Artist(Base):
         "PreferredArtist",
         back_populates="artist",
     )
+    # 아티스트 스케줄 연결
+    schedules = relationship(
+        "ArtistSchedule",
+        back_populates="artist",
+    )

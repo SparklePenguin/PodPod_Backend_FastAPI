@@ -20,6 +20,13 @@ class ArtistSchedule(Base):
     __tablename__ = "artist_schedules"
 
     id = Column(Integer, primary_key=True, index=True)
+    artist_id = Column(
+        Integer,
+        ForeignKey("artists.id"),
+        nullable=True,
+        index=True,
+        comment="아티스트 ID",
+    )
     unit_id = Column(
         Integer,
         ForeignKey("artist_units.id"),
@@ -51,6 +58,7 @@ class ArtistSchedule(Base):
     )
 
     # 관계 설정
+    artist = relationship("Artist", back_populates="schedules")
     unit = relationship("ArtistUnit", back_populates="schedules")
     members = relationship(
         "ScheduleMember", back_populates="schedule", cascade="all, delete-orphan"

@@ -28,7 +28,7 @@ api_router.include_router(oauths.router, prefix="/oauths", tags=["oauths"])
 # 아티스트 관련 라우터
 api_router.include_router(artists.router, prefix="/artists", tags=["artists"])
 api_router.include_router(
-    artist_schedules.router, prefix="/artist/schedules", tags=["artistSchedule"]
+    artist_schedules.router, prefix="/artist/schedules", tags=["artist-schedules"]
 )
 api_router.include_router(
     artist_suggestions.router, prefix="/artist-suggestions", tags=["artistSuggestions"]
