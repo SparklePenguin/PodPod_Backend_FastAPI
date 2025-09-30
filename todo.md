@@ -19,3 +19,11 @@
 
 ### 임시 해결책
 - `find_artist_by_member_ko_name`에 `.limit(1)` 추가 (완료)
+
+## DTO 정리
+
+### Page Request 상속 구조 개선
+- [ ] 공통 `PageRequest` 클래스 생성 (page, page_size 필드)
+- [ ] `PodSearchRequest`가 `PageRequest` 상속하도록 수정
+- [ ] 다른 검색 DTO들도 동일한 구조로 통일
+- [ ] 페이지네이션 관련 중복 코드 제거

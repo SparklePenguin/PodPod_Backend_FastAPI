@@ -1,5 +1,4 @@
-# List import 제거 (Python 3.9+에서는 list 사용)
-from typing import Optional
+from typing import Optional, List
 from fastapi import (
     APIRouter,
     Depends,
@@ -8,6 +7,7 @@ from fastapi import (
     File,
     UploadFile,
     Query,
+    Body,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.schemas.pod import (
     PodCreateRequest,
     PodDto,
 )
+from app.schemas.pod.pod_dto import PodSearchRequest
 from app.schemas.common import (
     BaseResponse,
     PageDto,
@@ -26,7 +27,7 @@ from app.core.http_status import HttpStatus
 from app.core.error_codes import get_error_info
 
 
-router = APIRouter()
+router = APIRouter(dependencies=[])
 
 
 def get_pod_service(
@@ -306,6 +307,7 @@ async def get_popular_category_pods(
             "description": "파티 상세 조회 성공",
         },
     },
+    dependencies=[],  # 인증 의존성 제거
 )
 async def get_pod_detail(
     pod_id: int,
@@ -406,4 +408,62 @@ async def get_user_pods(
             error=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
+        )
+
+
+# - MARK: 팟 목록 조회 (검색 포함)
+@router.post(
+    "/search",
+    response_model=BaseResponse[PageDto[PodDto]],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[PageDto[PodDto]],
+            "description": "팟 목록 조회 성공",
+        },
+    },
+    summary="팟 목록 조회",
+    description="팟 목록을 조회합니다. 검색 조건을 body로 제공하면 필터링된 결과를 반환합니다.",
+    tags=["pods"],
+)
+async def get_pods(
+    search_request: PodSearchRequest = Body(default_factory=PodSearchRequest),
+    _: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """팟 목록을 조회합니다."""
+    try:
+        pod_service = PodService(db)
+        result = await pod_service.search_pods(
+            title=search_request.title,
+            sub_category=search_request.sub_category,
+            start_date=search_request.start_date,
+            end_date=search_request.end_date,
+            location=search_request.location,
+            page=search_request.page,
+            page_size=search_request.page_size,
+        )
+
+        return BaseResponse.ok(result, message_ko="팟 목록 조회 성공", http_status=200)
+
+    except ValueError as e:
+        error_info = get_error_info("INVALID_REQUEST")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="잘못된 날짜 형식입니다.",
+            message_en="Invalid date format.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=str(e),
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="팟 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving pods.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=str(e),
         )

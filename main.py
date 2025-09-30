@@ -102,10 +102,6 @@ app.openapi_tags = [
         "description": "아티스트 관리 API",
     },
     {
-        "name": "artistSuggestions",
-        "description": "아티스트 제안 관리 API - 사용자들이 원하는 아티스트를 제안하고 순위를 조회할 수 있습니다",
-    },
-    {
         "name": "oauths",
         "description": "OAuth 인증 API",
     },

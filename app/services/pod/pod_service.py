@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.pod.pod import PodCRUD
 from app.schemas.pod import PodCreateRequest, PodDto
@@ -7,6 +7,7 @@ from app.utils.file_upload import save_upload_file
 from fastapi import UploadFile
 from app.models.pod import Pod
 from app.models.pod.pod_status import PodStatus
+from datetime import date
 import math
 
 
@@ -353,3 +354,57 @@ class PodService:
         like_count = await like_crud.like_count(pod_id)
 
         return {"liked": is_liked, "count": like_count}
+
+    async def search_pods(
+        self,
+        title: Optional[str] = None,
+        sub_category: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        location: Optional[list[str]] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Dict[str, Any]:
+        """팟 검색"""
+        result = await self.crud.search_pods(
+            title=title,
+            sub_category=sub_category,
+            start_date=start_date,
+            end_date=end_date,
+            location=location,
+            page=page,
+            page_size=page_size,
+        )
+
+        # DTO 변환
+        result["items"] = [self._convert_to_dto(pod) for pod in result["items"]]
+
+        # 페이지네이션 필드 추가
+        result["currentPage"] = result["page"]
+        result["hasNext"] = result["page"] < result["total_pages"]
+        result["hasPrev"] = result["page"] > 1
+
+        return result
+
+    def _convert_to_dto(self, pod: Pod) -> PodDto:
+        """Pod 엔터티를 PodDto로 변환"""
+        return PodDto(
+            id=pod.id,
+            owner_id=pod.owner_id,
+            title=pod.title,
+            description=pod.description,
+            image_url=pod.image_url,
+            thumbnail_url=pod.thumbnail_url,
+            sub_categories=pod.sub_categories,
+            capacity=pod.capacity,
+            place=pod.place,
+            address=pod.address,
+            sub_address=pod.sub_address,
+            meeting_date=pod.meeting_date,
+            meeting_time=pod.meeting_time,
+            status=pod.status,
+            chat_channel_url=pod.chat_channel_url,
+            is_active=pod.is_active,
+            created_at=pod.created_at,
+            updated_at=pod.updated_at,
+        )

@@ -11,6 +11,35 @@ from app.models.pod.pod_enums import (
 from app.models.pod.pod_status import PodStatus
 
 
+class PodSearchRequest(BaseModel):
+    """팟 검색 요청"""
+
+    title: Optional[str] = Field(None, alias="title", description="팟 제목")
+    sub_category: Optional[str] = Field(
+        None, alias="subCategory", description="서브 카테고리"
+    )
+    start_date: Optional[datetime.date] = Field(
+        None, alias="startDate", description="시작 날짜"
+    )
+    end_date: Optional[datetime.date] = Field(
+        None, alias="endDate", description="종료 날짜"
+    )
+    location: Optional[List[str]] = Field(
+        None,
+        alias="location",
+        description="지역 리스트 (address 또는 sub_address에 포함)",
+    )
+    page: int = Field(1, alias="page", ge=1, description="페이지 번호")
+    page_size: int = Field(
+        20, alias="pageSize", ge=1, le=100, description="페이지 크기"
+    )
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
+
+
 class PodDto(BaseModel):
     id: int = Field(alias="id", example=1)
     owner_id: int = Field(alias="ownerId", example=1)

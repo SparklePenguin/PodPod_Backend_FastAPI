@@ -30,9 +30,7 @@ api_router.include_router(artists.router, prefix="/artists", tags=["artists"])
 api_router.include_router(
     artist_schedules.router, prefix="/artist/schedules", tags=["artist-schedules"]
 )
-api_router.include_router(
-    artist_suggestions.router, prefix="/artist-suggestions", tags=["artist-suggestions"]
-)
+api_router.include_router(artist_suggestions.router, prefix="/artist-suggestions")
 
 # 성향 테스트 관련 라우터
 api_router.include_router(tendencies.router, prefix="/tendencies", tags=["tendencies"])
@@ -44,7 +42,7 @@ api_router.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
 # 파티 관련 라우터
 api_router.include_router(pods.router, prefix="/pods", tags=["pods"])
 api_router.include_router(recruitments, prefix="/recruitments", tags=["recruitments"])
-api_router.include_router(pod_likes, prefix="/pods", tags=["podLikes"])
+api_router.include_router(pod_likes, prefix="/pod-likes", tags=["podLikes"])
 
 # 팔로우 관련 라우터
 api_router.include_router(follow.router, prefix="/follow", tags=["follow"])

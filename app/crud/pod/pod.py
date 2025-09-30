@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional, Dict, Any, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, desc, case
 from app.models.pod import Pod, PodMember
@@ -773,3 +773,73 @@ class PodCRUD:
             )
         )
         return result.scalar_one_or_none() is not None
+
+    # - MARK: 팟 검색
+    async def search_pods(
+        self,
+        title: Optional[str] = None,
+        sub_category: Optional[str] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        location: Optional[list[str]] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Dict[str, Any]:
+        """팟 검색"""
+        # 기본 쿼리
+        query = select(Pod).where(Pod.is_active == True)
+
+        # 필터 조건 추가
+        conditions = []
+
+        # 제목 검색
+        if title:
+            conditions.append(Pod.title.contains(title))
+
+        # 서브 카테고리 검색
+        if sub_category:
+            conditions.append(Pod.sub_categories.contains(sub_category))
+
+        # 날짜 범위 검색
+        if start_date:
+            conditions.append(Pod.meeting_date >= start_date)
+        if end_date:
+            conditions.append(Pod.meeting_date <= end_date)
+
+        # 지역 검색 (address 또는 sub_address에 포함)
+        if location:
+            location_conditions = []
+            for loc in location:
+                location_conditions.append(
+                    or_(Pod.address.contains(loc), Pod.sub_address.contains(loc))
+                )
+            conditions.append(or_(*location_conditions))
+
+        # 조건 적용
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        # 정렬 (최신순)
+        query = query.order_by(desc(Pod.created_at))
+
+        # 전체 개수 조회
+        count_query = select(func.count(Pod.id)).where(Pod.is_active == True)
+        if conditions:
+            count_query = count_query.where(and_(*conditions))
+
+        total_count = await self.db.scalar(count_query)
+
+        # 페이지네이션
+        offset = (page - 1) * page_size
+        query = query.offset(offset).limit(page_size)
+
+        result = await self.db.execute(query)
+        pods = result.scalars().all()
+
+        return {
+            "items": pods,
+            "total_count": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total_count + page_size - 1) // page_size,
+        }
