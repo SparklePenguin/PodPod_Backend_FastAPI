@@ -23,6 +23,7 @@
 ## DTO 정리
 
 ### Page Request 상속 구조 개선
+- [x] `PodSearchRequest`에 page, pageSize 기본값 설정 (완료)
 - [ ] 공통 `PageRequest` 클래스 생성 (page, page_size 필드)
 - [ ] `PodSearchRequest`가 `PageRequest` 상속하도록 수정
 - [ ] 다른 검색 DTO들도 동일한 구조로 통일
