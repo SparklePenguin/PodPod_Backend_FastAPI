@@ -31,7 +31,7 @@ api_router.include_router(
     artist_schedules.router, prefix="/artist/schedules", tags=["artist-schedules"]
 )
 api_router.include_router(
-    artist_suggestions.router, prefix="/artist-suggestions", tags=["artistSuggestions"]
+    artist_suggestions.router, prefix="/artist-suggestions", tags=["artist-suggestions"]
 )
 
 # 성향 테스트 관련 라우터

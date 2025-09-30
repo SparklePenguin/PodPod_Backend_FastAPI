@@ -169,36 +169,3 @@ async def import_artist_schedules_from_json(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"JSON 파일에서 아티스트 스케줄 데이터 가져오기 실패: {str(e)}",
         )
-
-
-# - MARK: 아티스트 스케줄 생성
-@router.post(
-    "",
-    response_model=BaseResponse[ArtistScheduleDto],
-    responses={
-        HttpStatus.CREATED: {
-            "model": BaseResponse[ArtistScheduleDto],
-            "description": "아티스트 스케줄 생성 성공",
-        },
-    },
-    summary="아티스트 스케줄 생성",
-    description="새로운 아티스트 스케줄을 생성합니다.",
-    tags=["artist-schedules"],
-)
-async def create_artist_schedule(
-    request: ArtistScheduleCreateRequest,
-    artist_schedule_service: ArtistScheduleService = Depends(
-        get_artist_schedule_service
-    ),
-):
-    """새로운 아티스트 스케줄을 생성합니다."""
-    try:
-        schedule = await artist_schedule_service.create_schedule(request)
-        return BaseResponse.ok(
-            schedule, message_ko="아티스트 스케줄 생성 성공", http_status=201
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"아티스트 스케줄 생성 실패: {str(e)}",
-        )
