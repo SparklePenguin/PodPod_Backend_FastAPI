@@ -85,10 +85,10 @@ async def get_artists(
 # - MARK: 특정 아티스트 조회
 @router.get(
     "/{artist_id}",
-    response_model=BaseResponse[PageDto[ArtistDto]],
+    response_model=BaseResponse[ArtistDto],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[PageDto[ArtistDto]],
+            "model": BaseResponse[ArtistDto],
             "description": "아티스트 조회 성공",
         },
     },
