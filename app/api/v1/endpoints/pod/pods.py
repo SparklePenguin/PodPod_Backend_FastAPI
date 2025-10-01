@@ -46,11 +46,15 @@ def get_pod_service(
             "description": "파티 생성 성공",
         },
     },
+    summary="파티 생성",
+    description="새로운 파티를 생성합니다.",
+    tags=["pods"],
 )
 async def create_pod(
-    title: str = Form(..., description="파티 제목"),
+    title: str = Form(..., alias="title", description="파티 제목"),
     description: Optional[str] = Form(
         ...,
+        alias="description",
         description="파티 설명",
     ),
     sub_categories: list[str] = Form(
@@ -58,9 +62,9 @@ async def create_pod(
         alias="subCategories",
         description="서브 카테고리 (예: ['EXCHANGE', 'SALE', 'GROUP_PURCHASE'] 등)",
     ),
-    capacity: int = Form(..., description="최대 인원수"),
-    place: str = Form(..., description="장소명"),
-    address: str = Form(..., description="주소"),
+    capacity: int = Form(..., alias="capacity", description="최대 인원수"),
+    place: str = Form(..., alias="place", description="장소명"),
+    address: str = Form(..., alias="address", description="주소"),
     sub_address: Optional[str] = Form(
         None, alias="subAddress", description="상세 주소"
     ),
@@ -79,7 +83,9 @@ async def create_pod(
         alias="selectedArtistId",
         description="선택된 아티스트 ID",
     ),
-    images: list[UploadFile] = File(..., description="파티 이미지 리스트"),
+    images: list[UploadFile] = File(
+        ..., alias="images", description="파티 이미지 리스트"
+    ),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
 ):
@@ -307,6 +313,9 @@ async def get_popular_category_pods(
             "description": "파티 상세 조회 성공",
         },
     },
+    summary="파티 상세 조회",
+    description="특정 파티의 상세 정보를 조회합니다.",
+    tags=["pods"],
     dependencies=[],  # 인증 의존성 제거
 )
 async def get_pod_detail(
@@ -341,9 +350,12 @@ async def get_pod_detail(
     responses={
         HttpStatus.OK: {
             "model": BaseResponse[None],
-            "description": "파티 수정 성공 (No Content)",
+            "description": "파티 수정 성공",
         },
     },
+    summary="파티 수정",
+    description="특정 파티의 정보를 수정합니다.",
+    tags=["pods"],
 )
 async def update_pod(
     pod_id: int,
@@ -359,9 +371,12 @@ async def update_pod(
     status_code=HttpStatus.NO_CONTENT,
     responses={
         HttpStatus.NO_CONTENT: {
-            "description": "파티 삭제 성공 (No Content)",
+            "description": "파티 삭제 성공",
         },
     },
+    summary="파티 삭제",
+    description="특정 파티를 삭제합니다.",
+    tags=["pods"],
 )
 async def delete_pod(
     pod_id: int,
@@ -381,11 +396,12 @@ async def delete_pod(
             "description": "특정 유저의 파티 목록 조회 성공",
         },
     },
+    tags=["pods"],
 )
 async def get_user_pods(
     user_id: int,
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
     pod_service: PodService = Depends(get_pod_service),
 ):
     """특정 유저가 개설한 파티 목록 조회"""

@@ -31,6 +31,9 @@ router = APIRouter()
             "description": "사용자 생성 성공",
         },
     },
+    summary="사용자 생성",
+    description="새로운 사용자를 생성합니다 (회원가입).",
+    tags=["users"],
 )
 async def create_user(
     user_data: SignUpRequest,
@@ -51,6 +54,9 @@ async def create_user(
             "description": "사용자 정보 조회 성공",
         },
     },
+    summary="사용자 정보 조회",
+    description="현재 로그인한 사용자의 정보를 조회합니다.",
+    tags=["users"],
 )
 async def get_user_info(
     user_id: Optional[int] = None,
@@ -116,6 +122,9 @@ async def update_user_profile(
             "description": "선호 아티스트 조회 성공",
         },
     },
+    summary="선호 아티스트 조회",
+    description="현재 사용자의 선호 아티스트 목록을 조회합니다.",
+    tags=["users"],
 )
 async def get_user_preferred_artists(
     current_user_id: int = Depends(get_current_user_id),
@@ -143,6 +152,9 @@ async def get_user_preferred_artists(
             "description": "서버 내부 오류",
         },
     },
+    summary="선호 아티스트 업데이트",
+    description="현재 사용자의 선호 아티스트 목록을 업데이트합니다.",
+    tags=["users"],
 )
 async def update_user_preferred_artists(
     artists_data: UpdatePreferredArtistsRequest,
@@ -263,6 +275,9 @@ async def block_user(
             "description": "서버 내부 오류",
         },
     },
+    summary="차단된 사용자 목록 조회",
+    description="현재 사용자가 차단한 사용자 목록을 조회합니다.",
+    tags=["users"],
 )
 async def get_blocked_users(
     current_user_id: int = Depends(get_current_user_id),
@@ -353,37 +368,3 @@ async def get_user_by_id(
     """특정 사용자 조회 (내부용)"""
     user = await user_service.get_user_internal(user_id)
     return BaseResponse.ok(data=user)
-
-
-# - MARK: 로깅 테스트 엔드포인트
-@router.get(
-    "/debug/logging-test",
-    response_model=BaseResponse[dict],
-    tags=["internal"],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "로깅 테스트 성공",
-        },
-    },
-)
-async def test_logging():
-    """로깅 시스템 테스트 엔드포인트"""
-    logger = get_logger("test")
-
-    # 다양한 레벨의 로그 테스트
-    logger.debug("DEBUG 메시지 테스트")
-    logger.info("INFO 메시지 테스트")
-    logger.warning("WARNING 메시지 테스트")
-    logger.error("ERROR 메시지 테스트")
-
-    # 예외 로깅 테스트
-    try:
-        raise ValueError("테스트 예외 - 로깅 시스템 확인용")
-    except Exception as e:
-        logger.error("예외 발생 테스트", exc_info=True)
-
-    return BaseResponse.ok(
-        data={"message": "로깅 테스트 완료", "timestamp": "2025-09-30"},
-        message_ko="로깅 테스트가 완료되었습니다.",
-    )

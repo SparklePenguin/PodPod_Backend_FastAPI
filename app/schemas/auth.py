@@ -20,21 +20,23 @@ class SignInResponse(BaseModel):
 
 # - MARK: 회원가입 요청
 class SignUpRequest(BaseModel):
-    email: Optional[str] = None
-    username: Optional[str] = None
-    nickname: Optional[str] = None
-    password: Optional[str] = None
-    profile_image: Optional[str] = None
-    auth_provider: Optional[str] = None
-    auth_provider_id: Optional[str] = None
+    email: Optional[str] = Field(default=None, alias="email")
+    username: Optional[str] = Field(default=None, alias="username")
+    nickname: Optional[str] = Field(default=None, alias="nickname")
+    password: Optional[str] = Field(default=None, alias="password")
+    profile_image: Optional[str] = Field(default=None, alias="profileImage")
+    auth_provider: Optional[str] = Field(default=None, alias="authProvider")
+    auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")
 
     model_config = {"populate_by_name": True}
 
 
 # - MARK: 이메일 로그인 요청
 class EmailLoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., alias="email")
+    password: str = Field(..., alias="password")
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 토큰 갱신 요청
