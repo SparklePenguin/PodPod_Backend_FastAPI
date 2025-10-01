@@ -16,50 +16,58 @@ class ScheduleTypeEnum(int, Enum):
 class ScheduleMemberDto(BaseModel):
     """스케줄 멤버 DTO"""
 
-    id: Optional[int] = None
-    ko_name: str = Field(..., description="멤버 한글명")
-    en_name: str = Field(..., description="멤버 영문명")
-    artist_id: Optional[int] = Field(None, description="아티스트 ID")
+    id: Optional[int] = Field(default=None, alias="id")
+    ko_name: str = Field(..., alias="koName", description="멤버 한글명")
+    en_name: str = Field(..., alias="enName", description="멤버 영문명")
+    artist_id: Optional[int] = Field(None, alias="artistId", description="아티스트 ID")
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
 
 
 class ScheduleContentDto(BaseModel):
     """스케줄 콘텐츠 DTO"""
 
-    id: Optional[int] = None
-    type: str = Field(..., description="콘텐츠 유형 (video, image)")
-    path: str = Field(..., description="콘텐츠 경로/URL")
-    title: Optional[str] = Field(None, description="콘텐츠 제목")
+    id: Optional[int] = Field(default=None, alias="id")
+    type: str = Field(..., alias="type", description="콘텐츠 유형 (video, image)")
+    path: str = Field(..., alias="path", description="콘텐츠 경로/URL")
+    title: Optional[str] = Field(None, alias="title", description="콘텐츠 제목")
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
 
 
 class ArtistScheduleDto(BaseModel):
     """아티스트 스케줄 DTO"""
 
-    id: int
-    artist_id: Optional[int] = None
-    unit_id: Optional[int] = None
-    artist_ko_name: str
-    type: ScheduleTypeEnum
-    start_time: int = Field(..., description="일정 시작 시간 (밀리초)")
-    end_time: int = Field(..., description="일정 종료 시간 (밀리초)")
-    text: Optional[str] = None
-    title: str
-    channel: Optional[str] = None
-    location: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    id: int = Field(alias="id")
+    artist_id: Optional[int] = Field(default=None, alias="artistId")
+    unit_id: Optional[int] = Field(default=None, alias="unitId")
+    artist_ko_name: str = Field(alias="artistKoName")
+    type: ScheduleTypeEnum = Field(alias="type")
+    start_time: int = Field(
+        ..., alias="startTime", description="일정 시작 시간 (밀리초)"
+    )
+    end_time: int = Field(..., alias="endTime", description="일정 종료 시간 (밀리초)")
+    text: Optional[str] = Field(default=None, alias="text")
+    title: str = Field(alias="title")
+    channel: Optional[str] = Field(default=None, alias="channel")
+    location: Optional[str] = Field(default=None, alias="location")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
 
     # 관계 데이터
-    members: List[ScheduleMemberDto] = []
-    contents: List[ScheduleContentDto] = []
+    members: List[ScheduleMemberDto] = Field(default_factory=list, alias="members")
+    contents: List[ScheduleContentDto] = Field(default_factory=list, alias="contents")
 
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
 
 
 class ScheduleMemberCreateRequest(BaseModel):
