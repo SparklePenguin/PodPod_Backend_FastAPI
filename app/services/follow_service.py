@@ -5,7 +5,7 @@ from app.crud.pod.pod import PodCRUD
 from app.schemas.follow import (
     FollowRequest,
     FollowResponse,
-    UserFollowDto,
+    SimpleUserDto,
     FollowListResponse,
     FollowStatsResponse,
 )
@@ -41,7 +41,7 @@ class FollowService:
 
     async def get_following_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[UserFollowDto]:
+    ) -> PageDto[SimpleUserDto]:
         """팔로우하는 사용자 목록 조회"""
         following_data, total_count = await self.crud.get_following_list(
             user_id, page, size
@@ -49,7 +49,7 @@ class FollowService:
 
         users = []
         for user, created_at, tendency_type in following_data:
-            user_dto = UserFollowDto(
+            user_dto = SimpleUserDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
@@ -82,7 +82,7 @@ class FollowService:
         current_user_id: Optional[int] = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[UserFollowDto]:
+    ) -> PageDto[SimpleUserDto]:
         """팔로워 목록 조회"""
         followers_data, total_count = await self.crud.get_followers_list(
             user_id, page, size
@@ -97,7 +97,7 @@ class FollowService:
                     current_user_id, user.id
                 )
 
-            user_dto = UserFollowDto(
+            user_dto = SimpleUserDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
@@ -169,13 +169,13 @@ class FollowService:
 
     async def get_recommended_users(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[UserFollowDto]:
+    ) -> PageDto[SimpleUserDto]:
         """추천 유저 목록 조회 (현재는 랜덤 유저 반환)"""
         recommended_users = await self.crud.get_recommended_users(user_id, page, size)
 
         users = []
         for user, tendency_type in recommended_users:
-            user_dto = UserFollowDto(
+            user_dto = SimpleUserDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,

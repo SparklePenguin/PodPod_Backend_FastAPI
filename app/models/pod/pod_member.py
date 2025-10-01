@@ -2,7 +2,7 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
-    DateTime,
+    Text,
     ForeignKey,
     UniqueConstraint,
 )
@@ -18,7 +18,13 @@ class PodMember(Base):
     pod_id = Column(Integer, ForeignKey("pods.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     role = Column(String(20), nullable=False, default="owner")
-    joined_at = Column(DateTime, default=datetime.now(timezone.utc))
+    message = Column(Text, nullable=True, comment="참여 신청 메시지")
+    created_at = Column(
+        Integer,
+        nullable=False,
+        default=lambda: int(datetime.now(timezone.utc).timestamp()),
+        comment="참여 신청 시간 (Unix timestamp)",
+    )
 
     pod = relationship("Pod", back_populates="members")
     user = relationship("User")

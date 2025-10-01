@@ -28,8 +28,8 @@ class FollowResponse(BaseModel):
     }
 
 
-class UserFollowDto(BaseModel):
-    """팔로우 사용자 정보 DTO"""
+class SimpleUserDto(BaseModel):
+    """간단한 사용자 정보 DTO"""
 
     id: int = Field(..., description="사용자 ID", example=1)
     nickname: Optional[str] = Field(None, description="닉네임", example="홍길동")
@@ -53,7 +53,7 @@ class UserFollowDto(BaseModel):
 class FollowListResponse(BaseModel):
     """팔로우 리스트 응답 스키마"""
 
-    users: List[UserFollowDto] = Field(..., description="팔로우 사용자 목록")
+    users: List[SimpleUserDto] = Field(..., description="팔로우 사용자 목록")
     total_count: int = Field(
         ..., alias="totalCount", description="총 팔로우 수", example=10
     )

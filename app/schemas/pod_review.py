@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from app.schemas.follow import UserFollowDto
+from app.schemas.follow import SimpleUserDto
 
 
 class SimplePodDto(BaseModel):
@@ -57,7 +57,7 @@ class PodReviewDto(BaseModel):
 
     id: int = Field(..., description="후기 ID", example=1)
     pod: SimplePodDto = Field(..., description="파티 정보")
-    user: UserFollowDto = Field(..., description="작성자 정보")
+    user: SimpleUserDto = Field(..., description="작성자 정보")
     rating: int = Field(..., description="별점 (1-5)", example=5)
     content: str = Field(
         ..., description="후기 내용", example="정말 좋은 파티였습니다!"

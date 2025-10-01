@@ -96,7 +96,7 @@ async def create_review(
     },
 )
 async def get_review(
-    review_id: int = Path(..., description="후기 ID"),
+    review_id: int = Path(..., alias="reviewId", description="후기 ID"),
     db: AsyncSession = Depends(get_db),
 ):
     """후기 조회"""
@@ -147,7 +147,7 @@ async def get_review(
     },
 )
 async def get_reviews_by_pod(
-    pod_id: int = Path(..., description="파티 ID"),
+    pod_id: int = Path(..., alias="podId", description="파티 ID"),
     page: int = Query(1, ge=1, description="페이지 번호"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기"),
     db: AsyncSession = Depends(get_db),
@@ -188,7 +188,7 @@ async def get_reviews_by_pod(
     },
 )
 async def get_reviews_by_user(
-    user_id: int = Path(..., description="사용자 ID"),
+    user_id: int = Path(..., alias="userId", description="사용자 ID"),
     page: int = Query(1, ge=1, description="페이지 번호"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기"),
     db: AsyncSession = Depends(get_db),
@@ -235,7 +235,7 @@ async def get_reviews_by_user(
     },
 )
 async def update_review(
-    review_id: int = Path(..., description="후기 ID"),
+    review_id: int = Path(..., alias="reviewId", description="후기 ID"),
     request: PodReviewUpdateRequest = ...,
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -304,7 +304,7 @@ async def update_review(
     },
 )
 async def delete_review(
-    review_id: int = Path(..., description="후기 ID"),
+    review_id: int = Path(..., alias="reviewId", description="후기 ID"),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):

@@ -1,5 +1,5 @@
 from app.core.http_status import HttpStatus
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -30,7 +30,7 @@ def get_pod_service(
     },
 )
 async def like_pod(
-    pod_id: int,
+    pod_id: int = Path(..., alias="podId", description="파티 ID"),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
 ):
@@ -50,7 +50,7 @@ async def like_pod(
     },
 )
 async def unlike_pod(
-    pod_id: int,
+    pod_id: int = Path(..., alias="podId", description="파티 ID"),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
 ):
@@ -70,7 +70,7 @@ async def unlike_pod(
     },
 )
 async def like_status(
-    pod_id: int,
+    pod_id: int = Path(..., alias="podId", description="파티 ID"),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
 ):

@@ -7,7 +7,7 @@ from app.schemas.pod_review import (
     PodReviewDto,
     SimplePodDto,
 )
-from app.schemas.follow import UserFollowDto
+from app.schemas.follow import SimpleUserDto
 from app.schemas.common import PageDto
 from app.models.pod_review import PodReview
 from app.core.logging_config import get_logger
@@ -186,8 +186,8 @@ class PodReviewService:
             raise
 
         try:
-            # UserFollowDto 생성 (성향 정보는 별도로 조회)
-            user_follow = UserFollowDto(
+            # SimpleUserDto 생성 (성향 정보는 별도로 조회)
+            user_follow = SimpleUserDto(
                 id=review.user.id,
                 nickname=review.user.nickname,
                 profile_image=review.user.profile_image,
@@ -196,7 +196,7 @@ class PodReviewService:
                 is_following=False,  # 필요시 별도 조회
             )
 
-            logger.info(f"UserFollowDto 생성 완료: user_id={user_follow.id}")
+            logger.info(f"SimpleUserDto 생성 완료: user_id={user_follow.id}")
 
             result = PodReviewDto(
                 id=review.id,
@@ -213,7 +213,7 @@ class PodReviewService:
 
         except Exception as e:
             logger.error(
-                f"UserFollowDto 또는 PodReviewDto 생성 중 오류: {type(e).__name__}: {str(e)}",
+                f"SimpleUserDto 또는 PodReviewDto 생성 중 오류: {type(e).__name__}: {str(e)}",
                 exc_info=True,
             )
             raise
