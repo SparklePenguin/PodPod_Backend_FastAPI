@@ -51,11 +51,19 @@ def get_artist_schedule_service(
     tags=["artist-schedules"],
 )
 async def get_artist_schedules(
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    page_size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    artist_id: Optional[int] = Query(None, description="아티스트 ID 필터"),
-    unit_id: Optional[int] = Query(None, description="아티스트 유닛 ID 필터"),
-    schedule_type: Optional[int] = Query(None, description="스케줄 유형 필터"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page_size: int = Query(
+        20, ge=1, le=100, alias="pageSize", description="페이지 크기 (1~100)"
+    ),
+    artist_id: Optional[int] = Query(
+        None, alias="artistId", description="아티스트 ID 필터"
+    ),
+    unit_id: Optional[int] = Query(
+        None, alias="unitId", description="아티스트 유닛 ID 필터"
+    ),
+    schedule_type: Optional[int] = Query(
+        None, alias="scheduleType", description="스케줄 유형 필터"
+    ),
     artist_schedule_service: ArtistScheduleService = Depends(
         get_artist_schedule_service
     ),

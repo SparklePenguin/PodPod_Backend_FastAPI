@@ -16,7 +16,7 @@ class ScheduleTypeEnum(int, Enum):
 class ScheduleMemberDto(BaseModel):
     """스케줄 멤버 DTO"""
 
-    id: Optional[int] = Field(default=None, alias="id")
+    id: int = Field(default=None, alias="id")
     ko_name: str = Field(..., alias="koName", description="멤버 한글명")
     en_name: str = Field(..., alias="enName", description="멤버 영문명")
     artist_id: Optional[int] = Field(None, alias="artistId", description="아티스트 ID")
@@ -30,7 +30,7 @@ class ScheduleMemberDto(BaseModel):
 class ScheduleContentDto(BaseModel):
     """스케줄 콘텐츠 DTO"""
 
-    id: Optional[int] = Field(default=None, alias="id")
+    id: int = Field(default=None, alias="id")
     type: str = Field(..., alias="type", description="콘텐츠 유형 (video, image)")
     path: str = Field(..., alias="path", description="콘텐츠 경로/URL")
     title: Optional[str] = Field(None, alias="title", description="콘텐츠 제목")
@@ -45,8 +45,8 @@ class ArtistScheduleDto(BaseModel):
     """아티스트 스케줄 DTO"""
 
     id: int = Field(alias="id")
-    artist_id: Optional[int] = Field(default=None, alias="artistId")
-    unit_id: Optional[int] = Field(default=None, alias="unitId")
+    artist_id: int = Field(default=None, alias="artistId")
+    unit_id: int = Field(default=None, alias="unitId")
     artist_ko_name: str = Field(alias="artistKoName")
     type: ScheduleTypeEnum = Field(alias="type")
     start_time: int = Field(
