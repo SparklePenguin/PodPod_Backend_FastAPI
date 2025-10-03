@@ -19,7 +19,7 @@ class PodMember(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     role = Column(String(20), nullable=False, default="owner")
     message = Column(Text, nullable=True, comment="참여 신청 메시지")
-    created_at = Column(
+    joined_at = Column(
         Integer,
         nullable=False,
         default=lambda: int(datetime.now(timezone.utc).timestamp()),

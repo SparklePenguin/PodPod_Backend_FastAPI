@@ -123,6 +123,8 @@ class PodCRUD:
 
         # 1순위: 최근 7일 이내 가장 많이 지원한 팟 (PodMember 기준)
         # 2순위: 최근 7일 이내 조회한 팟 (PodView 기준)
+        seven_days_ago_timestamp = int(seven_days_ago.timestamp())
+
         trending_query = (
             select(
                 Pod,
@@ -131,7 +133,10 @@ class PodCRUD:
             )
             .outerjoin(
                 PodMember,
-                and_(Pod.id == PodMember.pod_id, PodMember.joined_at >= seven_days_ago),
+                and_(
+                    Pod.id == PodMember.pod_id,
+                    PodMember.joined_at >= seven_days_ago_timestamp,
+                ),
             )
             .outerjoin(
                 PodView,
@@ -231,15 +236,18 @@ class PodCRUD:
         now = datetime.now()
         ninety_days_ago = now - timedelta(days=90)
 
-        # 기본 조건: 마감되지 않은 파티
+        # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
             Pod.is_active == True,
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
+            Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외
         )
 
         # 1순위: 참여한 팟(평점 4점 이상, 90일 이내)의 개설자가 개설한 팟
         # 사용자가 참여한 파티 조회 (PodMember + PodRating 테이블 사용)
+        ninety_days_ago_timestamp = int(ninety_days_ago.timestamp())
+
         participated_pods_query = (
             select(Pod.id, Pod.owner_id, Pod.sub_categories, Pod.address)
             .join(PodMember, Pod.id == PodMember.pod_id)
@@ -250,6 +258,7 @@ class PodCRUD:
                     PodMember.role != "owner",  # 개설자 제외
                     PodRating.user_id == user_id,  # 사용자가 평점을 준 파티
                     PodRating.rating >= 4,  # 평점 4점 이상
+                    PodMember.joined_at >= ninety_days_ago_timestamp,  # 90일 이내 참여
                     Pod.meeting_date >= ninety_days_ago.date(),
                     Pod.meeting_date <= now.date(),
                 )
@@ -398,9 +407,11 @@ class PodCRUD:
         now = datetime.now()
         one_week_ago = now - timedelta(days=7)
 
-        # 기본 조건: 마감되지 않은 파티
+        # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
-            Pod.is_active == True, Pod.meeting_date >= now.date()  # 마감되지 않은 파티
+            Pod.is_active == True,
+            Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
+            Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
         )
 
         # 지역 조건 추가 (선택사항)
