@@ -9,6 +9,7 @@ from app.api.deps import get_current_user_id
 from app.services.pod.pod_service import PodService
 from app.services.pod.recruitment_service import RecruitmentService
 from app.schemas.common import BaseResponse
+from app.schemas.pod.pod_application_dto import PodApplicationDto
 from app.schemas.pod.pod_member_dto import PodMemberDto
 from app.schemas.follow import SimpleUserDto
 
@@ -21,6 +22,13 @@ class ApplyToPodRequest(BaseModel):
     message: Optional[str] = Field(
         default=None, alias="message", description="참여 신청 메시지"
     )
+
+    model_config = {"populate_by_name": True}
+
+
+# - MARK: 신청서 승인/거절 요청 스키마
+class ReviewApplicationRequest(BaseModel):
+    status: str = Field(alias="status", description="승인 상태 (approved, rejected)")
 
     model_config = {"populate_by_name": True}
 
@@ -40,10 +48,10 @@ def get_recruitment_service(
 # - MARK: 파티 참여 신청
 @router.post(
     "/",
-    response_model=BaseResponse[dict],
+    response_model=BaseResponse[PodApplicationDto],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[dict],
+            "model": BaseResponse[PodApplicationDto],
             "description": "파티 참여 신청 성공",
         },
     },
@@ -58,8 +66,34 @@ async def apply_to_pod(
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
     message = request.message if request else None
-    result = await recruitment_service.apply_to_pod(pod_id, user_id, message)
-    return BaseResponse.ok(data=result)
+    application_dto = await recruitment_service.apply_to_pod(pod_id, user_id, message)
+    return BaseResponse.ok(data=application_dto)
+
+
+# - MARK: 신청서 승인/거절
+@router.put(
+    "/{application_id}",
+    response_model=BaseResponse[PodApplicationDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[PodApplicationDto],
+            "description": "신청서 승인/거절 성공",
+        },
+    },
+    summary="신청서 승인/거절",
+    description="파티 참여 신청서를 승인하거나 거절합니다.",
+    tags=["recruitments"],
+)
+async def review_application(
+    application_id: int,
+    request: ReviewApplicationRequest,
+    user_id: int = Depends(get_current_user_id),
+    recruitment_service: RecruitmentService = Depends(get_recruitment_service),
+):
+    application_dto = await recruitment_service.review_application(
+        application_id, request.status, user_id
+    )
+    return BaseResponse.ok(data=application_dto)
 
 
 # - MARK: 파티 참여 신청 취소
