@@ -10,8 +10,8 @@ class PodMemberDto(BaseModel):
     message: Optional[str] = Field(
         default=None, alias="message", description="참여 신청 메시지"
     )
-    created_at: int = Field(
-        alias="createdAt", description="참여 신청 시간 (Unix timestamp)"
+    joined_at: int = Field(
+        alias="joinedAt", description="참여 신청 시간 (Unix timestamp)"
     )
 
     model_config = {

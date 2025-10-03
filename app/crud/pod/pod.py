@@ -56,7 +56,15 @@ class PodCRUD:
         await self.db.flush()
 
         # owner를 멤버로 포함 (role=owner)
-        self.db.add(PodMember(pod_id=pod.id, user_id=owner_id, role="owner"))
+        current_timestamp = int(datetime.now(timezone.utc).timestamp())
+        self.db.add(
+            PodMember(
+                pod_id=pod.id,
+                user_id=owner_id,
+                role="owner",
+                joined_at=current_timestamp,
+            )
+        )
 
         await self.db.commit()
         await self.db.refresh(pod)

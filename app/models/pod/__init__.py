@@ -10,6 +10,7 @@ from .pod_member import PodMember
 from .pod_like import PodLike
 from .pod_rating import PodRating
 from .pod_view import PodView
+from .pod_application import PodApplication
 
 __all__ = [
     "AccompanySubCategory",
@@ -22,4 +23,5 @@ __all__ = [
     "PodLike",
     "PodRating",
     "PodView",
+    "PodApplication",
 ]
