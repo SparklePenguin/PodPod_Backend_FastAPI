@@ -37,24 +37,6 @@ class ArtistSuggestionCreateRequest(BaseModel):
         }
 
 
-class ArtistSuggestionNameOnlyRequest(BaseModel):
-    """아티스트명만으로 제안하는 요청"""
-
-    artist_name: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="아티스트명",
-        example="아이유",
-        alias="artistName",
-    )
-
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-        json_schema_extra = {"example": {"artistName": "아이유"}}
-
-
 class ArtistSuggestionDto(BaseModel):
     """아티스트 제안 응답 DTO"""
 

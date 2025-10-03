@@ -56,8 +56,13 @@ class ArtistSuggestionCRUD:
 
         return suggestions, total_count
 
-    async def get_artist_ranking(self, limit: int = 10) -> List[dict]:
-        """아티스트별 요청 순위 조회"""
+    async def get_artist_ranking(
+        self, page: int = 1, limit: int = 20
+    ) -> Tuple[List[dict], int]:
+        """아티스트별 요청 순위 조회 (페이지네이션)"""
+        offset = (page - 1) * limit
+
+        # 아티스트별 요청 순위 조회
         query = (
             select(
                 ArtistSuggestion.artist_name,
@@ -65,6 +70,7 @@ class ArtistSuggestionCRUD:
             )
             .group_by(ArtistSuggestion.artist_name)
             .order_by(desc("count"))
+            .offset(offset)
             .limit(limit)
         )
         result = await self.db.execute(query)
@@ -73,7 +79,12 @@ class ArtistSuggestionCRUD:
         for row in result:
             rankings.append({"artist_name": row.artist_name, "count": row.count})
 
-        return rankings
+        # 전체 아티스트 수 조회
+        count_query = select(func.count(func.distinct(ArtistSuggestion.artist_name)))
+        count_result = await self.db.execute(count_query)
+        total_count = count_result.scalar() or 0
+
+        return rankings, total_count
 
     async def get_suggestions_by_artist_name(
         self, artist_name: str, page: int = 1, size: int = 20

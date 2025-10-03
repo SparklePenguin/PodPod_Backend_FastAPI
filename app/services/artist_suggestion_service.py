@@ -4,7 +4,6 @@ import math
 from app.crud.artist_suggestion import ArtistSuggestionCRUD
 from app.schemas.artist_suggestion import (
     ArtistSuggestionCreateRequest,
-    ArtistSuggestionNameOnlyRequest,
     ArtistSuggestionDto,
     ArtistSuggestionRankingDto,
 )
@@ -48,31 +47,6 @@ class ArtistSuggestionService:
 
         return ArtistSuggestionDto.model_validate(suggestion)
 
-    async def create_suggestion_name_only(
-        self, request: ArtistSuggestionNameOnlyRequest, user_id: int
-    ) -> ArtistSuggestionDto:
-        """아티스트명만으로 제안 생성"""
-        logger.info(
-            f"아티스트명만으로 제안 생성 요청: {request.artist_name} (user_id: {user_id})"
-        )
-
-        # 중복 체크
-        is_duplicate = await self.crud.check_duplicate_suggestion(
-            request.artist_name, user_id
-        )
-        if is_duplicate:
-            raise BusinessException(
-                error_code="DUPLICATE_ARTIST_SUGGESTION",
-                message_ko=f"'{request.artist_name}' 아티스트에 대한 제안을 이미 하셨습니다.",
-                status_code=409,
-            )
-
-        suggestion = await self.crud.create_suggestion(
-            artist_name=request.artist_name, reason=None, email=None, user_id=user_id
-        )
-
-        return ArtistSuggestionDto.model_validate(suggestion)
-
     async def get_suggestion_by_id(
         self, suggestion_id: int
     ) -> Optional[ArtistSuggestionDto]:
@@ -108,12 +82,12 @@ class ArtistSuggestionService:
         )
 
     async def get_artist_ranking(
-        self, limit: int = 10
-    ) -> List[ArtistSuggestionRankingDto]:
+        self, page: int = 1, limit: int = 20
+    ) -> PageDto[ArtistSuggestionRankingDto]:
         """아티스트별 요청 순위 조회"""
-        logger.info(f"아티스트 순위 조회 요청 (상위 {limit}개)")
+        logger.info(f"아티스트 순위 조회 요청 (page: {page}, limit: {limit})")
 
-        rankings = await self.crud.get_artist_ranking(limit)
+        rankings, total_count = await self.crud.get_artist_ranking(page, limit)
 
         ranking_dtos = []
         for ranking in rankings:
@@ -122,7 +96,18 @@ class ArtistSuggestionService:
             )
             ranking_dtos.append(ranking_dto)
 
-        return ranking_dtos
+        # PageDto 생성
+        total_pages = math.ceil(total_count / limit) if total_count > 0 else 0
+
+        return PageDto[ArtistSuggestionRankingDto](
+            items=ranking_dtos,
+            current_page=page,
+            page_size=limit,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1,
+        )
 
     async def get_suggestions_by_artist_name(
         self, artist_name: str, page: int = 1, size: int = 20
