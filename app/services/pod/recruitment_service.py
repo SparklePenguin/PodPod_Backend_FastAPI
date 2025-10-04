@@ -92,3 +92,20 @@ class RecruitmentService:
             reviewedAt=application.reviewed_at,
             reviewedBy=SimpleUserDto.model_validate(reviewer) if reviewer else None,
         )
+
+    # - MARK: 신청서 취소
+    async def cancel_application(self, pod_id: int, user_id: int) -> bool:
+        # 해당 파티에 대한 사용자의 신청서 찾기
+        applications = await self.application_crud.get_applications_by_user_id(user_id)
+        target_application = None
+
+        for app in applications:
+            if app.pod_id == pod_id and app.status == "pending":
+                target_application = app
+                break
+
+        if not target_application:
+            raise_error("APPLICATION_NOT_FOUND")
+
+        # 신청서 삭제
+        return await self.application_crud.delete_application(target_application.id)

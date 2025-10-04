@@ -314,15 +314,15 @@ async def get_popular_category_pods(
         },
     },
     summary="파티 상세 조회",
-    description="특정 파티의 상세 정보를 조회합니다.",
+    description="특정 파티의 상세 정보를 조회합니다. 토큰이 있으면 사용자의 신청서 정보도 포함됩니다.",
     tags=["pods"],
-    dependencies=[],  # 인증 의존성 제거
 )
 async def get_pod_detail(
     pod_id: int,
     pod_service: PodService = Depends(get_pod_service),
+    user_id: Optional[int] = Depends(get_current_user_id),
 ):
-    pod = await pod_service.get_pod_detail(pod_id)
+    pod = await pod_service.get_pod_detail(pod_id, user_id)
     if pod is None:
         error_info = get_error_info("POD_NOT_FOUND")
         return BaseResponse.error(
@@ -333,14 +333,7 @@ async def get_pod_detail(
             message_en=error_info.message_en,
         )
 
-    # PodDto로 변환하고 참여자 수, 좋아요 수 추가
-    pod_dto = PodDto.model_validate(pod)
-    joined_count = await pod_service.crud.get_joined_users_count(pod.id)
-    pod_dto.joined_users_count = joined_count
-    like_count = await pod_service.crud.get_like_count(pod.id)
-    pod_dto.like_count = like_count
-
-    return BaseResponse.ok(data=pod_dto)
+    return BaseResponse.ok(data=pod)
 
 
 # - MARK: 파티 수정

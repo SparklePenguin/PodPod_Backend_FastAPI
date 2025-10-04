@@ -9,6 +9,7 @@ from app.models.pod.pod_enums import (
     EtcSubCategory,
 )
 from app.models.pod.pod_status import PodStatus
+from app.schemas.pod.simple_application_dto import SimpleApplicationDto
 
 
 class PodSearchRequest(BaseModel):
@@ -102,6 +103,9 @@ class PodDto(BaseModel):
 
     # 개인화 필드
     is_liked: bool = Field(default=False, alias="isLiked", example=False)
+    my_application: Optional[SimpleApplicationDto] = Field(
+        default=None, alias="myApplication", description="현재 사용자의 신청서 정보"
+    )
 
     # 통계 및 메타데이터 필드
     view_count: int = Field(default=0, alias="viewCount", example=0)

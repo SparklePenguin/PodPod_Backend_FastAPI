@@ -1,7 +1,9 @@
 from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.pod.pod import PodCRUD
+from app.crud.pod.pod_application import PodApplicationCRUD
 from app.schemas.pod import PodCreateRequest, PodDto
+from app.schemas.pod.simple_application_dto import SimpleApplicationDto
 from app.schemas.common import PageDto
 from app.utils.file_upload import save_upload_file
 from fastapi import UploadFile
@@ -15,6 +17,7 @@ class PodService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.crud = PodCRUD(db)
+        self.application_crud = PodApplicationCRUD(db)
 
     # - MARK: 파티 생성
     async def create_pod(
@@ -110,8 +113,39 @@ class PodService:
         return thumbnail_path
 
     # - MARK: 파티 상세 조회
-    async def get_pod_detail(self, pod_id: int) -> Optional[Pod]:
-        return await self.crud.get_pod_by_id(pod_id)
+    async def get_pod_detail(
+        self, pod_id: int, user_id: Optional[int] = None
+    ) -> Optional[PodDto]:
+        pod = await self.crud.get_pod_by_id(pod_id)
+        if not pod:
+            return None
+
+        # Pod 모델을 PodDto로 변환
+        pod_dto = PodDto.model_validate(pod)
+
+        # 통계 필드 설정
+        pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
+        pod_dto.like_count = await self.crud.get_like_count(pod.id)
+        pod_dto.view_count = await self.crud.get_view_count(pod.id)
+
+        # 사용자 정보가 있으면 개인화 필드 설정
+        if user_id:
+            pod_dto.is_liked = await self.crud.is_liked_by_user(pod.id, user_id)
+
+            # 사용자의 신청서 정보 조회
+            user_applications = await self.application_crud.get_applications_by_user_id(
+                user_id
+            )
+            user_application = next(
+                (app for app in user_applications if app.pod_id == pod_id), None
+            )
+
+            if user_application:
+                pod_dto.my_application = SimpleApplicationDto(
+                    id=user_application.id, status=user_application.status
+                )
+
+        return pod_dto
 
     # - MARK: 파티 수정
     async def update_pod(self, pod_id: int, **fields) -> Optional[Pod]:

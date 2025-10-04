@@ -12,6 +12,7 @@ from app.schemas.common import BaseResponse
 from app.schemas.pod.pod_application_dto import PodApplicationDto
 from app.schemas.pod.pod_member_dto import PodMemberDto
 from app.schemas.follow import SimpleUserDto
+from app.models.user import User
 
 
 router = APIRouter()
@@ -99,9 +100,10 @@ async def review_application(
 # - MARK: 파티 참여 신청 취소
 @router.delete(
     "/",
-    status_code=HttpStatus.NO_CONTENT,
+    response_model=BaseResponse[dict],
     responses={
-        HttpStatus.NO_CONTENT: {
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
             "description": "파티 참여 신청 취소 성공",
         },
     },
@@ -114,48 +116,52 @@ async def cancel_apply_to_pod(
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
-    await recruitment_service.crud.remove_member(pod_id, user_id)
+    await recruitment_service.cancel_application(pod_id, user_id)
+    return BaseResponse.ok(data={"cancelled": True})
 
 
 # - MARK: 파티 참여 신청 목록 조회
 @router.get(
     "/",
-    response_model=BaseResponse[List[PodMemberDto]],
+    response_model=BaseResponse[List[PodApplicationDto]],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[List[PodMemberDto]],
+            "model": BaseResponse[List[PodApplicationDto]],
             "description": "파티 참여 신청 목록 조회 성공",
         },
     },
     summary="파티 참여 신청 목록 조회",
-    description="특정 파티에 대한 참여 신청자 목록을 조회합니다.",
+    description="특정 파티에 대한 참여 신청서 목록을 조회합니다.",
     tags=["recruitments"],
 )
 async def get_apply_to_pod_list(
     pod_id: int = Query(..., alias="podId", description="파티 ID"),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
-    apply_to_pod_list = await recruitment_service.crud.list_members(pod_id)
-    # PodMember 모델을 PodMemberDto로 변환
-    pod_member_dtos = []
-    for member in apply_to_pod_list:
-        simple_user = SimpleUserDto(
-            id=member.user.id,
-            nickname=member.user.nickname,
-            profile_image=member.user.profile_image,
-            intro=member.user.intro,
-            tendency_type=member.user.tendency_type,
-            is_following=False,  # 기본값으로 설정
-        )
-        pod_member_dto = PodMemberDto(
-            id=member.id,
-            user=simple_user,
-            role=member.role,
-            message=member.message,
-            created_at=member.created_at,
-        )
-        pod_member_dtos.append(pod_member_dto)
-
-    return BaseResponse.ok(
-        data=pod_member_dtos,
+    applications = (
+        await recruitment_service.application_crud.get_applications_by_pod_id(pod_id)
     )
+
+    # PodApplication 모델을 PodApplicationDto로 변환
+    application_dtos = []
+    for application in applications:
+        user = await recruitment_service.db.get(User, application.user_id)
+        reviewer = (
+            await recruitment_service.db.get(User, application.reviewed_by)
+            if application.reviewed_by
+            else None
+        )
+
+        application_dto = PodApplicationDto(
+            id=application.id,
+            podId=application.pod_id,
+            user=SimpleUserDto.model_validate(user),
+            message=application.message,
+            status=application.status,
+            appliedAt=application.applied_at,
+            reviewedAt=application.reviewed_at,
+            reviewedBy=SimpleUserDto.model_validate(reviewer) if reviewer else None,
+        )
+        application_dtos.append(application_dto)
+
+    return BaseResponse.ok(data=application_dtos)
