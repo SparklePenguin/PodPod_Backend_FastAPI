@@ -303,6 +303,186 @@ async def get_popular_category_pods(
     return BaseResponse.ok(data=pods)
 
 
+@router.get(
+    "/user/joined",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="내가 참여한 파티 목록 조회",
+    description="현재 로그인한 사용자가 참여한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 참여한 파티 목록 조회 성공",
+        },
+    },
+    tags=["pods"],
+)
+async def get_my_joined_pods(
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """내가 참여한 파티 목록 조회"""
+    try:
+        joined_pods = await pod_service.get_user_joined_pods(
+            current_user_id, page, size
+        )
+
+        return BaseResponse.ok(
+            data=joined_pods,
+            http_status=HttpStatus.OK,
+            message_ko="내가 참여한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved my joined pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
+        )
+
+
+@router.get(
+    "/user/liked",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="내가 저장한 파티 목록 조회",
+    description="현재 로그인한 사용자가 좋아요한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 저장한 파티 목록 조회 성공",
+        },
+    },
+    tags=["pods"],
+)
+async def get_my_liked_pods(
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """내가 저장한 파티 목록 조회"""
+    try:
+        liked_pods = await pod_service.get_user_liked_pods(current_user_id, page, size)
+
+        return BaseResponse.ok(
+            data=liked_pods,
+            http_status=HttpStatus.OK,
+            message_ko="내가 저장한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved my liked pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
+        )
+
+
+@router.get(
+    "/user",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="내가 개설한 파티 목록 조회",
+    description="현재 로그인한 사용자가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 개설한 파티 목록 조회 성공",
+        },
+    },
+    tags=["pods"],
+)
+async def get_my_pods(
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """내가 개설한 파티 목록 조회"""
+    try:
+        user_pods = await pod_service.get_user_pods(current_user_id, page, size)
+
+        return BaseResponse.ok(
+            data=user_pods,
+            http_status=HttpStatus.OK,
+            message_ko="내가 개설한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved my pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="유저의 파티 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving user's pods.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=None,
+        )
+
+
+# - MARK: 팟 목록 조회 (검색 포함)
+@router.post(
+    "/search",
+    response_model=BaseResponse[PageDto[PodDto]],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[PageDto[PodDto]],
+            "description": "팟 목록 조회 성공",
+        },
+    },
+    summary="팟 목록 조회",
+    description="팟 목록을 조회합니다. 검색 조건을 body로 제공하면 필터링된 결과를 반환합니다.",
+    tags=["pods"],
+)
+async def get_pods(
+    search_request: PodSearchRequest = Body(default_factory=PodSearchRequest),
+    _: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """팟 목록을 조회합니다."""
+    try:
+        pod_service = PodService(db)
+        result = await pod_service.search_pods(
+            user_id=current_user_id,
+            title=search_request.title,
+            sub_category=search_request.sub_category,
+            start_date=search_request.start_date,
+            end_date=search_request.end_date,
+            location=search_request.location,
+            page=search_request.page,
+            page_size=search_request.page_size,
+        )
+
+        return BaseResponse.ok(result, message_ko="팟 목록 조회 성공", http_status=200)
+
+    except ValueError as e:
+        error_info = get_error_info("INVALID_REQUEST")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="잘못된 날짜 형식입니다.",
+            message_en="Invalid date format.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=str(e),
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="팟 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving pods.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=str(e),
+        )
+
+
 # - MARK: 파티 상세 조회
 @router.get(
     "/{pod_id}",
@@ -377,221 +557,3 @@ async def delete_pod(
 ):
     await pod_service.delete_pod(pod_id)
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
-
-
-@router.get(
-    "/user/{user_id}",
-    response_model=BaseResponse[PageDto[PodDto]],
-    summary="특정 유저가 개설한 파티 목록 조회",
-    description="특정 유저가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
-    responses={
-        200: {
-            "description": "특정 유저의 파티 목록 조회 성공",
-        },
-    },
-    tags=["pods"],
-)
-async def get_user_pods(
-    user_id: int,
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    """특정 유저가 개설한 파티 목록 조회"""
-    try:
-        user_pods = await pod_service.get_user_pods(user_id, page, size)
-
-        return BaseResponse.ok(
-            data=user_pods,
-            http_status=HttpStatus.OK,
-            message_ko="유저의 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved user's pods.",
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
-
-
-@router.get(
-    "/user/joined",
-    response_model=BaseResponse[PageDto[PodDto]],
-    summary="내가 참여한 파티 목록 조회",
-    description="현재 로그인한 사용자가 참여한 파티 목록을 페이지네이션으로 조회합니다.",
-    responses={
-        200: {
-            "description": "내가 참여한 파티 목록 조회 성공",
-        },
-    },
-    tags=["pods"],
-)
-async def get_my_joined_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
-    current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    """내가 참여한 파티 목록 조회"""
-    try:
-        joined_pods = await pod_service.get_user_joined_pods(
-            current_user_id, page, size
-        )
-
-        return BaseResponse.ok(
-            data=joined_pods,
-            http_status=HttpStatus.OK,
-            message_ko="내가 참여한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved my joined pods.",
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
-
-
-@router.get(
-    "/user/liked",
-    response_model=BaseResponse[PageDto[PodDto]],
-    summary="내가 저장한 파티 목록 조회",
-    description="현재 로그인한 사용자가 좋아요한 파티 목록을 페이지네이션으로 조회합니다.",
-    responses={
-        200: {
-            "description": "내가 저장한 파티 목록 조회 성공",
-        },
-    },
-    tags=["pods"],
-)
-async def get_my_liked_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
-    current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    """내가 저장한 파티 목록 조회"""
-    try:
-        liked_pods = await pod_service.get_user_liked_pods(current_user_id, page, size)
-
-        return BaseResponse.ok(
-            data=liked_pods,
-            http_status=HttpStatus.OK,
-            message_ko="내가 저장한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved my liked pods.",
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
-
-
-@router.get(
-    "/user",
-    response_model=BaseResponse[PageDto[PodDto]],
-    summary="내가 개설한 파티 목록 조회",
-    description="현재 로그인한 사용자가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
-    responses={
-        200: {
-            "description": "내가 개설한 파티 목록 조회 성공",
-        },
-    },
-    tags=["pods"],
-)
-async def get_my_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
-    current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    """내가 개설한 파티 목록 조회"""
-    try:
-        user_pods = await pod_service.get_user_pods(current_user_id, page, size)
-
-        return BaseResponse.ok(
-            data=user_pods,
-            http_status=HttpStatus.OK,
-            message_ko="내가 개설한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved my pods.",
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="유저의 파티 목록 조회 중 오류가 발생했습니다.",
-            message_en="An error occurred while retrieving user's pods.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
-        )
-
-
-# - MARK: 팟 목록 조회 (검색 포함)
-@router.post(
-    "/search",
-    response_model=BaseResponse[PageDto[PodDto]],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[PageDto[PodDto]],
-            "description": "팟 목록 조회 성공",
-        },
-    },
-    summary="팟 목록 조회",
-    description="팟 목록을 조회합니다. 검색 조건을 body로 제공하면 필터링된 결과를 반환합니다.",
-    tags=["pods"],
-)
-async def get_pods(
-    search_request: PodSearchRequest = Body(default_factory=PodSearchRequest),
-    _: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    """팟 목록을 조회합니다."""
-    try:
-        pod_service = PodService(db)
-        result = await pod_service.search_pods(
-            title=search_request.title,
-            sub_category=search_request.sub_category,
-            start_date=search_request.start_date,
-            end_date=search_request.end_date,
-            location=search_request.location,
-            page=search_request.page,
-            page_size=search_request.page_size,
-        )
-
-        return BaseResponse.ok(result, message_ko="팟 목록 조회 성공", http_status=200)
-
-    except ValueError as e:
-        error_info = get_error_info("INVALID_REQUEST")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="잘못된 날짜 형식입니다.",
-            message_en="Invalid date format.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=str(e),
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="팟 목록 조회 중 오류가 발생했습니다.",
-            message_en="An error occurred while retrieving pods.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=str(e),
-        )

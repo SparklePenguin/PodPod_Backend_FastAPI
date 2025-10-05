@@ -11,12 +11,14 @@ from app.models.user_state import UserState
 from typing import List, Optional
 
 from app.core.error_codes import raise_error
+from app.services.follow_service import FollowService
 
 
 class UserService:
     def __init__(self, db: AsyncSession):
         self.user_crud = UserCRUD(db)
         self.artist_crud = ArtistCRUD(db)
+        self.follow_service = FollowService(db)
 
         # - MARK: 사용자 생성
 
@@ -51,7 +53,7 @@ class UserService:
         user = await self.user_crud.create(user_dict)
 
         # UserDto 생성 시 상태 정보 포함
-        user_data = await self._prepare_user_dto_data(user)
+        user_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: OAuth 사용자 조회
@@ -66,7 +68,7 @@ class UserService:
             return None
 
         # UserDto 생성 시 상태 정보 포함
-        user_data = await self._prepare_user_dto_data(user)
+        user_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: (내부용) 사용자 목록 조회
@@ -83,7 +85,20 @@ class UserService:
             raise_error("USER_NOT_FOUND")
 
         # UserDto 생성 시 상태 정보 포함
-        user_data = await self._prepare_user_dto_data(user)
+        user_data = await self._prepare_user_dto_data(user, user.id)
+        return UserDto.model_validate(user_data, from_attributes=False)
+
+    # - MARK: 사용자 조회 (팔로우 통계 포함)
+    async def get_user_with_follow_stats(
+        self, user_id: int, current_user_id: int
+    ) -> UserDto:
+        """다른 사용자 정보 조회 (팔로우 통계 포함)"""
+        user = await self.user_crud.get_by_id(user_id)
+        if not user:
+            raise_error("USER_NOT_FOUND")
+
+        # UserDto 생성 시 상태 정보 및 팔로우 통계 포함
+        user_data = await self._prepare_user_dto_data(user, current_user_id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: (내부용) 사용자 조회 (모든 정보 포함)
@@ -104,7 +119,7 @@ class UserService:
         if not user:
             raise_error("USER_NOT_FOUND")
         # UserDto 생성 시 상태 정보 포함
-        user_data = await self._prepare_user_dto_data(user)
+        user_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 선호 아티스트 조회
@@ -229,7 +244,7 @@ class UserService:
         except:
             return None
 
-    async def _prepare_user_dto_data(self, user) -> dict:
+    async def _prepare_user_dto_data(self, user, current_user_id: int = None) -> dict:
         """UserDto 생성을 위한 데이터 준비"""
         # 기본 사용자 정보
         user_data = {
@@ -254,5 +269,20 @@ class UserService:
 
         # 성향 타입 추가
         user_data["tendency_type"] = await self._get_user_tendency_type(user.id)
+
+        # 팔로우 통계 추가 (모든 경우에 포함)
+        try:
+            if current_user_id and current_user_id != user.id:
+                # 다른 사용자 정보 조회 시: 팔로우 여부 포함
+                follow_stats = await self.follow_service.get_follow_stats(
+                    user.id, current_user_id
+                )
+            else:
+                # 본인 정보 조회 시: 팔로우 여부 없이 통계만
+                follow_stats = await self.follow_service.get_follow_stats(user.id, None)
+            user_data["follow_stats"] = follow_stats
+        except Exception:
+            # 팔로우 통계 조회 실패 시 None으로 설정
+            user_data["follow_stats"] = None
 
         return user_data

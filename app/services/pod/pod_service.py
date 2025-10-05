@@ -62,12 +62,7 @@ class PodService:
 
         # Pod 모델을 PodDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
-            pod_dto = PodDto.model_validate(pod)
-            # 통계 필드 설정 (다른 조회 API들과 동일한 방식)
-            pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
-            pod_dto.like_count = await self.crud.get_like_count(pod.id)
-            pod_dto.view_count = await self.crud.get_view_count(pod.id)
-            pod_dto.is_liked = await self.crud.is_liked_by_user(pod.id, owner_id)
+            pod_dto = await self._enrich_pod_dto(pod, owner_id)
             return pod_dto
         return None
 
@@ -148,13 +143,7 @@ class PodService:
         # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
-            pod_dto = PodDto.model_validate(pod)
-            # 참여자 수 계산
-            joined_count = await self.crud.get_joined_users_count(pod.id)
-            pod_dto.joined_users_count = joined_count
-            # 좋아요 수 계산
-            like_count = await self.crud.get_like_count(pod.id)
-            pod_dto.like_count = like_count
+            pod_dto = await self._enrich_pod_dto(pod, user_id)
             pod_dtos.append(pod_dto)
 
         # TODO: 실제 total_count를 가져오는 로직 추가 필요
@@ -195,13 +184,7 @@ class PodService:
         # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
-            pod_dto = PodDto.model_validate(pod)
-            # 참여자 수 계산
-            joined_count = await self.crud.get_joined_users_count(pod.id)
-            pod_dto.joined_users_count = joined_count
-            # 좋아요 수 계산
-            like_count = await self.crud.get_like_count(pod.id)
-            pod_dto.like_count = like_count
+            pod_dto = await self._enrich_pod_dto(pod, user_id)
             pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
@@ -239,13 +222,7 @@ class PodService:
         # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
-            pod_dto = PodDto.model_validate(pod)
-            # 참여자 수 계산
-            joined_count = await self.crud.get_joined_users_count(pod.id)
-            pod_dto.joined_users_count = joined_count
-            # 좋아요 수 계산
-            like_count = await self.crud.get_like_count(pod.id)
-            pod_dto.like_count = like_count
+            pod_dto = await self._enrich_pod_dto(pod, user_id)
             pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
@@ -284,13 +261,7 @@ class PodService:
         # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
         pod_dtos = []
         for pod in pods:
-            pod_dto = PodDto.model_validate(pod)
-            # 참여자 수 계산
-            joined_count = await self.crud.get_joined_users_count(pod.id)
-            pod_dto.joined_users_count = joined_count
-            # 좋아요 수 계산
-            like_count = await self.crud.get_like_count(pod.id)
-            pod_dto.like_count = like_count
+            pod_dto = await self._enrich_pod_dto(pod, user_id)
             pod_dtos.append(pod_dto)
 
         total_count = len(pod_dtos)
@@ -311,22 +282,29 @@ class PodService:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> PageDto[PodDto]:
         """특정 유저가 개설한 파티 목록 조회"""
-        pods, total_count = await self.crud.get_user_pods(user_id, page, size)
+        try:
+            pods, total_count = await self.crud.get_user_pods(user_id, page, size)
 
-        pod_dtos = []
-        for pod in pods:
-            # 각 파티의 참여자 수와 좋아요 수 계산
-            joined_users_count = await self.crud.get_joined_users_count(pod.id)
-            like_count = await self.crud.get_like_count(pod.id)
+            pod_dtos = []
+            for pod in pods:
+                try:
+                    pod_dto = await self._enrich_pod_dto(pod, user_id)
+                    pod_dtos.append(pod_dto)
+                except Exception as e:
+                    import logging
 
-            pod_dto = PodDto.model_validate(pod)
-            pod_dto.joined_users_count = joined_users_count
-            pod_dto.like_count = like_count
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error processing pod {pod.id}: {str(e)}")
+                    continue
 
-            pod_dtos.append(pod_dto)
+            # PageDto 생성
+            total_pages = math.ceil(total_count / size) if total_count > 0 else 0
+        except Exception as e:
+            import logging
 
-        # PageDto 생성
-        total_pages = math.ceil(total_count / size) if total_count > 0 else 0
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in get_user_pods: {str(e)}")
+            raise
 
         return PageDto[PodDto](
             items=pod_dtos,
@@ -366,6 +344,7 @@ class PodService:
 
     async def search_pods(
         self,
+        user_id: Optional[int] = None,
         title: Optional[str] = None,
         sub_category: Optional[str] = None,
         start_date: Optional[date] = None,
@@ -386,7 +365,11 @@ class PodService:
         )
 
         # DTO 변환
-        result["items"] = [self._convert_to_dto(pod) for pod in result["items"]]
+        pod_dtos = []
+        for pod in result["items"]:
+            pod_dto = await self._convert_to_dto(pod, user_id)
+            pod_dtos.append(pod_dto)
+        result["items"] = pod_dtos
 
         # 페이지네이션 필드 추가
         result["currentPage"] = result["page"]
@@ -444,7 +427,35 @@ class PodService:
 
     async def _enrich_pod_dto(self, pod: Pod, user_id: Optional[int] = None) -> PodDto:
         """Pod를 PodDto로 변환하고 추가 정보를 설정"""
-        pod_dto = PodDto.model_validate(pod)
+        # PodDto를 수동으로 생성하여 applications 필드 접근 방지
+        pod_dto = PodDto(
+            id=pod.id,
+            owner_id=pod.owner_id,
+            title=pod.title,
+            description=pod.description,
+            image_url=pod.image_url,
+            thumbnail_url=pod.thumbnail_url,
+            sub_categories=pod.sub_categories,
+            capacity=pod.capacity,
+            place=pod.place,
+            address=pod.address,
+            sub_address=pod.sub_address,
+            meeting_date=pod.meeting_date,
+            meeting_time=pod.meeting_time,
+            selected_artist_id=pod.selected_artist_id,
+            status=pod.status,
+            chat_channel_url=pod.chat_channel_url,
+            created_at=pod.created_at,
+            updated_at=pod.updated_at,
+            is_active=pod.is_active,
+            # 기본값 설정
+            is_liked=False,
+            my_application=None,
+            applications=[],
+            view_count=0,
+            joined_users_count=0,
+            like_count=0,
+        )
 
         # 통계 필드 설정
         pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
@@ -476,25 +487,6 @@ class PodService:
 
         return pod_dto
 
-    def _convert_to_dto(self, pod: Pod) -> PodDto:
+    async def _convert_to_dto(self, pod: Pod, user_id: Optional[int] = None) -> PodDto:
         """Pod 엔터티를 PodDto로 변환"""
-        return PodDto(
-            id=pod.id,
-            owner_id=pod.owner_id,
-            title=pod.title,
-            description=pod.description,
-            image_url=pod.image_url,
-            thumbnail_url=pod.thumbnail_url,
-            sub_categories=pod.sub_categories,
-            capacity=pod.capacity,
-            place=pod.place,
-            address=pod.address,
-            sub_address=pod.sub_address,
-            meeting_date=pod.meeting_date,
-            meeting_time=pod.meeting_time,
-            status=pod.status,
-            chat_channel_url=pod.chat_channel_url,
-            is_active=pod.is_active,
-            created_at=pod.created_at,
-            updated_at=pod.updated_at,
-        )
+        return await self._enrich_pod_dto(pod, user_id)

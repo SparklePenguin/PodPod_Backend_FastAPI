@@ -2,6 +2,7 @@ import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from app.models.user_state import UserState
+from app.schemas.follow import FollowStatsResponse
 
 
 # - MARK: 사용자 정보 응답
@@ -18,6 +19,9 @@ class UserDto(BaseModel):
     tendency_type: Optional[str] = Field(
         default=None, alias="tendencyType"
     )  # 성향 타입
+    follow_stats: Optional[FollowStatsResponse] = Field(
+        default=None, alias="followStats", description="팔로우 통계 정보"
+    )
     created_at: Optional[datetime.datetime] = Field(default=None, alias="createdAt")
     updated_at: Optional[datetime.datetime] = Field(default=None, alias="updatedAt")
 
@@ -41,7 +45,9 @@ class UserDtoInternal(BaseModel):
     profile_image: Optional[str] = Field(default=None, alias="profileImage")
     intro: Optional[str] = Field(default=None, alias="intro")
     hashed_password: Optional[str] = Field(default=None, alias="hashedPassword")
-    state: UserState = Field(default=UserState.PREFERRED_ARTISTS, alias="state")  # 사용자 온보딩 상태
+    state: UserState = Field(
+        default=UserState.PREFERRED_ARTISTS, alias="state"
+    )  # 사용자 온보딩 상태
     is_active: bool = Field(alias="isActive")  # 필수값
     auth_provider: Optional[str] = Field(default=None, alias="authProvider")
     auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")

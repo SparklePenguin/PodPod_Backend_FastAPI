@@ -107,7 +107,9 @@ class PodDto(BaseModel):
         default=None, alias="myApplication", description="현재 사용자의 신청서 정보"
     )
     applications: List[SimpleApplicationDto] = Field(
-        default=[], alias="applications", description="파티에 들어온 신청서 목록"
+        default_factory=list,
+        alias="applications",
+        description="파티에 들어온 신청서 목록",
     )
 
     # 통계 및 메타데이터 필드

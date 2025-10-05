@@ -195,10 +195,11 @@ async def update_user_preferred_artists(
 )
 async def get_user_by_id(
     user_id: int,
+    current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
     """특정 사용자 조회"""
-    user = await user_service.get_user(user_id)
+    user = await user_service.get_user_with_follow_stats(user_id, current_user_id)
     return BaseResponse.ok(data=user)
 
 
