@@ -68,12 +68,17 @@ class RecruitmentService:
 
         # 승인된 경우 멤버로 추가
         if status == "approved":
-            await self.crud.add_member(
-                application.pod_id,
-                application.user_id,
-                role="member",
-                message=application.message,
-            )
+            try:
+                await self.crud.add_member(
+                    application.pod_id,
+                    application.user_id,
+                    role="member",
+                    message=application.message,
+                )
+            except ValueError as e:
+                if "파티 정원이 가득 찼습니다" in str(e):
+                    raise_error("POD_IS_FULL")
+                raise e
 
         # User 정보 가져오기
         user = await self.db.get(User, application.user_id)

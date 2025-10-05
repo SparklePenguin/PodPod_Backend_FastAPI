@@ -94,6 +94,17 @@ class PodCRUD:
         await self.db.refresh(pod)
         return pod
 
+    # - MARK: 파티 상태 업데이트
+    async def update_pod_status(self, pod_id: int, status: PodStatus) -> Optional[Pod]:
+        pod = await self.get_pod_by_id(pod_id)
+        if pod is None:
+            return None
+        pod.status = status
+        await self.db.flush()
+        await self.db.commit()
+        await self.db.refresh(pod)
+        return pod
+
     # - MARK: 파티 삭제
     async def delete_pod(self, pod_id: int) -> bool:
         pod = await self.get_pod_by_id(pod_id)
@@ -875,6 +886,42 @@ class PodCRUD:
             .join(PodMember, Pod.id == PodMember.pod_id)
             .where(PodMember.user_id == user_id)
             .order_by(Pod.created_at.desc())
+        )
+
+        # 전체 개수 조회
+        count_query = (
+            select(func.count(Pod.id))
+            .join(PodMember, Pod.id == PodMember.pod_id)
+            .where(PodMember.user_id == user_id)
+        )
+        total_count_result = await self.db.execute(count_query)
+        total_count = total_count_result.scalar()
+
+        # 페이지네이션
+        offset = (page - 1) * page_size
+        query = query.offset(offset).limit(page_size)
+
+        result = await self.db.execute(query)
+        pods = result.scalars().all()
+
+        return {
+            "items": pods,
+            "total_count": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total_count + page_size - 1) // page_size,
+        }
+
+    async def get_user_joined_pods(
+        self, user_id: int, page: int = 1, page_size: int = 20
+    ) -> Dict[str, Any]:
+        """특정 사용자가 참여한 파티 목록 조회"""
+        # 사용자가 참여한 파티 조회 (PodMember를 통해)
+        query = (
+            select(Pod)
+            .join(PodMember, Pod.id == PodMember.pod_id)
+            .where(PodMember.user_id == user_id)
+            .order_by(PodMember.joined_at.desc())
         )
 
         # 전체 개수 조회
