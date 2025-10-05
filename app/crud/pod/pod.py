@@ -862,3 +862,79 @@ class PodCRUD:
             "page_size": page_size,
             "total_pages": (total_count + page_size - 1) // page_size,
         }
+
+    async def get_user_joined_pods(
+        self, user_id: int, page: int = 1, page_size: int = 20
+    ) -> Dict[str, Any]:
+        """사용자가 참여한 파티 목록 조회"""
+        from app.models.pod import PodMember
+
+        # 사용자가 참여한 파티 조회
+        query = (
+            select(Pod)
+            .join(PodMember, Pod.id == PodMember.pod_id)
+            .where(PodMember.user_id == user_id)
+            .order_by(Pod.created_at.desc())
+        )
+
+        # 전체 개수 조회
+        count_query = (
+            select(func.count(Pod.id))
+            .join(PodMember, Pod.id == PodMember.pod_id)
+            .where(PodMember.user_id == user_id)
+        )
+        total_count_result = await self.db.execute(count_query)
+        total_count = total_count_result.scalar()
+
+        # 페이지네이션
+        offset = (page - 1) * page_size
+        query = query.offset(offset).limit(page_size)
+
+        result = await self.db.execute(query)
+        pods = result.scalars().all()
+
+        return {
+            "items": pods,
+            "total_count": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total_count + page_size - 1) // page_size,
+        }
+
+    async def get_user_liked_pods(
+        self, user_id: int, page: int = 1, page_size: int = 20
+    ) -> Dict[str, Any]:
+        """사용자가 좋아요한 파티 목록 조회"""
+        from app.models.pod import PodLike
+
+        # 사용자가 좋아요한 파티 조회
+        query = (
+            select(Pod)
+            .join(PodLike, Pod.id == PodLike.pod_id)
+            .where(PodLike.user_id == user_id)
+            .order_by(PodLike.created_at.desc())
+        )
+
+        # 전체 개수 조회
+        count_query = (
+            select(func.count(Pod.id))
+            .join(PodLike, Pod.id == PodLike.pod_id)
+            .where(PodLike.user_id == user_id)
+        )
+        total_count_result = await self.db.execute(count_query)
+        total_count = total_count_result.scalar()
+
+        # 페이지네이션
+        offset = (page - 1) * page_size
+        query = query.offset(offset).limit(page_size)
+
+        result = await self.db.execute(query)
+        pods = result.scalars().all()
+
+        return {
+            "items": pods,
+            "total_count": total_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total_count + page_size - 1) // page_size,
+        }

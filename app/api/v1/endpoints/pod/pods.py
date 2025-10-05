@@ -409,6 +409,125 @@ async def get_user_pods(
         )
     except Exception as e:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
+        )
+
+
+@router.get(
+    "/user/joined",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="내가 참여한 파티 목록 조회",
+    description="현재 로그인한 사용자가 참여한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 참여한 파티 목록 조회 성공",
+        },
+    },
+    tags=["pods"],
+)
+async def get_my_joined_pods(
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """내가 참여한 파티 목록 조회"""
+    try:
+        joined_pods = await pod_service.get_user_joined_pods(
+            current_user_id, page, size
+        )
+
+        return BaseResponse.ok(
+            data=joined_pods,
+            http_status=HttpStatus.OK,
+            message_ko="내가 참여한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved my joined pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
+        )
+
+
+@router.get(
+    "/user/liked",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="내가 저장한 파티 목록 조회",
+    description="현재 로그인한 사용자가 좋아요한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 저장한 파티 목록 조회 성공",
+        },
+    },
+    tags=["pods"],
+)
+async def get_my_liked_pods(
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """내가 저장한 파티 목록 조회"""
+    try:
+        liked_pods = await pod_service.get_user_liked_pods(current_user_id, page, size)
+
+        return BaseResponse.ok(
+            data=liked_pods,
+            http_status=HttpStatus.OK,
+            message_ko="내가 저장한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved my liked pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
+        )
+
+
+@router.get(
+    "/user",
+    response_model=BaseResponse[PageDto[PodDto]],
+    summary="내가 개설한 파티 목록 조회",
+    description="현재 로그인한 사용자가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 개설한 파티 목록 조회 성공",
+        },
+    },
+    tags=["pods"],
+)
+async def get_my_pods(
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, alias="size", description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """내가 개설한 파티 목록 조회"""
+    try:
+        user_pods = await pod_service.get_user_pods(current_user_id, page, size)
+
+        return BaseResponse.ok(
+            data=user_pods,
+            http_status=HttpStatus.OK,
+            message_ko="내가 개설한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved my pods.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,

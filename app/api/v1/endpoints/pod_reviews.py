@@ -352,3 +352,44 @@ async def delete_review(
             error_code=error_info.code,
             dev_note=None,
         )
+
+
+@router.get(
+    "/user",
+    response_model=BaseResponse[PageDto[PodReviewDto]],
+    summary="내가 작성한 후기 목록 조회",
+    description="현재 로그인한 사용자가 작성한 후기 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "내가 작성한 후기 목록 조회 성공",
+        },
+    },
+)
+async def get_my_reviews(
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """내가 작성한 후기 목록 조회"""
+    try:
+        review_service = PodReviewService(db)
+        reviews = await review_service.get_reviews_by_user(current_user_id, page, size)
+
+        return BaseResponse.ok(
+            data=reviews,
+            http_status=HttpStatus.OK,
+            message_ko="내가 작성한 후기 목록을 조회했습니다.",
+            message_en="Successfully retrieved my reviews.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="후기 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving reviews.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=None,
+        )

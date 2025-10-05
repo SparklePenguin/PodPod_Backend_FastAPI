@@ -120,32 +120,7 @@ class PodService:
         if not pod:
             return None
 
-        # Pod 모델을 PodDto로 변환
-        pod_dto = PodDto.model_validate(pod)
-
-        # 통계 필드 설정
-        pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
-        pod_dto.like_count = await self.crud.get_like_count(pod.id)
-        pod_dto.view_count = await self.crud.get_view_count(pod.id)
-
-        # 사용자 정보가 있으면 개인화 필드 설정
-        if user_id:
-            pod_dto.is_liked = await self.crud.is_liked_by_user(pod.id, user_id)
-
-            # 사용자의 신청서 정보 조회
-            user_applications = await self.application_crud.get_applications_by_user_id(
-                user_id
-            )
-            user_application = next(
-                (app for app in user_applications if app.pod_id == pod_id), None
-            )
-
-            if user_application:
-                pod_dto.my_application = SimpleApplicationDto(
-                    id=user_application.id, status=user_application.status
-                )
-
-        return pod_dto
+        return await self._enrich_pod_dto(pod, user_id)
 
     # - MARK: 파티 수정
     async def update_pod(self, pod_id: int, **fields) -> Optional[Pod]:
@@ -419,6 +394,87 @@ class PodService:
         result["hasPrev"] = result["page"] > 1
 
         return result
+
+    # - MARK: 사용자가 참여한 파티 조회
+    async def get_user_joined_pods(
+        self, user_id: int, page: int = 1, size: int = 20
+    ) -> PageDto[PodDto]:
+        """사용자가 참여한 파티 목록 조회"""
+        result = await self.crud.get_user_joined_pods(user_id, page, size)
+
+        # DTO 변환
+        pod_dtos = []
+        for pod in result["items"]:
+            pod_dto = await self._enrich_pod_dto(pod, user_id)
+            pod_dtos.append(pod_dto)
+
+        return PageDto(
+            items=pod_dtos,
+            current_page=result["page"],
+            page_size=result["page_size"],
+            total_count=result["total_count"],
+            total_pages=result["total_pages"],
+            has_next=result["page"] < result["total_pages"],
+            has_prev=result["page"] > 1,
+        )
+
+    # - MARK: 사용자가 좋아요한 파티 조회
+    async def get_user_liked_pods(
+        self, user_id: int, page: int = 1, size: int = 20
+    ) -> PageDto[PodDto]:
+        """사용자가 좋아요한 파티 목록 조회"""
+        result = await self.crud.get_user_liked_pods(user_id, page, size)
+
+        # DTO 변환
+        pod_dtos = []
+        for pod in result["items"]:
+            pod_dto = await self._enrich_pod_dto(pod, user_id)
+            pod_dto.is_liked = True  # 좋아요한 파티이므로 항상 True
+            pod_dtos.append(pod_dto)
+
+        return PageDto(
+            items=pod_dtos,
+            current_page=result["page"],
+            page_size=result["page_size"],
+            total_count=result["total_count"],
+            total_pages=result["total_pages"],
+            has_next=result["page"] < result["total_pages"],
+            has_prev=result["page"] > 1,
+        )
+
+    async def _enrich_pod_dto(self, pod: Pod, user_id: Optional[int] = None) -> PodDto:
+        """Pod를 PodDto로 변환하고 추가 정보를 설정"""
+        pod_dto = PodDto.model_validate(pod)
+
+        # 통계 필드 설정
+        pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
+        pod_dto.like_count = await self.crud.get_like_count(pod.id)
+        pod_dto.view_count = await self.crud.get_view_count(pod.id)
+
+        # 사용자 정보가 있으면 개인화 필드 설정
+        if user_id:
+            pod_dto.is_liked = await self.crud.is_liked_by_user(pod.id, user_id)
+
+            # 사용자의 신청서 정보 조회
+            user_applications = await self.application_crud.get_applications_by_user_id(
+                user_id
+            )
+            user_application = next(
+                (app for app in user_applications if app.pod_id == pod.id), None
+            )
+
+            if user_application:
+                pod_dto.my_application = SimpleApplicationDto(
+                    id=user_application.id, status=user_application.status
+                )
+
+        # 파티에 들어온 신청서 목록 조회
+        applications = await self.application_crud.get_applications_by_pod_id(pod.id)
+        pod_dto.applications = [
+            SimpleApplicationDto(id=app.id, status=app.status) for app in applications
+        ]
+
+        return pod_dto
 
     def _convert_to_dto(self, pod: Pod) -> PodDto:
         """Pod 엔터티를 PodDto로 변환"""

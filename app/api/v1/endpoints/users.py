@@ -95,13 +95,19 @@ async def update_user_profile(
             profile_image_url = await upload_profile_image(image)
         except ValueError as e:
             return BaseResponse.error(
-                code=HttpStatus.BAD_REQUEST,
-                message=str(e),
+                error_key="IMAGE_UPLOAD_ERROR",
+                error_code=400,
+                http_status=HttpStatus.BAD_REQUEST,
+                message_ko=str(e),
+                message_en="Image upload error",
             )
         except Exception as e:
             return BaseResponse.error(
-                code=HttpStatus.INTERNAL_SERVER_ERROR,
-                message=f"이미지 업로드 실패: {str(e)}",
+                error_key="INTERNAL_SERVER_ERROR",
+                error_code=500,
+                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                message_ko=f"이미지 업로드 실패: {str(e)}",
+                message_en="Image upload failed",
             )
 
     # UpdateProfileRequest 생성

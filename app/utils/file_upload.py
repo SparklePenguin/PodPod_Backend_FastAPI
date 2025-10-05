@@ -52,18 +52,45 @@ async def delete_upload_file(file_path: str) -> bool:
 
 def is_valid_image_file(file: UploadFile) -> bool:
     """이미지 파일인지 검증"""
-    if not file.content_type:
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # 파일명과 content_type 로깅
+    logger.info(
+        f"파일 검증: filename={file.filename}, content_type={file.content_type}"
+    )
+
+    # 파일명이 없으면 False
+    if not file.filename:
+        logger.warning("파일명이 없습니다")
         return False
 
-    valid_image_types = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-    ]
+    # 파일 확장자 검증
+    file_extension = Path(file.filename).suffix.lower()
+    valid_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
 
-    return file.content_type in valid_image_types
+    if file_extension not in valid_extensions:
+        logger.warning(f"지원하지 않는 파일 확장자: {file_extension}")
+        return False
+
+    # content_type이 있으면 검증
+    if file.content_type:
+        valid_image_types = [
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "application/octet-stream",  # 바이너리 파일 (확장자로 추가 검증)
+        ]
+
+        if file.content_type not in valid_image_types:
+            logger.warning(f"지원하지 않는 content_type: {file.content_type}")
+            return False
+
+    logger.info("이미지 파일 검증 통과")
+    return True
 
 
 async def upload_profile_image(image: UploadFile) -> Optional[str]:
@@ -73,7 +100,8 @@ async def upload_profile_image(image: UploadFile) -> Optional[str]:
 
     # 이미지 파일 검증
     if not is_valid_image_file(image):
-        raise ValueError("유효하지 않은 이미지 파일입니다")
+        error_msg = f"유효하지 않은 이미지 파일입니다. 파일명: {image.filename}, Content-Type: {image.content_type}"
+        raise ValueError(error_msg)
 
     # 파일 크기 검증 (5MB 제한)
     content = await image.read()
