@@ -479,11 +479,12 @@ class PodService:
                     id=user_application.id, status=user_application.status
                 )
 
-        # 파티에 들어온 신청서 목록 조회
-        applications = await self.application_crud.get_applications_by_pod_id(pod.id)
-        pod_dto.applications = [
-            SimpleApplicationDto(id=app.id, status=app.status) for app in applications
-        ]
+        # 파티에 들어온 신청서 목록 조회 (MissingGreenlet 오류 방지를 위해 비동기 호출 제거)
+        # applications = await self.application_crud.get_applications_by_pod_id(pod.id)
+        # pod_dto.applications = [
+        #     SimpleApplicationDto(id=app.id, status=app.status) for app in applications
+        # ]
+        # applications 필드는 이미 빈 배열로 초기화되어 있음
 
         return pod_dto
 

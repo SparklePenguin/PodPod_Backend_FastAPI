@@ -147,7 +147,7 @@ async def sync_mvp_artists(
     description="⚠️ 내부용 API - 특정 아티스트의 모든 이미지를 조회합니다.",
 )
 async def get_artist_images(
-    artist_id: int = Path(..., description="아티스트 ID", alias="artistId"),
+    artist_id: int = Path(..., description="아티스트 ID"),
     db: AsyncSession = Depends(get_db),
 ):
     """아티스트의 모든 이미지를 조회합니다."""
@@ -188,7 +188,7 @@ async def get_artist_images(
     description="⚠️ 내부용 API - 특정 아티스트에 새로운 이미지를 생성합니다. 이미지 파일 업로드 지원.",
 )
 async def create_artist_image(
-    artist_id: int = Path(..., description="아티스트 ID", alias="artistId"),
+    artist_id: int = Path(..., description="아티스트 ID"),
     # Form 파라미터 (alias 작동 안함):
     image: Optional[UploadFile] = File(None, description="이미지 파일"),
     path: Optional[str] = Form(None, description="이미지 경로"),

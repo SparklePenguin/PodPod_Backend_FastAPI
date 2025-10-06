@@ -146,9 +146,34 @@ class FollowService:
             joined_users_count = await self.pod_crud.get_joined_users_count(pod.id)
             like_count = await self.pod_crud.get_like_count(pod.id)
 
-            pod_dto = PodDto.model_validate(pod)
-            pod_dto.joined_users_count = joined_users_count
-            pod_dto.like_count = like_count
+            # PodDto를 수동으로 생성하여 MissingGreenlet 오류 방지
+            pod_dto = PodDto(
+                id=pod.id,
+                owner_id=pod.owner_id,
+                title=pod.title,
+                description=pod.description,
+                image_url=pod.image_url,
+                thumbnail_url=pod.thumbnail_url,
+                sub_categories=pod.sub_categories,
+                capacity=pod.capacity,
+                place=pod.place,
+                address=pod.address,
+                sub_address=pod.sub_address,
+                meeting_date=pod.meeting_date,
+                meeting_time=pod.meeting_time,
+                selected_artist_id=pod.selected_artist_id,
+                status=pod.status,
+                chat_channel_url=pod.chat_channel_url,
+                created_at=pod.created_at,
+                updated_at=pod.updated_at,
+                # 기본값 설정
+                is_liked=False,
+                my_application=None,
+                applications=[],
+                view_count=0,
+                joined_users_count=joined_users_count,
+                like_count=like_count,
+            )
 
             pod_dtos.append(pod_dto)
 

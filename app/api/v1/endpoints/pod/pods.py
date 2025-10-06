@@ -386,30 +386,56 @@ async def get_my_liked_pods(
 @router.get(
     "/user",
     response_model=BaseResponse[PageDto[PodDto]],
-    summary="내가 개설한 파티 목록 조회",
-    description="현재 로그인한 사용자가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
+    summary="사용자가 개설한 파티 목록 조회",
+    description="특정 사용자(또는 현재 로그인한 사용자)가 개설한 파티 목록을 페이지네이션으로 조회합니다.",
     responses={
         200: {
-            "description": "내가 개설한 파티 목록 조회 성공",
+            "description": "사용자가 개설한 파티 목록 조회 성공",
         },
     },
     tags=["pods"],
 )
-async def get_my_pods(
+async def get_user_pods(
     page: int = Query(1, ge=1, description="페이지 번호"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    userId: Optional[int] = Query(
+        None,
+        alias="userId",
+        description="조회할 사용자 ID (없으면 현재 로그인한 사용자)",
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
-    """내가 개설한 파티 목록 조회"""
+    """사용자가 개설한 파티 목록 조회"""
     try:
-        user_pods = await pod_service.get_user_pods(current_user_id, page, size)
+        # userId가 제공되지 않으면 현재 사용자 ID 사용
+        target_user_id = userId if userId is not None else current_user_id
+
+        # 먼저 해당 사용자가 존재하는지 확인
+        from app.services.user_service import UserService
+        from app.core.error_codes import get_error_info
+
+        user_service = UserService(pod_service.db)
+        try:
+            await user_service.get_user(target_user_id)
+        except Exception:
+            # 사용자가 존재하지 않으면 404 오류 반환
+            error_info = get_error_info("USER_NOT_FOUND")
+            return BaseResponse.error(
+                error_key=error_info.error_key,
+                error_code=error_info.code,
+                http_status=error_info.http_status,
+                message_ko="사용자를 찾을 수 없습니다.",
+                message_en="User not found.",
+            )
+
+        user_pods = await pod_service.get_user_pods(target_user_id, page, size)
 
         return BaseResponse.ok(
             data=user_pods,
             http_status=HttpStatus.OK,
-            message_ko="내가 개설한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved my pods.",
+            message_ko="사용자가 개설한 파티 목록을 조회했습니다.",
+            message_en="Successfully retrieved user's pods.",
         )
     except Exception as e:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")

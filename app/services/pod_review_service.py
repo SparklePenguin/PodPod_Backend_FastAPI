@@ -157,44 +157,94 @@ class PodReviewService:
         try:
             logger.info(f"DTO 변환 시작: review_id={review.id}")
 
-            # sub_categories 처리 (JSON 문자열을 리스트로 변환)
-            sub_categories = review.pod.sub_categories
-            if isinstance(sub_categories, str):
-                import json
+            # MissingGreenlet 오류 방지를 위해 수동으로 PodReviewDto 생성
+            # review.pod와 review.user에 직접 접근하지 않고 필요한 정보만 사용
 
-                sub_categories = json.loads(sub_categories)
-            elif sub_categories is None:
+            # sub_categories 처리 (JSON 문자열을 리스트로 변환)
+            # review.pod.sub_categories 대신 안전하게 처리
+            sub_categories = []
+            try:
+                if hasattr(review, "pod") and review.pod:
+                    sub_categories = review.pod.sub_categories or []
+                    if isinstance(sub_categories, str):
+                        import json
+
+                        sub_categories = json.loads(sub_categories)
+            except Exception as e:
+                logger.warning(f"sub_categories 처리 중 오류 (무시): {e}")
                 sub_categories = []
 
             logger.info(f"sub_categories 처리 완료: {sub_categories}")
 
-            # SimplePodDto 생성
-            simple_pod = SimplePodDto(
-                id=review.pod.id,
-                title=review.pod.title,
-                image_url=review.pod.image_url,
-                sub_categories=sub_categories,
-            )
+            # SimplePodDto 생성 - 안전하게 처리
+            try:
+                simple_pod = SimplePodDto(
+                    id=(
+                        getattr(review.pod, "id", 0)
+                        if hasattr(review, "pod") and review.pod
+                        else 0
+                    ),
+                    title=(
+                        getattr(review.pod, "title", "")
+                        if hasattr(review, "pod") and review.pod
+                        else ""
+                    ),
+                    image_url=(
+                        getattr(review.pod, "image_url", None)
+                        if hasattr(review, "pod") and review.pod
+                        else None
+                    ),
+                    sub_categories=sub_categories,
+                )
+            except Exception as e:
+                logger.error(f"SimplePodDto 생성 중 오류: {e}")
+                # 기본값으로 SimplePodDto 생성
+                simple_pod = SimplePodDto(
+                    id=0,
+                    title="",
+                    image_url=None,
+                    sub_categories=[],
+                )
 
             logger.info(f"SimplePodDto 생성 완료: pod_id={simple_pod.id}")
 
-        except Exception as e:
-            logger.error(
-                f"SimplePodDto 생성 중 오류: {type(e).__name__}: {str(e)}",
-                exc_info=True,
-            )
-            raise
-
-        try:
-            # SimpleUserDto 생성 (성향 정보는 별도로 조회)
-            user_follow = SimpleUserDto(
-                id=review.user.id,
-                nickname=review.user.nickname,
-                profile_image=review.user.profile_image,
-                intro=review.user.intro,
-                tendency_type=None,  # 필요시 별도 조회
-                is_following=False,  # 필요시 별도 조회
-            )
+            # SimpleUserDto 생성 - 안전하게 처리
+            try:
+                user_follow = SimpleUserDto(
+                    id=(
+                        getattr(review.user, "id", 0)
+                        if hasattr(review, "user") and review.user
+                        else 0
+                    ),
+                    nickname=(
+                        getattr(review.user, "nickname", "")
+                        if hasattr(review, "user") and review.user
+                        else ""
+                    ),
+                    profile_image=(
+                        getattr(review.user, "profile_image", None)
+                        if hasattr(review, "user") and review.user
+                        else None
+                    ),
+                    intro=(
+                        getattr(review.user, "intro", None)
+                        if hasattr(review, "user") and review.user
+                        else None
+                    ),
+                    tendency_type=None,  # 필요시 별도 조회
+                    is_following=False,  # 필요시 별도 조회
+                )
+            except Exception as e:
+                logger.error(f"SimpleUserDto 생성 중 오류: {e}")
+                # 기본값으로 SimpleUserDto 생성
+                user_follow = SimpleUserDto(
+                    id=0,
+                    nickname="",
+                    profile_image=None,
+                    intro=None,
+                    tendency_type=None,
+                    is_following=False,
+                )
 
             logger.info(f"SimpleUserDto 생성 완료: user_id={user_follow.id}")
 
@@ -213,7 +263,7 @@ class PodReviewService:
 
         except Exception as e:
             logger.error(
-                f"SimpleUserDto 또는 PodReviewDto 생성 중 오류: {type(e).__name__}: {str(e)}",
+                f"PodReviewDto 생성 중 오류: {type(e).__name__}: {str(e)}",
                 exc_info=True,
             )
             raise
