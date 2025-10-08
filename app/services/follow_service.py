@@ -146,6 +146,10 @@ class FollowService:
             # 각 파티의 참여자 수와 좋아요 수 계산
             joined_users_count = await self.pod_crud.get_joined_users_count(pod.id)
             like_count = await self.pod_crud.get_like_count(pod.id)
+            view_count = await self.pod_crud.get_view_count(pod.id)
+
+            # 사용자가 좋아요했는지 확인
+            is_liked = await self.pod_crud.is_liked_by_user(pod.id, user_id)
 
             # PodDto를 수동으로 생성하여 MissingGreenlet 오류 방지
             pod_dto = PodDto(
@@ -167,11 +171,11 @@ class FollowService:
                 chat_channel_url=pod.chat_channel_url,
                 created_at=pod.created_at,
                 updated_at=pod.updated_at,
-                # 기본값 설정
-                is_liked=False,
+                # 실제 값 설정
+                is_liked=is_liked,
                 my_application=None,
                 applications=[],
-                view_count=0,
+                view_count=view_count,
                 joined_users_count=joined_users_count,
                 like_count=like_count,
             )
