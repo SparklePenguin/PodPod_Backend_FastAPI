@@ -12,6 +12,8 @@ from .pod_review import PodReview
 from .artist_suggestion import ArtistSuggestion
 from .location import Location
 from .user_block import UserBlock
+from .user_report import UserReport
+from .report_reason import ReportReason
 
 
 __all__ = [
@@ -27,4 +29,6 @@ __all__ = [
     "ArtistSuggestion",
     "Location",
     "UserBlock",
+    "UserReport",
+    "ReportReason",
 ]
