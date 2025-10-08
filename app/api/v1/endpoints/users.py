@@ -21,9 +21,10 @@ from app.schemas.user import (
     UpdatePreferredArtistsRequest,
     UserDto,
     UserDtoInternal,
-    BlockedUserDto,
     BlockUserResponse,
 )
+from app.schemas.follow import SimpleUserDto
+from app.schemas.common.page_dto import PageDto
 from app.schemas.auth import SignUpRequest
 from app.schemas.common import BaseResponse
 from app.core.http_status import HttpStatus
@@ -187,72 +188,7 @@ async def update_user_preferred_artists(
     return BaseResponse.ok(data={"artists": artists})
 
 
-# - MARK: 사용자 관리 API
-@router.get(
-    "/{user_id}",
-    response_model=BaseResponse[UserDto],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[UserDto],
-            "description": "사용자 조회 성공",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "사용자를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
-)
-async def get_user_by_id(
-    user_id: int,
-    current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
-):
-    """특정 사용자 조회"""
-    user = await user_service.get_user_with_follow_stats(user_id, current_user_id)
-    return BaseResponse.ok(data=user)
-
-
-@router.delete(
-    "/{user_id}",
-    status_code=HttpStatus.NO_CONTENT,
-    responses={
-        HttpStatus.NO_CONTENT: {
-            "description": "사용자 삭제 성공 (No Content)",
-        },
-        HttpStatus.UNAUTHORIZED: {
-            "model": BaseResponse[None],
-            "description": "인증 실패",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "사용자를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
-)
-async def delete_user(
-    user_id: int,
-    current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
-):
-    """사용자 삭제 (토큰 필요)"""
-    # TODO: 사용자 삭제 로직 구현. 현재는 자신의 계정만 삭제 가능
-    if user_id != current_user_id:
-        raise HTTPException(
-            status_code=HttpStatus.FORBIDDEN,
-            detail="자신의 계정만 삭제할 수 있습니다",
-        )
-    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
-
-
-# - MARK: 사용자 차단 API
+# - MARK: 사용자 차단 API (동적 경로보다 먼저 정의)
 @router.post(
     "/blocks/{user_id}",
     response_model=BaseResponse[BlockUserResponse],
@@ -327,9 +263,10 @@ async def block_user(
 
 @router.get(
     "/blocks",
-    response_model=BaseResponse,
+    response_model=BaseResponse[PageDto[SimpleUserDto]],
     responses={
         HttpStatus.OK: {
+            "model": BaseResponse[PageDto[SimpleUserDto]],
             "description": "차단된 사용자 목록 조회 성공",
         },
         HttpStatus.UNAUTHORIZED: {
@@ -346,8 +283,8 @@ async def block_user(
     tags=["users"],
 )
 async def get_blocked_users(
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, description="페이지 번호", alias="page"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기", alias="size"),
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -441,6 +378,71 @@ async def unblock_user(
             error_code=5000,
             dev_note=None,
         )
+
+
+# - MARK: 사용자 관리 API
+@router.get(
+    "/{user_id}",
+    response_model=BaseResponse[UserDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "사용자 조회 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
+    },
+)
+async def get_user_by_id(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    user_service: UserService = Depends(get_user_service),
+):
+    """특정 사용자 조회"""
+    user = await user_service.get_user_with_follow_stats(user_id, current_user_id)
+    return BaseResponse.ok(data=user)
+
+
+@router.delete(
+    "/{user_id}",
+    status_code=HttpStatus.NO_CONTENT,
+    responses={
+        HttpStatus.NO_CONTENT: {
+            "description": "사용자 삭제 성공 (No Content)",
+        },
+        HttpStatus.UNAUTHORIZED: {
+            "model": BaseResponse[None],
+            "description": "인증 실패",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
+    },
+)
+async def delete_user(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    user_service: UserService = Depends(get_user_service),
+):
+    """사용자 삭제 (토큰 필요)"""
+    # TODO: 사용자 삭제 로직 구현. 현재는 자신의 계정만 삭제 가능
+    if user_id != current_user_id:
+        raise HTTPException(
+            status_code=HttpStatus.FORBIDDEN,
+            detail="자신의 계정만 삭제할 수 있습니다",
+        )
+    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
 # - MARK: 내부용 API

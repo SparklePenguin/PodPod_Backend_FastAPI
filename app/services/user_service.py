@@ -9,9 +9,9 @@ from app.schemas.user import (
     UpdateProfileRequest,
     UserDto,
     UserDtoInternal,
-    BlockedUserDto,
     BlockUserResponse,
 )
+from app.schemas.follow import SimpleUserDto
 from app.schemas.auth import SignUpRequest
 from app.schemas.artist import ArtistDto
 from app.schemas.common.page_dto import PageDto
@@ -232,12 +232,13 @@ class UserService:
         from app.models.tendency import UserTendencyResult
 
         try:
-            result = await self.user_crud.db.execute(
+            result = await self.db.execute(
                 select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
             )
             user_tendency = result.scalar_one_or_none()
             return user_tendency is not None
-        except:
+        except Exception as e:
+            print(f"성향 결과 확인 오류 (user_id: {user_id}): {e}")
             return False
 
     async def _get_user_tendency_type(self, user_id: int) -> Optional[str]:
@@ -246,14 +247,15 @@ class UserService:
         from app.models.tendency import UserTendencyResult
 
         try:
-            result = await self.user_crud.db.execute(
+            result = await self.db.execute(
                 select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
             )
             user_tendency = result.scalar_one_or_none()
             if user_tendency:
                 return user_tendency.tendency_type
             return None
-        except:
+        except Exception as e:
+            print(f"성향 타입 조회 오류 (user_id: {user_id}): {e}")
             return None
 
     async def _prepare_user_dto_data(self, user, current_user_id: int = None) -> dict:
@@ -333,7 +335,7 @@ class UserService:
 
     async def get_blocked_users(
         self, blocker_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[BlockedUserDto]:
+    ) -> PageDto[SimpleUserDto]:
         """차단한 사용자 목록 조회"""
         blocked_data, total_count = await self.block_crud.get_blocked_users(
             blocker_id, page, size
@@ -341,12 +343,16 @@ class UserService:
 
         users = []
         for user, blocked_at in blocked_data:
-            user_dto = BlockedUserDto(
+            # 성향 타입 조회
+            tendency_type = await self._get_user_tendency_type(user.id)
+
+            user_dto = SimpleUserDto(
                 id=user.id,
                 nickname=user.nickname,
                 profile_image=user.profile_image,
                 intro=user.intro,
-                blocked_at=blocked_at,
+                tendency_type=tendency_type,
+                is_following=False,  # 차단한 사용자는 팔로우할 수 없음
             )
             users.append(user_dto)
 
