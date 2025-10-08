@@ -516,9 +516,46 @@ class PodService:
             )
 
             if user_application:
-                pod_dto.my_application = SimpleApplicationDto(
-                    id=user_application.id, status=user_application.status
+                # 신청한 사용자 정보 조회
+                from app.models.user import User
+                from app.schemas.follow import SimpleUserDto
+                from sqlalchemy import select
+                from app.models.tendency import UserTendencyResult
+                from datetime import datetime, timezone
+
+                app_user = await self.db.get(User, user_application.user_id)
+
+                # 성향 타입 조회
+                result = await self.db.execute(
+                    select(UserTendencyResult).where(
+                        UserTendencyResult.user_id == user_application.user_id
+                    )
                 )
+                user_tendency = result.scalar_one_or_none()
+                tendency_type = user_tendency.tendency_type if user_tendency else None
+
+                # Unix timestamp를 datetime으로 변환
+                applied_at = datetime.fromtimestamp(
+                    user_application.applied_at, tz=timezone.utc
+                )
+
+                if app_user:
+                    user_dto = SimpleUserDto(
+                        id=app_user.id,
+                        nickname=app_user.nickname,
+                        profile_image=app_user.profile_image,
+                        intro=app_user.intro,
+                        tendency_type=tendency_type,
+                        is_following=False,
+                    )
+
+                    pod_dto.my_application = SimpleApplicationDto(
+                        id=user_application.id,
+                        user=user_dto,
+                        status=user_application.status,
+                        message=user_application.message,
+                        applied_at=applied_at,
+                    )
 
         # 파티에 들어온 신청서 목록 조회 (MissingGreenlet 오류 방지를 위해 비동기 호출 제거)
         # applications = await self.application_crud.get_applications_by_pod_id(pod.id)
