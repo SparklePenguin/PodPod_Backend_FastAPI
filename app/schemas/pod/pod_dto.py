@@ -10,6 +10,7 @@ from app.models.pod.pod_enums import (
 )
 from app.models.pod.pod_status import PodStatus
 from app.schemas.pod.simple_application_dto import SimpleApplicationDto
+from app.schemas.follow import SimpleUserDto
 
 
 class PodSearchRequest(BaseModel):
@@ -116,6 +117,11 @@ class PodDto(BaseModel):
     view_count: int = Field(default=0, alias="viewCount", example=0)
     joined_users_count: int = Field(default=0, alias="joinedUsersCount", example=0)
     like_count: int = Field(default=0, alias="likeCount", example=0)
+    joined_users: List[SimpleUserDto] = Field(
+        default_factory=list,
+        alias="joinedUsers",
+        description="파티에 참여 중인 사용자 목록",
+    )
     created_at: datetime.datetime = Field(
         alias="createdAt", example="2025-01-01T00:00:00"
     )

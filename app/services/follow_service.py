@@ -178,6 +178,7 @@ class FollowService:
                 view_count=view_count,
                 joined_users_count=joined_users_count,
                 like_count=like_count,
+                joined_users=[],  # 팔로우 파티 목록에서는 빈 배열로 설정
             )
 
             pod_dtos.append(pod_dto)

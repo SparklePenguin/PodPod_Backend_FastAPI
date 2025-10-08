@@ -455,12 +455,53 @@ class PodService:
             view_count=0,
             joined_users_count=0,
             like_count=0,
+            joined_users=[],
         )
 
         # 통계 필드 설정
         pod_dto.joined_users_count = await self.crud.get_joined_users_count(pod.id)
         pod_dto.like_count = await self.crud.get_like_count(pod.id)
         pod_dto.view_count = await self.crud.get_view_count(pod.id)
+
+        # 참여 중인 유저 목록 조회
+        from app.crud.pod.recruitment import RecruitmentCRUD
+        from app.schemas.follow import SimpleUserDto
+
+        recruitment_crud = RecruitmentCRUD(self.db)
+        pod_members = await recruitment_crud.list_members(pod.id)
+
+        # PodMember를 SimpleUserDto로 변환
+        joined_users = []
+        for member in pod_members:
+            # 성향 타입 조회
+            from sqlalchemy import select
+            from app.models.tendency import UserTendencyResult
+
+            result = await self.db.execute(
+                select(UserTendencyResult).where(
+                    UserTendencyResult.user_id == member.user_id
+                )
+            )
+            user_tendency = result.scalar_one_or_none()
+            tendency_type = user_tendency.tendency_type if user_tendency else None
+
+            # User 정보 조회
+            from app.models.user import User
+
+            user = await self.db.get(User, member.user_id)
+
+            if user:
+                user_dto = SimpleUserDto(
+                    id=user.id,
+                    nickname=user.nickname,
+                    profile_image=user.profile_image,
+                    intro=user.intro,
+                    tendency_type=tendency_type,
+                    is_following=False,  # 필요 시 팔로우 여부 확인 로직 추가 가능
+                )
+                joined_users.append(user_dto)
+
+        pod_dto.joined_users = joined_users
 
         # 사용자 정보가 있으면 개인화 필드 설정
         if user_id:
