@@ -1,5 +1,4 @@
-
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -22,6 +21,12 @@ class Follow(Base):
         nullable=False,
         index=True,
         comment="팔로우받는 사용자 ID",
+    )
+    notification_enabled = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        comment="알림 활성화 여부",
     )
     created_at = Column(
         DateTime, default=datetime.utcnow, nullable=False, comment="팔로우 생성 시간"

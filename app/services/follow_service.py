@@ -8,6 +8,7 @@ from app.schemas.follow import (
     SimpleUserDto,
     FollowListResponse,
     FollowStatsResponse,
+    FollowNotificationStatusResponse,
 )
 from app.schemas.pod.pod_dto import PodDto
 from app.schemas.common.page_dto import PageDto
@@ -224,4 +225,36 @@ class FollowService:
             total_pages=total_pages,
             has_next=has_next,
             has_prev=has_prev,
+        )
+
+    async def get_notification_status(
+        self, follower_id: int, following_id: int
+    ) -> Optional[FollowNotificationStatusResponse]:
+        """특정 팔로우 관계의 알림 설정 상태 조회"""
+        notification_enabled = await self.crud.get_notification_status(
+            follower_id, following_id
+        )
+
+        if notification_enabled is None:
+            return None
+
+        return FollowNotificationStatusResponse(
+            following_id=following_id,
+            notification_enabled=notification_enabled,
+        )
+
+    async def update_notification_status(
+        self, follower_id: int, following_id: int, notification_enabled: bool
+    ) -> Optional[FollowNotificationStatusResponse]:
+        """특정 팔로우 관계의 알림 설정 상태 변경"""
+        success = await self.crud.update_notification_status(
+            follower_id, following_id, notification_enabled
+        )
+
+        if not success:
+            return None
+
+        return FollowNotificationStatusResponse(
+            following_id=following_id,
+            notification_enabled=notification_enabled,
         )

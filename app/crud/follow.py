@@ -208,3 +208,29 @@ class FollowCRUD:
         users = result.all()
 
         return users
+
+    async def get_notification_status(
+        self, follower_id: int, following_id: int
+    ) -> Optional[bool]:
+        """특정 팔로우 관계의 알림 설정 상태 조회"""
+        follow = await self.get_follow(follower_id, following_id)
+        if not follow:
+            return None
+        return follow.notification_enabled
+
+    async def update_notification_status(
+        self, follower_id: int, following_id: int, notification_enabled: bool
+    ) -> bool:
+        """특정 팔로우 관계의 알림 설정 상태 변경"""
+        try:
+            follow = await self.get_follow(follower_id, following_id)
+            if not follow:
+                return False
+
+            follow.notification_enabled = notification_enabled
+            await self.db.commit()
+            await self.db.refresh(follow)
+            return True
+        except Exception:
+            await self.db.rollback()
+            return False

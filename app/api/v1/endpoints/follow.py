@@ -9,6 +9,8 @@ from app.schemas.follow import (
     FollowListResponse,
     FollowStatsResponse,
     SimpleUserDto,
+    FollowNotificationStatusResponse,
+    FollowNotificationUpdateRequest,
 )
 from app.schemas.pod.pod_dto import PodDto
 from app.schemas.common.page_dto import PageDto
@@ -274,4 +276,93 @@ async def get_recommended_users(
             error=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
+        )
+
+
+@router.get(
+    "/notification/{followingId}",
+    response_model=BaseResponse[FollowNotificationStatusResponse],
+)
+async def get_notification_status(
+    followingId: int = Path(..., description="팔로우한 사용자 ID"),
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """특정 팔로우한 유저의 알림 설정 상태 조회"""
+    try:
+        follow_service = FollowService(db)
+        notification_status = await follow_service.get_notification_status(
+            follower_id=current_user_id, following_id=followingId
+        )
+
+        if not notification_status:
+            return BaseResponse(
+                data=None,
+                http_status=404,
+                message_ko="팔로우 관계를 찾을 수 없습니다.",
+                message_en="Follow relationship not found.",
+                error="FOLLOW_NOT_FOUND",
+                error_code=4001,
+                dev_note=None,
+            )
+
+        return BaseResponse.ok(
+            data=notification_status,
+            http_status=HttpStatus.OK,
+            message_ko="알림 설정 상태를 조회했습니다.",
+            message_en="Successfully retrieved notification status.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=error_info.http_status,
+            message_ko="알림 설정 상태 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving notification status.",
+        )
+
+
+@router.put(
+    "/notification", response_model=BaseResponse[FollowNotificationStatusResponse]
+)
+async def update_notification_status(
+    request: FollowNotificationUpdateRequest,
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """특정 팔로우한 유저의 알림 설정 변경"""
+    try:
+        follow_service = FollowService(db)
+        notification_status = await follow_service.update_notification_status(
+            follower_id=current_user_id,
+            following_id=request.following_id,
+            notification_enabled=request.notification_enabled,
+        )
+
+        if not notification_status:
+            return BaseResponse(
+                data=None,
+                http_status=404,
+                message_ko="팔로우 관계를 찾을 수 없습니다.",
+                message_en="Follow relationship not found.",
+                error="FOLLOW_NOT_FOUND",
+                error_code=4001,
+                dev_note=None,
+            )
+
+        return BaseResponse.ok(
+            data=notification_status,
+            http_status=HttpStatus.OK,
+            message_ko="알림 설정이 변경되었습니다.",
+            message_en="Successfully updated notification status.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=error_info.http_status,
+            message_ko="알림 설정 변경 중 오류가 발생했습니다.",
+            message_en="An error occurred while updating notification status.",
         )
