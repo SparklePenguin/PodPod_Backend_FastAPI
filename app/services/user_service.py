@@ -2,10 +2,19 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.user import UserCRUD
 from app.crud.artist import ArtistCRUD
+from app.crud.user_block import UserBlockCRUD
+from app.crud.follow import FollowCRUD
 from app.schemas.common import BaseResponse
-from app.schemas.user import UpdateProfileRequest, UserDto, UserDtoInternal
+from app.schemas.user import (
+    UpdateProfileRequest,
+    UserDto,
+    UserDtoInternal,
+    BlockedUserDto,
+    BlockUserResponse,
+)
 from app.schemas.auth import SignUpRequest
 from app.schemas.artist import ArtistDto
+from app.schemas.common.page_dto import PageDto
 from app.core.security import get_password_hash
 from app.models.user_state import UserState
 from typing import List, Optional
@@ -19,6 +28,9 @@ class UserService:
         self.user_crud = UserCRUD(db)
         self.artist_crud = ArtistCRUD(db)
         self.follow_service = FollowService(db)
+        self.block_crud = UserBlockCRUD(db)
+        self.follow_crud = FollowCRUD(db)
+        self.db = db
 
         # - MARK: 사용자 생성
 
@@ -286,3 +298,73 @@ class UserService:
             user_data["follow_stats"] = None
 
         return user_data
+
+    # - MARK: 사용자 차단
+    async def block_user(
+        self, blocker_id: int, blocked_id: int
+    ) -> Optional[BlockUserResponse]:
+        """사용자 차단 (팔로우 관계도 함께 삭제)"""
+        # 차단할 사용자 존재 확인
+        blocked_user = await self.user_crud.get_by_id(blocked_id)
+        if not blocked_user:
+            return None
+
+        # 차단 생성
+        block = await self.block_crud.create_block(blocker_id, blocked_id)
+        if not block:
+            return None
+
+        # 팔로우 관계 삭제 (양방향 모두)
+        # 1. 내가 차단한 사람을 팔로우하고 있었다면 팔로우 해제
+        await self.follow_crud.delete_follow(blocker_id, blocked_id)
+
+        # 2. 차단한 사람이 나를 팔로우하고 있었다면 팔로우 해제
+        await self.follow_crud.delete_follow(blocked_id, blocker_id)
+
+        return BlockUserResponse(
+            blocker_id=block.blocker_id,
+            blocked_id=block.blocked_id,
+            created_at=block.created_at,
+        )
+
+    async def unblock_user(self, blocker_id: int, blocked_id: int) -> bool:
+        """사용자 차단 해제"""
+        return await self.block_crud.delete_block(blocker_id, blocked_id)
+
+    async def get_blocked_users(
+        self, blocker_id: int, page: int = 1, size: int = 20
+    ) -> PageDto[BlockedUserDto]:
+        """차단한 사용자 목록 조회"""
+        blocked_data, total_count = await self.block_crud.get_blocked_users(
+            blocker_id, page, size
+        )
+
+        users = []
+        for user, blocked_at in blocked_data:
+            user_dto = BlockedUserDto(
+                id=user.id,
+                nickname=user.nickname,
+                profile_image=user.profile_image,
+                intro=user.intro,
+                blocked_at=blocked_at,
+            )
+            users.append(user_dto)
+
+        # PageDto 생성
+        total_pages = (total_count + size - 1) // size
+        has_next = page < total_pages
+        has_prev = page > 1
+
+        return PageDto(
+            items=users,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next,
+            has_prev=has_prev,
+        )
+
+    async def check_block_exists(self, blocker_id: int, blocked_id: int) -> bool:
+        """차단 관계 존재 여부 확인"""
+        return await self.block_crud.check_block_exists(blocker_id, blocked_id)

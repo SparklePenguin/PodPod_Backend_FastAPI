@@ -46,5 +46,13 @@ class User(Base):
         "Follow", foreign_keys="Follow.following_id", back_populates="following"
     )
 
+    # 차단 관계
+    blocking = relationship(
+        "UserBlock", foreign_keys="UserBlock.blocker_id", back_populates="blocker"
+    )
+    blocked_by = relationship(
+        "UserBlock", foreign_keys="UserBlock.blocked_id", back_populates="blocked"
+    )
+
     # 파티 후기 관계
     pod_reviews = relationship("PodReview", back_populates="user")

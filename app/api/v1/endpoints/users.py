@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Form,
+    Query,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import logging
@@ -12,6 +21,8 @@ from app.schemas.user import (
     UpdatePreferredArtistsRequest,
     UserDto,
     UserDtoInternal,
+    BlockedUserDto,
+    BlockUserResponse,
 )
 from app.schemas.auth import SignUpRequest
 from app.schemas.common import BaseResponse
@@ -260,9 +271,53 @@ async def block_user(
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
-    """사용자 차단 (토큰 필요)"""
-    # TODO: 사용자 차단 로직 구현
-    return BaseResponse.ok(data=None)
+    """사용자 차단 (토큰 필요) - 팔로우 관계도 함께 삭제됨"""
+    try:
+        # 자기 자신을 차단하려는 경우
+        if user_id == current_user_id:
+            return BaseResponse(
+                data=None,
+                http_status=400,
+                message_ko="자기 자신을 차단할 수 없습니다.",
+                message_en="Cannot block yourself.",
+                error="CANNOT_BLOCK_SELF",
+                error_code=4003,
+                dev_note=None,
+            )
+
+        block_response = await user_service.block_user(current_user_id, user_id)
+
+        if not block_response:
+            return BaseResponse(
+                data=None,
+                http_status=404,
+                message_ko="차단할 사용자를 찾을 수 없습니다.",
+                message_en="User to block not found.",
+                error="USER_NOT_FOUND",
+                error_code=4004,
+                dev_note=None,
+            )
+
+        return BaseResponse.ok(
+            data=block_response,
+            http_status=HttpStatus.OK,
+            message_ko="사용자를 차단했습니다. 팔로우 관계도 해제되었습니다.",
+            message_en="Successfully blocked the user. Follow relationship also removed.",
+        )
+    except Exception as e:
+        import traceback
+
+        print(f"사용자 차단 오류: {e}")
+        traceback.print_exc()
+        return BaseResponse(
+            data=None,
+            http_status=500,
+            message_ko="사용자 차단 중 오류가 발생했습니다.",
+            message_en="An error occurred while blocking the user.",
+            error="INTERNAL_SERVER_ERROR",
+            error_code=5000,
+            dev_note=None,
+        )
 
 
 @router.get(
@@ -287,13 +342,37 @@ async def block_user(
     tags=["users"],
 )
 async def get_blocked_users(
+    page: int = Query(1, ge=1, description="페이지 번호"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
     """차단된 사용자 목록 조회 (토큰 필요)"""
-    # TODO: 차단된 사용자 목록 조회 로직 구현
-    blocked_users: List[UserDto] = []  # 실제 구현 필요
-    return BaseResponse.ok(data={"users": blocked_users})
+    try:
+        blocked_users_page = await user_service.get_blocked_users(
+            current_user_id, page, size
+        )
+
+        return BaseResponse.ok(
+            data=blocked_users_page,
+            http_status=HttpStatus.OK,
+            message_ko="차단된 사용자 목록을 조회했습니다.",
+            message_en="Successfully retrieved blocked users list.",
+        )
+    except Exception as e:
+        import traceback
+
+        print(f"차단된 사용자 목록 조회 오류: {e}")
+        traceback.print_exc()
+        return BaseResponse(
+            data=None,
+            http_status=500,
+            message_ko="차단된 사용자 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving blocked users list.",
+            error="INTERNAL_SERVER_ERROR",
+            error_code=5000,
+            dev_note=None,
+        )
 
 
 @router.delete(
@@ -318,7 +397,41 @@ async def unblock_user(
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
-    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
+    """사용자 차단 해제 (토큰 필요)"""
+    try:
+        success = await user_service.unblock_user(current_user_id, user_id)
+
+        if not success:
+            return BaseResponse(
+                data=None,
+                http_status=404,
+                message_ko="차단 관계를 찾을 수 없습니다.",
+                message_en="Block relationship not found.",
+                error="BLOCK_NOT_FOUND",
+                error_code=4005,
+                dev_note=None,
+            )
+
+        return BaseResponse.ok(
+            data=True,
+            http_status=HttpStatus.OK,
+            message_ko="사용자 차단을 해제했습니다.",
+            message_en="Successfully unblocked the user.",
+        )
+    except Exception as e:
+        import traceback
+
+        print(f"사용자 차단 해제 오류: {e}")
+        traceback.print_exc()
+        return BaseResponse(
+            data=None,
+            http_status=500,
+            message_ko="사용자 차단 해제 중 오류가 발생했습니다.",
+            message_en="An error occurred while unblocking the user.",
+            error="INTERNAL_SERVER_ERROR",
+            error_code=5000,
+            dev_note=None,
+        )
 
 
 # - MARK: 내부용 API

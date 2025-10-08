@@ -11,6 +11,7 @@ from .tendency import (
 from .pod_review import PodReview
 from .artist_suggestion import ArtistSuggestion
 from .location import Location
+from .user_block import UserBlock
 
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "PodReview",
     "ArtistSuggestion",
     "Location",
+    "UserBlock",
 ]
