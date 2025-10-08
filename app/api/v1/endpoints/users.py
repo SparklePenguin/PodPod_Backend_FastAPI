@@ -253,9 +253,12 @@ async def delete_user(
 # - MARK: 사용자 차단 API
 @router.post(
     "/blocks/{user_id}",
-    response_model=BaseResponse[None],
+    response_model=BaseResponse[BlockUserResponse],
     responses={
-        HttpStatus.OK: {"model": BaseResponse[None], "description": "사용자 차단 성공"},
+        HttpStatus.OK: {
+            "model": BaseResponse[BlockUserResponse],
+            "description": "사용자 차단 성공",
+        },
         HttpStatus.UNAUTHORIZED: {
             "model": BaseResponse[None],
             "description": "인증 실패",
@@ -322,10 +325,9 @@ async def block_user(
 
 @router.get(
     "/blocks",
-    response_model=BaseResponse[dict],
+    response_model=BaseResponse,
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[dict],
             "description": "차단된 사용자 목록 조회 성공",
         },
         HttpStatus.UNAUTHORIZED: {
@@ -377,14 +379,19 @@ async def get_blocked_users(
 
 @router.delete(
     "/blocks/{user_id}",
-    status_code=HttpStatus.NO_CONTENT,
+    response_model=BaseResponse[bool],
     responses={
-        HttpStatus.NO_CONTENT: {
-            "description": "사용자 차단 해제 성공 (No Content)",
+        HttpStatus.OK: {
+            "model": BaseResponse[bool],
+            "description": "사용자 차단 해제 성공",
         },
         HttpStatus.UNAUTHORIZED: {
             "model": BaseResponse[None],
             "description": "인증 실패",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "차단 관계를 찾을 수 없음",
         },
         HttpStatus.INTERNAL_SERVER_ERROR: {
             "model": BaseResponse[None],

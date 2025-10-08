@@ -75,12 +75,17 @@ class FollowCRUD:
         """팔로우하는 사용자 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로우하는 사용자 목록 조회 (성향 타입 포함)
+        # 팔로우하는 사용자 목록 조회 (성향 타입 포함, 자기 자신 제외)
         query = (
             select(User, Follow.created_at, UserTendencyResult.tendency_type)
             .join(Follow, User.id == Follow.following_id)
             .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
-            .where(Follow.follower_id == user_id)
+            .where(
+                and_(
+                    Follow.follower_id == user_id,
+                    Follow.following_id != user_id,  # 자기 자신 제외
+                )
+            )
             .order_by(desc(Follow.created_at))
             .offset(offset)
             .limit(size)
@@ -88,8 +93,13 @@ class FollowCRUD:
         result = await self.db.execute(query)
         following_data = result.all()
 
-        # 총 팔로우 수 조회
-        count_query = select(func.count(Follow.id)).where(Follow.follower_id == user_id)
+        # 총 팔로우 수 조회 (자기 자신 제외)
+        count_query = select(func.count(Follow.id)).where(
+            and_(
+                Follow.follower_id == user_id,
+                Follow.following_id != user_id,  # 자기 자신 제외
+            )
+        )
         count_result = await self.db.execute(count_query)
         total_count = count_result.scalar()
 
@@ -101,12 +111,17 @@ class FollowCRUD:
         """팔로워 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로워 목록 조회 (성향 타입 포함)
+        # 팔로워 목록 조회 (성향 타입 포함, 자기 자신 제외)
         query = (
             select(User, Follow.created_at, UserTendencyResult.tendency_type)
             .join(Follow, User.id == Follow.follower_id)
             .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
-            .where(Follow.following_id == user_id)
+            .where(
+                and_(
+                    Follow.following_id == user_id,
+                    Follow.follower_id != user_id,  # 자기 자신 제외
+                )
+            )
             .order_by(desc(Follow.created_at))
             .offset(offset)
             .limit(size)
@@ -114,9 +129,12 @@ class FollowCRUD:
         result = await self.db.execute(query)
         followers_data = result.all()
 
-        # 총 팔로워 수 조회
+        # 총 팔로워 수 조회 (자기 자신 제외)
         count_query = select(func.count(Follow.id)).where(
-            Follow.following_id == user_id
+            and_(
+                Follow.following_id == user_id,
+                Follow.follower_id != user_id,  # 자기 자신 제외
+            )
         )
         count_result = await self.db.execute(count_query)
         total_count = count_result.scalar()
@@ -126,17 +144,23 @@ class FollowCRUD:
     async def get_follow_stats(
         self, user_id: int, current_user_id: Optional[int] = None
     ) -> dict:
-        """팔로우 통계 조회"""
-        # 팔로우하는 수
+        """팔로우 통계 조회 (자기 자신 제외)"""
+        # 팔로우하는 수 (자기 자신 제외)
         following_count_query = select(func.count(Follow.id)).where(
-            Follow.follower_id == user_id
+            and_(
+                Follow.follower_id == user_id,
+                Follow.following_id != user_id,  # 자기 자신 제외
+            )
         )
         following_count_result = await self.db.execute(following_count_query)
         following_count = following_count_result.scalar()
 
-        # 팔로워 수
+        # 팔로워 수 (자기 자신 제외)
         followers_count_query = select(func.count(Follow.id)).where(
-            Follow.following_id == user_id
+            and_(
+                Follow.following_id == user_id,
+                Follow.follower_id != user_id,  # 자기 자신 제외
+            )
         )
         followers_count_result = await self.db.execute(followers_count_query)
         followers_count = followers_count_result.scalar()
