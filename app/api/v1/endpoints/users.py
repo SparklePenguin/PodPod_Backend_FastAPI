@@ -66,11 +66,13 @@ async def create_user(
         },
     },
     summary="사용자 정보 조회",
-    description="현재 로그인한 사용자의 정보를 조회합니다.",
+    description="현재 로그인한 사용자 또는 특정 사용자의 정보를 조회합니다.",
     tags=["users"],
 )
 async def get_user_info(
-    user_id: Optional[int] = None,
+    user_id: Optional[int] = Query(
+        None, alias="userId", description="조회할 사용자 ID (없으면 본인)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
