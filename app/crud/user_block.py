@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, desc
+from sqlalchemy import select, and_, func, desc, delete, or_
 from typing import Optional, List, Tuple
 from datetime import datetime
 from app.models.user_block import UserBlock
@@ -49,9 +49,7 @@ class UserBlockCRUD:
             await self.db.rollback()
             return False
 
-    async def get_block(
-        self, blocker_id: int, blocked_id: int
-    ) -> Optional[UserBlock]:
+    async def get_block(self, blocker_id: int, blocked_id: int) -> Optional[UserBlock]:
         """특정 차단 관계 조회"""
         query = select(UserBlock).where(
             and_(
@@ -100,3 +98,12 @@ class UserBlockCRUD:
 
         return blocked_data, total_count
 
+    async def delete_all_by_user(self, user_id: int) -> None:
+        """특정 사용자와 관련된 모든 차단 관계 삭제"""
+        # 해당 사용자가 차단한 경우와 차단당한 경우 모두 삭제
+        await self.db.execute(
+            delete(UserBlock).where(
+                or_(UserBlock.blocker_id == user_id, UserBlock.blocked_id == user_id)
+            )
+        )
+        await self.db.commit()

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, desc, or_
+from sqlalchemy import select, and_, func, desc, or_, delete
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Tuple
 from datetime import datetime
@@ -273,3 +273,13 @@ class FollowCRUD:
         except Exception:
             await self.db.rollback()
             return False
+
+    async def delete_all_by_user(self, user_id: int) -> None:
+        """특정 사용자와 관련된 모든 팔로우 관계 삭제"""
+        # 해당 사용자가 팔로워인 경우와 팔로잉인 경우 모두 삭제
+        await self.db.execute(
+            delete(Follow).where(
+                or_(Follow.follower_id == user_id, Follow.following_id == user_id)
+            )
+        )
+        await self.db.commit()

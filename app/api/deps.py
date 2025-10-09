@@ -1,6 +1,7 @@
+from typing import Optional
 from typing_extensions import reveal_type
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
 from app.core.database import get_db
@@ -14,6 +15,7 @@ from app.services.artist_service import ArtistService
 from app.services.oauth_service import OauthService
 
 security = HTTPBearer()
+security_optional = HTTPBearer(auto_error=False)
 
 
 def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
@@ -62,3 +64,23 @@ async def get_current_user_id(token: str = Depends(security)) -> int:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
         )
+
+
+async def get_current_user_id_optional(
+    token: Optional[HTTPAuthorizationCredentials] = Depends(security_optional),
+) -> Optional[int]:
+    """토큰에서 user_id 추출 (선택사항)"""
+    if token is None:
+        return None
+    try:
+        payload = jwt.decode(
+            token.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            return None
+        # JWT의 sub 필드는 문자열이므로 정수로 변환
+        user_id = int(user_id_str)
+        return user_id
+    except (JWTError, ValueError):
+        return None

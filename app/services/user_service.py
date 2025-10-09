@@ -186,33 +186,9 @@ class UserService:
         if not has_tendency_result:
             return UserState.TENDENCY_TEST
 
-        # 3. 프로필이 업데이트되지 않았으면 PROFILE_SETTING
-        # 생성날짜와 업데이트 날짜를 비교하여 프로필 설정 여부 판단
-        # 업데이트 날짜가 생성날짜와 같거나 거의 같으면 프로필을 설정하지 않은 것으로 간주
-        if user.created_at and user.updated_at:
-            try:
-                from datetime import datetime
-
-                # datetime 객체로 변환 (문자열인 경우 대비)
-                created_at = user.created_at
-                updated_at = user.updated_at
-
-                if isinstance(created_at, str):
-                    created_at = datetime.fromisoformat(
-                        created_at.replace("Z", "+00:00")
-                    )
-                if isinstance(updated_at, str):
-                    updated_at = datetime.fromisoformat(
-                        updated_at.replace("Z", "+00:00")
-                    )
-
-                # 업데이트 시간과 생성 시간의 차이가 1분 이내면 프로필 미설정으로 판단
-                time_diff = (updated_at - created_at).total_seconds()
-                if time_diff < 60:  # 60초 이내면 프로필 미설정
-                    return UserState.PROFILE_SETTING
-            except Exception:
-                # 시간 비교 실패 시 안전하게 PROFILE_SETTING 반환
-                return UserState.PROFILE_SETTING
+        # 3. 닉네임이 없으면 PROFILE_SETTING
+        if not user.nickname:
+            return UserState.PROFILE_SETTING
 
         # 4. 모든 조건을 만족하면 COMPLETED
         return UserState.COMPLETED
@@ -374,3 +350,28 @@ class UserService:
     async def check_block_exists(self, blocker_id: int, blocked_id: int) -> bool:
         """차단 관계 존재 여부 확인"""
         return await self.block_crud.check_block_exists(blocker_id, blocked_id)
+
+    async def delete_user(self, user_id: int) -> None:
+        """
+        사용자 삭제
+        - 사용자와 관련된 모든 데이터를 삭제합니다.
+        """
+        # 사용자 존재 확인
+        user = await self.user_crud.get_by_id(user_id)
+        if not user:
+            raise_error("USER_NOT_FOUND")
+
+        # 관련 데이터 먼저 삭제
+        # 1. 선호 아티스트 삭제
+        preferred_artist_ids = await self.user_crud.get_preferred_artist_ids(user_id)
+        for artist_id in preferred_artist_ids:
+            await self.user_crud.remove_preferred_artist(user_id, artist_id)
+
+        # 2. 팔로우 관계 삭제
+        await self.follow_crud.delete_all_by_user(user_id)
+
+        # 3. 차단 관계 삭제
+        await self.block_crud.delete_all_by_user(user_id)
+
+        # 4. 사용자 삭제
+        await self.user_crud.delete(user_id)

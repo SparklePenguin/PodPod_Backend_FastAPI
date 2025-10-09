@@ -7,12 +7,17 @@ from fastapi import (
     File,
     Form,
     Query,
+    Response,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import logging
 
-from app.api.deps import get_user_service, get_current_user_id
+from app.api.deps import (
+    get_user_service,
+    get_current_user_id,
+    get_current_user_id_optional,
+)
 from app.schemas.artist import ArtistDto
 from app.utils.file_upload import upload_profile_image
 from app.services.user_service import UserService
@@ -441,15 +446,15 @@ async def update_fcm_token(
 
 
 @router.delete(
-    "/{user_id}",
+    "",
     status_code=HttpStatus.NO_CONTENT,
     responses={
         HttpStatus.NO_CONTENT: {
             "description": "사용자 삭제 성공 (No Content)",
         },
-        HttpStatus.UNAUTHORIZED: {
+        HttpStatus.BAD_REQUEST: {
             "model": BaseResponse[None],
-            "description": "인증 실패",
+            "description": "userId 또는 토큰이 필요합니다",
         },
         HttpStatus.NOT_FOUND: {
             "model": BaseResponse[None],
@@ -460,20 +465,33 @@ async def update_fcm_token(
             "description": "서버 내부 오류",
         },
     },
+    summary="사용자 삭제",
+    description="사용자 계정을 삭제합니다. userId가 제공되면 해당 사용자를 삭제하고, 없으면 토큰에서 사용자를 확인하여 삭제합니다.",
+    tags=["users"],
 )
 async def delete_user(
-    user_id: int,
-    current_user_id: int = Depends(get_current_user_id),
+    user_id: Optional[int] = Query(
+        None, alias="userId", description="삭제할 사용자 ID"
+    ),
+    current_user_id: Optional[int] = Depends(get_current_user_id_optional),
     user_service: UserService = Depends(get_user_service),
 ):
-    """사용자 삭제 (토큰 필요)"""
-    # TODO: 사용자 삭제 로직 구현. 현재는 자신의 계정만 삭제 가능
-    if user_id != current_user_id:
+    """사용자 삭제 (userId 또는 토큰 필요)"""
+    # userId가 있으면 해당 유저 삭제
+    if user_id is not None:
+        target_user_id = user_id
+    # userId 없고 토큰 있으면 토큰 유저 삭제
+    elif current_user_id is not None:
+        target_user_id = current_user_id
+    # 둘 다 없으면 에러
+    else:
         raise HTTPException(
-            status_code=HttpStatus.FORBIDDEN,
-            detail="자신의 계정만 삭제할 수 있습니다",
+            status_code=HttpStatus.BAD_REQUEST,
+            detail="userId 또는 인증 토큰이 필요합니다.",
         )
-    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
+
+    await user_service.delete_user(target_user_id)
+    return Response(status_code=HttpStatus.NO_CONTENT)
 
 
 # - MARK: 내부용 API

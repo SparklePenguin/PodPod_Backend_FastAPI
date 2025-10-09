@@ -107,3 +107,12 @@ class UserCRUD:
             )
         )
         await self.db.commit()
+
+    # 사용자 삭제
+    async def delete(self, user_id: int) -> None:
+        """
+        사용자 삭제
+        - ON DELETE CASCADE로 인해 관련 데이터(preferred_artists, follows 등)도 함께 삭제됨
+        """
+        await self.db.execute(delete(User).where(User.id == user_id))
+        await self.db.commit()
