@@ -46,10 +46,9 @@ class PodDto(BaseModel):
     id: int = Field(alias="id", example=1)
     owner_id: int = Field(alias="ownerId", example=1)
     title: str = Field(alias="title", example="string")
-    description: Optional[str] = Field(
-        default=None,
+    description: str = Field(
         alias="description",
-        example="string?",
+        example="파티 설명",
     )
     image_url: Optional[str] = Field(
         default=None,
@@ -95,8 +94,7 @@ class PodDto(BaseModel):
         example="RECRUITING",
         description="파티 상태 (RECRUITING: 모집중, FULL: 인원 가득참, COMPLETED: 모집 완료, CLOSED: 종료)",
     )
-    chat_channel_url: Optional[str] = Field(
-        default=None,
+    chat_channel_url: str = Field(
         alias="chatChannelUrl",
         example="pod_20_chat",
         description="Sendbird 채팅방 URL",

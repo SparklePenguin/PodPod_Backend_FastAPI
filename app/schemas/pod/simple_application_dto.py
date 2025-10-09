@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
 from app.schemas.follow import SimpleUserDto
 
 
@@ -13,7 +12,7 @@ class SimpleApplicationDto(BaseModel):
     message: Optional[str] = Field(
         default=None, alias="message", description="신청 메시지"
     )
-    applied_at: datetime = Field(alias="appliedAt", description="신청 일시")
+    applied_at: int = Field(alias="appliedAt", description="신청 시간 (Unix timestamp)")
 
     model_config = {
         "from_attributes": True,

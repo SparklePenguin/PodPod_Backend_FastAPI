@@ -32,6 +32,10 @@ class PodCRUD:
         selected_artist_id: Optional[int] = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
+        # description이 없으면 빈 문자열로 설정
+        if not description:
+            description = ""
+
         pod = Pod(
             owner_id=owner_id,
             selected_artist_id=selected_artist_id,
@@ -694,14 +698,19 @@ class PodCRUD:
             status=status,
         )
 
+        # 채널 URL 생성 (pod_{pod_id}_chat 형식) - 반드시 설정
+        channel_url = f"pod_{pod.id}_chat"
+
         # Sendbird 채팅방 생성
         try:
             from app.services.sendbird_service import SendbirdService
+            import logging
+
+            logger = logging.getLogger(__name__)
 
             sendbird_service = SendbirdService()
 
-            # 채널 URL 생성 (pod_{pod_id}_chat 형식)
-            channel_url = f"pod_{pod.id}_chat"
+            logger.info(f"파티 {pod.id} 채팅방 생성 시도: {channel_url}")
 
             # 채널 생성
             channel_data = await sendbird_service.create_group_channel(
@@ -712,17 +721,29 @@ class PodCRUD:
             )
 
             if channel_data:
-                # 채팅방 URL을 파티에 저장
-                pod.chat_channel_url = channel_url
-                await self.db.commit()
-                await self.db.refresh(pod)
+                logger.info(f"파티 {pod.id} 채팅방 생성 성공: {channel_url}")
+            else:
+                logger.warning(
+                    f"파티 {pod.id} Sendbird 채팅방 생성 실패: 응답 없음 (URL만 저장)"
+                )
 
         except ValueError as e:
-            print(f"Sendbird 설정 오류: {e}")
-            # Sendbird 설정이 없으면 채팅방 없이 파티만 생성
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Sendbird 설정 오류 (파티 {pod.id}): {e} (URL만 저장)")
         except Exception as e:
-            print(f"Sendbird 채팅방 생성 실패: {e}")
-            # 채팅방 생성 실패해도 파티는 생성됨
+            import logging
+            import traceback
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird 채팅방 생성 실패 (파티 {pod.id}): {e} (URL만 저장)")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
+
+        # 성공/실패 여부와 관계없이 채팅방 URL은 반드시 저장
+        pod.chat_channel_url = channel_url
+        await self.db.commit()
+        await self.db.refresh(pod)
 
         return pod
 

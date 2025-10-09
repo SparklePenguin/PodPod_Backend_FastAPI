@@ -77,19 +77,32 @@ class SendbirdService:
                 api_response = api_instance.create_a_group_channel(
                     api_token=self.api_token,
                     create_a_group_channel_request=create_channel_request,
+                    _check_return_type=False,  # SDK validation 비활성화
                 )
 
-                return api_response.to_dict()
+                # 응답이 dict면 그대로 반환, 아니면 to_dict() 시도
+                if isinstance(api_response, dict):
+                    return api_response
+                elif hasattr(api_response, "to_dict"):
+                    return api_response.to_dict()
+                else:
+                    # 최소한의 정보라도 반환
+                    return {"channel_url": channel_url}
 
         except sendbird_platform_sdk.ApiException as e:
-            print(f"Sendbird API 오류: {e.status} - {e.reason}")
-            print(f"오류 상세: {e.body}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird API 오류: {e.status} - {e.reason}")
+            logger.error(f"오류 상세: {e.body}")
             return None
         except Exception as e:
-            print(f"Sendbird API 요청 실패: {e}")
+            import logging
             import traceback
 
-            traceback.print_exc()
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird API 요청 실패: {e}")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
             return None
 
     async def get_channel_metadata(self, channel_url: str) -> Optional[Dict[str, Any]]:

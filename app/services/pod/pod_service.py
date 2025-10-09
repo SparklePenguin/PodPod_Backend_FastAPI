@@ -447,7 +447,6 @@ class PodService:
             chat_channel_url=pod.chat_channel_url,
             created_at=pod.created_at,
             updated_at=pod.updated_at,
-            is_active=pod.is_active,
             # 기본값 설정
             is_liked=False,
             my_application=None,
@@ -521,7 +520,6 @@ class PodService:
                 from app.schemas.follow import SimpleUserDto
                 from sqlalchemy import select
                 from app.models.tendency import UserTendencyResult
-                from datetime import datetime, timezone
 
                 app_user = await self.db.get(User, user_application.user_id)
 
@@ -533,11 +531,6 @@ class PodService:
                 )
                 user_tendency = result.scalar_one_or_none()
                 tendency_type = user_tendency.tendency_type if user_tendency else None
-
-                # Unix timestamp를 datetime으로 변환
-                applied_at = datetime.fromtimestamp(
-                    user_application.applied_at, tz=timezone.utc
-                )
 
                 if app_user:
                     user_dto = SimpleUserDto(
@@ -554,15 +547,51 @@ class PodService:
                         user=user_dto,
                         status=user_application.status,
                         message=user_application.message,
-                        applied_at=applied_at,
+                        applied_at=user_application.applied_at,  # int (Unix timestamp) 그대로 사용
                     )
 
-        # 파티에 들어온 신청서 목록 조회 (MissingGreenlet 오류 방지를 위해 비동기 호출 제거)
-        # applications = await self.application_crud.get_applications_by_pod_id(pod.id)
-        # pod_dto.applications = [
-        #     SimpleApplicationDto(id=app.id, status=app.status) for app in applications
-        # ]
-        # applications 필드는 이미 빈 배열로 초기화되어 있음
+        # 파티에 들어온 신청서 목록 조회
+        applications = await self.application_crud.get_applications_by_pod_id(pod.id)
+
+        application_dtos = []
+        for app in applications:
+            # 신청한 사용자 정보 조회
+            from app.models.user import User
+            from app.schemas.follow import SimpleUserDto
+            from sqlalchemy import select
+            from app.models.tendency import UserTendencyResult
+
+            app_user = await self.db.get(User, app.user_id)
+
+            # 성향 타입 조회
+            result = await self.db.execute(
+                select(UserTendencyResult).where(
+                    UserTendencyResult.user_id == app.user_id
+                )
+            )
+            user_tendency = result.scalar_one_or_none()
+            tendency_type = user_tendency.tendency_type if user_tendency else None
+
+            if app_user:
+                user_dto = SimpleUserDto(
+                    id=app_user.id,
+                    nickname=app_user.nickname,
+                    profile_image=app_user.profile_image,
+                    intro=app_user.intro,
+                    tendency_type=tendency_type,
+                    is_following=False,
+                )
+
+                application_dto = SimpleApplicationDto(
+                    id=app.id,
+                    user=user_dto,
+                    status=app.status,
+                    message=app.message,
+                    applied_at=app.applied_at,
+                )
+                application_dtos.append(application_dto)
+
+        pod_dto.applications = application_dtos
 
         return pod_dto
 
