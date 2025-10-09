@@ -27,6 +27,9 @@ class SignUpRequest(BaseModel):
     profile_image: Optional[str] = Field(default=None, alias="profileImage")
     auth_provider: Optional[str] = Field(default=None, alias="authProvider")
     auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -35,6 +38,9 @@ class SignUpRequest(BaseModel):
 class EmailLoginRequest(BaseModel):
     email: str = Field(..., alias="email")
     password: str = Field(..., alias="password")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
 
     model_config = {"populate_by_name": True}
 

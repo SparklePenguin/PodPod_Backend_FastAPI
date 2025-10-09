@@ -35,6 +35,9 @@ class User(Base):
         String(100), unique=True, index=True, nullable=True
     )  # 소셜 제공자의 고유 ID
 
+    # FCM 토큰 (푸시 알림용)
+    fcm_token = Column(String(500), nullable=True)  # Firebase Cloud Messaging 토큰
+
     # 관계 설정
     preferred_artists = relationship("PreferredArtist", back_populates="user")
 

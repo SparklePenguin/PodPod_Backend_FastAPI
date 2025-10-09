@@ -26,18 +26,13 @@ class _AppleUserInfo(BaseModel):
 # - MARK: Apple 로그인 요청
 class AppleLoginRequest(BaseModel):
     identity_token: str = Field(alias="identityToken")
-    authorization_code: Optional[str] = Field(
-        default=None,
-        alias="authorizationCode",
-    )
-    user: Optional[_AppleUserInfo] = Field(
-        default=None,
-        alias="user",
+    authorization_code: Optional[str] = Field(default=None, alias="authorizationCode")
+    user: Optional[_AppleUserInfo] = Field(default=None, alias="user")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
     )
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: Apple 콜백 파라미터
@@ -280,6 +275,7 @@ class AppleOauthService:
             oauth_provider="apple",
             oauth_user_id=str(apple_user_info["sub"]),
             oauth_user_info=apple_user_info,
+            fcm_token=apple_login_request.fcm_token,
         )
 
     async def handle_apple_callback(

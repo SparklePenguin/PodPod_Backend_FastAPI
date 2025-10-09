@@ -63,10 +63,11 @@ class KakaoTokenResponse(BaseModel):
     scope: List[str] = Field(
         default=[], alias="scope"
     )  # 인증된 사용자의 정보 조회 권한 범위
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 사용자 정보 응답
@@ -134,6 +135,7 @@ class KakaoOauthService:
             oauth_provider="kakao",
             oauth_user_id=str(kakao_user_info.id),
             oauth_user_info=oauth_user_info,
+            fcm_token=kakao_sign_in_request.fcm_token,
         )
 
     async def handle_kakao_callback(self, params: KakaoCallBackParam) -> dict:

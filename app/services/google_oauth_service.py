@@ -12,10 +12,11 @@ from app.core.config import settings
 # - MARK: 구글 로그인 요청
 class GoogleLoginRequest(BaseModel):
     id_token: str = Field(alias="idToken")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = {"populate_by_name": True}
 
 
 class GoogleOauthService:
@@ -60,4 +61,5 @@ class GoogleOauthService:
             oauth_provider="google",
             oauth_user_id=str(google_user_info["sub"]),
             oauth_user_info=google_user_info,
+            fcm_token=google_login_request.fcm_token,
         )

@@ -409,6 +409,37 @@ async def get_user_by_id(
     return BaseResponse.ok(data=user)
 
 
+@router.put(
+    "/fcm-token",
+    response_model=BaseResponse[dict],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "FCM 토큰 업데이트 성공",
+        },
+    },
+    summary="FCM 토큰 업데이트",
+    description="사용자의 FCM 토큰을 업데이트합니다 (푸시 알림용).",
+    tags=["users"],
+)
+async def update_fcm_token(
+    fcm_token: str = Query(..., alias="fcmToken", description="FCM 토큰"),
+    current_user_id: int = Depends(get_current_user_id),
+    user_service: UserService = Depends(get_user_service),
+):
+    """FCM 토큰 업데이트 (토큰 필요)"""
+    from app.crud.user import UserCRUD
+
+    user_crud = UserCRUD(user_service.db)
+    await user_crud.update_profile(current_user_id, {"fcm_token": fcm_token})
+
+    return BaseResponse.ok(
+        data={"updated": True},
+        message_ko="FCM 토큰이 업데이트되었습니다.",
+        message_en="FCM token updated successfully.",
+    )
+
+
 @router.delete(
     "/{user_id}",
     status_code=HttpStatus.NO_CONTENT,

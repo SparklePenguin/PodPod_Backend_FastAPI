@@ -6,6 +6,7 @@ from app.api.deps import (
     get_kakao_oauth_service,
     get_google_oauth_service,
     get_apple_oauth_service,
+    get_current_user_id,
 )
 from app.services.kakao_oauth_service import KakaoOauthService, KakaoTokenResponse
 from app.services.google_oauth_service import GoogleOauthService, GoogleLoginRequest
@@ -20,20 +21,25 @@ from app.schemas.auth import (
 )
 from app.schemas.common import BaseResponse
 from app.core.http_status import HttpStatus
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 security = HTTPBearer()
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: Optional[str] = None
-    auth_provider: Optional[str] = None
-    auth_provider_id: Optional[str] = None
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    profile_image: Optional[str] = None
+    email: str = Field(alias="email")
+    password: Optional[str] = Field(default=None, alias="password")
+    auth_provider: Optional[str] = Field(default=None, alias="authProvider")
+    auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")
+    username: Optional[str] = Field(default=None, alias="username")
+    full_name: Optional[str] = Field(default=None, alias="fullName")
+    profile_image: Optional[str] = Field(default=None, alias="profileImage")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 카카오 로그인
@@ -126,11 +132,12 @@ async def create_session(
     dependencies=[Depends(security)],
 )
 async def delete_session(
+    current_user_id: int = Depends(get_current_user_id),
     auth_service: SessionService = Depends(get_session_service),
     token: str = Depends(security),
 ):
-    """로그아웃 (세션 삭제)"""
-    await auth_service.logout(token.credentials)
+    """로그아웃 (세션 삭제 및 FCM 토큰 삭제)"""
+    await auth_service.logout(token.credentials, current_user_id)
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 

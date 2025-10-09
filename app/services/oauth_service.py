@@ -20,7 +20,11 @@ class OauthService:
 
     # - MARK: OAuth 로그인 처리 (범용)
     async def sign_in_with_oauth(
-        self, oauth_provider: str, oauth_user_id: str, oauth_user_info: Dict[str, Any]
+        self,
+        oauth_provider: str,
+        oauth_user_id: str,
+        oauth_user_info: Dict[str, Any],
+        fcm_token: str = None,
     ) -> dict:
         """OAuth 로그인 처리 (범용)"""
         try:
@@ -30,8 +34,12 @@ class OauthService:
             )
 
             if existing_user:
-                # 기존 사용자가 있으면 그 사용자로 로그인
+                # 기존 사용자가 있으면 FCM 토큰 업데이트
                 user = existing_user
+                if fcm_token:
+                    await self.user_crud.update_profile(
+                        existing_user.id, {"fcm_token": fcm_token}
+                    )
             else:
                 # 새 사용자 생성
                 user = await self.user_service.create_user(
@@ -42,6 +50,7 @@ class OauthService:
                         profile_image=oauth_user_info.get("image_url"),
                         auth_provider=oauth_provider,
                         auth_provider_id=str(oauth_user_id),
+                        fcm_token=fcm_token,
                     )
                 )
 
