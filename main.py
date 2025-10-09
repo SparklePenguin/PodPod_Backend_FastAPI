@@ -115,7 +115,12 @@ app.openapi_tags = [
 security = HTTPBearer()
 
 # 예외 핸들러 등록
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(
+    StarletteHTTPException, http_exception_handler
+)  # Starlette의 405 등 처리
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(ValueError, value_error_handler)
 app.add_exception_handler(BusinessException, business_exception_handler)

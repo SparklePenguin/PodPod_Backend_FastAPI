@@ -1,9 +1,11 @@
-from fastapi import Request, status, HTTPException
+from fastapi import Request, status
+from fastapi.exceptions import HTTPException, RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 from app.schemas.common import BaseResponse
 from app.core.http_status import HttpStatus
 import logging
+from typing import Union
 
 logger = logging.getLogger(__name__)
 
@@ -27,34 +29,38 @@ class BusinessException(Exception):
         super().__init__(self.message_ko)
 
 
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(
+    request: Request, exc: Union[HTTPException, StarletteHTTPException]
+):
     """HTTPException 처리 → BaseResponse 패턴으로 응답"""
     logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}")
 
     # HTTPException의 detail이 이미 BaseResponse 형태인지 확인
-    if isinstance(exc.detail, dict) and "code" in exc.detail:
+    if isinstance(exc.detail, dict) and "errorCode" in exc.detail:
         response = BaseResponse(
             data=None,
-            error=exc.detail.get("error_code", "HTTP_ERROR"),
-            error_code=exc.detail["code"],
+            error_key=exc.detail.get("error", "HTTP_ERROR"),
+            error_code=exc.detail.get("errorCode"),
             http_status=exc.status_code,
-            message_ko=exc.detail["message"],
-            message_en=exc.detail["message"],
-            devNote=exc.detail.get("devNote", "HTTP error occurred"),
+            message_ko=exc.detail.get("messageKo", str(exc.detail)),
+            message_en=exc.detail.get("messageEn", str(exc.detail)),
+            dev_note=exc.detail.get("devNote", "HTTP error occurred"),
         )
     else:
         # 일반적인 HTTPException의 경우 BaseResponse 형태로 변환
         response = BaseResponse(
             data=None,
-            error="HTTP_ERROR",
+            error_key="HTTP_ERROR",
             error_code=exc.status_code,
             http_status=exc.status_code,
             message_ko=str(exc.detail),
             message_en=str(exc.detail),
-            devNote="HTTP error occurred",
+            dev_note="HTTP error occurred",
         )
 
-    return JSONResponse(status_code=exc.status_code, content=response.model_dump())
+    return JSONResponse(
+        status_code=exc.status_code, content=response.model_dump(by_alias=True)
+    )
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -87,15 +93,16 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
     response = BaseResponse(
         data=None,
-        error="REQUEST_VALIDATION_ERROR",
+        error_key="REQUEST_VALIDATION_ERROR",
         error_code=4220,
         http_status=HttpStatus.UNPROCESSABLE_ENTITY,
         message_ko=message,
         message_en="Request validation failed",
-        devNote="Request validation failed",
+        dev_note="Request validation failed",
     )
     return JSONResponse(
-        status_code=HttpStatus.UNPROCESSABLE_ENTITY, content=response.model_dump()
+        status_code=HttpStatus.UNPROCESSABLE_ENTITY,
+        content=response.model_dump(by_alias=True),
     )
 
 
@@ -104,15 +111,15 @@ async def value_error_handler(request: Request, exc: ValueError):
     logger.error(f"Value Error: {str(exc)}")
     response = BaseResponse(
         data=None,
-        error="VALIDATION_ERROR",
+        error_key="VALIDATION_ERROR",
         error_code=4000,
         http_status=HttpStatus.BAD_REQUEST,
         message_ko=str(exc),
         message_en=str(exc),
-        devNote="Request validation failed",
+        dev_note="Request validation failed",
     )
     return JSONResponse(
-        status_code=HttpStatus.BAD_REQUEST, content=response.model_dump()
+        status_code=HttpStatus.BAD_REQUEST, content=response.model_dump(by_alias=True)
     )
 
 
@@ -122,14 +129,16 @@ async def business_exception_handler(request: Request, exc: BusinessException):
 
     response = BaseResponse(
         data=None,
-        error=exc.error_code,
+        error_key=exc.error_code,
         error_code=4090,  # 중복 제안 에러 코드
         http_status=exc.status_code,
         message_ko=exc.message_ko,
         message_en=exc.message_en,
-        devNote=exc.dev_note,
+        dev_note=exc.dev_note,
     )
-    return JSONResponse(status_code=exc.status_code, content=response.model_dump())
+    return JSONResponse(
+        status_code=exc.status_code, content=response.model_dump(by_alias=True)
+    )
 
 
 async def general_exception_handler(request: Request, exc: Exception):
@@ -175,13 +184,14 @@ async def general_exception_handler(request: Request, exc: Exception):
 
     response = BaseResponse(
         data=None,
-        error="INTERNAL_SERVER_ERROR",
+        error_key="INTERNAL_SERVER_ERROR",
         error_code=5001,
         http_status=HttpStatus.INTERNAL_SERVER_ERROR,
         message_ko="서버 내부 오류가 발생했습니다.",
         message_en="Internal server error occurred.",
-        devNote=dev_note,
+        dev_note=dev_note,
     )
     return JSONResponse(
-        status_code=HttpStatus.INTERNAL_SERVER_ERROR, content=response.model_dump()
+        status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+        content=response.model_dump(by_alias=True),
     )
