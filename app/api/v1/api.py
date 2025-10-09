@@ -12,6 +12,7 @@ from .endpoints import (
     pod_reviews,
     locations,
     reports,
+    health,
 )
 from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
@@ -60,3 +61,6 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 
 # 관리자 관련 라우터
 api_router.include_router(admin_router)
+
+# 헬스 체크 라우터
+api_router.include_router(health.router, tags=["health"])
