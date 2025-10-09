@@ -48,7 +48,7 @@ def get_recruitment_service(
 
 # - MARK: 파티 참여 신청
 @router.post(
-    "/",
+    "/{pod_id}",
     response_model=BaseResponse[PodApplicationDto],
     responses={
         HttpStatus.OK: {
@@ -61,7 +61,7 @@ def get_recruitment_service(
     tags=["recruitments"],
 )
 async def apply_to_pod(
-    pod_id: int = Query(..., alias="podId", description="파티 ID"),
+    pod_id: int,
     request: ApplyToPodRequest = None,
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
@@ -99,7 +99,7 @@ async def review_application(
 
 # - MARK: 파티 참여 신청 취소
 @router.delete(
-    "/",
+    "/{pod_id}",
     response_model=BaseResponse[dict],
     responses={
         HttpStatus.OK: {
@@ -112,7 +112,7 @@ async def review_application(
     tags=["recruitments"],
 )
 async def cancel_apply_to_pod(
-    pod_id: int = Query(..., alias="podId", description="파티 ID"),
+    pod_id: int,
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
@@ -143,6 +143,9 @@ async def get_apply_to_pod_list(
     )
 
     # PodApplication 모델을 PodApplicationDto로 변환
+    from sqlalchemy import select
+    from app.models.tendency import UserTendencyResult
+
     application_dtos = []
     for application in applications:
         user = await recruitment_service.db.get(User, application.user_id)
@@ -152,15 +155,58 @@ async def get_apply_to_pod_list(
             else None
         )
 
+        # 신청자 성향 타입 조회
+        result = await recruitment_service.db.execute(
+            select(UserTendencyResult).where(
+                UserTendencyResult.user_id == application.user_id
+            )
+        )
+        user_tendency = result.scalar_one_or_none()
+        user_tendency_type = user_tendency.tendency_type if user_tendency else None
+
+        # 검토자 성향 타입 조회
+        reviewer_tendency_type = None
+        if reviewer:
+            result = await recruitment_service.db.execute(
+                select(UserTendencyResult).where(
+                    UserTendencyResult.user_id == application.reviewed_by
+                )
+            )
+            reviewer_tendency = result.scalar_one_or_none()
+            reviewer_tendency_type = (
+                reviewer_tendency.tendency_type if reviewer_tendency else None
+            )
+
+        # SimpleUserDto 생성
+        user_dto = SimpleUserDto(
+            id=user.id,
+            nickname=user.nickname,
+            profile_image=user.profile_image,
+            intro=user.intro,
+            tendency_type=user_tendency_type,
+            is_following=False,
+        )
+
+        reviewer_dto = None
+        if reviewer:
+            reviewer_dto = SimpleUserDto(
+                id=reviewer.id,
+                nickname=reviewer.nickname,
+                profile_image=reviewer.profile_image,
+                intro=reviewer.intro,
+                tendency_type=reviewer_tendency_type,
+                is_following=False,
+            )
+
         application_dto = PodApplicationDto(
             id=application.id,
             podId=application.pod_id,
-            user=SimpleUserDto.model_validate(user),
+            user=user_dto,
             message=application.message,
             status=application.status,
             appliedAt=application.applied_at,
             reviewedAt=application.reviewed_at,
-            reviewedBy=SimpleUserDto.model_validate(reviewer) if reviewer else None,
+            reviewedBy=reviewer_dto,
         )
         application_dtos.append(application_dto)
 

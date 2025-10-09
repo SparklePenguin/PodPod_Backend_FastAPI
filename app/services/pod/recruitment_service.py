@@ -23,8 +23,9 @@ class RecruitmentService:
         if pod is None:
             raise_error("POD_NOT_FOUND")
 
-        # 이미 멤버인지 확인
-        already_member = any(m.user_id == user_id for m in pod.members)
+        # 이미 멤버인지 확인 (비동기 조회)
+        pod_members = await self.crud.list_members(pod_id)
+        already_member = any(m.user_id == user_id for m in pod_members)
         if already_member:
             raise_error("ALREADY_MEMBER")
 
@@ -41,20 +42,35 @@ class RecruitmentService:
         # User 정보 가져오기
         user = await self.db.get(User, user_id)
 
+        # 성향 타입 조회
+        from sqlalchemy import select
+        from app.models.tendency import UserTendencyResult
+
+        result = await self.db.execute(
+            select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
+        )
+        user_tendency = result.scalar_one_or_none()
+        tendency_type = user_tendency.tendency_type if user_tendency else None
+
         # PodApplicationDto로 변환하여 반환
+        user_dto = SimpleUserDto(
+            id=user.id,
+            nickname=user.nickname,
+            profile_image=user.profile_image,
+            intro=user.intro,
+            tendency_type=tendency_type,
+            is_following=False,
+        )
+
         return PodApplicationDto(
             id=application.id,
             podId=application.pod_id,
-            user=SimpleUserDto.model_validate(user),
+            user=user_dto,
             message=application.message,
             status=application.status,
             appliedAt=application.applied_at,
             reviewedAt=application.reviewed_at,
-            reviewedBy=(
-                SimpleUserDto.model_validate(application.reviewer)
-                if application.reviewer
-                else None
-            ),
+            reviewedBy=None,  # 아직 검토되지 않음
         )
 
     # - MARK: 신청서 승인/거절
@@ -82,20 +98,64 @@ class RecruitmentService:
 
         # User 정보 가져오기
         user = await self.db.get(User, application.user_id)
-        reviewer = (
-            await self.db.get(User, reviewed_by) if application.reviewer else None
+        reviewer = await self.db.get(User, reviewed_by) if reviewed_by else None
+
+        # 신청자 성향 타입 조회
+        from sqlalchemy import select
+        from app.models.tendency import UserTendencyResult
+
+        result = await self.db.execute(
+            select(UserTendencyResult).where(
+                UserTendencyResult.user_id == application.user_id
+            )
         )
+        user_tendency = result.scalar_one_or_none()
+        user_tendency_type = user_tendency.tendency_type if user_tendency else None
+
+        # 검토자 성향 타입 조회
+        reviewer_tendency_type = None
+        if reviewer:
+            result = await self.db.execute(
+                select(UserTendencyResult).where(
+                    UserTendencyResult.user_id == reviewed_by
+                )
+            )
+            reviewer_tendency = result.scalar_one_or_none()
+            reviewer_tendency_type = (
+                reviewer_tendency.tendency_type if reviewer_tendency else None
+            )
+
+        # SimpleUserDto 생성
+        user_dto = SimpleUserDto(
+            id=user.id,
+            nickname=user.nickname,
+            profile_image=user.profile_image,
+            intro=user.intro,
+            tendency_type=user_tendency_type,
+            is_following=False,
+        )
+
+        reviewer_dto = None
+        if reviewer:
+            reviewer_dto = SimpleUserDto(
+                id=reviewer.id,
+                nickname=reviewer.nickname,
+                profile_image=reviewer.profile_image,
+                intro=reviewer.intro,
+                tendency_type=reviewer_tendency_type,
+                is_following=False,
+            )
 
         # PodApplicationDto로 변환하여 반환
         return PodApplicationDto(
             id=application.id,
             podId=application.pod_id,
-            user=SimpleUserDto.model_validate(user),
+            user=user_dto,
             message=application.message,
             status=application.status,
             appliedAt=application.applied_at,
             reviewedAt=application.reviewed_at,
-            reviewedBy=SimpleUserDto.model_validate(reviewer) if reviewer else None,
+            reviewedBy=reviewer_dto,
         )
 
     # - MARK: 신청서 취소
