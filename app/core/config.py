@@ -75,5 +75,10 @@ class Settings(BaseSettings):
     )
     GOOGLE_SHEETS_CREDENTIALS: Optional[str] = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
 
+    # Firebase Cloud Messaging 설정
+    FIREBASE_SERVICE_ACCOUNT_KEY: Optional[str] = os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_KEY"
+    )
+
 
 settings = Settings()

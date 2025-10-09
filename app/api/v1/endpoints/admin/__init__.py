@@ -5,6 +5,7 @@
 from fastapi import APIRouter
 from .error_codes import router as error_codes_router
 from .sendbird import router as sendbird_router
+from .fcm import router as fcm_router
 
 router = APIRouter(tags=["admin"])
 
@@ -13,3 +14,6 @@ router.include_router(error_codes_router)
 
 # Sendbird 관리 라우터 추가
 router.include_router(sendbird_router, prefix="/sendbird")
+
+# FCM 관리 라우터 추가
+router.include_router(fcm_router)

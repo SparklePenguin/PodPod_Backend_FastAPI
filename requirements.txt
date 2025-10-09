@@ -45,3 +45,6 @@ Pillow==10.4.0
 # Sendbird Platform SDK
 sendbird-platform-sdk==2.1.0
 
+# Firebase Cloud Messaging (푸시 알림)
+firebase-admin==6.5.0
+
