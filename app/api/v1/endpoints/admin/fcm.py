@@ -33,12 +33,11 @@ class SendNotificationRequest(BaseModel):
         },
     },
     summary="FCM 테스트 알림 전송",
-    description="⚠️ 테스트용 - 특정 사용자에게 FCM 푸시 알림을 전송합니다.",
+    description="⚠️ 테스트용 - 특정 사용자에게 FCM 푸시 알림을 전송합니다. (인증 불필요)",
     tags=["admin"],
 )
 async def send_test_notification(
     request: SendNotificationRequest,
-    current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """테스트용 FCM 알림 전송"""
