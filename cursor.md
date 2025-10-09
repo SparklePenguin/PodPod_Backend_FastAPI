@@ -9,6 +9,14 @@
 - 예시: `./execute_sql.sh "SELECT * FROM pods LIMIT 5;"`
 - **절대** `mysql -u root -p` 직접 사용 금지
 
+## Infisical 환경변수 확인
+- 환경변수는 **경로별로 구분**되어 있음
+- **Backend 경로**: 백엔드 관련 환경변수 (DB, OAuth, Firebase 등)
+  - 확인: `infisical secrets get {KEY_NAME} --env=dev --path=/Backend`
+- **GoogleSheet 경로**: Google Sheets 관련 환경변수
+  - 확인: `infisical secrets get {KEY_NAME} --env=dev --path=/GoogleSheet`
+- 서버 실행 시 `run.py`가 자동으로 모든 경로의 환경변수를 재귀적으로 로드함
+
 ## Request/Response 스키마 작성 규칙
 - **모든 필드는 반드시 Field의 alias 사용**하여 camelCase로 클라이언트에 전달
 - 예시:
