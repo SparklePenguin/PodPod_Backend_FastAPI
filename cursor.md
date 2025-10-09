@@ -13,6 +13,9 @@
 - **모든 필드는 반드시 Field의 alias 사용**하여 camelCase로 클라이언트에 전달
 - 예시:
   ```python
+  from pydantic import BaseModel, Field
+  from typing import Optional  # ← Optional, List 등 타입 힌트 import 확인!
+  
   class SomeRequest(BaseModel):
       user_name: str = Field(alias="userName")
       profile_image: Optional[str] = Field(default=None, alias="profileImage")
@@ -21,6 +24,8 @@
   ```
 - Python에서는 snake_case, JSON에서는 camelCase
 - `populate_by_name=True` 설정으로 양방향 매핑 지원
+- **중요**: `Optional`, `List`, `Dict` 등 typing 모듈의 타입 힌트 사용 시 반드시 import 확인!
+  - `from typing import Optional, List, Dict` 등
 
 ## 서버 상태
 - 서버는 항상 재시작 중임 (굳이 껐다 다시 킬 필요 없음)

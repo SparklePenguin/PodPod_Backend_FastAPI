@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from pydantic import BaseModel, Field
+from typing import Optional
 from app.services.oauth_service import OauthService
 from app.schemas.common import BaseResponse
 from app.core.config import settings
