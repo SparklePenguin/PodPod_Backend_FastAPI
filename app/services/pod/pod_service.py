@@ -346,6 +346,7 @@ class PodService:
         self,
         user_id: Optional[int] = None,
         title: Optional[str] = None,
+        main_category: Optional[str] = None,
         sub_category: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
@@ -356,6 +357,7 @@ class PodService:
         """팟 검색"""
         result = await self.crud.search_pods(
             title=title,
+            main_category=main_category,
             sub_category=sub_category,
             start_date=start_date,
             end_date=end_date,

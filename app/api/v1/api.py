@@ -60,7 +60,7 @@ api_router.include_router(
 api_router.include_router(pod_reviews.router, prefix="/reviews", tags=["reviews"])
 
 # 지역 관련 라우터
-api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
+api_router.include_router(locations.router, prefix="/regions", tags=["regions"])
 
 # 신고 관련 라우터
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])

@@ -829,6 +829,7 @@ class PodCRUD:
     async def search_pods(
         self,
         title: Optional[str] = None,
+        main_category: Optional[str] = None,
         sub_category: Optional[str] = None,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
@@ -837,6 +838,8 @@ class PodCRUD:
         page_size: int = 20,
     ) -> Dict[str, Any]:
         """팟 검색"""
+        from app.models.pod.pod_enums import get_subcategories_by_main_category
+
         # 기본 쿼리
         query = select(Pod).where(Pod.is_active == True)
 
@@ -846,6 +849,29 @@ class PodCRUD:
         # 제목 검색
         if title:
             conditions.append(Pod.title.contains(title))
+
+        # 메인 카테고리 검색
+        if main_category:
+            # 메인 카테고리에 해당하는 서브 카테고리 목록 가져오기
+            sub_cats = get_subcategories_by_main_category(main_category)
+
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(f"검색 - main_category: {main_category}, sub_cats: {sub_cats}")
+
+            if sub_cats:
+                # 해당 메인 카테고리의 서브 카테고리 중 하나라도 포함하면 매칭
+                main_category_conditions = []
+                for sub_cat in sub_cats:
+                    main_category_conditions.append(
+                        Pod.sub_categories.contains(sub_cat)
+                    )
+                conditions.append(or_(*main_category_conditions))
+            else:
+                logger.warning(
+                    f"메인 카테고리 '{main_category}'에 대한 서브 카테고리가 없습니다."
+                )
 
         # 서브 카테고리 검색
         if sub_category:

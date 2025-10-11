@@ -1,7 +1,7 @@
 import datetime
 import json
 from typing import List, Optional, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from app.models.pod.pod_enums import (
     AccompanySubCategory,
     GoodsSubCategory,
@@ -17,6 +17,11 @@ class PodSearchRequest(BaseModel):
     """팟 검색 요청"""
 
     title: Optional[str] = Field(None, alias="title", description="팟 제목")
+    main_category: Optional[str] = Field(
+        None,
+        alias="mainCategory",
+        description="메인 카테고리 (ACCOMPANY, GOODS, TOUR, ETC)",
+    )
     sub_category: Optional[str] = Field(
         None, alias="subCategory", description="서브 카테고리"
     )
@@ -38,6 +43,17 @@ class PodSearchRequest(BaseModel):
     limit: Optional[int] = Field(
         None, alias="limit", description="결과 제한 (deprecated, pageSize 사용 권장)"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_defaults(cls, values):
+        """null 값을 기본값으로 변경"""
+        if isinstance(values, dict):
+            if values.get("page") is None:
+                values["page"] = 1
+            if values.get("pageSize") is None:
+                values["pageSize"] = 20
+        return values
 
     model_config = {
         "from_attributes": True,

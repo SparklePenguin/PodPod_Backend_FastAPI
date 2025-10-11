@@ -15,7 +15,7 @@ class LocationService:
         self.db = db
         self.crud = LocationCRUD(db)
 
-    async def get_all_locations(self) -> PageDto[LocationResponse]:
+    async def get_all_locations(self) -> List[LocationResponse]:
         """모든 지역 정보 조회 (인기 지역 포함)"""
         locations = await self.crud.get_all_locations()
 
@@ -45,15 +45,7 @@ class LocationService:
         # 인기 지역을 맨 앞에 추가
         combined_locations = popular_locations + filtered_all_locations
 
-        return PageDto[LocationResponse](
-            items=combined_locations,
-            current_page=1,
-            page_size=len(combined_locations),
-            total_count=len(combined_locations),
-            total_pages=1,
-            has_next=False,
-            has_prev=False,
-        )
+        return combined_locations
 
     async def get_location_by_main_location(
         self, main_location: str

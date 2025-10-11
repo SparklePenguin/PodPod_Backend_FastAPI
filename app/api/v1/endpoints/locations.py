@@ -22,16 +22,16 @@ def get_location_service(db: AsyncSession = Depends(get_db)) -> LocationService:
 # - MARK: 모든 지역 정보 조회
 @router.get(
     "",
-    response_model=BaseResponse[PageDto[LocationResponse]],
+    response_model=BaseResponse[List[LocationResponse]],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[PageDto[LocationResponse]],
+            "model": BaseResponse[List[LocationResponse]],
             "description": "지역 정보 조회 성공",
         },
     },
     summary="모든 지역 정보 조회",
     description="전체 지역 정보와 인기 지역 정보를 조회합니다. (인기 지역이 맨 앞에 표시됩니다)",
-    tags=["locations"],
+    tags=["regions"],
 )
 async def get_all_locations(
     service: LocationService = Depends(get_location_service),
@@ -53,7 +53,7 @@ async def get_all_locations(
     },
     summary="JSON 파일에서 지역 데이터 생성",
     description="mvp/locations.json 파일을 읽어서 지역 데이터를 생성합니다.",
-    tags=["locations"],
+    tags=["regions"],
 )
 async def create_locations_from_json(
     service: LocationService = Depends(get_location_service),

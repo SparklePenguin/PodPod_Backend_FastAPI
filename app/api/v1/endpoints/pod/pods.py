@@ -465,7 +465,7 @@ async def get_user_pods(
     tags=["pods"],
 )
 async def get_pods(
-    search_request: PodSearchRequest = Body(default_factory=PodSearchRequest),
+    search_request: PodSearchRequest,
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -475,6 +475,7 @@ async def get_pods(
         result = await pod_service.search_pods(
             user_id=current_user_id,
             title=search_request.title,
+            main_category=search_request.main_category,
             sub_category=search_request.sub_category,
             start_date=search_request.start_date,
             end_date=search_request.end_date,

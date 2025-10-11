@@ -43,7 +43,36 @@ class EtcSubCategory(str, Enum):
 
 # 메인 카테고리
 class MainCategory(str, Enum):
-    ACCOMPANY = "동행"
-    GOODS = "굿즈"
-    TOUR = "투어"
+    ACCOMPANY = "ACCOMPANY"
+    GOODS = "GOODS"
+    TOUR = "TOUR"
     ETC = "ETC"
+
+
+# 메인 카테고리와 서브 카테고리 매칭 맵
+CATEGORY_SUBCATEGORY_MAP = {
+    MainCategory.ACCOMPANY: AccompanySubCategory,
+    MainCategory.GOODS: GoodsSubCategory,
+    MainCategory.TOUR: TourSubCategory,
+    MainCategory.ETC: EtcSubCategory,
+}
+
+
+def get_subcategories_by_main_category(main_category: str) -> list[str]:
+    """
+    메인 카테고리에 해당하는 서브 카테고리 이름 목록 반환
+    
+    Args:
+        main_category: 메인 카테고리 (ACCOMPANY, GOODS, TOUR, ETC)
+        
+    Returns:
+        서브 카테고리 이름 리스트 (예: ["PRE_RECORDING", "BIRTHDAY_CAFE", ...])
+    """
+    try:
+        main_cat = MainCategory(main_category)
+        sub_category_enum = CATEGORY_SUBCATEGORY_MAP.get(main_cat)
+        if sub_category_enum:
+            return [cat.name for cat in sub_category_enum]  # .value -> .name 변경
+        return []
+    except ValueError:
+        return []
