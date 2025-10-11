@@ -217,7 +217,9 @@ class FCMService:
         # data 딕셔너리 생성
         data = {
             "type": type(notification_type).__name__,  # PodNotiSubType (UpperCamelCase)
-            "value": to_upper_camel_case(notification_type.name),  # PodJoinRequest (UpperCamelCase)
+            "value": to_upper_camel_case(
+                notification_type.name
+            ),  # PodJoinRequest (UpperCamelCase)
         }
 
         # related_id 추가
