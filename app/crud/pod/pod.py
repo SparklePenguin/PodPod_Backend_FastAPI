@@ -887,10 +887,20 @@ class PodCRUD:
         if location:
             location_conditions = []
             for loc in location:
-                location_conditions.append(
-                    or_(Pod.address.contains(loc), Pod.sub_address.contains(loc))
-                )
-            conditions.append(or_(*location_conditions))
+                # "강남·역삼·삼성" → ["강남", "역삼", "삼성"]으로 분할
+                parts = loc.split("·")
+                for part in parts:
+                    part = part.strip()
+                    if part:  # 빈 문자열 제외
+                        location_conditions.append(
+                            or_(
+                                Pod.address.contains(part),
+                                Pod.sub_address.contains(part),
+                            )
+                        )
+            # 모든 지역 조건을 OR로 연결 (하나라도 포함되면 매칭)
+            if location_conditions:
+                conditions.append(or_(*location_conditions))
 
         # 조건 적용
         if conditions:
