@@ -466,7 +466,7 @@ async def get_user_pods(
 )
 async def get_pods(
     search_request: PodSearchRequest = Body(default_factory=PodSearchRequest),
-    _: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """팟 목록을 조회합니다."""
@@ -479,8 +479,8 @@ async def get_pods(
             start_date=search_request.start_date,
             end_date=search_request.end_date,
             location=search_request.location,
-            page=search_request.page,
-            page_size=search_request.page_size,
+            page=search_request.page or 1,
+            page_size=search_request.page_size or 20,
         )
 
         return BaseResponse.ok(result, message_ko="팟 목록 조회 성공", http_status=200)

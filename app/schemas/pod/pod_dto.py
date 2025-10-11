@@ -31,9 +31,12 @@ class PodSearchRequest(BaseModel):
         alias="location",
         description="지역 리스트 (address 또는 sub_address에 포함)",
     )
-    page: int = Field(1, alias="page", ge=1, description="페이지 번호")
-    page_size: int = Field(
+    page: Optional[int] = Field(1, alias="page", ge=1, description="페이지 번호")
+    page_size: Optional[int] = Field(
         20, alias="pageSize", ge=1, le=100, description="페이지 크기"
+    )
+    limit: Optional[int] = Field(
+        None, alias="limit", description="결과 제한 (deprecated, pageSize 사용 권장)"
     )
 
     model_config = {

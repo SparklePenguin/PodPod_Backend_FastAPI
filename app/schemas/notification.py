@@ -3,6 +3,9 @@ FCM 푸시 알림 메시지 스키마
 """
 
 from enum import Enum
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+from typing import Optional
 
 
 class PodNotificationType(Enum):
@@ -142,3 +145,48 @@ class FollowNotificationType(Enum):
         ["nickname", "party_name"],
         "pod_id",
     )
+
+
+# ========== 알림 스키마 ==========
+
+
+class NotificationBase(BaseModel):
+    """알림 기본 스키마"""
+
+    title: str
+    body: str
+    notification_type: str
+    notification_value: str
+    related_id: Optional[str] = None
+
+
+class NotificationCreate(NotificationBase):
+    """알림 생성 스키마"""
+
+    user_id: int
+
+
+class NotificationResponse(NotificationBase):
+    """알림 응답 스키마"""
+
+    id: int
+    user_id: int
+    is_read: bool
+    read_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NotificationListResponse(BaseModel):
+    """알림 목록 응답 스키마"""
+
+    total: int
+    unread_count: int
+    notifications: list[NotificationResponse]
+
+
+class NotificationUnreadCountResponse(BaseModel):
+    """읽지 않은 알림 개수 응답"""
+
+    unread_count: int

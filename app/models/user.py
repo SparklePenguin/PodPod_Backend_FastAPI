@@ -59,3 +59,6 @@ class User(Base):
 
     # 파티 후기 관계
     pod_reviews = relationship("PodReview", back_populates="user")
+
+    # 알림 관계
+    notifications = relationship("Notification", back_populates="user")
