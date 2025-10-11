@@ -3,13 +3,33 @@ FCM 푸시 알림 메시지 스키마
 """
 
 from enum import Enum
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.schemas.pod.pod_dto import PodDto
+from app.schemas.follow import SimpleUserDto
 
 
-class PodNotificationType(Enum):
-    """팟팟 알림 메시지"""
+# ========== 메인 알림 타입 ==========
+
+
+class NotificationType(str, Enum):
+    """알림 메인 타입"""
+
+    POD = "POD"  # 파티 알림
+    POD_STATUS = "POD_STATUS"  # 파티 상태 알림
+    RECOMMEND = "RECOMMEND"  # 추천 알림
+    REVIEW = "REVIEW"  # 리뷰 알림
+    FOLLOW = "FOLLOW"  # 팔로우 알림
+
+
+# ========== 서브 알림 타입 ==========
+
+
+class PodNotiSubType(Enum):
+    """파티 알림 서브 타입"""
 
     # 1. 파티 참여 요청 (대상: 파티장)
     POD_JOIN_REQUEST = (
@@ -67,8 +87,8 @@ class PodNotificationType(Enum):
     )
 
 
-class PodStatusNotificationType(Enum):
-    """팟팟 상태 알림 메시지"""
+class PodStatusNotiSubType(Enum):
+    """파티 상태 알림 서브 타입"""
 
     # 1. 좋아요 수 10개 이상 달성 (대상: 파티장)
     POD_LIKES_THRESHOLD = (
@@ -84,8 +104,8 @@ class PodStatusNotificationType(Enum):
     )
 
 
-class RecommendNotificationType(Enum):
-    """추천 알림 메시지"""
+class RecommendNotiSubType(Enum):
+    """추천 알림 서브 타입"""
 
     # 1. 좋아요한 파티 마감 임박 (1일 전, 대상: 사용자)
     SAVED_POD_DEADLINE = (
@@ -101,8 +121,8 @@ class RecommendNotificationType(Enum):
     )
 
 
-class ReviewNotificationType(Enum):
-    """리뷰 알림 메시지"""
+class ReviewNotiSubType(Enum):
+    """리뷰 알림 서브 타입"""
 
     # 1. 리뷰 등록됨 (대상: 모임 참여자)
     REVIEW_CREATED = (
@@ -130,8 +150,8 @@ class ReviewNotificationType(Enum):
     )
 
 
-class FollowNotificationType(Enum):
-    """팔로우 알림 메시지"""
+class FollowNotiSubType(Enum):
+    """팔로우 알림 서브 타입"""
 
     # 1. 나를 팔로잉함 (대상: 팔로우된 유저)
     FOLLOWED_BY_USER = (
@@ -147,39 +167,146 @@ class FollowNotificationType(Enum):
     )
 
 
+# ========== 메인 타입과 서브 타입 매칭 ==========
+
+
+NOTIFICATION_TYPE_MAP = {
+    NotificationType.POD: PodNotiSubType,
+    NotificationType.POD_STATUS: PodStatusNotiSubType,
+    NotificationType.RECOMMEND: RecommendNotiSubType,
+    NotificationType.REVIEW: ReviewNotiSubType,
+    NotificationType.FOLLOW: FollowNotiSubType,
+}
+
+
+# ========== 하위 호환성: 레거시 이름 ==========
+
+
+# 기존 코드에서 사용하던 이름들 (deprecated)
+PodNotificationType = PodNotiSubType
+PodStatusNotificationType = PodStatusNotiSubType
+RecommendNotificationType = RecommendNotiSubType
+ReviewNotificationType = ReviewNotiSubType
+FollowNotificationType = FollowNotiSubType
+
+
 # ========== 알림 스키마 ==========
+
+
+class NotificationCategory(str, Enum):
+    """알림 카테고리"""
+
+    POD = "pod"  # 파티 관련 알림
+    COMMUNITY = "community"  # 커뮤니티 관련 알림 (팔로우, 리뷰 등)
+    NOTICE = "notice"  # 공지/리마인드 알림
+
+
+# 메인 타입과 카테고리 매칭
+NOTIFICATION_MAIN_TYPE_CATEGORY_MAP = {
+    NotificationType.POD: NotificationCategory.POD,
+    NotificationType.POD_STATUS: NotificationCategory.POD,
+    NotificationType.RECOMMEND: NotificationCategory.POD,
+    NotificationType.REVIEW: NotificationCategory.COMMUNITY,
+    NotificationType.FOLLOW: NotificationCategory.COMMUNITY,
+}
+
+# 문자열 타입과 카테고리 매핑
+NOTIFICATION_TYPE_CATEGORY_MAP = {
+    # 파티 관련
+    "PodNotiSubType": NotificationCategory.POD,
+    "PodStatusNotiSubType": NotificationCategory.POD,
+    "RecommendNotiSubType": NotificationCategory.POD,
+    # 커뮤니티 관련
+    "FollowNotiSubType": NotificationCategory.COMMUNITY,
+    "ReviewNotiSubType": NotificationCategory.COMMUNITY,
+    # 레거시 이름 지원
+    "PodNotificationType": NotificationCategory.POD,
+    "PodStatusNotificationType": NotificationCategory.POD,
+    "RecommendNotificationType": NotificationCategory.POD,
+    "FollowNotificationType": NotificationCategory.COMMUNITY,
+    "ReviewNotificationType": NotificationCategory.COMMUNITY,
+}
+
+
+def get_notification_category(notification_type: str) -> str:
+    """
+    알림 타입으로 카테고리 반환
+
+    Args:
+        notification_type: 알림 타입 (예: PodNotificationType, FollowNotificationType)
+
+    Returns:
+        카테고리 (pod, community, notice)
+    """
+    return NOTIFICATION_TYPE_CATEGORY_MAP.get(
+        notification_type, NotificationCategory.POD
+    ).value
+
+
+def to_upper_camel_case(snake_str: str) -> str:
+    """
+    UPPER_SNAKE_CASE를 UpperCamelCase로 변환
+
+    Args:
+        snake_str: UPPER_SNAKE_CASE 문자열 (예: POD_JOIN_REQUEST)
+
+    Returns:
+        UpperCamelCase 문자열 (예: PodJoinRequest)
+    """
+    components = snake_str.lower().split("_")
+    return "".join(x.title() for x in components)
 
 
 class NotificationBase(BaseModel):
     """알림 기본 스키마"""
 
-    title: str
-    body: str
-    notification_type: str
-    notification_value: str
-    related_id: Optional[str] = None
+    title: str = Field(alias="title")
+    body: str = Field(alias="body")
+    notification_type: str = Field(alias="notificationType")
+    notification_value: str = Field(alias="notificationValue")
+    related_id: Optional[str] = Field(default=None, alias="relatedId")
 
 
 class NotificationCreate(NotificationBase):
-    """알림 생성 스키마"""
+    """알림 생성 스키마 (내부 사용)"""
 
     user_id: int
+    related_user_id: Optional[int] = None
+    related_pod_id: Optional[int] = None
+    category: str = "pod"  # 기본값: pod
 
 
 class NotificationResponse(NotificationBase):
     """알림 응답 스키마"""
 
-    id: int
-    user_id: int
-    is_read: bool
-    read_at: Optional[datetime] = None
-    created_at: datetime
+    id: int = Field(alias="id")
+    related_user: Optional[SimpleUserDto] = Field(
+        default=None, alias="relatedUser", description="관련 유저 (Optional)"
+    )
+    related_pod: Optional["PodDto"] = Field(
+        default=None, alias="relatedPod", description="관련 파티 (Optional)"
+    )
+    category: str = Field(
+        alias="category", description="알림 카테고리 (pod, community, notice)"
+    )
+    is_read: bool = Field(alias="isRead")
+    read_at: Optional[int] = Field(
+        default=None, alias="readAt", description="읽은 시간 (timestamp, Optional)"
+    )
+    created_at: int = Field(alias="createdAt", description="생성 시간 (timestamp)")
 
-    model_config = ConfigDict(from_attributes=True)
+    @field_serializer("read_at", "created_at")
+    def serialize_datetime(self, dt: Optional[datetime], _info) -> Optional[int]:
+        """datetime을 timestamp(초)로 변환"""
+        if dt is None:
+            return None
+        return int(dt.timestamp())
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class NotificationListResponse(BaseModel):
-    """알림 목록 응답 스키마"""
+    """알림 목록 응답 스키마 (deprecated - PageDto 사용 권장)"""
 
     total: int
     unread_count: int
@@ -189,4 +316,6 @@ class NotificationListResponse(BaseModel):
 class NotificationUnreadCountResponse(BaseModel):
     """읽지 않은 알림 개수 응답"""
 
-    unread_count: int
+    unread_count: int = Field(alias="unreadCount")
+
+    model_config = {"populate_by_name": True}

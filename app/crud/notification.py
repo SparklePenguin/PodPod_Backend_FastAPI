@@ -4,6 +4,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
+from sqlalchemy.orm import selectinload
 from typing import Optional, List
 from datetime import datetime, timezone
 
@@ -20,11 +21,14 @@ class NotificationCRUD:
         """알림 생성"""
         notification = Notification(
             user_id=notification_in.user_id,
+            related_user_id=notification_in.related_user_id,
+            related_pod_id=notification_in.related_pod_id,
             title=notification_in.title,
             body=notification_in.body,
             notification_type=notification_in.notification_type,
             notification_value=notification_in.notification_value,
             related_id=notification_in.related_id,
+            category=notification_in.category,
         )
         db.add(notification)
         await db.commit()
@@ -47,6 +51,7 @@ class NotificationCRUD:
         skip: int = 0,
         limit: int = 20,
         unread_only: bool = False,
+        category: Optional[str] = None,
     ) -> List[Notification]:
         """
         사용자의 알림 목록 조회
@@ -57,19 +62,32 @@ class NotificationCRUD:
             skip: 페이지네이션 offset
             limit: 페이지네이션 limit
             unread_only: 읽지 않은 알림만 조회할지 여부
+            category: 카테고리 필터 (pod, community, notice)
         """
         query = select(Notification).where(Notification.user_id == user_id)
 
         if unread_only:
             query = query.where(Notification.is_read == False)
 
+        if category:
+            query = query.where(Notification.category == category)
+
+        # related_user, related_pod 정보를 함께 로드
+        query = query.options(
+            selectinload(Notification.related_user),
+            selectinload(Notification.related_pod),
+        )
         query = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit)
 
         result = await db.execute(query)
         return list(result.scalars().all())
 
     async def get_total_count(
-        self, db: AsyncSession, user_id: int, unread_only: bool = False
+        self,
+        db: AsyncSession,
+        user_id: int,
+        unread_only: bool = False,
+        category: Optional[str] = None,
     ) -> int:
         """
         사용자의 전체 알림 개수 조회
@@ -78,6 +96,7 @@ class NotificationCRUD:
             db: DB 세션
             user_id: 사용자 ID
             unread_only: 읽지 않은 알림만 카운트할지 여부
+            category: 카테고리 필터 (pod, community, notice)
         """
         query = select(func.count(Notification.id)).where(
             Notification.user_id == user_id
@@ -85,6 +104,9 @@ class NotificationCRUD:
 
         if unread_only:
             query = query.where(Notification.is_read == False)
+
+        if category:
+            query = query.where(Notification.category == category)
 
         result = await db.execute(query)
         return result.scalar_one()

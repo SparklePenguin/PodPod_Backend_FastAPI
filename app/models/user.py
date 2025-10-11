@@ -61,4 +61,9 @@ class User(Base):
     pod_reviews = relationship("PodReview", back_populates="user")
 
     # 알림 관계
-    notifications = relationship("Notification", back_populates="user")
+    notifications = relationship(
+        "Notification", foreign_keys="Notification.user_id", back_populates="user"
+    )
+    notification_settings = relationship(
+        "UserNotificationSettings", back_populates="user", uselist=False
+    )

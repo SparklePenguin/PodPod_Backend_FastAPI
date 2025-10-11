@@ -26,6 +26,12 @@ class Notification(Base):
     user_id = Column(
         Integer, ForeignKey("users.id"), nullable=False, index=True
     )  # 받는 사람
+    related_user_id = Column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
+    )  # 관련 유저 (알림 발생시킨 유저)
+    related_pod_id = Column(
+        Integer, ForeignKey("pods.id"), nullable=True, index=True
+    )  # 관련 파티
 
     # 알림 내용
     title = Column(String(100), nullable=False)  # 알림 제목
@@ -41,6 +47,9 @@ class Notification(Base):
     related_id = Column(
         String(50), nullable=True
     )  # pod_id, review_id, follow_user_id 등
+    category = Column(
+        String(20), nullable=False, index=True, default="pod"
+    )  # pod, community, notice
 
     # 읽음 상태
     is_read = Column(Boolean, default=False, nullable=False, index=True)  # 읽음 여부
@@ -52,4 +61,6 @@ class Notification(Base):
     )
 
     # 관계 설정
-    user = relationship("User", back_populates="notifications")
+    user = relationship("User", foreign_keys=[user_id], back_populates="notifications")
+    related_user = relationship("User", foreign_keys=[related_user_id])
+    related_pod = relationship("Pod", foreign_keys=[related_pod_id])
