@@ -267,7 +267,7 @@ async def send_notification_by_type(
     """특정 알림 타입으로 테스트 알림 전송"""
     try:
         # FCM 서비스 초기화
-        fcm_service = FCMService()
+        fcm_service = FCMService(db)
 
         # 사용자 FCM 토큰 조회
         user_crud = UserCRUD(db)
@@ -295,15 +295,33 @@ async def send_notification_by_type(
         success = False
         if notification_type == NotificationType.POD_JOIN_REQUEST:
             success = await fcm_service.send_pod_join_request(
-                user.fcm_token, nickname, pod_id
+                token=user.fcm_token,
+                nickname=nickname,
+                pod_id=pod_id,
+                db=db,
+                user_id=user_id,
+                related_user_id=10,  # 테스트용 신청자 ID
+                related_pod_id=pod_id,
             )
         elif notification_type == NotificationType.POD_REQUEST_APPROVED:
             success = await fcm_service.send_pod_request_approved(
-                user.fcm_token, party_name, pod_id
+                token=user.fcm_token,
+                party_name=party_name,
+                pod_id=pod_id,
+                db=db,
+                user_id=user_id,
+                related_user_id=6,  # 테스트용 승인자 ID
+                related_pod_id=pod_id,
             )
         elif notification_type == NotificationType.POD_REQUEST_REJECTED:
             success = await fcm_service.send_pod_request_rejected(
-                user.fcm_token, party_name, pod_id
+                token=user.fcm_token,
+                party_name=party_name,
+                pod_id=pod_id,
+                db=db,
+                user_id=user_id,
+                related_user_id=6,  # 테스트용 거절자 ID
+                related_pod_id=pod_id,
             )
         elif notification_type == NotificationType.POD_NEW_MEMBER:
             success = await fcm_service.send_pod_new_member(

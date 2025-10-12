@@ -6,6 +6,10 @@ from app.core.error_codes import raise_error
 from app.schemas.pod.pod_application_dto import PodApplicationDto
 from app.schemas.follow import SimpleUserDto
 from app.models.user import User
+from app.services.fcm_service import FCMService
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class RecruitmentService:
@@ -51,6 +55,27 @@ class RecruitmentService:
         )
         user_tendency = result.scalar_one_or_none()
         tendency_type = user_tendency.tendency_type if user_tendency else None
+
+        # 파티장에게 FCM 알림 전송
+        try:
+            owner = await self.db.get(User, pod.owner_id)
+            if owner and owner.fcm_token:
+                fcm_service = FCMService(self.db)
+                await fcm_service.send_pod_join_request(
+                    token=owner.fcm_token,
+                    nickname=user.nickname,
+                    pod_id=pod_id,
+                    db=self.db,
+                    user_id=owner.id,
+                    related_user_id=user_id,
+                    related_pod_id=pod_id,
+                )
+                logger.info(
+                    f"파티장 {owner.id}에게 파티 참여 신청 알림 전송 완료 (신청자: {user.nickname})"
+                )
+        except Exception as e:
+            logger.error(f"FCM 알림 전송 실패: {e}")
+            # 알림 전송 실패는 무시하고 계속 진행
 
         # PodApplicationDto로 변환하여 반환
         user_dto = SimpleUserDto(
@@ -103,6 +128,40 @@ class RecruitmentService:
         # User 정보 가져오기
         user = await self.db.get(User, application.user_id)
         reviewer = await self.db.get(User, reviewed_by) if reviewed_by else None
+
+        # 신청자에게 FCM 알림 전송 (승인/거절)
+        try:
+            if user and user.fcm_token:
+                pod = await self.pod_crud.get_pod_by_id(application.pod_id)
+                fcm_service = FCMService(self.db)
+
+                if status.lower() == "approved":
+                    # 승인 알림
+                    await fcm_service.send_pod_request_approved(
+                        token=user.fcm_token,
+                        party_name=pod.title if pod else "파티",
+                        pod_id=application.pod_id,
+                        db=self.db,
+                        user_id=user.id,
+                        related_user_id=reviewed_by,
+                        related_pod_id=application.pod_id,
+                    )
+                    logger.info(f"신청자 {user.id}에게 파티 승인 알림 전송 완료")
+                elif status.lower() == "rejected":
+                    # 거절 알림
+                    await fcm_service.send_pod_request_rejected(
+                        token=user.fcm_token,
+                        party_name=pod.title if pod else "파티",
+                        pod_id=application.pod_id,
+                        db=self.db,
+                        user_id=user.id,
+                        related_user_id=reviewed_by,
+                        related_pod_id=application.pod_id,
+                    )
+                    logger.info(f"신청자 {user.id}에게 파티 거절 알림 전송 완료")
+        except Exception as e:
+            logger.error(f"FCM 알림 전송 실패: {e}")
+            # 알림 전송 실패는 무시하고 계속 진행
 
         # 신청자 성향 타입 조회
         from sqlalchemy import select

@@ -216,16 +216,15 @@ class FCMService:
 
         # data 딕셔너리 생성
         data = {
-            "type": type(notification_type).__name__,  # PodNotiSubType (UpperCamelCase)
-            "value": to_upper_camel_case(
-                notification_type.name
-            ),  # PodJoinRequest (UpperCamelCase)
+            "type": notification_type.name,  # POD_JOIN_REQUEST (UPPER_SNAKE_CASE)
+            "value": notification_type.name,  # POD_JOIN_REQUEST (UPPER_SNAKE_CASE)
         }
 
         # related_id 추가
         if related_id_key and related_id_key in kwargs:
             data["related_id"] = str(kwargs[related_id_key])
 
+        logger.info(f"FCM 데이터 생성: type={data['type']}, value={data['value']}")
         return formatted_message, data
 
     # ========== 파티 알림 ==========
@@ -261,6 +260,8 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
+        related_pod_id: Optional[int] = None,
     ) -> bool:
         """파티 참여 요청 승인 알림 전송"""
         body, data = self._format_message(
@@ -269,7 +270,14 @@ class FCMService:
             pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=related_pod_id or pod_id,
         )
 
     async def send_pod_request_rejected(
@@ -279,6 +287,8 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
+        related_pod_id: Optional[int] = None,
     ) -> bool:
         """파티 참여 요청 거절 알림 전송"""
         body, data = self._format_message(
@@ -287,7 +297,14 @@ class FCMService:
             pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=related_pod_id or pod_id,
         )
 
     async def send_pod_new_member(

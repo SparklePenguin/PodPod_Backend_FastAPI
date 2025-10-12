@@ -319,3 +319,9 @@ class NotificationUnreadCountResponse(BaseModel):
     unread_count: int = Field(alias="unreadCount")
 
     model_config = {"populate_by_name": True}
+
+
+# Forward reference 해결을 위해 PodDto import 후 모델 재빌드
+from app.schemas.pod.pod_dto import PodDto  # noqa: E402
+
+NotificationResponse.model_rebuild()

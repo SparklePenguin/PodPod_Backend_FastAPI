@@ -7,7 +7,7 @@
 - Backend: `infisical secrets get KEY --env=dev --path=/Backend` | GoogleSheet: `--path=/GoogleSheet` | `run.py`가 자동 로드
 
 ## 3. 스키마 규칙
-- 필드명: camelCase (Field(alias="camelCase")) | 타입/Enum 값: UpperCamelCase (POD_JOIN_REQUEST → PodJoinRequest) | model_config = {"populate_by_name": True} | typing import 확인
+- 필드명: camelCase (Field(alias="camelCase")) | 타입/값: UPPER_SNAKE_CASE (POD_JOIN_REQUEST) | model_config = {"populate_by_name": True} | typing import 확인
 
 ## 4. 응답 형식 (필수)
 - BaseResponse: 모든 API는 `BaseResponse.ok(data, message_ko, http_status)` 사용 | PageDto: 리스트 조회 시 사용 (items, currentPage, pageSize, totalCount, totalPages, hasNext, hasPrev)
