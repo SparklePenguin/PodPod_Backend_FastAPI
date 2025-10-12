@@ -712,12 +712,31 @@ class PodCRUD:
 
             logger.info(f"파티 {pod.id} 채팅방 생성 시도: {channel_url}")
 
+            # 파티장 정보 조회
+            owner = await self.db.get(User, owner_id)
+            user_profiles = {}
+            if owner:
+                user_profiles[str(owner_id)] = {
+                    "nickname": owner.nickname or "사용자",
+                    "profile_url": owner.profile_image or "",
+                }
+
             # 채널 생성
             channel_data = await sendbird_service.create_group_channel(
                 channel_url=channel_url,
                 name=f"{title} 채팅방",
                 user_ids=[str(owner_id)],  # 파티 생성자만 초기 멤버
-                data={"pod_id": pod.id, "pod_title": title, "type": "pod_chat"},
+                cover_url=image_url,  # 파티 이미지를 채널 커버로 사용
+                data={
+                    "id": pod.id,  # 파티 ID (int)
+                    "podId": pod.id,  # 파티 ID
+                    "podTitle": title,  # 파티 제목
+                    "place": place,  # 장소
+                    "meetingDate": meeting_date.isoformat(),  # 만남 날짜 (YYYY-MM-DD)
+                    "subCategories": sub_categories,  # 서브 카테고리 리스트
+                    "type": "pod_chat",
+                },
+                user_profiles=user_profiles,  # 파티장 프로필 정보
             )
 
             if channel_data:

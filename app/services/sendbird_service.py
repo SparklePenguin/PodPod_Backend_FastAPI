@@ -33,6 +33,7 @@ class SendbirdService:
         user_ids: List[str],
         cover_url: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
+        user_profiles: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         그룹 채팅방 생성
@@ -43,6 +44,7 @@ class SendbirdService:
             user_ids: 참여자 사용자 ID 리스트
             cover_url: 커버 이미지 URL (선택사항)
             data: 추가 메타데이터 (선택사항)
+            user_profiles: 사용자별 프로필 정보 {user_id: {"nickname": "...", "profile_url": "..."}} (선택사항)
 
         Returns:
             생성된 채널 정보 또는 None
@@ -51,8 +53,17 @@ class SendbirdService:
             with sendbird_platform_sdk.ApiClient(self.configuration) as api_client:
                 api_instance = group_channel_api.GroupChannelApi(api_client)
 
-                # SendbirdUser 객체들 생성
-                users = [SendbirdUser(user_id=user_id) for user_id in user_ids]
+                # SendbirdUser 객체들 생성 (프로필 정보 포함)
+                users = []
+                for user_id in user_ids:
+                    user_kwargs = {"user_id": user_id}
+                    if user_profiles and user_id in user_profiles:
+                        profile = user_profiles[user_id]
+                        if "nickname" in profile:
+                            user_kwargs["nickname"] = profile["nickname"]
+                        if "profile_url" in profile:
+                            user_kwargs["profile_url"] = profile["profile_url"]
+                    users.append(SendbirdUser(**user_kwargs))
 
                 # CreateAGroupChannelRequest 객체 생성
                 create_channel_request = CreateAGroupChannelRequest(
