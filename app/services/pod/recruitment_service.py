@@ -221,19 +221,36 @@ class RecruitmentService:
             reviewedBy=reviewer_dto,
         )
 
-    # - MARK: 신청서 취소
-    async def cancel_application(self, pod_id: int, user_id: int) -> bool:
-        # 해당 파티에 대한 사용자의 신청서 찾기
-        applications = await self.application_crud.get_applications_by_user_id(user_id)
-        target_application = None
+    # - MARK: 신청서 취소 (application_id 사용)
+    async def cancel_application_by_id(self, application_id: int, user_id: int) -> bool:
+        # 신청서 조회
+        application = await self.application_crud.get_application_by_id(application_id)
 
-        for app in applications:
-            if app.pod_id == pod_id and app.status == "pending":
-                target_application = app
-                break
+        if not application:
+            raise_error("POD_NOT_FOUND")  # 신청서를 찾을 수 없음
 
-        if not target_application:
-            raise_error("APPLICATION_NOT_FOUND")
+        # 본인의 신청서인지 확인
+        if application.user_id != user_id:
+            raise_error("NO_POD_ACCESS_PERMISSION")  # 권한 없음
+
+        # pending 상태만 취소 가능
+        if application.status != "pending":
+            raise_error("POD_ALREADY_CLOSED")  # 이미 처리된 신청서
 
         # 신청서 삭제
-        return await self.application_crud.delete_application(target_application.id)
+        return await self.application_crud.delete_application(application_id)
+
+    # - MARK: 파티 탈퇴
+    async def leave_pod(self, pod_id: int, user_id: int) -> bool:
+        """파티에서 탈퇴 (파티장은 탈퇴 불가)"""
+        # 파티 조회
+        pod = await self.pod_crud.get_pod_by_id(pod_id)
+        if not pod:
+            raise_error("POD_NOT_FOUND")
+
+        # 파티장은 탈퇴 불가
+        if pod.owner_id == user_id:
+            raise_error("NO_POD_ACCESS_PERMISSION")  # 파티장은 탈퇴할 수 없습니다
+
+        # 멤버 삭제
+        return await self.crud.remove_member(pod_id, user_id)

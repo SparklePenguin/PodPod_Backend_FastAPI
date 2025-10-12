@@ -99,7 +99,7 @@ async def review_application(
 
 # - MARK: 파티 참여 신청 취소
 @router.delete(
-    "/{pod_id}",
+    "/{application_id}",
     response_model=BaseResponse[dict],
     responses={
         HttpStatus.OK: {
@@ -108,16 +108,39 @@ async def review_application(
         },
     },
     summary="파티 참여 신청 취소",
-    description="특정 파티에 대한 참여 신청을 취소합니다.",
+    description="특정 신청서를 취소합니다.",
     tags=["recruitments"],
 )
 async def cancel_apply_to_pod(
+    application_id: int,
+    user_id: int = Depends(get_current_user_id),
+    recruitment_service: RecruitmentService = Depends(get_recruitment_service),
+):
+    await recruitment_service.cancel_application_by_id(application_id, user_id)
+    return BaseResponse.ok(data={"cancelled": True})
+
+
+# - MARK: 파티 탈퇴
+@router.delete(
+    "/pods/{pod_id}/leave",
+    response_model=BaseResponse[dict],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "파티 탈퇴 성공",
+        },
+    },
+    summary="파티 탈퇴",
+    description="참여 중인 파티에서 탈퇴합니다. (파티장은 탈퇴 불가)",
+    tags=["recruitments"],
+)
+async def leave_pod(
     pod_id: int,
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
-    await recruitment_service.cancel_application(pod_id, user_id)
-    return BaseResponse.ok(data={"cancelled": True})
+    success = await recruitment_service.leave_pod(pod_id, user_id)
+    return BaseResponse.ok(data={"left": success})
 
 
 # - MARK: 파티 참여 신청 목록 조회

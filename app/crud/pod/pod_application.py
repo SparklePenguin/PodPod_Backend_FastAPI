@@ -13,10 +13,14 @@ class PodApplicationCRUD:
     async def create_application(
         self, pod_id: int, user_id: int, message: str = None
     ) -> PodApplication:
-        # 중복 신청 방지
+        # 중복 신청 방지 (PENDING 상태만 체크)
         existing_application = await self.db.execute(
             select(PodApplication).where(
-                and_(PodApplication.pod_id == pod_id, PodApplication.user_id == user_id)
+                and_(
+                    PodApplication.pod_id == pod_id,
+                    PodApplication.user_id == user_id,
+                    PodApplication.status == ApplicationStatus.PENDING,
+                )
             )
         )
         if existing_application.scalar_one_or_none() is not None:

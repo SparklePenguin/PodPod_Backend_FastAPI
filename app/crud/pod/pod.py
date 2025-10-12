@@ -972,12 +972,17 @@ class PodCRUD:
     async def get_user_joined_pods(
         self, user_id: int, page: int = 1, page_size: int = 20
     ) -> Dict[str, Any]:
-        """특정 사용자가 참여한 파티 목록 조회"""
-        # 사용자가 참여한 파티 조회 (PodMember를 통해)
+        """특정 사용자가 참여한 파티 목록 조회 (파티장인 파티 제외)"""
+        # 사용자가 참여한 파티 조회 (PodMember를 통해) - 파티장인 파티는 제외
         query = (
             select(Pod)
             .join(PodMember, Pod.id == PodMember.pod_id)
-            .where(PodMember.user_id == user_id)
+            .where(
+                and_(
+                    PodMember.user_id == user_id,
+                    Pod.owner_id != user_id,  # 파티장인 파티 제외
+                )
+            )
             .order_by(PodMember.joined_at.desc())
         )
 
@@ -985,7 +990,12 @@ class PodCRUD:
         count_query = (
             select(func.count(Pod.id))
             .join(PodMember, Pod.id == PodMember.pod_id)
-            .where(PodMember.user_id == user_id)
+            .where(
+                and_(
+                    PodMember.user_id == user_id,
+                    Pod.owner_id != user_id,  # 파티장인 파티 제외
+                )
+            )
         )
         total_count_result = await self.db.execute(count_query)
         total_count = total_count_result.scalar()
