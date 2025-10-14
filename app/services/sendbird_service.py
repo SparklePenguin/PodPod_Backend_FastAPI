@@ -26,6 +26,79 @@ class SendbirdService:
         )
         self.api_token = settings.SENDBIRD_API_TOKEN
 
+    async def create_group_channel_with_join(
+        self,
+        channel_url: str,
+        name: str,
+        user_ids: List[str],
+        cover_url: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        user_profiles: Optional[Dict[str, Dict[str, str]]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        그룹 채팅방 생성 (join_by_user_id: true 옵션 포함)
+
+        Args:
+            channel_url: 채널 URL (고유해야 함)
+            name: 채널 이름
+            user_ids: 참여자 사용자 ID 리스트
+            cover_url: 커버 이미지 URL (선택사항)
+            data: 추가 메타데이터 (선택사항)
+            user_profiles: 사용자별 프로필 정보 {user_id: {"nickname": "...", "profile_url": "..."}} (선택사항)
+
+        Returns:
+            생성된 채널 정보 또는 None
+        """
+        try:
+            import httpx
+            import json
+
+            # 원시 HTTP 요청으로 채널 생성 (join_by_user_id: true 옵션 포함)
+            from app.core.config import settings
+
+            url = (
+                f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/group_channels"
+            )
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            # 채널 생성 payload
+            payload = {
+                "user_ids": user_ids,
+                "is_public": False,  # 비공개 채널
+                "join_by_user_id": True,  # 핵심 옵션!
+                "name": name,
+                "channel_url": channel_url,
+            }
+
+            if cover_url:
+                payload["cover_url"] = cover_url
+
+            if data:
+                payload["data"] = json.dumps(data)
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload)
+
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.error(
+                        f"Sendbird 채널 생성 실패: {response.status_code} - {response.text}"
+                    )
+                    return None
+
+        except Exception as e:
+            import logging
+            import traceback
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird 채널 생성 실패: {e}")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
+            return None
+
     async def create_group_channel(
         self,
         channel_url: str,
@@ -296,4 +369,48 @@ class SendbirdService:
             return False
         except Exception as e:
             print(f"Sendbird 채널 삭제 실패: {e}")
+            return False
+
+    async def join_channel(self, channel_url: str, user_ids: List[str]) -> bool:
+        """
+        채널에 사용자 참여 (PUT 방식)
+        Args:
+            channel_url: 채널 URL
+            user_ids: 참여할 사용자 ID 리스트
+        Returns:
+            성공 여부
+        """
+        try:
+            import httpx
+
+            from app.core.config import settings
+
+            url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/group_channels/{channel_url}/join"
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            # 각 사용자별로 join 요청
+            for user_id in user_ids:
+                data = {"user_id": user_id}
+
+                async with httpx.AsyncClient() as client:
+                    response = await client.put(url, headers=headers, json=data)
+
+                    if response.status_code != 200:
+                        import logging
+
+                        logger = logging.getLogger(__name__)
+                        logger.error(
+                            f"Sendbird join 실패 (userId: {user_id}): {response.status_code} - {response.text}"
+                        )
+                        return False
+
+            return True
+
+        except Exception as e:
+            import logging
+            import traceback
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird join 실패: {e}")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
             return False

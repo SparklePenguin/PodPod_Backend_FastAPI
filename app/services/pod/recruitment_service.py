@@ -60,7 +60,7 @@ class RecruitmentService:
         try:
             owner = await self.db.get(User, pod.owner_id)
             if owner and owner.fcm_token:
-                fcm_service = FCMService(self.db)
+                fcm_service = FCMService()
                 await fcm_service.send_pod_join_request(
                     token=owner.fcm_token,
                     nickname=user.nickname,
@@ -68,7 +68,6 @@ class RecruitmentService:
                     db=self.db,
                     user_id=owner.id,
                     related_user_id=user_id,
-                    related_pod_id=pod_id,
                 )
                 logger.info(
                     f"파티장 {owner.id}에게 파티 참여 신청 알림 전송 완료 (신청자: {user.nickname})"
@@ -116,6 +115,36 @@ class RecruitmentService:
                     role="member",
                     message=application.message,
                 )
+
+                # 샌드버드 채팅방에 멤버 초대
+                try:
+                    pod = await self.pod_crud.get_pod_by_id(application.pod_id)
+                    if pod and pod.chat_channel_url:
+                        from app.services.sendbird_service import SendbirdService
+
+                        sendbird_service = SendbirdService()
+                        success = await sendbird_service.join_channel(
+                            channel_url=pod.chat_channel_url,
+                            user_ids=[str(application.user_id)],
+                        )
+
+                        if success:
+                            logger.info(
+                                f"신청자 {application.user_id}를 샌드버드 채팅방 {pod.chat_channel_url}에 초대 완료"
+                            )
+                        else:
+                            logger.warning(
+                                f"신청자 {application.user_id} 샌드버드 채팅방 초대 실패"
+                            )
+                    else:
+                        logger.warning(
+                            f"파티 {application.pod_id}의 채팅방 URL이 없어 샌드버드 초대 건너뜀"
+                        )
+
+                except Exception as e:
+                    logger.error(f"샌드버드 채팅방 초대 실패: {e}")
+                    # 샌드버드 초대 실패는 무시하고 계속 진행
+
             except ValueError as e:
                 if "파티 정원이 가득 찼습니다" in str(e):
                     raise_error("POD_IS_FULL")
@@ -133,7 +162,7 @@ class RecruitmentService:
         try:
             if user and user.fcm_token:
                 pod = await self.pod_crud.get_pod_by_id(application.pod_id)
-                fcm_service = FCMService(self.db)
+                fcm_service = FCMService()
 
                 if status.lower() == "approved":
                     # 승인 알림

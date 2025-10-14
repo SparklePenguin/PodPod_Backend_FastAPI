@@ -267,7 +267,7 @@ async def send_notification_by_type(
     """특정 알림 타입으로 테스트 알림 전송"""
     try:
         # FCM 서비스 초기화
-        fcm_service = FCMService(db)
+        fcm_service = FCMService()
 
         # 사용자 FCM 토큰 조회
         user_crud = UserCRUD(db)

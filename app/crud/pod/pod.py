@@ -721,8 +721,8 @@ class PodCRUD:
                     "profile_url": owner.profile_image or "",
                 }
 
-            # 채널 생성
-            channel_data = await sendbird_service.create_group_channel(
+            # 채널 생성 (join_by_user_id: true 옵션 포함)
+            channel_data = await sendbird_service.create_group_channel_with_join(
                 channel_url=channel_url,
                 name=f"{title} 채팅방",
                 user_ids=[str(owner_id)],  # 파티 생성자만 초기 멤버
