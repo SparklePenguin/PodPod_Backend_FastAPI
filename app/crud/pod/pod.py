@@ -723,23 +723,18 @@ class PodCRUD:
                 }
 
             # 채널 생성 (join_by_user_id: true 옵션 포함)
-            # SimplePodDto 객체 생성 (timestamp 변환)
-            def _convert_to_timestamp(value):
-                """date 또는 time 객체를 timestamp로 변환"""
-                if value is None:
+            # SimplePodDto 객체 생성 (meeting_date와 meeting_time을 하나로 합쳐서 timestamp로 변환)
+            def _convert_to_combined_timestamp(meeting_date, meeting_time):
+                """date와 time 객체를 하나의 timestamp로 변환"""
+                if meeting_date is None:
                     return None
-                if isinstance(value, date):
-                    # date를 datetime으로 변환 (시간은 00:00:00)
-                    dt = datetime.combine(value, time.min)
-                    return int(dt.timestamp() * 1000)  # milliseconds
-                elif isinstance(value, time):
-                    # time을 오늘 날짜와 결합해서 timestamp 생성
-                    today = date.today()
-                    dt = datetime.combine(today, value)
-                    return int(dt.timestamp() * 1000)  # milliseconds
-                elif isinstance(value, datetime):
-                    return int(value.timestamp() * 1000)  # milliseconds
-                return None
+                if meeting_time is None:
+                    # time이 없으면 date만 사용 (00:00:00)
+                    dt = datetime.combine(meeting_date, time.min)
+                else:
+                    # date와 time을 결합
+                    dt = datetime.combine(meeting_date, meeting_time)
+                return int(dt.timestamp() * 1000)  # milliseconds
 
             simple_pod_dto = SimplePodDto(
                 id=pod.id,
@@ -747,8 +742,7 @@ class PodCRUD:
                 image_url=image_url,
                 sub_categories=sub_categories,
                 meeting_place=place,
-                meeting_date=_convert_to_timestamp(meeting_date),
-                meeting_time=_convert_to_timestamp(meeting_time),
+                meeting_date=_convert_to_combined_timestamp(meeting_date, meeting_time),
             )
 
             channel_data = await sendbird_service.create_group_channel_with_join(
