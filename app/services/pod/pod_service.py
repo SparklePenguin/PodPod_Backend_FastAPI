@@ -9,8 +9,15 @@ from app.utils.file_upload import save_upload_file
 from fastapi import UploadFile
 from app.models.pod import Pod
 from app.models.pod.pod_status import PodStatus
+from app.services.fcm_service import FCMService
+from app.crud.user import UserCRUD
+from app.models.user import User
+from sqlalchemy import select
 from datetime import date
 import math
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PodService:
@@ -63,6 +70,20 @@ class PodService:
         # Pod 모델을 PodDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
             pod_dto = await self._enrich_pod_dto(pod, owner_id)
+
+            # 팔로워들에게 파티 생성 알림 전송
+            try:
+                from app.services.follow_service import FollowService
+
+                follow_service = FollowService(self.db)
+                await follow_service.send_followed_user_pod_created_notification(
+                    owner_id, pod.id
+                )
+            except Exception as e:
+                logger.error(
+                    f"팔로워 파티 생성 알림 전송 실패: owner_id={owner_id}, pod_id={pod.id}, error={e}"
+                )
+
             return pod_dto
         return None
 
@@ -120,6 +141,79 @@ class PodService:
     # - MARK: 파티 수정
     async def update_pod(self, pod_id: int, **fields) -> Optional[Pod]:
         return await self.crud.update_pod(pod_id, **fields)
+
+    # - MARK: 파티 수정 (알림 포함)
+    async def update_pod_with_notification(
+        self, pod_id: int, **fields
+    ) -> Optional[Pod]:
+        """파티 수정 후 모든 참여자에게 알림 전송"""
+        # 파티 정보 조회
+        pod = await self.crud.get_pod_by_id(pod_id)
+        if not pod:
+            return None
+
+        # 파티 수정 실행
+        updated_pod = await self.crud.update_pod(pod_id, **fields)
+        if not updated_pod:
+            return None
+
+        try:
+            # FCM 서비스 초기화
+            fcm_service = FCMService()
+            user_crud = UserCRUD(self.db)
+
+            # 파티 참여자 목록 조회 (파티장 포함)
+            participants = await self.crud.get_pod_participants(pod_id)
+
+            # 파티장 제외하고 알림 전송
+            for participant in participants:
+                if participant.id != pod.owner_id:
+                    try:
+                        # 사용자 FCM 토큰 확인
+                        if participant.fcm_token:
+                            await fcm_service.send_pod_updated(
+                                token=participant.fcm_token,
+                                party_name=pod.title,
+                                pod_id=pod_id,
+                                db=self.db,
+                                user_id=participant.id,
+                            )
+                            logger.info(
+                                f"파티 수정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"파티 수정 알림 전송 실패: user_id={participant.id}, error={e}"
+                        )
+
+            # 파티장에게도 알림 전송 (선택사항)
+            try:
+                owner_result = await self.db.execute(
+                    select(User).where(User.id == pod.owner_id)
+                )
+                owner = owner_result.scalar_one_or_none()
+                if owner and owner.fcm_token:
+                    await fcm_service.send_pod_updated(
+                        token=owner.fcm_token,
+                        party_name=pod.title,
+                        pod_id=pod_id,
+                        db=self.db,
+                        user_id=owner.id,
+                    )
+                    logger.info(f"파티장에게 수정 알림 전송 성공: owner_id={owner.id}")
+            except Exception as e:
+                logger.error(
+                    f"파티장 알림 전송 실패: owner_id={pod.owner_id}, error={e}"
+                )
+
+        except Exception as e:
+            logger.error(f"파티 수정 알림 처리 중 오류: {e}")
+
+        return updated_pod
 
     # - MARK: 파티 삭제
     async def delete_pod(self, pod_id: int) -> None:
@@ -600,3 +694,77 @@ class PodService:
     async def _convert_to_dto(self, pod: Pod, user_id: Optional[int] = None) -> PodDto:
         """Pod 엔터티를 PodDto로 변환"""
         return await self._enrich_pod_dto(pod, user_id)
+
+    # - MARK: 파티 상태 업데이트 (알림 포함)
+    async def update_pod_status_with_notification(
+        self, pod_id: int, status: PodStatus
+    ) -> bool:
+        """파티 상태 업데이트 후 알림 전송"""
+        pod = await self.crud.get_pod_by_id(pod_id)
+        if not pod:
+            return False
+
+        # 파티 상태 업데이트
+        pod.status = status
+        await self.db.commit()
+
+        try:
+            # FCM 서비스 초기화
+            fcm_service = FCMService()
+
+            # 파티 참여자 목록 조회
+            participants = await self.crud.get_pod_participants(pod_id)
+
+            # 상태별 알림 전송
+            if status == PodStatus.CONFIRMED:
+                # 파티 확정 알림
+                for participant in participants:
+                    try:
+                        if participant.fcm_token:
+                            await fcm_service.send_pod_confirmed(
+                                token=participant.fcm_token,
+                                party_name=pod.title,
+                                pod_id=pod_id,
+                                db=self.db,
+                                user_id=participant.id,
+                            )
+                            logger.info(
+                                f"파티 확정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"파티 확정 알림 전송 실패: user_id={participant.id}, error={e}"
+                        )
+
+            elif status == PodStatus.CANCELED:
+                # 파티 취소 알림
+                for participant in participants:
+                    try:
+                        if participant.fcm_token:
+                            await fcm_service.send_pod_canceled(
+                                token=participant.fcm_token,
+                                party_name=pod.title,
+                                pod_id=pod_id,
+                                db=self.db,
+                                user_id=participant.id,
+                            )
+                            logger.info(
+                                f"파티 취소 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"파티 취소 알림 전송 실패: user_id={participant.id}, error={e}"
+                        )
+
+        except Exception as e:
+            logger.error(f"파티 상태 업데이트 알림 처리 중 오류: {e}")
+
+        return True

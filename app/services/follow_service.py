@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List, Tuple
 from app.crud.follow import FollowCRUD
 from app.crud.pod.pod import PodCRUD
+from app.crud.user import UserCRUD
 from app.schemas.follow import (
     FollowRequest,
     FollowResponse,
@@ -13,6 +14,12 @@ from app.schemas.follow import (
 from app.schemas.pod.pod_dto import PodDto
 from app.schemas.common.page_dto import PageDto
 from app.core.error_codes import get_error_info
+from app.services.fcm_service import FCMService
+from sqlalchemy import select
+from app.models.user import User
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FollowService:
@@ -22,6 +29,7 @@ class FollowService:
         self.db = db
         self.crud = FollowCRUD(db)
         self.pod_crud = PodCRUD(db)
+        self.user_crud = UserCRUD(db)
 
     async def follow_user(self, follower_id: int, following_id: int) -> FollowResponse:
         """사용자 팔로우"""
@@ -29,6 +37,9 @@ class FollowService:
 
         if not follow:
             raise ValueError("팔로우에 실패했습니다.")
+
+        # 팔로우 알림 전송
+        await self._send_follow_notification(follower_id, following_id)
 
         return FollowResponse(
             follower_id=follow.follower_id,
@@ -263,3 +274,108 @@ class FollowService:
             following_id=following_id,
             notification_enabled=notification_enabled,
         )
+
+    # - MARK: 팔로우 알림 전송
+    async def _send_follow_notification(
+        self, follower_id: int, following_id: int
+    ) -> None:
+        """팔로우 알림 전송"""
+        try:
+            # 팔로우한 사용자 정보 조회
+            follower_result = await self.db.execute(
+                select(User).where(User.id == follower_id)
+            )
+            follower = follower_result.scalar_one_or_none()
+
+            # 팔로우받은 사용자 정보 조회
+            following_result = await self.db.execute(
+                select(User).where(User.id == following_id)
+            )
+            following = following_result.scalar_one_or_none()
+
+            if not follower or not following:
+                logger.warning(
+                    f"사용자 정보를 찾을 수 없음: follower_id={follower_id}, following_id={following_id}"
+                )
+                return
+
+            # 팔로우받은 사용자의 FCM 토큰 확인
+            if following.fcm_token:
+                # FCM 서비스 초기화
+                fcm_service = FCMService()
+
+                # 팔로우 알림 전송
+                await fcm_service.send_followed_by_user(
+                    token=following.fcm_token,
+                    nickname=follower.nickname,
+                    follow_user_id=follower_id,
+                    db=self.db,
+                    user_id=following_id,
+                    related_user_id=follower_id,
+                )
+                logger.info(
+                    f"팔로우 알림 전송 성공: follower_id={follower_id}, following_id={following_id}"
+                )
+            else:
+                logger.warning(
+                    f"팔로우받은 사용자의 FCM 토큰이 없음: following_id={following_id}"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"팔로우 알림 전송 실패: follower_id={follower_id}, following_id={following_id}, error={e}"
+            )
+
+    # - MARK: 팔로우한 유저의 파티 생성 알림
+    async def send_followed_user_pod_created_notification(
+        self, pod_owner_id: int, pod_id: int
+    ) -> None:
+        """팔로우한 유저가 파티 생성 시 팔로워들에게 알림 전송"""
+        try:
+            # 파티 정보 조회
+            pod = await self.pod_crud.get_pod_by_id(pod_id)
+            if not pod:
+                logger.warning(f"파티 정보를 찾을 수 없음: pod_id={pod_id}")
+                return
+
+            # 파티 생성자의 팔로워 목록 조회
+            followers_data, _ = await self.crud.get_followers_list(
+                pod_owner_id, page=1, size=1000
+            )  # 모든 팔로워 조회
+
+            if not followers_data:
+                logger.info(f"파티 생성자의 팔로워가 없음: pod_owner_id={pod_owner_id}")
+                return
+
+            # FCM 서비스 초기화
+            fcm_service = FCMService()
+
+            # 각 팔로워에게 알림 전송
+            for follower_user, _, _ in followers_data:
+                try:
+                    if follower_user.fcm_token:
+                        await fcm_service.send_followed_user_created_pod(
+                            token=follower_user.fcm_token,
+                            nickname=pod.title,  # 파티 제목을 nickname으로 사용
+                            party_name=pod.title,
+                            pod_id=pod_id,
+                            db=self.db,
+                            user_id=follower_user.id,
+                            related_user_id=pod_owner_id,
+                        )
+                        logger.info(
+                            f"팔로우한 유저 파티 생성 알림 전송 성공: follower_id={follower_user.id}, pod_id={pod_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"팔로워의 FCM 토큰이 없음: follower_id={follower_user.id}"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"팔로워 알림 전송 실패: follower_id={follower_user.id}, error={e}"
+                    )
+
+        except Exception as e:
+            logger.error(
+                f"팔로우한 유저 파티 생성 알림 처리 중 오류: pod_owner_id={pod_owner_id}, pod_id={pod_id}, error={e}"
+            )

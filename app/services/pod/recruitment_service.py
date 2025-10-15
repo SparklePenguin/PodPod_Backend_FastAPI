@@ -246,6 +246,9 @@ class RecruitmentService:
                         related_pod_id=application_pod_id,
                     )
                     logger.info(f"신청자 {user.id}에게 파티 거절 알림 전송 완료")
+
+                    # 좋아요한 파티에 자리 생김 알림 전송
+                    await self._send_spot_opened_notifications(application_pod_id, pod)
         except Exception as e:
             logger.error(f"FCM 알림 전송 실패: {e}")
             # 알림 전송 실패는 무시하고 계속 진행
@@ -346,4 +349,66 @@ class RecruitmentService:
             raise_error("NO_POD_ACCESS_PERMISSION")  # 파티장은 탈퇴할 수 없습니다
 
         # 멤버 삭제
-        return await self.crud.remove_member(pod_id, user_id)
+        result = await self.crud.remove_member(pod_id, user_id)
+
+        # 파티 탈퇴 시 좋아요한 파티에 자리 생김 알림 전송
+        if result:
+            await self._send_spot_opened_notifications(pod_id, pod)
+
+        return result
+
+    # - MARK: 좋아요한 파티에 자리 생김 알림
+    async def _send_spot_opened_notifications(self, pod_id: int, pod) -> None:
+        """파티에 자리가 생겼을 때 좋아요한 사용자들에게 알림 전송"""
+        try:
+            if not pod:
+                return
+
+            # 해당 파티를 좋아요한 사용자들 조회
+            from sqlalchemy import select
+            from app.models.pod.pod_like import PodLike
+            from app.models.user import User
+
+            likes_query = (
+                select(User)
+                .join(PodLike, User.id == PodLike.user_id)
+                .where(PodLike.pod_id == pod_id)
+                .distinct()
+            )
+
+            likes_result = await self.db.execute(likes_query)
+            liked_users = likes_result.scalars().all()
+
+            if not liked_users:
+                logger.info(f"파티 {pod_id}를 좋아요한 사용자가 없음")
+                return
+
+            # FCM 서비스 초기화
+            fcm_service = FCMService()
+
+            # 각 좋아요한 사용자에게 알림 전송
+            for user in liked_users:
+                try:
+                    if user.fcm_token:
+                        await fcm_service.send_saved_pod_spot_opened(
+                            token=user.fcm_token,
+                            party_name=pod.title,
+                            pod_id=pod_id,
+                            db=self.db,
+                            user_id=user.id,
+                        )
+                        logger.info(
+                            f"좋아요한 파티 자리 생김 알림 전송 성공: user_id={user.id}, pod_id={pod_id}"
+                        )
+                    else:
+                        logger.warning(f"FCM 토큰이 없는 사용자: user_id={user.id}")
+
+                except Exception as e:
+                    logger.error(
+                        f"좋아요한 파티 자리 생김 알림 전송 실패: user_id={user.id}, error={e}"
+                    )
+
+        except Exception as e:
+            logger.error(
+                f"좋아요한 파티 자리 생김 알림 처리 중 오류: pod_id={pod_id}, error={e}"
+            )

@@ -561,7 +561,7 @@ async def update_pod(
     pod_id: int,
     pod_service: PodService = Depends(get_pod_service),
 ):
-    await pod_service.update_pod(pod_id)
+    await pod_service.update_pod_with_notification(pod_id)
     return BaseResponse.ok()
 
 

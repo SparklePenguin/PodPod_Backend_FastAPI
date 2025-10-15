@@ -1,6 +1,8 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.pod_review import PodReviewCRUD
+from app.crud.pod.pod import PodCRUD
+from app.crud.user import UserCRUD
 from app.schemas.pod_review import (
     PodReviewCreateRequest,
     PodReviewUpdateRequest,
@@ -10,7 +12,10 @@ from app.schemas.pod_review import (
 from app.schemas.follow import SimpleUserDto
 from app.schemas.common import PageDto
 from app.models.pod_review import PodReview
+from app.models.user import User
 from app.core.logging_config import get_logger
+from app.services.fcm_service import FCMService
+from sqlalchemy import select
 from datetime import datetime, timezone, date, time
 import math
 
@@ -34,6 +39,8 @@ class PodReviewService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.crud = PodReviewCRUD(db)
+        self.pod_crud = PodCRUD(db)
+        self.user_crud = UserCRUD(db)
 
     async def create_review(
         self, user_id: int, request: PodReviewCreateRequest
@@ -62,6 +69,12 @@ class PodReviewService:
                 return None
 
             logger.info(f"후기 생성 성공: review_id={review.id}")
+
+            # 리뷰 생성 알림 전송
+            await self._send_review_created_notification(
+                review.id, request.pod_id, user_id
+            )
+
             return await self._convert_to_dto(review)
 
         except Exception as e:
@@ -300,3 +313,67 @@ class PodReviewService:
                 exc_info=True,
             )
             raise
+
+    # - MARK: 리뷰 생성 알림 전송
+    async def _send_review_created_notification(
+        self, review_id: int, pod_id: int, reviewer_id: int
+    ) -> None:
+        """리뷰 생성 시 파티 참여자들에게 알림 전송"""
+        try:
+            # 리뷰 작성자 정보 조회
+            reviewer_result = await self.db.execute(
+                select(User).where(User.id == reviewer_id)
+            )
+            reviewer = reviewer_result.scalar_one_or_none()
+
+            # 파티 정보 조회
+            pod = await self.pod_crud.get_pod_by_id(pod_id)
+            if not pod:
+                logger.warning(f"파티 정보를 찾을 수 없음: pod_id={pod_id}")
+                return
+
+            if not reviewer:
+                logger.warning(
+                    f"리뷰 작성자 정보를 찾을 수 없음: reviewer_id={reviewer_id}"
+                )
+                return
+
+            # 파티 참여자 목록 조회 (리뷰 작성자 제외)
+            participants = await self.pod_crud.get_pod_participants(pod_id)
+
+            if not participants:
+                logger.info(f"파티 참여자가 없음: pod_id={pod_id}")
+                return
+
+            # FCM 서비스 초기화
+            fcm_service = FCMService()
+
+            # 각 참여자에게 알림 전송 (리뷰 작성자 제외)
+            for participant in participants:
+                if participant.id != reviewer_id:
+                    try:
+                        if participant.fcm_token:
+                            await fcm_service.send_review_created(
+                                token=participant.fcm_token,
+                                nickname=reviewer.nickname,
+                                party_name=pod.title,
+                                review_id=review_id,
+                                db=self.db,
+                                user_id=participant.id,
+                            )
+                            logger.info(
+                                f"리뷰 생성 알림 전송 성공: participant_id={participant.id}, review_id={review_id}"
+                            )
+                        else:
+                            logger.warning(
+                                f"FCM 토큰이 없는 참여자: participant_id={participant.id}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"리뷰 생성 알림 전송 실패: participant_id={participant.id}, error={e}"
+                        )
+
+        except Exception as e:
+            logger.error(
+                f"리뷰 생성 알림 처리 중 오류: review_id={review_id}, pod_id={pod_id}, error={e}"
+            )
