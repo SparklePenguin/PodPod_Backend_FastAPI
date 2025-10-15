@@ -10,7 +10,6 @@ from app.schemas.notification import (
     RecommendNotiSubType,
     ReviewNotiSubType,
     FollowNotiSubType,
-    NotificationCreate,
     get_notification_category,
     to_upper_camel_case,
 )
@@ -99,25 +98,38 @@ class FCMService:
             # DB에 알림 저장 (db와 user_id가 제공된 경우에만)
             if db and user_id:
                 try:
-                    notification_type = (
-                        data.get("type", "UNKNOWN") if data else "UNKNOWN"
-                    )
+                    if not data:
+                        logger.warning(
+                            "FCM data가 None입니다. 알림 DB 저장을 건너뜁니다."
+                        )
+                        return True
+
+                    notification_type = data.get("type", "UNKNOWN")
+                    notification_value = data.get("value", "UNKNOWN")
+
+                    if (
+                        notification_type == "UNKNOWN"
+                        or notification_value == "UNKNOWN"
+                    ):
+                        logger.warning(
+                            f"FCM data에 필수 필드가 누락되었습니다: type={notification_type}, value={notification_value}"
+                        )
+                        return True
+
                     category = get_notification_category(notification_type)
 
-                    notification_data = NotificationCreate(
+                    await notification_crud.create_notification(
+                        db=db,
                         user_id=user_id,
                         related_user_id=related_user_id,
                         related_pod_id=related_pod_id,
                         title=title,
                         body=body,
                         notification_type=notification_type,
-                        notification_value=(
-                            data.get("value", "UNKNOWN") if data else "UNKNOWN"
-                        ),
-                        related_id=data.get("related_id") if data else None,
+                        notification_value=notification_value,
+                        related_id=data.get("related_id"),
                         category=category,
                     )
-                    await notification_crud.create(db, notification_data)
                     logger.info(
                         f"알림 DB 저장 성공: user_id={user_id}, category={category}"
                     )
@@ -128,8 +140,33 @@ class FCMService:
             return True
 
         except Exception as e:
-            logger.error(f"FCM 알림 전송 실패: {e}")
+            error_message = str(e)
+            logger.error(f"FCM 알림 전송 실패: {error_message}")
+
+            # 토큰 관련 에러인 경우 특별 처리 (InvalidRegistration만 토큰 무효화)
+            if "InvalidRegistration" in error_message:
+                logger.warning(f"FCM 토큰이 유효하지 않습니다: {token[:20]}...")
+                # DB에서 해당 사용자의 FCM 토큰을 null로 업데이트
+                await self._invalidate_token(token, db, user_id)
+            elif "Auth error from APNS" in error_message:
+                logger.warning(f"APNS 인증 에러 발생 (토큰은 유효함): {token[:20]}...")
+                # APNS 에러는 토큰 무효화하지 않음 (인증서/설정 문제일 가능성)
+
             return False
+
+    async def _invalidate_token(
+        self, token: str, db: AsyncSession = None, user_id: int = None
+    ):
+        """유효하지 않은 FCM 토큰을 DB에서 제거"""
+        try:
+            if db and user_id:
+                from app.crud.user import UserCRUD
+
+                user_crud = UserCRUD(db)
+                await user_crud.update_fcm_token(user_id, None)
+                logger.info(f"사용자 {user_id}의 무효한 FCM 토큰을 제거했습니다")
+        except Exception as e:
+            logger.error(f"FCM 토큰 무효화 실패: {e}")
 
     async def send_multicast_notification(
         self,
@@ -175,7 +212,17 @@ class FCMService:
             }
 
         except Exception as e:
-            logger.error(f"FCM 멀티캐스트 알림 전송 실패: {e}")
+            error_message = str(e)
+            logger.error(f"FCM 멀티캐스트 알림 전송 실패: {error_message}")
+
+            # 토큰 관련 에러인 경우 특별 처리
+            if (
+                "Auth error from APNS" in error_message
+                or "InvalidRegistration" in error_message
+            ):
+                logger.warning(f"FCM 멀티캐스트에서 토큰 에러 발생: {error_message}")
+                # 멀티캐스트에서는 개별 토큰 무효화가 어려우므로 로그만 남김
+
             return {
                 "success_count": 0,
                 "failure_count": len(tokens),
@@ -242,6 +289,9 @@ class FCMService:
         body, data = self._format_message(
             PodNotiSubType.POD_JOIN_REQUEST, nickname=nickname, pod_id=pod_id
         )
+        # 알림 받을 사용자 ID 추가
+        data["target_user_id"] = str(user_id) if user_id else ""
+
         return await self.send_notification(
             token=token,
             title="PodPod",
@@ -269,6 +319,9 @@ class FCMService:
             party_name=party_name,
             pod_id=pod_id,
         )
+        # 알림 받을 사용자 ID 추가
+        data["target_user_id"] = str(user_id) if user_id else ""
+
         return await self.send_notification(
             token=token,
             title="PodPod",

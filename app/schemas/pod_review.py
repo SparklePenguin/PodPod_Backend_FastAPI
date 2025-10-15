@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date, time
 from app.schemas.follow import SimpleUserDto
 
 
@@ -17,6 +17,21 @@ class SimplePodDto(BaseModel):
         alias="subCategories",
         description="서브 카테고리 목록",
         example=["GROUP_PURCHASE"],
+    )
+    meeting_place: Optional[str] = Field(
+        None, alias="meetingPlace", description="만남 장소", example="강남역"
+    )
+    meeting_date: Optional[int] = Field(
+        None,
+        alias="meetingDate",
+        description="만남 날짜 (timestamp)",
+        example=1705276800000,
+    )
+    meeting_time: Optional[int] = Field(
+        None,
+        alias="meetingTime",
+        description="만남 시간 (timestamp)",
+        example=1705276800000,
     )
 
     model_config = {

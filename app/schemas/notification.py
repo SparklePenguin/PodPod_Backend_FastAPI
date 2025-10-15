@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
+from app.schemas.pod_review import SimplePodDto
+
 if TYPE_CHECKING:
     from app.schemas.pod.pod_dto import PodDto
 from app.schemas.follow import SimpleUserDto
@@ -267,23 +269,16 @@ class NotificationBase(BaseModel):
     related_id: Optional[str] = Field(default=None, alias="relatedId")
 
 
-class NotificationCreate(NotificationBase):
-    """알림 생성 스키마 (내부 사용)"""
-
-    user_id: int
-    related_user_id: Optional[int] = None
-    related_pod_id: Optional[int] = None
-    category: str = "pod"  # 기본값: pod
-
-
 class NotificationResponse(NotificationBase):
     """알림 응답 스키마"""
 
     id: int = Field(alias="id")
+    notification_type: str = Field(alias="notificationType")
+    notification_value: str = Field(alias="notificationValue")
     related_user: Optional[SimpleUserDto] = Field(
         default=None, alias="relatedUser", description="관련 유저 (Optional)"
     )
-    related_pod: Optional["PodDto"] = Field(
+    related_pod: Optional[SimplePodDto] = Field(
         default=None, alias="relatedPod", description="관련 파티 (Optional)"
     )
     category: str = Field(

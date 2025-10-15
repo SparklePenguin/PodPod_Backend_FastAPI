@@ -64,6 +64,32 @@ class UserService:
 
         user = await self.user_crud.create(user_dict)
 
+        # Sendbird 사용자 생성
+        try:
+            from app.services.sendbird_service import SendbirdService
+            import logging
+
+            logger = logging.getLogger(__name__)
+            sendbird_service = SendbirdService()
+
+            sendbird_success = await sendbird_service.create_user(
+                user_id=str(user.id),
+                nickname=user.nickname or "사용자",
+                profile_url=user.profile_image or "",
+            )
+
+            if sendbird_success:
+                logger.info(f"사용자 {user.id} Sendbird 유저 생성 성공")
+            else:
+                logger.warning(f"사용자 {user.id} Sendbird 유저 생성 실패")
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"사용자 {user.id} Sendbird 유저 생성 중 오류: {e}")
+            # Sendbird 생성 실패는 무시하고 계속 진행
+
         # UserDto 생성 시 상태 정보 포함
         user_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_data, from_attributes=False)

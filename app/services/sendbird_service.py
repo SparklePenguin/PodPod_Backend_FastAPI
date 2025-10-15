@@ -64,7 +64,7 @@ class SendbirdService:
             # 채널 생성 payload
             payload = {
                 "user_ids": user_ids,
-                "is_public": False,  # 비공개 채널
+                "is_public": True,  # 공개 채널 (join_by_user_id가 작동하려면 공개여야 함)
                 "join_by_user_id": True,  # 핵심 옵션!
                 "name": name,
                 "channel_url": channel_url,
@@ -412,5 +412,62 @@ class SendbirdService:
 
             logger = logging.getLogger(__name__)
             logger.error(f"Sendbird join 실패: {e}")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
+            return False
+
+    async def create_user(
+        self, user_id: str, nickname: str = "사용자", profile_url: str = ""
+    ) -> bool:
+        """
+        Sendbird 사용자 생성
+        Args:
+            user_id: 사용자 ID
+            nickname: 닉네임
+            profile_url: 프로필 이미지 URL
+        Returns:
+            성공 여부
+        """
+        try:
+            import httpx
+            import json
+
+            from app.core.config import settings
+
+            url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/users"
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            # 사용자 생성 payload
+            payload = {
+                "user_id": user_id,
+                "nickname": nickname,
+                "profile_url": profile_url,
+            }
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload)
+
+                if response.status_code == 200:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.info(
+                        f"Sendbird 사용자 생성 성공: userId={user_id}, nickname={nickname}"
+                    )
+                    return True
+                else:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.error(
+                        f"Sendbird 사용자 생성 실패: {response.status_code} - {response.text}"
+                    )
+                    return False
+
+        except Exception as e:
+            import logging
+            import traceback
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird 사용자 생성 실패: {e}")
             logger.error(f"상세 오류: {traceback.format_exc()}")
             return False

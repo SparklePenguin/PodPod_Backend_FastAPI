@@ -9,26 +9,35 @@ from typing import Optional, List
 from datetime import datetime, timezone
 
 from app.models.notification import Notification
-from app.schemas.notification import NotificationCreate
 
 
 class NotificationCRUD:
     """알림 CRUD 클래스"""
 
-    async def create(
-        self, db: AsyncSession, notification_in: NotificationCreate
+    async def create_notification(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        title: str,
+        body: str,
+        notification_type: str,
+        notification_value: str,
+        related_user_id: Optional[int] = None,
+        related_pod_id: Optional[int] = None,
+        related_id: Optional[str] = None,
+        category: str = "pod",
     ) -> Notification:
         """알림 생성"""
         notification = Notification(
-            user_id=notification_in.user_id,
-            related_user_id=notification_in.related_user_id,
-            related_pod_id=notification_in.related_pod_id,
-            title=notification_in.title,
-            body=notification_in.body,
-            notification_type=notification_in.notification_type,
-            notification_value=notification_in.notification_value,
-            related_id=notification_in.related_id,
-            category=notification_in.category,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=related_pod_id,
+            title=title,
+            body=body,
+            notification_type=notification_type,
+            notification_value=notification_value,
+            related_id=related_id,
+            category=category,
         )
         db.add(notification)
         await db.commit()

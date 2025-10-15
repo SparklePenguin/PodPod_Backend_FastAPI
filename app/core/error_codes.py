@@ -51,7 +51,14 @@ ERROR_CODES: Dict[str, Dict[str, Any]] = {
         "message_en": "Bad request.",
         "http_status": 400,
         "dev_note": "클라이언트 요청이 올바르지 않습니다.",
-    }
+    },
+    "ALREADY_APPLIED": {
+        "code": 4011,
+        "http_status": 400,
+        "message_ko": "이미 신청한 파티입니다",
+        "message_en": "Already applied to this pod",
+        "dev_note": "중복 신청 방지 로직 확인",
+    },
 }
 
 # 캐시 파일 경로

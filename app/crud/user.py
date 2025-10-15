@@ -108,6 +108,18 @@ class UserCRUD:
         )
         await self.db.commit()
 
+    # FCM 토큰 업데이트
+    async def update_fcm_token(self, user_id: int, fcm_token: Optional[str]) -> None:
+        """사용자의 FCM 토큰 업데이트"""
+        from datetime import datetime, timezone
+
+        await self.db.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(fcm_token=fcm_token, updated_at=datetime.now(timezone.utc))
+        )
+        await self.db.commit()
+
     # 사용자 삭제
     async def delete(self, user_id: int) -> None:
         """

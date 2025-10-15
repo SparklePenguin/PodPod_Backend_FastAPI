@@ -6,6 +6,7 @@ from app.models.pod.pod_rating import PodRating
 from app.models.pod.pod_view import PodView
 from app.models.pod.pod_status import PodStatus
 from app.models.user import User
+from app.schemas.pod_review import SimplePodDto
 from datetime import date, time, datetime, timedelta, timezone
 import json
 
@@ -722,20 +723,40 @@ class PodCRUD:
                 }
 
             # 채널 생성 (join_by_user_id: true 옵션 포함)
+            # SimplePodDto 객체 생성 (timestamp 변환)
+            def _convert_to_timestamp(value):
+                """date 또는 time 객체를 timestamp로 변환"""
+                if value is None:
+                    return None
+                if isinstance(value, date):
+                    # date를 datetime으로 변환 (시간은 00:00:00)
+                    dt = datetime.combine(value, time.min)
+                    return int(dt.timestamp() * 1000)  # milliseconds
+                elif isinstance(value, time):
+                    # time을 오늘 날짜와 결합해서 timestamp 생성
+                    today = date.today()
+                    dt = datetime.combine(today, value)
+                    return int(dt.timestamp() * 1000)  # milliseconds
+                elif isinstance(value, datetime):
+                    return int(value.timestamp() * 1000)  # milliseconds
+                return None
+
+            simple_pod_dto = SimplePodDto(
+                id=pod.id,
+                title=title,
+                image_url=image_url,
+                sub_categories=sub_categories,
+                meeting_place=place,
+                meeting_date=_convert_to_timestamp(meeting_date),
+                meeting_time=_convert_to_timestamp(meeting_time),
+            )
+
             channel_data = await sendbird_service.create_group_channel_with_join(
                 channel_url=channel_url,
                 name=f"{title} 채팅방",
                 user_ids=[str(owner_id)],  # 파티 생성자만 초기 멤버
                 cover_url=image_url,  # 파티 이미지를 채널 커버로 사용
-                data={
-                    "id": pod.id,  # 파티 ID (int)
-                    "podId": pod.id,  # 파티 ID
-                    "podTitle": title,  # 파티 제목
-                    "place": place,  # 장소
-                    "meetingDate": meeting_date.isoformat(),  # 만남 날짜 (YYYY-MM-DD)
-                    "subCategories": sub_categories,  # 서브 카테고리 리스트
-                    "type": "pod_chat",
-                },
+                data=simple_pod_dto.model_dump(),
                 user_profiles=user_profiles,  # 파티장 프로필 정보
             )
 
