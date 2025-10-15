@@ -383,20 +383,39 @@ scheduler = SchedulerService()
 
 
 async def run_daily_scheduler():
-    """매일 실행되는 스케줄러"""
+    """매일 아침 10시에 실행되는 스케줄러"""
     while True:
         try:
-            logger.info("일일 스케줄러 실행 시작")
+            # 다음 아침 10시까지 대기
+            await wait_until_10am()
+
+            logger.info("일일 스케줄러 실행 시작 (아침 10시)")
             await scheduler.check_review_reminders()
             logger.info("일일 스케줄러 실행 완료")
-
-            # 24시간 대기
-            await asyncio.sleep(24 * 60 * 60)
 
         except Exception as e:
             logger.error(f"일일 스케줄러 실행 중 오류: {e}")
             # 오류 발생 시 1시간 후 재시도
             await asyncio.sleep(60 * 60)
+
+
+async def wait_until_10am():
+    """다음 아침 10시까지 대기"""
+    now = datetime.now()
+
+    # 오늘 아침 10시
+    today_10am = now.replace(hour=10, minute=0, second=0, microsecond=0)
+
+    # 이미 오늘 10시가 지났다면 내일 10시까지 대기
+    if now >= today_10am:
+        tomorrow_10am = today_10am + timedelta(days=1)
+        wait_seconds = (tomorrow_10am - now).total_seconds()
+    else:
+        # 아직 오늘 10시가 안 지났다면 오늘 10시까지 대기
+        wait_seconds = (today_10am - now).total_seconds()
+
+    logger.info(f"다음 스케줄러 실행까지 {wait_seconds/3600:.1f}시간 대기")
+    await asyncio.sleep(wait_seconds)
 
 
 # 스케줄러 시작 함수
