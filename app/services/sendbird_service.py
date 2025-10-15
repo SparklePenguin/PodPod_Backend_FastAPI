@@ -147,6 +147,7 @@ class SendbirdService:
                     is_public=False,  # 비공개 채널
                     is_super=False,  # 일반 채널
                     is_ephemeral=False,  # 영구 채널
+                    is_discoverable=True,  # 채널을 발견 가능하게 설정
                 )
 
                 if cover_url:

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional
 from datetime import datetime, date, time
 from app.schemas.follow import SimpleUserDto
@@ -21,23 +21,33 @@ class SimplePodDto(BaseModel):
     meeting_place: Optional[str] = Field(
         None, alias="meetingPlace", description="만남 장소", example="강남역"
     )
-    meeting_date: Optional[int] = Field(
+    meeting_date: Optional[date] = Field(
         None,
         alias="meetingDate",
-        description="만남 날짜 (timestamp)",
-        example=1705276800000,
+        description="만남 날짜",
+        example="2025-10-24",
     )
-    meeting_time: Optional[int] = Field(
+    meeting_time: Optional[time] = Field(
         None,
         alias="meetingTime",
-        description="만남 시간 (timestamp)",
-        example=1705276800000,
+        description="만남 시간",
+        example="22:40:00",
     )
 
     model_config = {
         "from_attributes": True,
         "populate_by_name": True,
     }
+
+    @field_serializer("meeting_date")
+    def serialize_meeting_date(self, dt: Optional[date], _info) -> Optional[str]:
+        """date를 문자열로 변환"""
+        return dt.isoformat() if dt else None
+
+    @field_serializer("meeting_time")
+    def serialize_meeting_time(self, tm: Optional[time], _info) -> Optional[str]:
+        """time을 문자열로 변환"""
+        return tm.isoformat() if tm else None
 
 
 class PodReviewCreateRequest(BaseModel):

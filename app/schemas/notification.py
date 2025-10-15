@@ -285,10 +285,10 @@ class NotificationResponse(NotificationBase):
         alias="category", description="알림 카테고리 (pod, community, notice)"
     )
     is_read: bool = Field(alias="isRead")
-    read_at: Optional[int] = Field(
-        default=None, alias="readAt", description="읽은 시간 (timestamp, Optional)"
+    read_at: Optional[datetime] = Field(
+        default=None, alias="readAt", description="읽은 시간 (Optional)"
     )
-    created_at: int = Field(alias="createdAt", description="생성 시간 (timestamp)")
+    created_at: datetime = Field(alias="createdAt", description="생성 시간")
 
     @field_serializer("read_at", "created_at")
     def serialize_datetime(self, dt: Optional[datetime], _info) -> Optional[int]:
