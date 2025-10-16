@@ -132,9 +132,10 @@ class PodCRUD:
             # 채팅방 생성 (파티장만 참여)
             channel_data = await sendbird_service.create_group_channel_with_join(
                 user_ids=[owner_id],
-                name=f"파티: {title}",
+                name=title,
                 channel_url=channel_url,
-                data=simple_pod_dto.model_dump(mode="json"),
+                cover_url=image_url,  # 채팅방 커버 이미지로 파티 이미지 사용
+                data=simple_pod_dto.model_dump(mode="json", by_alias=True),
             )
 
             if channel_data and "channel_url" in channel_data:

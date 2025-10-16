@@ -237,7 +237,7 @@ class AppleOauthService:
         self,
         apple_login_request: AppleLoginRequest,
         audience: str = "com.sparkle-penguin.podpod",
-    ) -> dict:
+    ):
         """Apple 로그인 처리"""
         try:
             # Apple 토큰 검증
@@ -315,7 +315,7 @@ class AppleOauthService:
 
         # Android Deep Link로 리다이렉트
         return RedirectResponse(
-            url=f"intent://callback?{sign_in_response.model_dump()}"
+            url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
             "#Intent;package=sparkle_penguin.podpod;"
             f"scheme={settings.APPLE_SCHEME};end"
         )

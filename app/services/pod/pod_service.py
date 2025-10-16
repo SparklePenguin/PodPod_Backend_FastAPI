@@ -525,6 +525,20 @@ class PodService:
 
     async def _enrich_pod_dto(self, pod: Pod, user_id: Optional[int] = None) -> PodDto:
         """Pod를 PodDto로 변환하고 추가 정보를 설정"""
+
+        # meeting_date와 meeting_time을 timestamp로 변환
+        def _convert_to_timestamp(meeting_date, meeting_time):
+            """date와 time 객체를 timestamp로 변환"""
+            if meeting_date is None:
+                return None
+            from datetime import datetime, time as time_module
+
+            if meeting_time is None:
+                dt = datetime.combine(meeting_date, time_module.min)
+            else:
+                dt = datetime.combine(meeting_date, meeting_time)
+            return int(dt.timestamp() * 1000)  # milliseconds
+
         # PodDto를 수동으로 생성하여 applications 필드 접근 방지
         pod_dto = PodDto(
             id=pod.id,
@@ -538,8 +552,7 @@ class PodService:
             place=pod.place,
             address=pod.address,
             sub_address=pod.sub_address,
-            meeting_date=pod.meeting_date,
-            meeting_time=pod.meeting_time,
+            meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),
             selected_artist_id=pod.selected_artist_id,
             status=pod.status,
             chat_channel_url=pod.chat_channel_url,

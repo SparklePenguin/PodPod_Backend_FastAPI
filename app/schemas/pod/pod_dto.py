@@ -84,7 +84,7 @@ class PodDto(BaseModel):
         example=["string"],
     )
     capacity: int = Field(alias="capacity", example=4)
-    place: str = Field(alias="place", example="string")
+    place: str = Field(alias="meetingPlace", example="string")
     address: str = Field(
         alias="address",
         example="string",
@@ -94,13 +94,10 @@ class PodDto(BaseModel):
         alias="subAddress",
         example="string?",
     )
-    meeting_date: datetime.date = Field(
+    meeting_date: Optional[int] = Field(
         alias="meetingDate",
-        example="2025-01-01",
-    )
-    meeting_time: datetime.time = Field(
-        alias="meetingTime",
-        example="24:00",
+        example=1705276800000,
+        description="만남 날짜/시간 (timestamp in milliseconds)",
     )
     selected_artist_id: Optional[int] = Field(
         default=None,

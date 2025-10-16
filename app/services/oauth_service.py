@@ -25,7 +25,7 @@ class OauthService:
         oauth_user_id: str,
         oauth_user_info: Dict[str, Any],
         fcm_token: str = None,
-    ) -> dict:
+    ):
         """OAuth 로그인 처리 (범용)"""
         try:
             # 기존 사용자 확인 (auth_provider_id로)

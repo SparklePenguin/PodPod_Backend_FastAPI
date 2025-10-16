@@ -309,7 +309,7 @@ class ArtistCRUD:
             unit_updated=unit_updated_count,
             left_mvp_names=list(mvp_names),
         )
-        return result.model_dump()
+        return result.model_dump(by_alias=True)
 
     async def get_artist_image_by_file_id(self, file_id: str) -> Optional[ArtistImage]:
         """file_id로 아티스트 이미지를 조회합니다.
