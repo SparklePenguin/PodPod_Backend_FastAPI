@@ -636,6 +636,7 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """팔로우한 유저의 파티 생성 알림 전송"""
         body, data = self._format_message(
@@ -645,5 +646,12 @@ class FCMService:
             pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )

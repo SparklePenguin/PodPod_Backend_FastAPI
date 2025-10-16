@@ -377,7 +377,9 @@ class PodService:
     ) -> PageDto[PodDto]:
         """특정 유저가 개설한 파티 목록 조회"""
         try:
-            pods, total_count = await self.crud.get_user_pods(user_id, page, size)
+            result = await self.crud.get_user_pods(user_id, page, size)
+            pods = result["items"]
+            total_count = result["total_count"]
 
             pod_dtos = []
             for pod in pods:
