@@ -63,9 +63,9 @@ async def follow_user(
         )
 
 
-@router.delete("/{followingId}", response_model=BaseResponse[bool])
+@router.delete("/{following_id}", response_model=BaseResponse[bool])
 async def unfollow_user(
-    followingId: int = Path(..., description="팔로우 취소할 사용자 ID"),
+    following_id: int = Path(..., description="팔로우 취소할 사용자 ID"),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -73,7 +73,7 @@ async def unfollow_user(
     try:
         follow_service = FollowService(db)
         success = await follow_service.unfollow_user(
-            follower_id=current_user_id, following_id=followingId
+            follower_id=current_user_id, following_id=following_id
         )
 
         if not success:
@@ -175,9 +175,9 @@ async def get_followers_list(
         )
 
 
-@router.get("/stats/{userId}", response_model=BaseResponse[FollowStatsResponse])
+@router.get("/stats/{user_id}", response_model=BaseResponse[FollowStatsResponse])
 async def get_follow_stats(
-    userId: int = Path(..., description="사용자 ID"),
+    user_id: int = Path(..., description="사용자 ID"),
     current_user_id: Optional[int] = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -185,7 +185,7 @@ async def get_follow_stats(
     try:
         follow_service = FollowService(db)
         stats = await follow_service.get_follow_stats(
-            user_id=userId, current_user_id=current_user_id
+            user_id=user_id, current_user_id=current_user_id
         )
 
         return BaseResponse.ok(
@@ -280,11 +280,11 @@ async def get_recommended_users(
 
 
 @router.get(
-    "/notification/{followingId}",
+    "/notification/{following_id}",
     response_model=BaseResponse[FollowNotificationStatusResponse],
 )
 async def get_notification_status(
-    followingId: int = Path(..., description="팔로우한 사용자 ID"),
+    following_id: int = Path(..., description="팔로우한 사용자 ID"),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -292,7 +292,7 @@ async def get_notification_status(
     try:
         follow_service = FollowService(db)
         notification_status = await follow_service.get_notification_status(
-            follower_id=current_user_id, following_id=followingId
+            follower_id=current_user_id, following_id=following_id
         )
 
         if not notification_status:

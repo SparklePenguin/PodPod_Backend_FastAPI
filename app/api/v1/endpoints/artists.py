@@ -140,7 +140,7 @@ async def sync_mvp_artists(
 
 
 @router.get(
-    "/{artistId}/images",
+    "/images/{artist_id}",
     response_model=BaseResponse[list[ArtistImageDto]],
     tags=["internal"],
     summary="아티스트 이미지 목록 조회",
@@ -181,7 +181,7 @@ async def get_artist_images(
 
 
 @router.post(
-    "/{artistId}/images",
+    "/images/{artist_id}",
     response_model=BaseResponse[Dict[str, Any]],
     tags=["internal"],
     summary="아티스트 이미지 생성",
@@ -190,11 +190,13 @@ async def get_artist_images(
 async def create_artist_image(
     artist_id: int = Path(..., description="아티스트 ID"),
     # Form 파라미터 (alias 작동 안함):
-    image: Optional[UploadFile] = File(None, description="이미지 파일"),
+    image: Optional[UploadFile] = File(None, description="이미지 파일", alias="image"),
     path: Optional[str] = Form(None, description="이미지 경로"),
-    fileId: Optional[str] = Form(None, description="파일 ID"),
-    isAnimatable: bool = Form(False, description="애니메이션 가능 여부"),
-    size: Optional[str] = Form(None, description="이미지 크기"),
+    file_id: Optional[str] = Form(None, description="파일 ID", alias="fileId"),
+    is_animatable: bool = Form(
+        False, description="애니메이션 가능 여부", alias="isAnimatable"
+    ),
+    size: Optional[str] = Form(None, description="이미지 크기", alias="size"),
     db: AsyncSession = Depends(get_db),
 ):
     """아티스트에 새로운 이미지를 생성합니다. 이미지 파일 또는 폼 데이터로 생성 가능합니다."""
@@ -223,16 +225,16 @@ async def create_artist_image(
         # 폼 데이터가 제공된 경우 (빈 문자열은 제외)
         # file_id는 Form에서 제공된 경우에만 덮어쓰기 (기존 이미지 찾기용)
         print(
-            f"DEBUG: Form 데이터 - path: '{path}', fileId: '{fileId}', isAnimatable: {isAnimatable}, size: '{size}'"
+            f"DEBUG: Form 데이터 - path: '{path}', fileId: '{file_id}', isAnimatable: {is_animatable}, size: '{size}'"
         )
         form_data = {}
         if path is not None and path.strip():
             form_data["path"] = path
-        if fileId is not None:
-            form_data["file_id"] = fileId
-            print(f"DEBUG: Form fileId 추가됨: {fileId}")
-        if isAnimatable is not None:
-            form_data["is_animatable"] = isAnimatable
+        if file_id is not None:
+            form_data["file_id"] = file_id
+            print(f"DEBUG: Form fileId 추가됨: {file_id}")
+        if is_animatable is not None:
+            form_data["is_animatable"] = is_animatable
         if size is not None and size.strip():
             form_data["size"] = size
 

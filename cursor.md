@@ -8,6 +8,7 @@
 
 ## 3. 스키마 규칙
 - 필드명: camelCase (Field(alias="camelCase")) | 타입/값: UPPER_SNAKE_CASE (POD_JOIN_REQUEST) | model_config = {"populate_by_name": True} | typing import 확인
+- Path 파라미터: 경로 변수명과 함수 파라미터명이 일치해야 함 (snake_case 사용) | alias 사용 금지 | 예: `/{user_id}` → `user_id: int = Path(...)`
 
 ## 4. 응답 형식 (필수)
 - BaseResponse: 모든 API는 `BaseResponse.ok(data, message_ko, http_status)` 사용 | PageDto: 리스트 조회 시 사용 (items, currentPage, pageSize, totalCount, totalPages, hasNext, hasPrev)
