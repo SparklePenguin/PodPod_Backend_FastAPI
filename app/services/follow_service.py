@@ -338,6 +338,17 @@ class FollowService:
                 logger.warning(f"파티 정보를 찾을 수 없음: pod_id={pod_id}")
                 return
 
+            # 파티 생성자 정보 조회
+            pod_owner_result = await self.db.execute(
+                select(User).where(User.id == pod_owner_id)
+            )
+            pod_owner = pod_owner_result.scalar_one_or_none()
+            if not pod_owner:
+                logger.warning(
+                    f"파티 생성자 정보를 찾을 수 없음: pod_owner_id={pod_owner_id}"
+                )
+                return
+
             # 파티 생성자의 팔로워 목록 조회
             followers_data, _ = await self.crud.get_followers_list(
                 pod_owner_id, page=1, size=1000
@@ -356,7 +367,7 @@ class FollowService:
                     if follower_user.fcm_token:
                         await fcm_service.send_followed_user_created_pod(
                             token=follower_user.fcm_token,
-                            nickname=pod.title,  # 파티 제목을 nickname으로 사용
+                            nickname=pod_owner.nickname,  # 파티장의 닉네임
                             party_name=pod.title,
                             pod_id=pod_id,
                             db=self.db,
