@@ -44,28 +44,23 @@ class ArtistCRUD:
         self, page: int = 1, page_size: int = 20, is_active: bool = True
     ) -> tuple[List[Artist], int]:
         """아티스트 목록 조회 (페이지네이션 및 is_active 필터링 지원)
+        ArtistUnit을 기준으로 각 unit의 artist_id에 해당하는 대표 아티스트만 반환
 
         Returns:
             tuple[List[Artist], int]: (아티스트 목록, 전체 개수)
         """
-        # 기본 쿼리
-        query = select(Artist).options(
-            selectinload(Artist.images),
-            selectinload(Artist.names),
+        # ArtistUnit을 기준으로 조회 (is_active 필터 적용)
+        artist_units, total_count = await self.get_artist_units_with_names(
+            page=page, page_size=page_size, is_active=is_active
         )
 
-        # 전체 개수 조회 (is_active는 Artist에 없으므로 필터 없이 계산)
-        count_query = select(func.count()).select_from(Artist)
-
-        total_count_result = await self.db.execute(count_query)
-        total_count = total_count_result.scalar()
-
-        # 페이지네이션 적용
-        offset = (page - 1) * page_size
-        query = query.offset(offset).limit(page_size)
-
-        result = await self.db.execute(query)
-        artists = result.scalars().all()
+        # 각 unit의 artist_id로 Artist 조회
+        artists = []
+        for unit in artist_units:
+            if unit.artist_id:
+                artist = await self.get_by_id(unit.artist_id)
+                if artist:
+                    artists.append(artist)
 
         return artists, total_count
 
