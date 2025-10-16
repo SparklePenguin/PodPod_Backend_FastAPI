@@ -421,5 +421,5 @@ async def wait_until_10am():
 # 스케줄러 시작 함수
 async def start_scheduler():
     """스케줄러 시작"""
-    logger.info("리뷰 리마인드 스케줄러 시작")
+    logger.info("일일 알림 스케줄러 시작 (매일 아침 10시 실행)")
     await run_daily_scheduler()
