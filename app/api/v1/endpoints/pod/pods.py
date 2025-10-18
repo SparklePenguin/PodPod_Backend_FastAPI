@@ -273,12 +273,12 @@ async def get_history_based_pods(
     summary="인기 최고 카테고리 파티 조회",
     description="최근 일주일 기준 인기 카테고리 기반으로 파티를 추천합니다.",
 )
-async def get_popular_category_pods(
+async def get_popular_categories_pods(
     selected_artist_id: int = Query(..., alias="selectedArtistId"),
     location: Optional[str] = None,
     page: int = 1,
     size: int = 20,
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Query(1, description="사용자 ID (테스트용)"),
     pod_service: PodService = Depends(get_pod_service),
 ):
     """

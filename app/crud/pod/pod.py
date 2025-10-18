@@ -622,7 +622,8 @@ class PodCRUD:
                 else_=2,
             )
         else:
-            category_priority = 1
+            # 인기 카테고리가 없으면 조회수로만 정렬
+            category_priority = None
 
         # 지역 조건
         location_conditions = []
@@ -631,14 +632,17 @@ class PodCRUD:
 
         # 메인 쿼리
         offset = (page - 1) * size
+        # 정렬 조건 설정
+        order_conditions = []
+        if category_priority is not None:
+            order_conditions.append(category_priority)  # 인기 카테고리 우선
+        order_conditions.append(desc(view_count_subquery))  # 조회수 높은 순
+        order_conditions.append(desc(Pod.created_at))  # 최신순
+
         popular_query = (
             select(Pod, view_count_subquery.label("view_count"))
             .where(category_conditions)
-            .order_by(
-                category_priority,  # 인기 카테고리 우선
-                desc(view_count_subquery),  # 조회수 높은 순
-                desc(Pod.created_at),  # 최신순
-            )
+            .order_by(*order_conditions)
             .offset(offset)
             .limit(size)
         )
