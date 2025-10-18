@@ -104,6 +104,12 @@ class PodStatusNotiSubType(Enum):
         ["party_name"],
         None,
     )
+    # 3. 파티 완료 (대상: 참여자들)
+    POD_COMPLETED = (
+        "🎉 [party_name] 모임이 완료되었습니다! 즐거운 시간 보내셨나요?",
+        ["party_name"],
+        None,
+    )
 
 
 class RecommendNotiSubType(Enum):

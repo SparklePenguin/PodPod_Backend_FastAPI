@@ -600,6 +600,26 @@ class FCMService:
             token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
         )
 
+    async def send_pod_completed(
+        self,
+        token: str,
+        party_name: str,
+        pod_id: int,
+        db: Optional[AsyncSession] = None,
+        user_id: Optional[int] = None,
+        related_pod_id: Optional[int] = None,
+    ) -> bool:
+        """파티 완료 알림 전송"""
+        body, data = self._format_message(
+            PodStatusNotiSubType.POD_COMPLETED,
+            party_name=party_name,
+            pod_id=pod_id,
+        )
+
+        return await self.send_notification(
+            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+        )
+
     # ========== 팔로우 알림 ==========
 
     async def send_followed_by_user(

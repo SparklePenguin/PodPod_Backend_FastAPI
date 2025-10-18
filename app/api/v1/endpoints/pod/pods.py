@@ -598,3 +598,84 @@ async def delete_pod(
 ):
     await pod_service.delete_pod(pod_id)
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
+
+
+# - MARK: 파티 상태 업데이트 (JSON 요청 본문 방식 - 더 RESTful)
+@router.patch(
+    "/{pod_id}/status",
+    response_model=BaseResponse[PodDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[PodDto],
+            "description": "파티 상태 업데이트 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "파티를 찾을 수 없음",
+        },
+        HttpStatus.FORBIDDEN: {
+            "model": BaseResponse[None],
+            "description": "권한 없음 (파티장이 아님)",
+        },
+        HttpStatus.BAD_REQUEST: {
+            "model": BaseResponse[None],
+            "description": "잘못된 요청 데이터",
+        },
+    },
+    summary="파티 상태 업데이트",
+    description="파티장이 파티의 상태를 변경합니다. (RECRUITING, COMPLETED, CLOSED 등)",
+    tags=["pods"],
+)
+async def update_pod_status(
+    pod_id: int,
+    request: dict = Body(
+        ..., description="상태 업데이트 요청", example={"status": "COMPLETED"}
+    ),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """파티 상태 업데이트 (JSON 요청 본문 방식)"""
+    from app.models.pod.pod_status import PodStatus
+
+    # 요청 데이터 검증
+    if "status" not in request:
+        return BaseResponse.error(
+            error_key="MISSING_STATUS",
+            error_code=4000,
+            http_status=HttpStatus.BAD_REQUEST,
+            message_ko="status 필드가 필요합니다.",
+            message_en="status field is required",
+        )
+
+    status_value = request["status"]
+
+    # 상태 값 검증
+    try:
+        pod_status = PodStatus(status_value.upper())
+    except ValueError:
+        return BaseResponse.error(
+            error_key="INVALID_STATUS",
+            error_code=4000,
+            http_status=HttpStatus.BAD_REQUEST,
+            message_ko=f"잘못된 상태 값입니다. 가능한 값: {', '.join([s.value for s in PodStatus])}",
+            message_en=f"Invalid status value. Available values: {', '.join([s.value for s in PodStatus])}",
+        )
+
+    success = await pod_service.update_pod_status_by_owner(
+        pod_id, pod_status, current_user_id
+    )
+    if success:
+        # 업데이트된 파티 정보 반환
+        updated_pod = await pod_service.get_pod_by_id(pod_id, current_user_id)
+        return BaseResponse.ok(
+            data=updated_pod,
+            message_ko=f"파티 상태가 {pod_status.value}로 성공적으로 변경되었습니다.",
+        )
+    else:
+        return BaseResponse.error(
+            error_key="POD_UPDATE_FAILED",
+            error_code=5000,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko="파티 상태 업데이트에 실패했습니다.",
+            message_en="Failed to update pod status",
+        )
