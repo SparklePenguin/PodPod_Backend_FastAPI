@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from datetime import datetime
 from typing import Optional
 
@@ -24,6 +24,15 @@ class ArtistSuggestionCreateRequest(BaseModel):
     email: Optional[EmailStr] = Field(
         None, description="이메일 주소", example="user@example.com", alias="email"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_email(cls, values):
+        """빈 문자열을 None으로 변환"""
+        if isinstance(values, dict) and "email" in values:
+            if values["email"] == "":
+                values["email"] = None
+        return values
 
     class Config:
         from_attributes = True
