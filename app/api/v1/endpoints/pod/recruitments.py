@@ -97,27 +97,45 @@ async def review_application(
     return BaseResponse.ok(data=application_dto)
 
 
-# - MARK: 파티 참여 신청 취소
+# - MARK: 파티 참여 신청서 삭제
 @router.delete(
     "/{application_id}",
     response_model=BaseResponse[dict],
     responses={
         HttpStatus.OK: {
             "model": BaseResponse[dict],
-            "description": "파티 참여 신청 취소 성공",
+            "description": "파티 참여 신청서 삭제 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "신청서를 찾을 수 없음",
+        },
+        HttpStatus.FORBIDDEN: {
+            "model": BaseResponse[None],
+            "description": "권한 없음 (본인의 신청서가 아님)",
+        },
+        HttpStatus.BAD_REQUEST: {
+            "model": BaseResponse[None],
+            "description": "이미 처리된 신청서 (삭제 불가)",
         },
     },
-    summary="파티 참여 신청 취소",
-    description="특정 신청서를 취소합니다.",
+    summary="파티 참여 신청서 삭제",
+    description="본인이 작성한 파티 참여 신청서를 삭제합니다. pending 상태의 신청서만 삭제 가능합니다.",
     tags=["recruitments"],
 )
-async def cancel_apply_to_pod(
+async def delete_application(
     application_id: int,
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
-    await recruitment_service.cancel_application_by_id(application_id, user_id)
-    return BaseResponse.ok(data={"cancelled": True})
+    """파티 참여 신청서 삭제"""
+    success = await recruitment_service.cancel_application_by_id(
+        application_id, user_id
+    )
+    return BaseResponse.ok(
+        data={"deleted": success},
+        message_ko="파티 참여 신청서가 성공적으로 삭제되었습니다.",
+    )
 
 
 # - MARK: 파티 탈퇴

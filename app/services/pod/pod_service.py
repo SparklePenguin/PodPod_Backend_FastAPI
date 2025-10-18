@@ -573,7 +573,7 @@ class PodService:
         pod_dto.like_count = await self.crud.get_like_count(pod.id)
         pod_dto.view_count = await self.crud.get_view_count(pod.id)
 
-        # 참여 중인 유저 목록 조회
+        # 참여 중인 유저 목록 조회 (파티장 + 멤버들)
         from app.crud.pod.recruitment import RecruitmentCRUD
         from app.schemas.follow import SimpleUserDto
 
@@ -582,11 +582,43 @@ class PodService:
 
         # PodMember를 SimpleUserDto로 변환
         joined_users = []
+
+        # 1. 파티장 추가
+        from sqlalchemy import select
+        from app.models.tendency import UserTendencyResult
+        from app.models.user import User
+
+        # 파티장 정보 조회
+        owner_result = await self.db.execute(
+            select(User).where(User.id == pod.owner_id)
+        )
+        owner = owner_result.scalar_one_or_none()
+
+        if owner:
+            # 파티장 성향 타입 조회
+            owner_tendency_result = await self.db.execute(
+                select(UserTendencyResult).where(
+                    UserTendencyResult.user_id == pod.owner_id
+                )
+            )
+            owner_tendency = owner_tendency_result.scalar_one_or_none()
+            owner_tendency_type = (
+                owner_tendency.tendency_type if owner_tendency else None
+            )
+
+            owner_dto = SimpleUserDto(
+                id=owner.id,
+                nickname=owner.nickname,
+                profile_image=owner.profile_image,
+                intro=owner.intro,
+                tendency_type=owner_tendency_type,
+                is_following=False,
+            )
+            joined_users.append(owner_dto)
+
+        # 2. 멤버들 추가
         for member in pod_members:
             # 성향 타입 조회
-            from sqlalchemy import select
-            from app.models.tendency import UserTendencyResult
-
             result = await self.db.execute(
                 select(UserTendencyResult).where(
                     UserTendencyResult.user_id == member.user_id
@@ -596,8 +628,6 @@ class PodService:
             tendency_type = user_tendency.tendency_type if user_tendency else None
 
             # User 정보 조회
-            from app.models.user import User
-
             user = await self.db.get(User, member.user_id)
 
             if user:
