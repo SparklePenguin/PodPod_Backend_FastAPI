@@ -50,12 +50,16 @@ class PodApplicationCRUD:
 
     # - MARK: 파티의 신청서 목록 조회
     async def get_applications_by_pod_id(
-        self, pod_id: int, status: str = None
+        self, pod_id: int, status: str = None, include_hidden: bool = False
     ) -> list[PodApplication]:
         query = select(PodApplication).where(PodApplication.pod_id == pod_id)
 
         if status:
             query = query.where(PodApplication.status == status)
+
+        # 숨김 처리된 신청서 제외 (기본값)
+        if not include_hidden:
+            query = query.where(PodApplication.is_hidden == False)
 
         query = query.order_by(PodApplication.applied_at.desc())
 
@@ -106,4 +110,16 @@ class PodApplicationCRUD:
 
         await self.db.delete(application)
         await self.db.commit()
+        return True
+
+    # - MARK: 신청서 숨김 처리
+    async def hide_application(self, application_id: int) -> bool:
+        """파티장이 신청서를 숨김 처리"""
+        application = await self.get_application_by_id(application_id)
+        if not application:
+            return False
+
+        application.is_hidden = True
+        await self.db.commit()
+        await self.db.refresh(application)
         return True

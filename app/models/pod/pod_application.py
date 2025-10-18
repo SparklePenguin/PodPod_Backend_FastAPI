@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     DateTime,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -49,6 +50,12 @@ class PodApplication(Base):
         ForeignKey("users.id"),
         nullable=True,
         comment="검토한 사용자 ID (파티 개설자)",
+    )
+    is_hidden = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="파티장이 숨김 처리했는지 여부",
     )
 
     # 관계 설정

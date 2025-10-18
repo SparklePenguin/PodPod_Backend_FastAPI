@@ -97,14 +97,14 @@ async def review_application(
     return BaseResponse.ok(data=application_dto)
 
 
-# - MARK: 파티 참여 신청서 삭제
+# - MARK: 파티 참여 신청서 숨김 처리 (파티장만 가능)
 @router.delete(
     "/{application_id}",
     response_model=BaseResponse[dict],
     responses={
         HttpStatus.OK: {
             "model": BaseResponse[dict],
-            "description": "파티 참여 신청서 삭제 성공",
+            "description": "파티 참여 신청서 숨김 처리 성공",
         },
         HttpStatus.NOT_FOUND: {
             "model": BaseResponse[None],
@@ -112,29 +112,25 @@ async def review_application(
         },
         HttpStatus.FORBIDDEN: {
             "model": BaseResponse[None],
-            "description": "권한 없음 (본인의 신청서가 아님)",
-        },
-        HttpStatus.BAD_REQUEST: {
-            "model": BaseResponse[None],
-            "description": "이미 처리된 신청서 (삭제 불가)",
+            "description": "권한 없음 (파티장이 아님)",
         },
     },
-    summary="파티 참여 신청서 삭제",
-    description="본인이 작성한 파티 참여 신청서를 삭제합니다. pending 상태의 신청서만 삭제 가능합니다.",
+    summary="파티 참여 신청서 숨김 처리",
+    description="파티장이 신청서를 숨김 처리합니다. 신청서는 삭제되지 않고 숨김 처리되어 목록에서 보이지 않게 됩니다.",
     tags=["recruitments"],
 )
-async def delete_application(
+async def hide_application(
     application_id: int,
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
-    """파티 참여 신청서 삭제"""
-    success = await recruitment_service.cancel_application_by_id(
+    """파티장이 신청서를 숨김 처리"""
+    success = await recruitment_service.hide_application_by_owner(
         application_id, user_id
     )
     return BaseResponse.ok(
-        data={"deleted": success},
-        message_ko="파티 참여 신청서가 성공적으로 삭제되었습니다.",
+        data={"hidden": success},
+        message_ko="신청서가 성공적으로 숨김 처리되었습니다.",
     )
 
 
@@ -180,7 +176,9 @@ async def get_apply_to_pod_list(
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
     applications = (
-        await recruitment_service.application_crud.get_applications_by_pod_id(pod_id)
+        await recruitment_service.application_crud.get_applications_by_pod_id(
+            pod_id, include_hidden=False
+        )
     )
 
     # PodApplication 모델을 PodApplicationDto로 변환

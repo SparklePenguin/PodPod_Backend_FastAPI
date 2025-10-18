@@ -319,22 +319,68 @@ class RecruitmentService:
 
     # - MARK: 신청서 취소 (application_id 사용)
     async def cancel_application_by_id(self, application_id: int, user_id: int) -> bool:
+        logger.info(
+            f"신청서 삭제 시도: application_id={application_id}, user_id={user_id}"
+        )
+
         # 신청서 조회
         application = await self.application_crud.get_application_by_id(application_id)
 
         if not application:
+            logger.error(f"신청서를 찾을 수 없음: application_id={application_id}")
             raise_error("POD_NOT_FOUND")  # 신청서를 찾을 수 없음
+
+        logger.info(
+            f"신청서 정보: id={application.id}, pod_id={application.pod_id}, user_id={application.user_id}, status={application.status}"
+        )
 
         # 본인의 신청서인지 확인
         if application.user_id != user_id:
+            logger.error(
+                f"권한 없음: 신청서 user_id={application.user_id}, 요청 user_id={user_id}"
+            )
             raise_error("NO_POD_ACCESS_PERMISSION")  # 권한 없음
 
         # pending 상태만 취소 가능
         if application.status != "pending":
+            logger.error(f"이미 처리된 신청서: status={application.status}")
             raise_error("POD_ALREADY_CLOSED")  # 이미 처리된 신청서
 
+        logger.info(f"신청서 삭제 진행: application_id={application_id}")
         # 신청서 삭제
         return await self.application_crud.delete_application(application_id)
+
+    # - MARK: 신청서 숨김 처리 (파티장만 가능)
+    async def hide_application_by_owner(
+        self, application_id: int, owner_id: int
+    ) -> bool:
+        """파티장이 신청서를 숨김 처리"""
+        logger.info(
+            f"신청서 숨김 처리 시도: application_id={application_id}, owner_id={owner_id}"
+        )
+
+        # 신청서 조회
+        application = await self.application_crud.get_application_by_id(application_id)
+        if not application:
+            logger.error(f"신청서를 찾을 수 없음: application_id={application_id}")
+            raise_error("POD_NOT_FOUND")
+
+        # 파티 조회하여 파티장 확인
+        pod = await self.pod_crud.get_pod_by_id(application.pod_id)
+        if not pod:
+            logger.error(f"파티를 찾을 수 없음: pod_id={application.pod_id}")
+            raise_error("POD_NOT_FOUND")
+
+        # 파티장 권한 확인
+        if pod.owner_id != owner_id:
+            logger.error(
+                f"파티장 권한 없음: pod_owner_id={pod.owner_id}, 요청 owner_id={owner_id}"
+            )
+            raise_error("NO_POD_ACCESS_PERMISSION")
+
+        logger.info(f"신청서 숨김 처리 진행: application_id={application_id}")
+        # 신청서 숨김 처리
+        return await self.application_crud.hide_application(application_id)
 
     # - MARK: 파티 탈퇴
     async def leave_pod(self, pod_id: int, user_id: int) -> bool:
