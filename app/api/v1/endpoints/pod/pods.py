@@ -147,8 +147,10 @@ async def create_pod(
 )
 async def get_trending_pods(
     selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    page: int = 1,
-    size: int = 20,
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -189,8 +191,10 @@ async def get_trending_pods(
 async def get_closing_soon_pods(
     selected_artist_id: int = Query(..., alias="selectedArtistId"),
     location: Optional[str] = None,
-    page: int = 1,
-    size: int = 20,
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -230,8 +234,10 @@ async def get_closing_soon_pods(
 )
 async def get_history_based_pods(
     selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    page: int = 1,
-    size: int = 20,
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -276,8 +282,10 @@ async def get_history_based_pods(
 async def get_popular_categories_pods(
     selected_artist_id: int = Query(..., alias="selectedArtistId"),
     location: Optional[str] = None,
-    page: int = 1,
-    size: int = 20,
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Query(1, description="사용자 ID (테스트용)"),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -316,8 +324,10 @@ async def get_popular_categories_pods(
     tags=["pods"],
 )
 async def get_my_joined_pods(
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -357,8 +367,10 @@ async def get_my_joined_pods(
     tags=["pods"],
 )
 async def get_my_liked_pods(
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -396,8 +408,10 @@ async def get_my_liked_pods(
     tags=["pods"],
 )
 async def get_user_pods(
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     userId: Optional[int] = Query(
         None,
         alias="userId",

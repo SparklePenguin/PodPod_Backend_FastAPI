@@ -30,8 +30,10 @@ router = APIRouter()
     description="사용자의 알림 목록을 조회합니다. 페이지네이션을 지원합니다.",
 )
 async def get_notifications(
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1-100)"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     unread_only: bool = Query(False, description="읽지 않은 알림만 조회할지 여부"),
     category: Optional[str] = Query(
         None, description="카테고리 필터 (pod, community, notice)"

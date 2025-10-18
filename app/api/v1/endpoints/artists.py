@@ -45,8 +45,8 @@ def get_artist_service(db: AsyncSession = Depends(get_db)) -> ArtistService:
 )
 async def get_artists_simple(
     page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
-    page_size: int = Query(
-        20, ge=1, le=100, alias="pageSize", description="페이지 크기 (1~100)"
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
     ),
     is_active: bool = Query(
         True, alias="isActive", description="활성화 상태 필터 (true/false)"
@@ -55,7 +55,7 @@ async def get_artists_simple(
 ):
     """아티스트 목록 조회 (간소화 - ArtistUnit의 artist_id에 해당하는 아티스트 정보)"""
     page_data = await artist_service.get_artists_simple(
-        page=page, page_size=page_size, is_active=is_active
+        page=page, page_size=size, is_active=is_active
     )
     return BaseResponse.ok(data=page_data)
 
@@ -75,8 +75,8 @@ async def get_artists_simple(
 )
 async def get_artists(
     page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
-    page_size: int = Query(
-        20, ge=1, le=100, alias="pageSize", description="페이지 크기 (1~100)"
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
     ),
     is_active: bool = Query(
         True, alias="isActive", description="활성화 상태 필터 (true/false)"
@@ -85,7 +85,7 @@ async def get_artists(
 ):
     """아티스트 목록 조회 (페이지네이션 및 is_active 필터링 지원)"""
     page_data = await artist_service.get_artists(
-        page=page, page_size=page_size, is_active=is_active
+        page=page, page_size=size, is_active=is_active
     )
     return BaseResponse.ok(data=page_data)
 

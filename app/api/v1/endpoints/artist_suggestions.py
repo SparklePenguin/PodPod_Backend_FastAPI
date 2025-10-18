@@ -65,12 +65,14 @@ async def create_artist_suggestion(
     },
 )
 async def get_artist_ranking(
-    page: int = Query(1, ge=1, description="페이지 번호", alias="page"),
-    limit: int = Query(20, ge=1, le=100, description="페이지 크기", alias="limit"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     service: ArtistSuggestionService = Depends(get_artist_suggestion_service),
 ):
     """아티스트 요청 순위 조회"""
-    rankings = await service.get_artist_ranking(page, limit)
+    rankings = await service.get_artist_ranking(page, size)
     return BaseResponse.ok(
         data=rankings, message_ko="아티스트 요청 순위를 조회했습니다."
     )

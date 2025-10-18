@@ -16,7 +16,6 @@ import logging
 from app.api.deps import (
     get_user_service,
     get_current_user_id,
-    get_current_user_id_optional,
 )
 from app.schemas.artist import ArtistDto
 from app.utils.file_upload import upload_profile_image
@@ -288,8 +287,10 @@ async def block_user(
     tags=["users"],
 )
 async def get_blocked_users(
-    page: int = Query(1, ge=1, description="페이지 번호", alias="page"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기", alias="size"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -473,25 +474,27 @@ async def delete_user(
     user_id: Optional[int] = Query(
         None, alias="userId", description="삭제할 사용자 ID"
     ),
-    current_user_id: Optional[int] = Depends(get_current_user_id_optional),
+    current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
     """사용자 삭제 (userId 또는 토큰 필요)"""
     # userId가 있으면 해당 유저 삭제
     if user_id is not None:
         target_user_id = user_id
-    # userId 없고 토큰 있으면 토큰 유저 삭제
-    elif current_user_id is not None:
-        target_user_id = current_user_id
-    # 둘 다 없으면 에러
+    # userId 없으면 토큰에서 추출한 유저 삭제
     else:
-        raise HTTPException(
-            status_code=HttpStatus.BAD_REQUEST,
-            detail="userId 또는 인증 토큰이 필요합니다.",
-        )
+        target_user_id = current_user_id
 
-    await user_service.delete_user(target_user_id)
-    return Response(status_code=HttpStatus.NO_CONTENT)
+    try:
+        await user_service.delete_user(target_user_id)
+        return Response(status_code=HttpStatus.NO_CONTENT)
+    except Exception as e:
+        # 사용자가 존재하지 않는 경우에도 204 No Content 반환
+        # (이미 삭제된 상태와 동일하므로)
+        if "USER_NOT_FOUND" in str(e):
+            return Response(status_code=HttpStatus.NO_CONTENT)
+        # 다른 오류는 그대로 전파
+        raise e
 
 
 # - MARK: 내부용 API

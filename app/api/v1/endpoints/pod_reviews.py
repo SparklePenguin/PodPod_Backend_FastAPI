@@ -148,8 +148,10 @@ async def get_review(
 )
 async def get_reviews_by_pod(
     pod_id: int = Path(..., description="파티 ID"),
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """파티별 후기 목록 조회"""
@@ -189,8 +191,10 @@ async def get_reviews_by_pod(
 )
 async def get_reviews_by_user(
     user_id: int = Path(..., description="사용자 ID"),
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """사용자별 후기 목록 조회"""
@@ -366,8 +370,10 @@ async def delete_review(
     },
 )
 async def get_my_reviews(
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):

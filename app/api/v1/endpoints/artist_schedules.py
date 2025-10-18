@@ -52,8 +52,8 @@ def get_artist_schedule_service(
 )
 async def get_artist_schedules(
     page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
-    page_size: int = Query(
-        20, ge=1, le=100, alias="pageSize", description="페이지 크기 (1~100)"
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
     ),
     artist_id: Optional[int] = Query(
         None, alias="artistId", description="아티스트 ID 필터"
@@ -72,7 +72,7 @@ async def get_artist_schedules(
     try:
         result = await artist_schedule_service.get_schedules(
             page=page,
-            page_size=page_size,
+            page_size=size,
             artist_id=artist_id,
             unit_id=unit_id,
             schedule_type=schedule_type,
