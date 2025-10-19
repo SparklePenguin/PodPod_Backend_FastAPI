@@ -224,6 +224,12 @@ class PodCRUD:
                 category_conditions.append(Pod.sub_categories.contains(category))
             query = query.where(or_(*category_conditions))
 
+        # 차단된 유저가 만든 파티 제외
+        if user_id:
+            from app.models.user_block import UserBlock
+            blocked_query = select(UserBlock.blocked_id).where(UserBlock.blocker_id == user_id)
+            query = query.where(~Pod.owner_id.in_(blocked_query))
+
         # 정렬 (최신순)
         query = query.order_by(desc(Pod.created_at))
 
@@ -269,6 +275,10 @@ class PodCRUD:
         now = datetime.now()
         seven_days_ago = now - timedelta(days=7)
 
+        # 차단된 유저가 만든 파티 제외 조건
+        from app.models.user_block import UserBlock
+        blocked_query = select(UserBlock.blocked_id).where(UserBlock.blocker_id == user_id)
+
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준 + 최근 7일간 생성
         base_conditions = and_(
             Pod.is_active == True,
@@ -276,6 +286,7 @@ class PodCRUD:
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.created_at >= seven_days_ago,  # 최근 7일간 생성
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외
+            ~Pod.owner_id.in_(blocked_query),  # 차단된 유저가 만든 파티 제외
         )
 
         # 조회수와 좋아요 수를 서브쿼리로 조회

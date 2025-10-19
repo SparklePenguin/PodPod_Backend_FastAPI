@@ -65,14 +65,7 @@ class PodApplicationCRUD:
         if not include_hidden:
             query = query.where(PodApplication.is_hidden == False)
 
-        # 차단된 유저의 신청서 제외
-        if current_user_id:
-            from app.models.user_block import UserBlock
-
-            blocked_query = select(UserBlock.blocked_id).where(
-                UserBlock.blocker_id == current_user_id
-            )
-            query = query.where(~PodApplication.user_id.in_(blocked_query))
+        # 차단된 유저의 신청서 필터링 제거 (모든 신청서 표시)
 
         query = query.order_by(PodApplication.applied_at.desc())
 

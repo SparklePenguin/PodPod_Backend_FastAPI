@@ -724,15 +724,7 @@ class PodService:
         recruitment_crud = RecruitmentCRUD(self.db)
         pod_members = await recruitment_crud.list_members(pod.id)
 
-        # 차단된 유저 목록 조회 (현재 사용자가 차단한 유저들)
-        blocked_user_ids = set()
-        if user_id:
-            from app.models.user_block import UserBlock
-
-            blocked_result = await self.db.execute(
-                select(UserBlock.blocked_id).where(UserBlock.blocker_id == user_id)
-            )
-            blocked_user_ids = set(blocked_result.scalars().all())
+        # 차단된 유저 필터링 제거 (joined_users에서 모든 유저 표시)
 
         # PodMember를 SimpleUserDto로 변환
         joined_users = []
@@ -747,7 +739,7 @@ class PodService:
         )
         owner = owner_result.scalar_one_or_none()
 
-        if owner and owner.id not in blocked_user_ids:
+        if owner:
             # 파티장 성향 타입 조회
             owner_tendency_result = await self.db.execute(
                 select(UserTendencyResult).where(
@@ -771,9 +763,6 @@ class PodService:
 
         # 2. 멤버들 추가
         for member in pod_members:
-            # 차단된 유저는 제외
-            if member.user_id in blocked_user_ids:
-                continue
 
             # 성향 타입 조회
             result = await self.db.execute(
@@ -848,9 +837,7 @@ class PodService:
                     )
 
         # 파티에 들어온 신청서 목록 조회
-        applications = await self.application_crud.get_applications_by_pod_id(
-            pod.id, current_user_id=user_id
-        )
+        applications = await self.application_crud.get_applications_by_pod_id(pod.id)
 
         application_dtos = []
         for app in applications:
