@@ -50,7 +50,11 @@ class PodApplicationCRUD:
 
     # - MARK: 파티의 신청서 목록 조회
     async def get_applications_by_pod_id(
-        self, pod_id: int, status: str = None, include_hidden: bool = False
+        self,
+        pod_id: int,
+        status: str = None,
+        include_hidden: bool = False,
+        current_user_id: int = None,
     ) -> list[PodApplication]:
         query = select(PodApplication).where(PodApplication.pod_id == pod_id)
 
@@ -60,6 +64,15 @@ class PodApplicationCRUD:
         # 숨김 처리된 신청서 제외 (기본값)
         if not include_hidden:
             query = query.where(PodApplication.is_hidden == False)
+
+        # 차단된 유저의 신청서 제외
+        if current_user_id:
+            from app.models.user_block import UserBlock
+
+            blocked_query = select(UserBlock.blocked_id).where(
+                UserBlock.blocker_id == current_user_id
+            )
+            query = query.where(~PodApplication.user_id.in_(blocked_query))
 
         query = query.order_by(PodApplication.applied_at.desc())
 

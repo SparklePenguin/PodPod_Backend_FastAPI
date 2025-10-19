@@ -336,12 +336,20 @@ class PodCRUD:
         now = datetime.now()
         twenty_four_hours_later = now + timedelta(hours=24)
 
+        # 차단된 유저가 만든 파티 제외 조건
+        from app.models.user_block import UserBlock
+
+        blocked_query = select(UserBlock.blocked_id).where(
+            UserBlock.blocker_id == user_id
+        )
+
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
             Pod.is_active == True,
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외
+            ~Pod.owner_id.in_(blocked_query),  # 차단된 유저가 만든 파티 제외
         )
 
         # 24시간 이내 시작하는 파티 조건
@@ -400,12 +408,20 @@ class PodCRUD:
         now = datetime.now()
         ninety_days_ago = now - timedelta(days=90)
 
+        # 차단된 유저가 만든 파티 제외 조건
+        from app.models.user_block import UserBlock
+
+        blocked_query = select(UserBlock.blocked_id).where(
+            UserBlock.blocker_id == user_id
+        )
+
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
             Pod.is_active == True,
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외
+            ~Pod.owner_id.in_(blocked_query),  # 차단된 유저가 만든 파티 제외
         )
 
         # 1순위: 참여한 팟(평점 4점 이상, 90일 이내)의 개설자가 개설한 팟
@@ -1020,7 +1036,6 @@ class PodCRUD:
             "total_pages": (total_count + size - 1) // size,
         }
 
-
     # - MARK: 파티 멤버 관련
     async def get_pod_members(self, pod_id: int) -> List[PodMember]:
         """파티의 모든 멤버 조회"""
@@ -1043,7 +1058,7 @@ class PodCRUD:
         )
         result = await self.db.execute(query)
         member = result.scalar_one_or_none()
-        
+
         if member:
             await self.db.delete(member)
             await self.db.commit()

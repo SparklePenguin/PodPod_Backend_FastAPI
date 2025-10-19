@@ -153,9 +153,14 @@ async def get_apply_to_pod_list(
     pod_id: int = Query(..., alias="podId", description="파티 ID"),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
+    # 파티 정보 조회하여 파티장 ID 가져오기
+    pod = await recruitment_service.pod_crud.get_pod_by_id(pod_id)
+    if not pod:
+        raise_error("POD_NOT_FOUND")
+
     applications = (
         await recruitment_service.application_crud.get_applications_by_pod_id(
-            pod_id, include_hidden=False
+            pod_id, include_hidden=False, current_user_id=pod.owner_id
         )
     )
 
