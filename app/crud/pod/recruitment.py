@@ -26,7 +26,9 @@ class RecruitmentCRUD:
             return existing_member
 
         # 파티 정보 조회 및 capacity 체크
-        pod_q = await self.db.execute(select(Pod).where(Pod.id == pod_id))
+        pod_q = await self.db.execute(
+            select(Pod).where(Pod.id == pod_id, Pod.is_active == True)
+        )
         pod = pod_q.scalar_one_or_none()
         if not pod:
             raise ValueError("파티를 찾을 수 없습니다")

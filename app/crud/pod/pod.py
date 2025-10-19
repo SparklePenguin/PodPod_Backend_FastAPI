@@ -164,7 +164,9 @@ class PodCRUD:
 
     # - MARK: 파티 조회
     async def get_pod_by_id(self, pod_id: int) -> Optional[Pod]:
-        result = await self.db.execute(select(Pod).where(Pod.id == pod_id))
+        result = await self.db.execute(
+            select(Pod).where(Pod.id == pod_id, Pod.is_active == True)
+        )
         return result.scalar_one_or_none()
 
     # - MARK: 파티 수정
@@ -842,7 +844,7 @@ class PodCRUD:
         participants = result.scalars().all()
 
         # 파티장도 포함시키기 위해 추가 조회
-        pod_query = select(Pod).where(Pod.id == pod_id)
+        pod_query = select(Pod).where(Pod.id == pod_id, Pod.is_active == True)
         pod_result = await self.db.execute(pod_query)
         pod = pod_result.scalar_one_or_none()
 
