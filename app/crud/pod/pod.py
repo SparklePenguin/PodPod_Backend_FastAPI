@@ -227,7 +227,10 @@ class PodCRUD:
         # 차단된 유저가 만든 파티 제외
         if user_id:
             from app.models.user_block import UserBlock
-            blocked_query = select(UserBlock.blocked_id).where(UserBlock.blocker_id == user_id)
+
+            blocked_query = select(UserBlock.blocked_id).where(
+                UserBlock.blocker_id == user_id
+            )
             query = query.where(~Pod.owner_id.in_(blocked_query))
 
         # 정렬 (최신순)
@@ -277,7 +280,10 @@ class PodCRUD:
 
         # 차단된 유저가 만든 파티 제외 조건
         from app.models.user_block import UserBlock
-        blocked_query = select(UserBlock.blocked_id).where(UserBlock.blocker_id == user_id)
+
+        blocked_query = select(UserBlock.blocked_id).where(
+            UserBlock.blocker_id == user_id
+        )
 
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준 + 최근 7일간 생성
         base_conditions = and_(
