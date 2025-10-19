@@ -705,13 +705,24 @@ async def update_pod_status(
 )
 async def delete_pod_member(
     pod_id: int,
-    user_id: int = Query(None, description="삭제할 사용자 ID (없으면 현재 사용자)"),
+    user_id: Optional[str] = Query(
+        default=None,
+        description="삭제할 사용자 ID (없으면 현재 사용자)",
+        alias="userId",
+    ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
     """파티 멤버 삭제 (사용자 ID 선택적)"""
     # user_id가 제공되면 사용, 없으면 토큰에서 추출한 사용자 ID 사용
-    target_user_id = user_id if user_id is not None else current_user_id
+    if user_id is not None and user_id.strip() != "":
+        try:
+            target_user_id = int(user_id)
+        except ValueError:
+            # 잘못된 정수 형식인 경우 현재 사용자 사용
+            target_user_id = current_user_id
+    else:
+        target_user_id = current_user_id
 
     result = await pod_service.leave_pod(pod_id, target_user_id)
 
