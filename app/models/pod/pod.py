@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Enum,
+    Float,
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -44,6 +45,8 @@ class Pod(Base):
     place = Column(String(200), nullable=False)
     address = Column(String(300), nullable=False)
     sub_address = Column(String(300), nullable=True)
+    x = Column(Float, nullable=True, comment="경도 (longitude)")
+    y = Column(Float, nullable=True, comment="위도 (latitude)")
     meeting_date = Column(Date, nullable=False)
     meeting_time = Column(Time, nullable=False)
     status = Column(Enum(PodStatus), default=PodStatus.RECRUITING, nullable=False)

@@ -94,6 +94,18 @@ class PodDto(BaseModel):
         alias="subAddress",
         example="string?",
     )
+    x: Optional[float] = Field(
+        default=None,
+        alias="x",
+        example=127.123456,
+        description="경도 (longitude)",
+    )
+    y: Optional[float] = Field(
+        default=None,
+        alias="y",
+        example=37.123456,
+        description="위도 (latitude)",
+    )
     meeting_date: Optional[int] = Field(
         alias="meetingDate",
         example=1705276800000,

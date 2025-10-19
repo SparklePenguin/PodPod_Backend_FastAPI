@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date, time
 from app.crud.pod.pod import PodCRUD
 from app.crud.pod.pod_application import PodApplicationCRUD
 from app.schemas.pod import PodCreateRequest, PodDto
@@ -65,6 +66,8 @@ class PodService:
             meeting_date=req.meetingDate,
             meeting_time=req.meetingTime,
             selected_artist_id=req.selected_artist_id,
+            x=req.x,
+            y=req.y,
             status=status,
         )
 

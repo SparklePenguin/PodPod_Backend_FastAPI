@@ -32,6 +32,12 @@ class PodCreateRequest(BaseModel):
     sub_address: Optional[str] = Field(
         default=None, alias="subAddress", example="string?"
     )
+    x: Optional[float] = Field(
+        default=None, alias="x", example=127.123456, description="경도 (longitude)"
+    )
+    y: Optional[float] = Field(
+        default=None, alias="y", example=37.123456, description="위도 (latitude)"
+    )
     meetingDate: datetime.date = Field(
         alias="meetingDate",
         example="2025-01-01",

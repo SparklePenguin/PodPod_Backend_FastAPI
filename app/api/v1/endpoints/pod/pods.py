@@ -68,6 +68,8 @@ async def create_pod(
     sub_address: Optional[str] = Form(
         None, alias="subAddress", description="상세 주소"
     ),
+    x: Optional[float] = Form(None, alias="x", description="경도 (longitude)"),
+    y: Optional[float] = Form(None, alias="y", description="위도 (latitude)"),
     meeting_date: str = Form(
         ...,
         alias="meetingDate",
@@ -107,6 +109,8 @@ async def create_pod(
         place=place,
         address=address,
         sub_address=sub_address,
+        x=x,
+        y=y,
         meetingDate=parsed_meeting_date,
         meetingTime=parsed_meeting_time,
         selected_artist_id=selected_artist_id,

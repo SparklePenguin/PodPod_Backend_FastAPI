@@ -32,6 +32,8 @@ class PodCRUD:
         meeting_date: date,
         meeting_time: time,
         selected_artist_id: Optional[int] = None,
+        x: Optional[float] = None,
+        y: Optional[float] = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         # description이 없으면 빈 문자열로 설정
@@ -54,6 +56,8 @@ class PodCRUD:
             place=place,
             address=address,
             sub_address=sub_address,
+            x=x,
+            y=y,
             meeting_date=meeting_date,
             meeting_time=meeting_time,
             status=status,
@@ -78,6 +82,8 @@ class PodCRUD:
         meeting_date: date,
         meeting_time: time,
         selected_artist_id: Optional[int] = None,
+        x: Optional[float] = None,
+        y: Optional[float] = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         """파티 생성 후 Sendbird 채팅방도 함께 생성"""
@@ -99,6 +105,8 @@ class PodCRUD:
             meeting_date=meeting_date,
             meeting_time=meeting_time,
             selected_artist_id=selected_artist_id,
+            x=x,
+            y=y,
             status=status,
         )
 
