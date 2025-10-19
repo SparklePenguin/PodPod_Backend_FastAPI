@@ -256,6 +256,109 @@ class PodService:
             pod_id, PodStatus.COMPLETED, user_id
         )
 
+    # - MARK: 파티 나가기
+    async def leave_pod(self, pod_id: int, user_id: int) -> dict:
+        """파티 나가기 (파티장이면 모든 멤버 강제 퇴장, 일반 멤버면 본인만)"""
+        logger.info(f"파티 나가기 시도: pod_id={pod_id}, user_id={user_id}")
+
+        # 파티 조회
+        pod = await self.crud.get_pod_by_id(pod_id)
+        if not pod:
+            logger.error(f"파티를 찾을 수 없음: pod_id={pod_id}")
+            raise_error("POD_NOT_FOUND")
+
+        # 파티장인지 확인
+        is_owner = pod.owner_id == user_id
+
+        if is_owner:
+            # 파티장이 나가는 경우 - 모든 멤버 강제 퇴장
+            logger.info(f"파티장이 나가는 경우: pod_id={pod_id}, owner_id={user_id}")
+
+            # 모든 멤버 조회
+            all_members = await self.crud.get_pod_members(pod_id)
+            member_ids = [member.user_id for member in all_members]
+
+            # Sendbird 채팅방에서 모든 멤버 제거
+            if pod.chat_channel_url:
+                try:
+                    from app.services.sendbird_service import SendbirdService
+
+                    sendbird_service = SendbirdService()
+
+                    # 모든 멤버를 채팅방에서 제거
+                    for member_id in member_ids:
+                        success = await sendbird_service.remove_member_from_channel(
+                            channel_url=pod.chat_channel_url, user_id=str(member_id)
+                        )
+                        if success:
+                            logger.info(f"멤버 {member_id}를 채팅방에서 제거 완료")
+                        else:
+                            logger.warning(f"멤버 {member_id} 채팅방 제거 실패")
+
+                    # 파티장도 채팅방에서 제거
+                    await sendbird_service.remove_member_from_channel(
+                        channel_url=pod.chat_channel_url, user_id=str(user_id)
+                    )
+
+                except Exception as e:
+                    logger.error(f"Sendbird 채팅방 멤버 제거 실패: {e}")
+
+            # 모든 멤버를 데이터베이스에서 제거
+            for member_id in member_ids:
+                await self.crud.remove_pod_member(pod_id, member_id)
+                logger.info(f"멤버 {member_id}를 파티에서 제거 완료")
+
+            # 파티 상태를 CLOSED로 변경
+            await self.crud.update_pod_status(pod_id, PodStatus.CLOSED)
+            logger.info(f"파티 {pod_id} 상태를 CLOSED로 변경")
+
+            return {
+                "left": True,
+                "is_owner": True,
+                "members_removed": len(member_ids),
+                "pod_status": "CLOSED",
+            }
+
+        else:
+            # 일반 멤버가 나가는 경우 - 본인만 나가기
+            logger.info(f"일반 멤버가 나가는 경우: pod_id={pod_id}, user_id={user_id}")
+
+            # 멤버인지 확인
+            is_member = await self.crud.is_pod_member(pod_id, user_id)
+            if not is_member:
+                logger.error(f"파티 멤버가 아님: pod_id={pod_id}, user_id={user_id}")
+                raise_error("NO_POD_ACCESS_PERMISSION")
+
+            # Sendbird 채팅방에서 제거
+            if pod.chat_channel_url:
+                try:
+                    from app.services.sendbird_service import SendbirdService
+
+                    sendbird_service = SendbirdService()
+
+                    success = await sendbird_service.remove_member_from_channel(
+                        channel_url=pod.chat_channel_url, user_id=str(user_id)
+                    )
+
+                    if success:
+                        logger.info(f"사용자 {user_id}를 채팅방에서 제거 완료")
+                    else:
+                        logger.warning(f"사용자 {user_id} 채팅방 제거 실패")
+
+                except Exception as e:
+                    logger.error(f"Sendbird 채팅방 제거 실패: {e}")
+
+            # 데이터베이스에서 멤버 제거
+            await self.crud.remove_pod_member(pod_id, user_id)
+            logger.info(f"사용자 {user_id}를 파티에서 제거 완료")
+
+            return {
+                "left": True,
+                "is_owner": False,
+                "members_removed": 1,
+                "pod_status": pod.status.value,
+            }
+
     # - MARK: 파티 삭제
     async def delete_pod(self, pod_id: int) -> None:
         return await self.crud.delete_pod(pod_id)

@@ -679,3 +679,48 @@ async def update_pod_status(
             message_ko="파티 상태 업데이트에 실패했습니다.",
             message_en="Failed to update pod status",
         )
+
+
+# - MARK: 파티 멤버 삭제 (토큰 기반)
+@router.delete(
+    "/{pod_id}/member",
+    response_model=BaseResponse[dict],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "파티 멤버 삭제 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "파티를 찾을 수 없음",
+        },
+        HttpStatus.FORBIDDEN: {
+            "model": BaseResponse[None],
+            "description": "권한 없음 (파티 멤버가 아님)",
+        },
+    },
+    summary="파티 멤버 삭제",
+    description="사용자 ID가 제공되면 해당 사용자를, 없으면 현재 사용자를 파티 멤버에서 삭제합니다. 파티장이 삭제되면 모든 멤버가 강제 퇴장되고 파티가 종료됩니다.",
+    tags=["pods"],
+)
+async def delete_pod_member(
+    pod_id: int,
+    user_id: int = Query(None, description="삭제할 사용자 ID (없으면 현재 사용자)"),
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """파티 멤버 삭제 (사용자 ID 선택적)"""
+    # user_id가 제공되면 사용, 없으면 토큰에서 추출한 사용자 ID 사용
+    target_user_id = user_id if user_id is not None else current_user_id
+
+    result = await pod_service.leave_pod(pod_id, target_user_id)
+
+    if result["is_owner"]:
+        message = f"파티장이 나가서 파티가 종료되었습니다. {result['members_removed']}명의 멤버가 함께 나갔습니다."
+    else:
+        message = "파티에서 성공적으로 나갔습니다."
+
+    return BaseResponse.ok(
+        data=result,
+        message_ko=message,
+    )

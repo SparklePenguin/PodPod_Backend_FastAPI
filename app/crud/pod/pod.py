@@ -1019,3 +1019,33 @@ class PodCRUD:
             "page_size": size,
             "total_pages": (total_count + size - 1) // size,
         }
+
+
+    # - MARK: 파티 멤버 관련
+    async def get_pod_members(self, pod_id: int) -> List[PodMember]:
+        """파티의 모든 멤버 조회"""
+        query = select(PodMember).where(PodMember.pod_id == pod_id)
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def is_pod_member(self, pod_id: int, user_id: int) -> bool:
+        """사용자가 파티 멤버인지 확인"""
+        query = select(PodMember).where(
+            and_(PodMember.pod_id == pod_id, PodMember.user_id == user_id)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none() is not None
+
+    async def remove_pod_member(self, pod_id: int, user_id: int) -> bool:
+        """파티에서 멤버 제거"""
+        query = select(PodMember).where(
+            and_(PodMember.pod_id == pod_id, PodMember.user_id == user_id)
+        )
+        result = await self.db.execute(query)
+        member = result.scalar_one_or_none()
+        
+        if member:
+            await self.db.delete(member)
+            await self.db.commit()
+            return True
+        return False

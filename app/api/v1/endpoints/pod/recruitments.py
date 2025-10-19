@@ -97,14 +97,14 @@ async def review_application(
     return BaseResponse.ok(data=application_dto)
 
 
-# - MARK: 파티 참여 신청서 숨김 처리 (파티장만 가능)
+# - MARK: 파티 참여 신청서 처리 (파티장: 숨김, 신청자: 취소)
 @router.delete(
     "/{application_id}",
     response_model=BaseResponse[dict],
     responses={
         HttpStatus.OK: {
             "model": BaseResponse[dict],
-            "description": "파티 참여 신청서 숨김 처리 성공",
+            "description": "신청서 처리 성공",
         },
         HttpStatus.NOT_FOUND: {
             "model": BaseResponse[None],
@@ -112,49 +112,27 @@ async def review_application(
         },
         HttpStatus.FORBIDDEN: {
             "model": BaseResponse[None],
-            "description": "권한 없음 (파티장이 아님)",
+            "description": "권한 없음 (파티장 또는 신청자가 아님)",
         },
     },
-    summary="파티 참여 신청서 숨김 처리",
-    description="파티장이 신청서를 숨김 처리합니다. 신청서는 삭제되지 않고 숨김 처리되어 목록에서 보이지 않게 됩니다.",
+    summary="파티 참여 신청서 처리",
+    description="파티장이면 신청서를 숨김 처리하고, 신청자면 신청을 취소합니다.",
     tags=["recruitments"],
 )
-async def hide_application(
+async def handle_application(
     application_id: int,
-    user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
-    """파티장이 신청서를 숨김 처리"""
-    success = await recruitment_service.hide_application_by_owner(
-        application_id, user_id
+    """파티장: 신청서 숨김 처리, 신청자: 신청 취소"""
+    result = await recruitment_service.handle_application_by_user_role(
+        application_id, current_user_id
     )
+
     return BaseResponse.ok(
-        data={"hidden": success},
-        message_ko="신청서가 성공적으로 숨김 처리되었습니다.",
+        data=result,
+        message_ko=result["message"],
     )
-
-
-# - MARK: 파티 탈퇴
-@router.delete(
-    "/pods/{pod_id}/leave",
-    response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "파티 탈퇴 성공",
-        },
-    },
-    summary="파티 탈퇴",
-    description="참여 중인 파티에서 탈퇴합니다. (파티장은 탈퇴 불가)",
-    tags=["recruitments"],
-)
-async def leave_pod(
-    pod_id: int,
-    user_id: int = Depends(get_current_user_id),
-    recruitment_service: RecruitmentService = Depends(get_recruitment_service),
-):
-    success = await recruitment_service.leave_pod(pod_id, user_id)
-    return BaseResponse.ok(data={"left": success})
 
 
 # - MARK: 파티 참여 신청 목록 조회

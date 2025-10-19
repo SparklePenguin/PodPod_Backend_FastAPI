@@ -382,26 +382,64 @@ class RecruitmentService:
         # 신청서 숨김 처리
         return await self.application_crud.hide_application(application_id)
 
-    # - MARK: 파티 탈퇴
-    async def leave_pod(self, pod_id: int, user_id: int) -> bool:
-        """파티에서 탈퇴 (파티장은 탈퇴 불가)"""
-        # 파티 조회
-        pod = await self.pod_crud.get_pod_by_id(pod_id)
-        if not pod:
+    # - MARK: 사용자 역할에 따른 신청서 처리
+    async def handle_application_by_user_role(
+        self, application_id: int, user_id: int
+    ) -> dict:
+        """파티장: 숨김 처리, 신청자: 취소 처리"""
+        logger.info(
+            f"신청서 처리 시도: application_id={application_id}, user_id={user_id}"
+        )
+
+        # 신청서 조회
+        application = await self.application_crud.get_application_by_id(application_id)
+        if not application:
+            logger.error(f"신청서를 찾을 수 없음: application_id={application_id}")
             raise_error("POD_NOT_FOUND")
 
-        # 파티장은 탈퇴 불가
-        if pod.owner_id == user_id:
-            raise_error("NO_POD_ACCESS_PERMISSION")  # 파티장은 탈퇴할 수 없습니다
+        # 파티 조회
+        pod = await self.pod_crud.get_pod_by_id(application.pod_id)
+        if not pod:
+            logger.error(f"파티를 찾을 수 없음: pod_id={application.pod_id}")
+            raise_error("POD_NOT_FOUND")
 
-        # 멤버 삭제
-        result = await self.crud.remove_member(pod_id, user_id)
+        # 사용자 역할 확인
+        is_owner = pod.owner_id == user_id
+        is_applicant = application.user_id == user_id
 
-        # 파티 탈퇴 시 좋아요한 파티에 자리 생김 알림 전송
-        if result:
-            await self._send_spot_opened_notifications(pod_id, pod)
+        if not is_owner and not is_applicant:
+            logger.error(
+                f"권한 없음: user_id={user_id}, pod_owner_id={pod.owner_id}, applicant_id={application.user_id}"
+            )
+            raise_error("NO_POD_ACCESS_PERMISSION")
 
-        return result
+        if is_owner:
+            # 파티장인 경우: 신청서 숨김 처리
+            logger.info(f"파티장이 신청서 숨김 처리: application_id={application_id}")
+            success = await self.application_crud.hide_application(application_id)
+            return {
+                "action": "hidden",
+                "success": success,
+                "message": "신청서가 성공적으로 숨김 처리되었습니다.",
+            }
+
+        elif is_applicant:
+            # 신청자인 경우: 신청 취소 (삭제)
+            logger.info(f"신청자가 신청 취소: application_id={application_id}")
+
+            # pending 상태만 취소 가능
+            if application.status != "pending":
+                logger.error(f"이미 처리된 신청서: status={application.status}")
+                raise_error("POD_ALREADY_CLOSED")
+
+            success = await self.application_crud.cancel_application_by_id(
+                application_id, user_id
+            )
+            return {
+                "action": "cancelled",
+                "success": success,
+                "message": "신청이 성공적으로 취소되었습니다.",
+            }
 
     # - MARK: 좋아요한 파티에 자리 생김 알림
     async def _send_spot_opened_notifications(self, pod_id: int, pod) -> None:
