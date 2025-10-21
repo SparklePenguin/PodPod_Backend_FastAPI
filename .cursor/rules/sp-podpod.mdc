@@ -1,4 +1,6 @@
-# PodPod Backend 개발 가이드
+---
+alwaysApply: true
+---
 
 ## 1. 데이터베이스
 - 마이그레이션: `./migrate.sh` | SQL 실행: `./execute_sql.sh "쿼리"` | mysql 직접 사용 금지
