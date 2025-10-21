@@ -74,14 +74,46 @@ async def get_notifications(
                 id=n.related_user.id,
                 nickname=n.related_user.nickname,
                 profile_image=n.related_user.profile_image,
-                tendency_type=None,  # TODO: 필요시 조회
+                intro=n.related_user.intro or "",
+                tendency_type="",  # TODO: 필요시 조회
+                is_following=False,  # TODO: 필요시 조회
             )
 
         # related_pod DTO 생성
         related_pod_dto = None
         if n.related_pod:
-            related_pod_dto = await pod_service._convert_to_dto(
-                n.related_pod, current_user_id
+            # SimplePodDto로 변환
+            from app.schemas.pod_review import SimplePodDto
+            from datetime import datetime, date, time
+
+            # meeting_date와 meeting_time을 하나의 timestamp로 변환
+            meeting_timestamp = 0
+            if n.related_pod.meeting_date and n.related_pod.meeting_time:
+                try:
+                    dt = datetime.combine(
+                        n.related_pod.meeting_date, n.related_pod.meeting_time
+                    )
+                    meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
+                except:
+                    meeting_timestamp = 0
+
+            # sub_categories를 문자열에서 리스트로 파싱
+            sub_categories_list = []
+            if n.related_pod.sub_categories:
+                try:
+                    import json
+
+                    sub_categories_list = json.loads(n.related_pod.sub_categories)
+                except (json.JSONDecodeError, TypeError):
+                    sub_categories_list = []
+
+            related_pod_dto = SimplePodDto(
+                id=n.related_pod.id,
+                title=n.related_pod.title,
+                image_url=n.related_pod.image_url or "",
+                sub_categories=sub_categories_list,
+                meeting_place=n.related_pod.place or "",
+                meeting_date=meeting_timestamp,
             )
 
         # related_id를 int로 변환 (None이면 None 유지)

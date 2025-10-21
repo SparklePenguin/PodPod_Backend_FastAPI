@@ -246,10 +246,10 @@ class PodReviewService:
                 simple_pod = SimplePodDto(
                     id=0,
                     title="",
-                    image_url=None,
+                    image_url="",
                     sub_categories=[],
-                    meeting_place=None,
-                    meeting_date=None,
+                    meeting_place="",
+                    meeting_date=0,
                 )
 
             logger.info(f"SimplePodDto 생성 완료: pod_id={simple_pod.id}")
@@ -268,16 +268,16 @@ class PodReviewService:
                         else ""
                     ),
                     profile_image=(
-                        getattr(review.user, "profile_image", None)
+                        getattr(review.user, "profile_image", "") or ""
                         if hasattr(review, "user") and review.user
-                        else None
+                        else ""
                     ),
                     intro=(
-                        getattr(review.user, "intro", None)
+                        getattr(review.user, "intro", "") or ""
                         if hasattr(review, "user") and review.user
-                        else None
+                        else ""
                     ),
-                    tendency_type=None,  # 필요시 별도 조회
+                    tendency_type="",  # 필요시 별도 조회
                     is_following=False,  # 필요시 별도 조회
                 )
             except Exception as e:
@@ -286,9 +286,9 @@ class PodReviewService:
                 user_follow = SimpleUserDto(
                     id=0,
                     nickname="",
-                    profile_image=None,
-                    intro=None,
-                    tendency_type=None,
+                    profile_image="",
+                    intro="",
+                    tendency_type="",
                     is_following=False,
                 )
 

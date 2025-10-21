@@ -11,20 +11,18 @@ class SimplePodDto(BaseModel):
     title: str = Field(
         ..., alias="title", description="파티 제목", example="아이돌 굿즈 구매"
     )
-    image_url: Optional[str] = Field(
-        None, alias="imageUrl", description="파티 이미지 URL"
-    )
+    image_url: str = Field(..., alias="imageUrl", description="파티 이미지 URL")
     sub_categories: list[str] = Field(
         ...,
         alias="subCategories",
         description="서브 카테고리 목록",
         example=["GROUP_PURCHASE"],
     )
-    meeting_place: Optional[str] = Field(
-        None, alias="meetingPlace", description="만남 장소", example="강남역"
+    meeting_place: str = Field(
+        ..., alias="meetingPlace", description="만남 장소", example="강남역"
     )
-    meeting_date: Optional[int] = Field(
-        None,
+    meeting_date: int = Field(
+        ...,
         alias="meetingDate",
         description="만남 날짜/시간 (timestamp)",
         example=1705276800000,
@@ -34,7 +32,6 @@ class SimplePodDto(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
-
 
 
 class PodReviewCreateRequest(BaseModel):
