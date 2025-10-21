@@ -40,6 +40,9 @@ class User(Base):
 
     # 관계 설정
     preferred_artists = relationship("PreferredArtist", back_populates="user")
+    notification_settings = relationship(
+        "UserNotificationSettings", back_populates="user", uselist=False
+    )
 
     # 팔로우 관계
     following = relationship(

@@ -15,6 +15,7 @@ from .endpoints import (
     health,
     notifications,
     notification_settings,
+    user_notification_settings,
 )
 from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
@@ -57,7 +58,14 @@ api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
 )
 api_router.include_router(
-    notification_settings.router, prefix="/notification-settings", tags=["notification-settings"]
+    notification_settings.router,
+    prefix="/notification-settings",
+    tags=["notification-settings"],
+)
+api_router.include_router(
+    user_notification_settings.router,
+    prefix="/user-notification-settings",
+    tags=["user-notification-settings"],
 )
 
 # 후기 관련 라우터

@@ -15,6 +15,7 @@ from app.schemas.notification import (
     to_upper_camel_case,
 )
 from app.crud.notification import notification_crud
+from app.crud.user_notification_settings import UserNotificationSettingsCRUD
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,24 @@ class FCMService:
             성공 여부
         """
         try:
+            # 사용자 알림 설정 확인
+            if db and user_id:
+                settings_crud = UserNotificationSettingsCRUD(db)
+                category = (
+                    get_notification_category(data.get("type", "UNKNOWN"))
+                    if data
+                    else "POD"
+                )
+                should_send = await settings_crud.should_send_notification(
+                    user_id, category
+                )
+
+                if not should_send:
+                    logger.info(
+                        f"사용자 {user_id}의 알림 설정에 의해 전송 취소됨 (카테고리: {category})"
+                    )
+                    return True  # 설정에 의해 전송하지 않았지만 성공으로 처리
+
             # 메시지 생성
             message = messaging.Message(
                 notification=messaging.Notification(

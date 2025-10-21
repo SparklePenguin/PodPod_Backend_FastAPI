@@ -5,28 +5,24 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
-from datetime import time
-
 from app.models.user_notification_settings import UserNotificationSettings
+from app.schemas.user_notification_settings import UpdateUserNotificationSettingsRequest
 
 
 class UserNotificationSettingsCRUD:
-    """사용자 알림 설정 CRUD"""
+    def __init__(self, db: AsyncSession):
+        self.db = db
 
-    async def get_by_user_id(
-        self, db: AsyncSession, user_id: int
-    ) -> Optional[UserNotificationSettings]:
+    async def get_by_user_id(self, user_id: int) -> Optional[UserNotificationSettings]:
         """사용자 ID로 알림 설정 조회"""
-        result = await db.execute(
+        result = await self.db.execute(
             select(UserNotificationSettings).where(
                 UserNotificationSettings.user_id == user_id
             )
         )
         return result.scalar_one_or_none()
 
-    async def create_default_settings(
-        self, db: AsyncSession, user_id: int
-    ) -> UserNotificationSettings:
+    async def create_default_settings(self, user_id: int) -> UserNotificationSettings:
         """기본 알림 설정 생성"""
         settings = UserNotificationSettings(
             user_id=user_id,
@@ -35,72 +31,75 @@ class UserNotificationSettingsCRUD:
             community_enabled=True,
             chat_enabled=True,
             do_not_disturb_enabled=False,
-            do_not_disturb_start=None,
-            do_not_disturb_end=None,
             marketing_enabled=False,
         )
-        db.add(settings)
-        await db.commit()
-        await db.refresh(settings)
-        return settings
-
-    async def get_or_create(
-        self, db: AsyncSession, user_id: int
-    ) -> UserNotificationSettings:
-        """알림 설정 조회 또는 생성"""
-        settings = await self.get_by_user_id(db, user_id)
-        if not settings:
-            settings = await self.create_default_settings(db, user_id)
+        self.db.add(settings)
+        await self.db.commit()
+        await self.db.refresh(settings)
         return settings
 
     async def update_settings(
-        self,
-        db: AsyncSession,
-        user_id: int,
-        notice_enabled: Optional[bool] = None,
-        pod_enabled: Optional[bool] = None,
-        community_enabled: Optional[bool] = None,
-        chat_enabled: Optional[bool] = None,
-        do_not_disturb_enabled: Optional[bool] = None,
-        do_not_disturb_start: Optional[str] = None,
-        do_not_disturb_end: Optional[str] = None,
-        marketing_enabled: Optional[bool] = None,
-    ) -> UserNotificationSettings:
+        self, user_id: int, update_data: UpdateUserNotificationSettingsRequest
+    ) -> Optional[UserNotificationSettings]:
         """알림 설정 업데이트"""
-        settings = await self.get_or_create(db, user_id)
+        settings = await self.get_by_user_id(user_id)
+        if not settings:
+            return None
 
-        # 제공된 필드만 업데이트
-        if notice_enabled is not None:
-            settings.notice_enabled = notice_enabled
-        if pod_enabled is not None:
-            settings.pod_enabled = pod_enabled
-        if community_enabled is not None:
-            settings.community_enabled = community_enabled
-        if chat_enabled is not None:
-            settings.chat_enabled = chat_enabled
-        if do_not_disturb_enabled is not None:
-            settings.do_not_disturb_enabled = do_not_disturb_enabled
-        if do_not_disturb_start is not None:
-            # "HH:MM" 문자열을 time 객체로 변환
-            if do_not_disturb_start:
-                hour, minute = map(int, do_not_disturb_start.split(":"))
-                settings.do_not_disturb_start = time(hour=hour, minute=minute)
-            else:
-                settings.do_not_disturb_start = None
-        if do_not_disturb_end is not None:
-            # "HH:MM" 문자열을 time 객체로 변환
-            if do_not_disturb_end:
-                hour, minute = map(int, do_not_disturb_end.split(":"))
-                settings.do_not_disturb_end = time(hour=hour, minute=minute)
-            else:
-                settings.do_not_disturb_end = None
-        if marketing_enabled is not None:
-            settings.marketing_enabled = marketing_enabled
+        # 업데이트할 필드만 적용
+        update_dict = update_data.model_dump(exclude_unset=True, by_alias=True)
 
-        await db.commit()
-        await db.refresh(settings)
+        # 필드명 매핑 (camelCase -> snake_case)
+        field_mapping = {
+            "wakeUpAlarm": "notice_enabled",
+            "busAlert": "chat_enabled",
+            "partyAlert": "pod_enabled",
+            "communityAlert": "community_enabled",
+            "productAlarm": "marketing_enabled",
+            "doNotDisturbEnabled": "do_not_disturb_enabled",
+            "startTime": "do_not_disturb_start",
+            "endTime": "do_not_disturb_end",
+            "marketingEnabled": "marketing_enabled",
+        }
+
+        for key, value in update_dict.items():
+            if key in field_mapping and value is not None:
+                db_field = field_mapping[key]
+                if key in ["startTime", "endTime"] and value:
+                    # 시간 문자열을 Time 객체로 변환
+                    from datetime import datetime
+
+                    try:
+                        # "오후 12:00" 형식을 파싱
+                        time_str = value.replace("오후", "PM").replace("오전", "AM")
+                        time_obj = datetime.strptime(time_str, "%p %I:%M").time()
+                        setattr(settings, db_field, time_obj)
+                    except ValueError:
+                        # 파싱 실패 시 무시
+                        pass
+                else:
+                    setattr(settings, db_field, value)
+
+        await self.db.commit()
+        await self.db.refresh(settings)
         return settings
 
+    async def should_send_notification(
+        self, user_id: int, notification_category: str
+    ) -> bool:
+        """알림 전송 여부 확인"""
+        settings = await self.get_by_user_id(user_id)
+        if not settings:
+            return True  # 설정이 없으면 기본적으로 전송
 
-# 싱글톤 인스턴스
-user_notification_settings_crud = UserNotificationSettingsCRUD()
+        # 카테고리별 설정 확인
+        category_mapping = {
+            "POD": settings.pod_enabled,
+            "COMMUNITY": settings.community_enabled,
+            "NOTICE": settings.notice_enabled,
+        }
+
+        if notification_category not in category_mapping:
+            return True
+
+        return category_mapping[notification_category]
