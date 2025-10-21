@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import math
+import logging
 
 from app.api.deps import get_current_user_id, get_db
 from app.crud.notification import notification_crud
@@ -23,6 +24,7 @@ from app.services.pod.pod_service import PodService
 from app.services.tendency_service import TendencyService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -73,11 +75,18 @@ async def get_notifications(
         # related_user DTO 생성
         related_user_dto = None
         if n.related_user:
-            # 사용자의 성향 정보 조회
-            user_tendency = await tendency_service.get_user_tendency_result(
-                n.related_user.id
-            )
-            tendency_type = user_tendency.tendency_type if user_tendency else ""
+            # 사용자의 성향 정보 조회 (에러 처리 포함)
+            tendency_type = ""
+            try:
+                user_tendency = await tendency_service.get_user_tendency_result(
+                    n.related_user.id
+                )
+                tendency_type = user_tendency.tendency_type if user_tendency else ""
+            except Exception as e:
+                logger.warning(
+                    f"사용자 성향 정보 조회 실패 (user_id: {n.related_user.id}): {e}"
+                )
+                tendency_type = ""
 
             related_user_dto = SimpleUserDto(
                 id=n.related_user.id,
