@@ -11,6 +11,7 @@ from app.schemas.notification import (
     ReviewNotiSubType,
     FollowNotiSubType,
     get_notification_category,
+    get_notification_main_type,
     to_upper_camel_case,
 )
 from app.crud.notification import notification_crud
@@ -262,9 +263,13 @@ class FCMService:
             )
 
         # data 딕셔너리 생성
+        # notification_type의 클래스명을 NotificationType enum 값으로 변환
+        notification_type_class = notification_type.__class__.__name__
+        main_type = get_notification_main_type(notification_type_class)
+
         data = {
-            "type": notification_type.name,  # POD_JOIN_REQUEST (UPPER_SNAKE_CASE)
-            "value": notification_type.name,  # POD_JOIN_REQUEST (UPPER_SNAKE_CASE)
+            "type": main_type,  # POD, FOLLOW 등 (NotificationType enum 값)
+            "value": notification_type.name,  # POD_JOIN_REQUEST 등 (UPPER_SNAKE_CASE)
         }
 
         # related_id 추가

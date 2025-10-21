@@ -249,6 +249,26 @@ def get_notification_category(type: str) -> str:
     return NOTIFICATION_TYPE_CATEGORY_MAP.get(type, NotificationCategory.POD).value
 
 
+def get_notification_main_type(notification_type: str) -> str:
+    """
+    알림 타입 클래스명을 NotificationType enum 값으로 변환
+
+    Args:
+        notification_type: 알림 타입 클래스명 (예: PodNotificationType, FollowNotificationType)
+
+    Returns:
+        NotificationType enum 값 (예: POD, FOLLOW)
+    """
+    type_mapping = {
+        "PodNotificationType": NotificationType.POD,
+        "PodStatusNotificationType": NotificationType.POD_STATUS,
+        "RecommendNotificationType": NotificationType.RECOMMEND,
+        "ReviewNotificationType": NotificationType.REVIEW,
+        "FollowNotificationType": NotificationType.FOLLOW,
+    }
+    return type_mapping.get(notification_type, NotificationType.POD).value
+
+
 def to_upper_camel_case(snake_str: str) -> str:
     """
     UPPER_SNAKE_CASE를 UpperCamelCase로 변환
@@ -277,9 +297,6 @@ class NotificationResponse(NotificationBase):
     """알림 응답 스키마"""
 
     id: int = Field(alias="id")
-    type: str = Field(alias="type")
-    value: str = Field(alias="value")
-    related_id: Optional[int] = Field(default=None, alias="relatedId")
     related_user: Optional[SimpleUserDto] = Field(
         default=None, alias="relatedUser", description="관련 유저 (Optional)"
     )

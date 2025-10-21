@@ -12,6 +12,7 @@ from app.crud.notification import notification_crud
 from app.schemas.notification import (
     NotificationResponse,
     NotificationUnreadCountResponse,
+    get_notification_main_type,
 )
 from app.schemas.common.page_dto import PageDto
 from app.schemas.common.base_response import BaseResponse
@@ -19,6 +20,7 @@ from app.schemas.follow import SimpleUserDto
 from app.schemas.pod.pod_dto import PodDto
 from app.core.http_status import HttpStatus
 from app.services.pod.pod_service import PodService
+from app.services.tendency_service import TendencyService
 
 router = APIRouter()
 
@@ -65,17 +67,24 @@ async def get_notifications(
     # DTO 변환 (related_user, related_pod 정보 포함)
     notification_dtos = []
     pod_service = PodService(db)
+    tendency_service = TendencyService(db)
 
     for n in notifications:
         # related_user DTO 생성
         related_user_dto = None
         if n.related_user:
+            # 사용자의 성향 정보 조회
+            user_tendency = await tendency_service.get_user_tendency_result(
+                n.related_user.id
+            )
+            tendency_type = user_tendency.tendency_type if user_tendency else ""
+
             related_user_dto = SimpleUserDto(
                 id=n.related_user.id,
                 nickname=n.related_user.nickname,
                 profile_image=n.related_user.profile_image,
                 intro=n.related_user.intro or "",
-                tendency_type="",  # TODO: 필요시 조회
+                tendency_type=tendency_type,
                 is_following=False,  # TODO: 필요시 조회
             )
 
@@ -132,7 +141,7 @@ async def get_notifications(
             "id": n.id,
             "title": n.title,
             "body": n.body,
-            "type": n.notification_type,
+            "type": get_notification_main_type(n.notification_type),
             "value": n.notification_value,
             "related_id": related_id_int,
             "category": n.category,
