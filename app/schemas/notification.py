@@ -204,9 +204,9 @@ FollowNotificationType = FollowNotiSubType
 class NotificationCategory(str, Enum):
     """알림 카테고리"""
 
-    POD = "pod"  # 파티 관련 알림
-    COMMUNITY = "community"  # 커뮤니티 관련 알림 (팔로우, 리뷰 등)
-    NOTICE = "notice"  # 공지/리마인드 알림
+    POD = "POD"  # 파티 관련 알림
+    COMMUNITY = "COMMUNITY"  # 커뮤니티 관련 알림 (팔로우, 리뷰 등)
+    NOTICE = "NOTICE"  # 공지/리마인드 알림
 
 
 # 메인 타입과 카테고리 매칭
@@ -244,7 +244,7 @@ def get_notification_category(type: str) -> str:
         type: 알림 타입 (예: PodNotificationType, FollowNotificationType)
 
     Returns:
-        카테고리 (pod, community, notice)
+        카테고리 (POD, COMMUNITY, NOTICE)
     """
     return NOTIFICATION_TYPE_CATEGORY_MAP.get(type, NotificationCategory.POD).value
 
@@ -286,8 +286,8 @@ class NotificationResponse(NotificationBase):
     related_pod: Optional[SimplePodDto] = Field(
         default=None, alias="relatedPod", description="관련 파티 (Optional)"
     )
-    category: str = Field(
-        alias="category", description="알림 카테고리 (pod, community, notice)"
+    category: NotificationCategory = Field(
+        alias="category", description="알림 카테고리 (POD, COMMUNITY, NOTICE)"
     )
     is_read: bool = Field(alias="isRead")
     read_at: Optional[datetime] = Field(

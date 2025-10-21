@@ -9,7 +9,7 @@ alwaysApply: true
 - Backend: `infisical secrets get KEY --env=dev --path=/Backend` | GoogleSheet: `--path=/GoogleSheet` | `run.py`가 자동 로드
 
 ## 3. 스키마 규칙
-- 필드명: camelCase (Field(alias="camelCase")) | 타입/값: UPPER_SNAKE_CASE (POD_JOIN_REQUEST) | model_config = {"populate_by_name": True} | typing import 확인
+- 필드명: camelCase (Field(alias="camelCase")) | 열거형(Enum) 값: UPPER_SNAKE_CASE (예: POD_JOIN_REQUEST, POD, COMMUNITY) | model_config = {"populate_by_name": True} | typing import 확인
 - Path 파라미터: 경로 변수명과 함수 파라미터명이 일치해야 함 (snake_case 사용) | alias 사용 금지 | 예: `/{user_id}` → `user_id: int = Path(...)`
 
 ## 4. 응답 형식 (필수)

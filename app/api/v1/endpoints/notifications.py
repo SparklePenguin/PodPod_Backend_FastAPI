@@ -103,8 +103,12 @@ async def get_notifications(
                 try:
                     import json
 
-                    sub_categories_list = json.loads(n.related_pod.sub_categories)
-                except (json.JSONDecodeError, TypeError):
+                    # 이미 리스트인 경우 그대로 사용, 문자열인 경우 JSON 파싱
+                    if isinstance(n.related_pod.sub_categories, list):
+                        sub_categories_list = n.related_pod.sub_categories
+                    else:
+                        sub_categories_list = json.loads(n.related_pod.sub_categories)
+                except (json.JSONDecodeError, TypeError, AttributeError):
                     sub_categories_list = []
 
             related_pod_dto = SimplePodDto(
