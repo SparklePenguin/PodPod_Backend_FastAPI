@@ -84,13 +84,21 @@ async def get_notifications(
                 n.related_pod, current_user_id
             )
 
+        # related_id를 int로 변환 (None이면 None 유지)
+        related_id_int = None
+        if n.related_id is not None:
+            try:
+                related_id_int = int(n.related_id)
+            except (ValueError, TypeError):
+                related_id_int = None
+
         noti_dict = {
             "id": n.id,
             "title": n.title,
             "body": n.body,
-            "notification_type": n.notification_type,
-            "notification_value": n.notification_value,
-            "related_id": n.related_id,
+            "type": n.notification_type,
+            "value": n.notification_value,
+            "related_id": related_id_int,
             "category": n.category,
             "is_read": n.is_read,
             "read_at": n.read_at,

@@ -236,19 +236,17 @@ NOTIFICATION_TYPE_CATEGORY_MAP = {
 }
 
 
-def get_notification_category(notification_type: str) -> str:
+def get_notification_category(type: str) -> str:
     """
     알림 타입으로 카테고리 반환
 
     Args:
-        notification_type: 알림 타입 (예: PodNotificationType, FollowNotificationType)
+        type: 알림 타입 (예: PodNotificationType, FollowNotificationType)
 
     Returns:
         카테고리 (pod, community, notice)
     """
-    return NOTIFICATION_TYPE_CATEGORY_MAP.get(
-        notification_type, NotificationCategory.POD
-    ).value
+    return NOTIFICATION_TYPE_CATEGORY_MAP.get(type, NotificationCategory.POD).value
 
 
 def to_upper_camel_case(snake_str: str) -> str:
@@ -270,17 +268,18 @@ class NotificationBase(BaseModel):
 
     title: str = Field(alias="title")
     body: str = Field(alias="body")
-    notification_type: str = Field(alias="notificationType")
-    notification_value: str = Field(alias="notificationValue")
-    related_id: Optional[str] = Field(default=None, alias="relatedId")
+    type: str = Field(alias="type")
+    value: str = Field(alias="value")
+    related_id: Optional[int] = Field(default=None, alias="relatedId")
 
 
 class NotificationResponse(NotificationBase):
     """알림 응답 스키마"""
 
     id: int = Field(alias="id")
-    notification_type: str = Field(alias="notificationType")
-    notification_value: str = Field(alias="notificationValue")
+    type: str = Field(alias="type")
+    value: str = Field(alias="value")
+    related_id: Optional[int] = Field(default=None, alias="relatedId")
     related_user: Optional[SimpleUserDto] = Field(
         default=None, alias="relatedUser", description="관련 유저 (Optional)"
     )
