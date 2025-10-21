@@ -66,15 +66,17 @@ class UserNotificationSettingsCRUD:
             if key in field_mapping and value is not None:
                 db_field = field_mapping[key]
                 if key in ["startTime", "endTime"] and value:
-                    # 시간 문자열을 Time 객체로 변환
-                    from datetime import datetime
+                    # timestamp를 Time 객체로 변환
+                    from datetime import datetime, time
 
                     try:
-                        # "오후 12:00" 형식을 파싱
-                        time_str = value.replace("오후", "PM").replace("오전", "AM")
-                        time_obj = datetime.strptime(time_str, "%p %I:%M").time()
+                        # timestamp를 datetime으로 변환 후 time 추출
+                        dt = datetime.fromtimestamp(
+                            value / 1000
+                        )  # milliseconds to seconds
+                        time_obj = dt.time()
                         setattr(settings, db_field, time_obj)
-                    except ValueError:
+                    except (ValueError, TypeError):
                         # 파싱 실패 시 무시
                         pass
                 else:

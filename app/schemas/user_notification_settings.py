@@ -15,35 +15,31 @@ class UserNotificationSettingsDto(BaseModel):
 
     # 알림 카테고리별 설정
     wake_up_alarm: bool = Field(
-        ..., alias="wakeUpAlarm", description="기상 알림", default=True
+        default=True, alias="wakeUpAlarm", description="기상 알림"
     )
-    bus_alert: bool = Field(
-        ..., alias="busAlert", description="버스 알림", default=True
-    )
-    party_alert: bool = Field(
-        ..., alias="partyAlert", description="파티 알림", default=True
-    )
+    bus_alert: bool = Field(default=True, alias="busAlert", description="버스 알림")
+    party_alert: bool = Field(default=True, alias="partyAlert", description="파티 알림")
     community_alert: bool = Field(
-        ..., alias="communityAlert", description="커뮤니티 알림", default=True
+        default=True, alias="communityAlert", description="커뮤니티 알림"
     )
     product_alarm: bool = Field(
-        ..., alias="productAlarm", description="상품 알림", default=True
+        default=True, alias="productAlarm", description="상품 알림"
     )
 
     # 방해금지 설정
     do_not_disturb_enabled: bool = Field(
-        ..., alias="doNotDisturbEnabled", description="방해금지 모드", default=False
+        default=False, alias="doNotDisturbEnabled", description="방해금지 모드"
     )
-    start_time: Optional[str] = Field(
-        None, alias="startTime", description="방해금지 시작 시간 (오후 12:00 형식)"
+    start_time: Optional[int] = Field(
+        None, alias="startTime", description="방해금지 시작 시간 (timestamp)"
     )
-    end_time: Optional[str] = Field(
-        None, alias="endTime", description="방해금지 종료 시간 (오후 12:00 형식)"
+    end_time: Optional[int] = Field(
+        None, alias="endTime", description="방해금지 종료 시간 (timestamp)"
     )
 
     # 마케팅 설정
     marketing_enabled: bool = Field(
-        ..., alias="marketingEnabled", description="마케팅 알림 수신", default=False
+        default=False, alias="marketingEnabled", description="마케팅 알림 수신"
     )
 
     model_config = {"from_attributes": True, "populate_by_name": True}
@@ -68,11 +64,11 @@ class UpdateUserNotificationSettingsRequest(BaseModel):
     do_not_disturb_enabled: Optional[bool] = Field(
         None, alias="doNotDisturbEnabled", description="방해금지 모드"
     )
-    start_time: Optional[str] = Field(
-        None, alias="startTime", description="방해금지 시작 시간"
+    start_time: Optional[int] = Field(
+        None, alias="startTime", description="방해금지 시작 시간 (timestamp)"
     )
-    end_time: Optional[str] = Field(
-        None, alias="endTime", description="방해금지 종료 시간"
+    end_time: Optional[int] = Field(
+        None, alias="endTime", description="방해금지 종료 시간 (timestamp)"
     )
     marketing_enabled: Optional[bool] = Field(
         None, alias="marketingEnabled", description="마케팅 알림 수신"

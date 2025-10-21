@@ -49,12 +49,12 @@ async def get_notification_settings(
         product_alarm=settings.marketing_enabled,
         do_not_disturb_enabled=settings.do_not_disturb_enabled,
         start_time=(
-            settings.do_not_disturb_start.strftime("%p %I:%M")
+            int(settings.do_not_disturb_start.timestamp() * 1000)
             if settings.do_not_disturb_start
             else None
         ),
         end_time=(
-            settings.do_not_disturb_end.strftime("%p %I:%M")
+            int(settings.do_not_disturb_end.timestamp() * 1000)
             if settings.do_not_disturb_end
             else None
         ),
@@ -104,12 +104,12 @@ async def update_notification_settings(
         product_alarm=updated_settings.marketing_enabled,
         do_not_disturb_enabled=updated_settings.do_not_disturb_enabled,
         start_time=(
-            updated_settings.do_not_disturb_start.strftime("%p %I:%M")
+            int(updated_settings.do_not_disturb_start.timestamp() * 1000)
             if updated_settings.do_not_disturb_start
             else None
         ),
         end_time=(
-            updated_settings.do_not_disturb_end.strftime("%p %I:%M")
+            int(updated_settings.do_not_disturb_end.timestamp() * 1000)
             if updated_settings.do_not_disturb_end
             else None
         ),
