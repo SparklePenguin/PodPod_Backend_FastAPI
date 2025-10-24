@@ -84,7 +84,16 @@ async def get_user_info(
     """사용자 정보 조회 (토큰 필요)"""
     # user_id가 제공되지 않으면 현재 사용자 정보 반환
     target_user_id = user_id if user_id is not None else current_user_id
-    user = await user_service.get_user(target_user_id)
+
+    if target_user_id == current_user_id:
+        # 본인 정보 조회
+        user = await user_service.get_user(target_user_id)
+    else:
+        # 다른 사용자 정보 조회 (팔로우 통계 포함)
+        user = await user_service.get_user_with_follow_stats(
+            target_user_id, current_user_id
+        )
+
     return BaseResponse.ok(data=user)
 
 
