@@ -188,6 +188,8 @@ class FollowService:
                 place=pod.place,
                 address=pod.address,
                 sub_address=pod.sub_address,
+                x=pod.x,  # x 좌표 추가
+                y=pod.y,  # y 좌표 추가
                 meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),
                 selected_artist_id=pod.selected_artist_id,
                 status=pod.status,
