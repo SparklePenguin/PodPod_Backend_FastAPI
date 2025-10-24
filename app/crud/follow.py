@@ -25,11 +25,20 @@ class FollowCRUD:
             if follower_id == following_id:
                 return None
 
-            # 이미 팔로우하고 있는지 확인
-            existing_follow = await self.get_follow(follower_id, following_id)
+            # 기존 팔로우 레코드 확인 (활성화 상태 무관)
+            existing_follow = await self.get_follow_any_status(
+                follower_id, following_id
+            )
             if existing_follow:
-                return existing_follow
+                if existing_follow.is_active:
+                    return existing_follow
+                else:
+                    # 비활성화된 팔로우가 있으면 재활성화
+                    existing_follow.is_active = True
+                    await self.db.commit()
+                    return existing_follow
 
+            # 새로운 팔로우 생성
             follow = Follow(follower_id=follower_id, following_id=following_id)
             self.db.add(follow)
             await self.db.commit()
@@ -40,13 +49,14 @@ class FollowCRUD:
             return None
 
     async def delete_follow(self, follower_id: int, following_id: int) -> bool:
-        """팔로우 취소"""
+        """팔로우 취소 (알림 설정은 보존)"""
         try:
-            follow = await self.get_follow(follower_id, following_id)
+            follow = await self.get_follow_any_status(follower_id, following_id)
             if not follow:
                 return False
 
-            await self.db.delete(follow)
+            # 레코드 삭제 대신 is_active = False로 업데이트
+            follow.is_active = False
             await self.db.commit()
             return True
         except Exception:
@@ -54,7 +64,21 @@ class FollowCRUD:
             return False
 
     async def get_follow(self, follower_id: int, following_id: int) -> Optional[Follow]:
-        """특정 팔로우 조회"""
+        """특정 팔로우 조회 (활성화된 것만)"""
+        query = select(Follow).where(
+            and_(
+                Follow.follower_id == follower_id,
+                Follow.following_id == following_id,
+                Follow.is_active == True,
+            )
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_follow_any_status(
+        self, follower_id: int, following_id: int
+    ) -> Optional[Follow]:
+        """특정 팔로우 조회 (활성화 상태 무관)"""
         query = select(Follow).where(
             and_(Follow.follower_id == follower_id, Follow.following_id == following_id)
         )

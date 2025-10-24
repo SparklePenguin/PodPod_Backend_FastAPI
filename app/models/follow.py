@@ -28,6 +28,12 @@ class Follow(Base):
         nullable=False,
         comment="알림 활성화 여부",
     )
+    is_active = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        comment="팔로우 활성화 여부",
+    )
     created_at = Column(
         DateTime, default=datetime.utcnow, nullable=False, comment="팔로우 생성 시간"
     )
