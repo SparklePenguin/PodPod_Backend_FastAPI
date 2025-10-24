@@ -101,6 +101,33 @@ class FCMService:
                     )
                     return True  # 설정에 의해 전송하지 않았지만 성공으로 처리
 
+                # 개인 대 개인 팔로우 알림 설정 확인 (FOLLOW 타입인 경우)
+                if category == "COMMUNITY" and data and data.get("type") == "FOLLOW":
+                    from app.crud.follow import FollowCRUD
+
+                    follow_crud = FollowCRUD(db)
+                    related_user_id = data.get("relatedId")
+
+                    if related_user_id:
+                        try:
+                            # 팔로우 관계의 개인 알림 설정 확인
+                            notification_enabled = (
+                                await follow_crud.get_notification_status(
+                                    int(related_user_id), user_id
+                                )
+                            )
+
+                            if notification_enabled is False:
+                                logger.info(
+                                    f"개인 팔로우 알림 설정에 의해 전송 취소됨: follower_id={related_user_id}, following_id={user_id}"
+                                )
+                                return (
+                                    True  # 설정에 의해 전송하지 않았지만 성공으로 처리
+                                )
+                        except (ValueError, TypeError):
+                            # relatedId가 숫자가 아닌 경우 무시
+                            pass
+
             # 메시지 생성
             message = messaging.Message(
                 notification=messaging.Notification(
