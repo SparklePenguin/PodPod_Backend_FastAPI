@@ -472,3 +472,64 @@ class SendbirdService:
             logger.error(f"Sendbird 사용자 생성 실패: {e}")
             logger.error(f"상세 오류: {traceback.format_exc()}")
             return False
+
+    async def update_user_profile(
+        self, user_id: str, nickname: str = None, profile_url: str = None
+    ) -> bool:
+        """
+        Sendbird 사용자 프로필 업데이트
+        Args:
+            user_id: 사용자 ID
+            nickname: 닉네임 (선택사항)
+            profile_url: 프로필 이미지 URL (선택사항)
+        Returns:
+            성공 여부
+        """
+        try:
+            import httpx
+            import json
+
+            from app.core.config import settings
+
+            url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/users/{user_id}"
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            # 업데이트할 필드만 포함
+            payload = {}
+            if nickname is not None:
+                payload["nickname"] = nickname
+            if profile_url is not None:
+                payload["profile_url"] = profile_url
+
+            # 업데이트할 필드가 없으면 성공으로 처리
+            if not payload:
+                return True
+
+            async with httpx.AsyncClient() as client:
+                response = await client.put(url, headers=headers, json=payload)
+
+                if response.status_code == 200:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.info(
+                        f"Sendbird 사용자 프로필 업데이트 성공: userId={user_id}, payload={payload}"
+                    )
+                    return True
+                else:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.error(
+                        f"Sendbird 사용자 프로필 업데이트 실패: {response.status_code} - {response.text}"
+                    )
+                    return False
+
+        except Exception as e:
+            import logging
+            import traceback
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird 사용자 프로필 업데이트 실패: {e}")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
+            return False

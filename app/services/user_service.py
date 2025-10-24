@@ -156,6 +156,32 @@ class UserService:
         user = await self.user_crud.update_profile(user_id, update_data)
         if not user:
             raise_error("USER_NOT_FOUND")
+
+        # Sendbird 사용자 프로필 업데이트
+        try:
+            from app.services.sendbird_service import SendbirdService
+
+            sendbird_service = SendbirdService()
+
+            # Sendbird에 업데이트할 필드만 추출
+            sendbird_nickname = update_data.get("nickname")
+            sendbird_profile_url = update_data.get("profile_image")
+
+            # Sendbird 업데이트 (비동기로 실행, 실패해도 메인 로직은 계속)
+            await sendbird_service.update_user_profile(
+                user_id=str(user_id),
+                nickname=sendbird_nickname,
+                profile_url=sendbird_profile_url,
+            )
+        except Exception as e:
+            # Sendbird 업데이트 실패는 로그만 남기고 메인 로직은 계속
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Sendbird 사용자 프로필 업데이트 실패 (user_id: {user_id}): {e}"
+            )
+
         # UserDto 생성 시 상태 정보 포함
         user_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_data, from_attributes=False)
