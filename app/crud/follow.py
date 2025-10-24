@@ -169,21 +169,23 @@ class FollowCRUD:
         self, user_id: int, current_user_id: Optional[int] = None
     ) -> dict:
         """팔로우 통계 조회 (자기 자신 제외)"""
-        # 팔로우하는 수 (자기 자신 제외)
+        # 팔로우하는 수 (자기 자신 제외, 활성화된 것만)
         following_count_query = select(func.count(Follow.id)).where(
             and_(
                 Follow.follower_id == user_id,
                 Follow.following_id != user_id,  # 자기 자신 제외
+                Follow.is_active == True,  # 활성화된 팔로우만
             )
         )
         following_count_result = await self.db.execute(following_count_query)
         following_count = following_count_result.scalar()
 
-        # 팔로워 수 (자기 자신 제외)
+        # 팔로워 수 (자기 자신 제외, 활성화된 것만)
         followers_count_query = select(func.count(Follow.id)).where(
             and_(
                 Follow.following_id == user_id,
                 Follow.follower_id != user_id,  # 자기 자신 제외
+                Follow.is_active == True,  # 활성화된 팔로우만
             )
         )
         followers_count_result = await self.db.execute(followers_count_query)
