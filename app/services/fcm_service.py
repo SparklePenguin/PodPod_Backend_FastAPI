@@ -147,7 +147,7 @@ class FCMService:
                         body=body,
                         notification_type=notification_type,
                         notification_value=notification_value,
-                        related_id=data.get("related_id"),
+                        related_id=data.get("relatedId"),
                         category=category,
                     )
                     logger.info(
@@ -291,9 +291,9 @@ class FCMService:
             "value": notification_type.name,  # POD_JOIN_REQUEST 등 (UPPER_SNAKE_CASE)
         }
 
-        # related_id 추가
+        # relatedId 추가 (camelCase)
         if related_id_key and related_id_key in kwargs:
-            data["related_id"] = str(kwargs[related_id_key])
+            data["relatedId"] = str(kwargs[related_id_key])
 
         logger.info(f"FCM 데이터 생성: type={data['type']}, value={data['value']}")
         return formatted_message, data
