@@ -209,11 +209,16 @@ class FollowCRUD:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로우하는 사용자들이 만든 파티 조회
+        # 팔로우하는 사용자들이 만든 파티 조회 (활성화된 팔로우만)
         query = (
             select(Pod)
             .join(Follow, Pod.owner_id == Follow.following_id)
-            .where(Follow.follower_id == user_id)
+            .where(
+                and_(
+                    Follow.follower_id == user_id,
+                    Follow.is_active == True,  # 활성화된 팔로우만
+                )
+            )
             .order_by(desc(Pod.created_at))
             .offset(offset)
             .limit(size)
@@ -221,11 +226,16 @@ class FollowCRUD:
         result = await self.db.execute(query)
         pods = result.scalars().all()
 
-        # 총 파티 수 조회
+        # 총 파티 수 조회 (활성화된 팔로우만)
         count_query = (
             select(func.count(Pod.id))
             .join(Follow, Pod.owner_id == Follow.following_id)
-            .where(Follow.follower_id == user_id)
+            .where(
+                and_(
+                    Follow.follower_id == user_id,
+                    Follow.is_active == True,  # 활성화된 팔로우만
+                )
+            )
         )
         count_result = await self.db.execute(count_query)
         total_count = count_result.scalar()
