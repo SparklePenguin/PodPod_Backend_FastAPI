@@ -166,7 +166,9 @@ class PodCRUD:
     # - MARK: 파티 조회
     async def get_pod_by_id(self, pod_id: int) -> Optional[Pod]:
         result = await self.db.execute(
-            select(Pod).where(Pod.id == pod_id, Pod.is_active == True)
+            select(Pod)
+            .options(selectinload(Pod.images))
+            .where(Pod.id == pod_id, Pod.is_active == True)
         )
         return result.scalar_one_or_none()
 

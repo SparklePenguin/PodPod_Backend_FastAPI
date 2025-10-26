@@ -1,5 +1,6 @@
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
+from datetime import datetime
 
 
 class PodImageDto(BaseModel):
@@ -12,9 +13,15 @@ class PodImageDto(BaseModel):
         default=None, alias="thumbnailUrl", example="/uploads/pods/thumbnails/image.jpg"
     )
     display_order: int = Field(alias="displayOrder", example=0)
-    created_at: Optional[str] = Field(
+    created_at: Optional[datetime] = Field(
         default=None, alias="createdAt", example="2025-01-01T00:00:00"
     )
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, dt: Optional[datetime]) -> Optional[str]:
+        if dt is None:
+            return None
+        return dt.isoformat() if isinstance(dt, datetime) else str(dt)
 
     model_config = {
         "from_attributes": True,
