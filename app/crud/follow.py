@@ -218,6 +218,7 @@ class FollowCRUD:
                 and_(
                     Follow.follower_id == user_id,
                     Follow.is_active == True,  # 활성화된 팔로우만
+                    Pod.is_active == True,  # 활성화된 파티만
                 )
             )
             .order_by(desc(Pod.created_at))
@@ -235,6 +236,7 @@ class FollowCRUD:
                 and_(
                     Follow.follower_id == user_id,
                     Follow.is_active == True,  # 활성화된 팔로우만
+                    Pod.is_active == True,  # 활성화된 파티만
                 )
             )
         )
