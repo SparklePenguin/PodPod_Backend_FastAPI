@@ -59,6 +59,13 @@ ERROR_CODES: Dict[str, Dict[str, Any]] = {
         "message_en": "Already applied to this pod",
         "dev_note": "중복 신청 방지 로직 확인",
     },
+    "ALREADY_MEMBER": {
+        "code": 4012,
+        "http_status": 400,
+        "message_ko": "이미 참여한 파티입니다",
+        "message_en": "Already a member of this pod",
+        "dev_note": "중복 참여 방지 로직 확인",
+    },
 }
 
 # 캐시 파일 경로

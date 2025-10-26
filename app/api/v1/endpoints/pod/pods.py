@@ -670,7 +670,7 @@ async def update_pod_status(
     )
     if success:
         # 업데이트된 파티 정보 반환
-        updated_pod = await pod_service.get_pod_by_id(pod_id, current_user_id)
+        updated_pod = await pod_service.get_pod_detail(pod_id, current_user_id)
         return BaseResponse.ok(
             data=updated_pod,
             message_ko=f"파티 상태가 {pod_status.value}로 성공적으로 변경되었습니다.",

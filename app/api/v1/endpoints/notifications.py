@@ -146,21 +146,22 @@ async def get_notifications(
             except (ValueError, TypeError):
                 related_id_int = None
 
-        noti_dict = {
-            "id": n.id,
-            "title": n.title,
-            "body": n.body,
-            "type": get_notification_main_type(n.notification_type),
-            "value": n.notification_value,
-            "related_id": related_id_int,
-            "category": n.category,
-            "is_read": n.is_read,
-            "read_at": n.read_at,
-            "created_at": n.created_at,
-            "related_user": related_user_dto,
-            "related_pod": related_pod_dto,
-        }
-        notification_dtos.append(NotificationResponse.model_validate(noti_dict))
+        # NotificationResponse 직접 생성 (MissingGreenlet 오류 방지)
+        notification_dto = NotificationResponse(
+            id=n.id,
+            title=n.title,
+            body=n.body,
+            type=get_notification_main_type(n.notification_type),
+            value=n.notification_value,
+            related_id=related_id_int,
+            category=n.category,
+            is_read=n.is_read,
+            read_at=n.read_at,
+            created_at=n.created_at,
+            related_user=related_user_dto,
+            related_pod=related_pod_dto,
+        )
+        notification_dtos.append(notification_dto)
 
     # PageDto 생성
     page_dto = PageDto[NotificationResponse](

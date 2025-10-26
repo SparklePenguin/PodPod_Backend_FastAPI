@@ -597,17 +597,17 @@ class PodService:
         location: Optional[list[str]] = None,
         page: int = 1,
         page_size: int = 20,
-    ) -> Dict[str, Any]:
+    ) -> PageDto[PodDto]:
         """팟 검색"""
         result = await self.crud.search_pods(
-            title=title,
+            query=title or "",
             main_category=main_category,
-            sub_category=sub_category,
+            sub_categories=[sub_category] if sub_category else None,
             start_date=start_date,
             end_date=end_date,
-            location=location,
+            location=location[0] if location and len(location) > 0 else None,
             page=page,
-            page_size=page_size,
+            size=page_size,
         )
 
         # DTO 변환
@@ -615,14 +615,19 @@ class PodService:
         for pod in result["items"]:
             pod_dto = await self._convert_to_dto(pod, user_id)
             pod_dtos.append(pod_dto)
-        result["items"] = pod_dtos
 
-        # 페이지네이션 필드 추가
-        result["currentPage"] = result["page"]
-        result["hasNext"] = result["page"] < result["total_pages"]
-        result["hasPrev"] = result["page"] > 1
+        # PageDto 생성
+        from app.schemas.common.page_dto import PageDto
 
-        return result
+        return PageDto[PodDto](
+            items=pod_dtos,
+            current_page=result["page"],
+            page_size=result["page_size"],
+            total_count=result["total_count"],
+            total_pages=result["total_pages"],
+            has_next=result["page"] < result["total_pages"],
+            has_prev=result["page"] > 1,
+        )
 
     # - MARK: 사용자가 참여한 파티 조회
     async def get_user_joined_pods(
