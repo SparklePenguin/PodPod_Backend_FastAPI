@@ -42,6 +42,7 @@ class UserService:
             if (
                 user_data.auth_provider
                 and existing_user.auth_provider == user_data.auth_provider
+                and existing_user.auth_provider_id == user_data.auth_provider_id
             ):
                 # 같은 provider의 같은 계정이면 중복 에러
                 raise_error("SAME_OAUTH_PROVIDER_EXISTS")

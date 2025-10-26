@@ -21,6 +21,15 @@ class UserCRUD:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
+    # (내부 사용) 이메일과 프로바이더로 사용자 조회
+    async def get_by_email_and_provider(
+        self, email: str, auth_provider: str
+    ) -> Optional[User]:
+        result = await self.db.execute(
+            select(User).where(User.email == email, User.auth_provider == auth_provider)
+        )
+        return result.scalar_one_or_none()
+
     # (내부 사용) auth_provider와 auth_provider_id로 사용자 조회
     async def get_by_auth_provider_id(
         self, auth_provider: str, auth_provider_id: str
