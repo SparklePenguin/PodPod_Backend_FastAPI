@@ -99,6 +99,8 @@ class PodService:
 
         # Pod 모델을 PodDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
+            # images 관계를 다시 로드 (MissingGreenlet 오류 방지)
+            await self.db.refresh(pod, ["images"])
             pod_dto = await self._enrich_pod_dto(pod, owner_id)
 
             # 팔로워들에게 파티 생성 알림 전송

@@ -216,8 +216,9 @@ class PodReviewService:
                         if hasattr(review, "pod") and review.pod
                         else ""
                     ),
-                    image_url=(
-                        getattr(review.pod, "image_url", None)
+                    thumbnail_url=(
+                        getattr(review.pod, "thumbnail_url", None)
+                        or getattr(review.pod, "image_url", None)
                         if hasattr(review, "pod") and review.pod
                         else None
                     ),
@@ -246,7 +247,7 @@ class PodReviewService:
                 simple_pod = SimplePodDto(
                     id=0,
                     title="",
-                    image_url="",
+                    thumbnail_url="",
                     sub_categories=[],
                     meeting_place="",
                     meeting_date=0,

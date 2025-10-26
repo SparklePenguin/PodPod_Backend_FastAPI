@@ -132,7 +132,9 @@ async def get_notifications(
             related_pod_dto = SimplePodDto(
                 id=n.related_pod.id,
                 title=n.related_pod.title,
-                image_url=n.related_pod.image_url or "",
+                thumbnail_url=n.related_pod.thumbnail_url
+                or n.related_pod.image_url
+                or "",
                 sub_categories=sub_categories_list,
                 meeting_place=n.related_pod.place or "",
                 meeting_date=meeting_timestamp,

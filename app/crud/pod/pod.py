@@ -132,7 +132,7 @@ class PodCRUD:
             simple_pod_dto = SimplePodDto(
                 id=pod.id,
                 title=title,
-                image_url=image_url,
+                thumbnail_url=thumbnail_url or image_url or "",
                 sub_categories=sub_categories,
                 meeting_place=place,
                 meeting_date=_convert_to_combined_timestamp(meeting_date, meeting_time),
