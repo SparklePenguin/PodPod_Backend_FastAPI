@@ -11,7 +11,9 @@ class SimplePodDto(BaseModel):
     title: str = Field(
         ..., alias="title", description="파티 제목", example="아이돌 굿즈 구매"
     )
-    image_url: str = Field(..., alias="imageUrl", description="파티 이미지 URL")
+    thumbnail_url: str = Field(
+        ..., alias="thumbnailUrl", description="파티 썸네일 이미지 URL"
+    )
     sub_categories: list[str] = Field(
         ...,
         alias="subCategories",

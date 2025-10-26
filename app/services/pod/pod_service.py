@@ -37,27 +37,28 @@ class PodService:
         images: list[UploadFile] = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Optional[PodDto]:
+        from app.models.pod.pod_image import PodImage
+
         image_url = None
         thumbnail_url = None
 
-        # 이미지 저장 및 최적화
+        # 첫 번째 이미지로 thumbnail_url 생성 (임시로 null 저장)
+        thumbnail_url = None
         if images:
             first_image = images[0]
-            image_url = await save_upload_file(first_image, "uploads/pods/images")
-
-            # 첫 번째 이미지에서 썸네일 생성
             try:
                 thumbnail_url = await self._create_thumbnail_from_image(first_image)
             except ValueError as e:
-                # 썸네일 생성 실패 시 메인 이미지 URL을 썸네일로 사용
-                thumbnail_url = image_url
+                thumbnail_url = await save_upload_file(
+                    first_image, "uploads/pods/images"
+                )
 
         # 파티 생성 (채팅방 포함)
         pod = await self.crud.create_pod_with_chat(
             owner_id=owner_id,
             title=req.title,
             description=req.description,
-            image_url=image_url,
+            image_url=None,  # pods.image_url은 더 이상 사용하지 않음
             thumbnail_url=thumbnail_url,
             sub_categories=req.sub_categories,
             capacity=req.capacity,
@@ -71,6 +72,29 @@ class PodService:
             y=req.y,
             status=status,
         )
+
+        # 여러 이미지 저장
+        if pod and images:
+            for index, image in enumerate(images):
+                image_url = await save_upload_file(image, "uploads/pods/images")
+
+                # 각 이미지의 썸네일 생성
+                image_thumbnail_url = None
+                try:
+                    image_thumbnail_url = await self._create_thumbnail_from_image(image)
+                except ValueError as e:
+                    image_thumbnail_url = image_url
+
+                # PodImage 저장
+                pod_image = PodImage(
+                    pod_id=pod.id,
+                    image_url=image_url,
+                    thumbnail_url=image_thumbnail_url,
+                    display_order=index,
+                )
+                self.db.add(pod_image)
+
+            await self.db.commit()
 
         # Pod 모델을 PodDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
@@ -678,6 +702,7 @@ class PodService:
 
     async def _enrich_pod_dto(self, pod: Pod, user_id: Optional[int] = None) -> PodDto:
         """Pod를 PodDto로 변환하고 추가 정보를 설정"""
+        from app.schemas.pod.pod_image_dto import PodImageDto
 
         # meeting_date와 meeting_time을 timestamp로 변환
         def _convert_to_timestamp(meeting_date, meeting_time):
@@ -691,6 +716,12 @@ class PodService:
             else:
                 dt = datetime.combine(meeting_date, meeting_time)
             return int(dt.timestamp() * 1000)  # milliseconds
+
+        # 이미지 리스트 조회
+        images_dto = []
+        if hasattr(pod, "images") and pod.images:
+            for img in sorted(pod.images, key=lambda x: x.display_order):
+                images_dto.append(PodImageDto.model_validate(img))
 
         # PodDto를 수동으로 생성하여 applications 필드 접근 방지
         pod_dto = PodDto(
@@ -711,6 +742,7 @@ class PodService:
             selected_artist_id=pod.selected_artist_id,
             status=pod.status,
             chat_channel_url=pod.chat_channel_url,
+            images=images_dto,
             created_at=pod.created_at,
             updated_at=pod.updated_at,
             # 기본값 설정

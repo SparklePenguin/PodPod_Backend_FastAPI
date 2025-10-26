@@ -88,3 +88,8 @@ class Pod(Base):
         back_populates="pod",
         cascade="all, delete-orphan",
     )
+    images = relationship(
+        "PodImage",
+        back_populates="pod",
+        cascade="all, delete-orphan",
+    )

@@ -10,6 +10,7 @@ from app.models.pod.pod_enums import (
 )
 from app.models.pod.pod_status import PodStatus
 from app.schemas.pod.simple_application_dto import SimpleApplicationDto
+from app.schemas.pod.pod_image_dto import PodImageDto
 from app.schemas.follow import SimpleUserDto
 
 
@@ -126,6 +127,13 @@ class PodDto(BaseModel):
         alias="chatChannelUrl",
         example="pod_20_chat",
         description="Sendbird 채팅방 URL",
+    )
+
+    # 이미지 리스트
+    images: List[PodImageDto] = Field(
+        default_factory=list,
+        alias="images",
+        description="파티 이미지 목록",
     )
 
     # 개인화 필드

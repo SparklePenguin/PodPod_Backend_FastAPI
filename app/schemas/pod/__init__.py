@@ -4,6 +4,7 @@ from .pod_member_dto import PodMemberDto
 from .pod_like_dto import PodLikeDto
 from .pod_create_request import PodCreateRequest
 from .simple_application_dto import SimpleApplicationDto
+from .pod_image_dto import PodImageDto
 
 __all__ = [
     "PodDto",
@@ -13,4 +14,5 @@ __all__ = [
     "PodLikeDto",
     "PodCreateRequest",
     "SimpleApplicationDto",
+    "PodImageDto",
 ]
