@@ -212,6 +212,7 @@ class FollowCRUD:
         # 팔로우하는 사용자들이 만든 파티 조회 (활성화된 팔로우만)
         query = (
             select(Pod)
+            .options(selectinload(Pod.images))
             .join(Follow, Pod.owner_id == Follow.following_id)
             .where(
                 and_(

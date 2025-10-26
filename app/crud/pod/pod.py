@@ -210,7 +210,9 @@ class PodCRUD:
         offset = (page - 1) * size
 
         # 기본 쿼리
-        query = select(Pod).where(Pod.is_active == True)
+        query = (
+            select(Pod).options(selectinload(Pod.images)).where(Pod.is_active == True)
+        )
 
         # 조건 추가
         if selected_artist_id:
@@ -736,7 +738,11 @@ class PodCRUD:
         self, pod_id: int, user_id: Optional[int] = None
     ) -> Optional[Pod]:
         """파티 상세 정보 조회"""
-        query = select(Pod).where(Pod.id == pod_id, Pod.is_active == True)
+        query = (
+            select(Pod)
+            .options(selectinload(Pod.images))
+            .where(Pod.id == pod_id, Pod.is_active == True)
+        )
 
         result = await self.db.execute(query)
         pod = result.scalar_one_or_none()
@@ -777,14 +783,18 @@ class PodCRUD:
         offset = (page - 1) * size
 
         # 기본 쿼리
-        search_query = select(Pod).where(
-            and_(
-                Pod.is_active == True,
-                or_(
-                    Pod.title.contains(query),
-                    Pod.description.contains(query),
-                    Pod.place.contains(query),
-                ),
+        search_query = (
+            select(Pod)
+            .options(selectinload(Pod.images))
+            .where(
+                and_(
+                    Pod.is_active == True,
+                    or_(
+                        Pod.title.contains(query),
+                        Pod.description.contains(query),
+                        Pod.place.contains(query),
+                    ),
+                )
             )
         )
 
@@ -851,7 +861,11 @@ class PodCRUD:
         participants = result.scalars().all()
 
         # 파티장도 포함시키기 위해 추가 조회
-        pod_query = select(Pod).where(Pod.id == pod_id, Pod.is_active == True)
+        pod_query = (
+            select(Pod)
+            .options(selectinload(Pod.images))
+            .where(Pod.id == pod_id, Pod.is_active == True)
+        )
         pod_result = await self.db.execute(pod_query)
         pod = pod_result.scalar_one_or_none()
 
@@ -958,10 +972,14 @@ class PodCRUD:
         offset = (page - 1) * size
 
         # 기본 쿼리
-        query = select(Pod).where(
-            and_(
-                Pod.is_active == True,
-                Pod.owner_id == user_id,
+        query = (
+            select(Pod)
+            .options(selectinload(Pod.images))
+            .where(
+                and_(
+                    Pod.is_active == True,
+                    Pod.owner_id == user_id,
+                )
             )
         )
 
@@ -997,6 +1015,7 @@ class PodCRUD:
         # 기본 쿼리 (PodMember를 통해 참여한 파티 조회)
         query = (
             select(Pod)
+            .options(selectinload(Pod.images))
             .join(PodMember, Pod.id == PodMember.pod_id)
             .where(
                 and_(
@@ -1038,6 +1057,7 @@ class PodCRUD:
         # 기본 쿼리 (PodLike를 통해 좋아요한 파티 조회)
         query = (
             select(Pod)
+            .options(selectinload(Pod.images))
             .join(PodLike, Pod.id == PodLike.pod_id)
             .where(
                 and_(
