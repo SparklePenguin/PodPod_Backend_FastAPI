@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, desc, case
+from sqlalchemy.orm import selectinload
 from app.models.pod import Pod, PodMember
 from app.models.pod.pod_rating import PodRating
 from app.models.pod.pod_view import PodView
@@ -326,6 +327,7 @@ class PodCRUD:
                 view_count_subquery.label("view_count"),
                 like_count_subquery.label("like_count"),
             )
+            .options(selectinload(Pod.images))
             .where(base_conditions)
             .order_by(
                 desc(view_count_subquery),  # 조회수 높은 순
@@ -397,6 +399,7 @@ class PodCRUD:
         offset = (page - 1) * size
         closing_soon_query = (
             select(Pod, view_count_subquery.label("view_count"))
+            .options(selectinload(Pod.images))
             .where(and_(base_conditions, time_condition))
             .order_by(
                 Pod.meeting_time.asc(),  # 시작 시간이 가까운 순
@@ -568,6 +571,7 @@ class PodCRUD:
         offset = (page - 1) * size
         history_query = (
             select(Pod)
+            .options(selectinload(Pod.images))
             .where(history_conditions)
             .order_by(*order_conditions)
             .offset(offset)
@@ -684,6 +688,7 @@ class PodCRUD:
 
         popular_query = (
             select(Pod, view_count_subquery.label("view_count"))
+            .options(selectinload(Pod.images))
             .where(category_conditions)
             .order_by(*order_conditions)
             .offset(offset)

@@ -16,6 +16,7 @@ from app.crud.user import UserCRUD
 from app.models.user import User
 from app.core.error_codes import raise_error
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from datetime import date
 import math
 import logging
