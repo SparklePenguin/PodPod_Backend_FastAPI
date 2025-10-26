@@ -112,13 +112,16 @@ async def get_user_info(
 async def update_user_profile(
     nickname: Optional[str] = Form(None),
     intro: Optional[str] = Form(None),
+    profile_image_path: Optional[str] = Form(None, alias="profileImagePath"),
     image: Optional[UploadFile] = File(None),
     current_user_id: int = Depends(get_current_user_id),
     user_service: UserService = Depends(get_user_service),
 ):
-    """사용자 정보 업데이트 (토큰 필요, 멀티파트 지원)"""
-    # 이미지 파일 처리
+    """사용자 정보 업데이트 (토큰 필요, 파일 업로드 또는 경로 지정 가능)"""
+    # 이미지 처리: 파일 업로드 또는 경로 지정
     profile_image_url = None
+
+    # 파일 업로드가 있는 경우
     if image:
         try:
             profile_image_url = await upload_profile_image(image)
@@ -138,6 +141,9 @@ async def update_user_profile(
                 message_ko=f"이미지 업로드 실패: {str(e)}",
                 message_en="Image upload failed",
             )
+    # 경로가 제공된 경우
+    elif profile_image_path:
+        profile_image_url = profile_image_path
 
     # UpdateProfileRequest 생성
     profile_data = UpdateProfileRequest(
