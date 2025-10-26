@@ -28,6 +28,9 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
             content = await upload_file.read()
             buffer.write(content)
 
+        # 파일 포인터를 다시 처음으로 되돌리기 (다른 곳에서 재사용 가능하도록)
+        await upload_file.seek(0)
+
         # 파일 URL 반환 (상대 경로) - destination 경로를 포함
         return f"/{destination}/{unique_filename}"
 

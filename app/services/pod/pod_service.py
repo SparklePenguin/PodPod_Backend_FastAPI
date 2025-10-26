@@ -129,12 +129,33 @@ class PodService:
         # 이미지 읽기
         image_content = await image.read()
 
+        # 파일 포인터를 다시 처음으로 되돌리기 (다른 곳에서 재사용 가능하도록)
+        await image.seek(0)
+
         # 이미지 파일 검증
         if not image_content:
             raise ValueError("이미지 파일이 비어있습니다")
 
         try:
             img = Image.open(io.BytesIO(image_content))
+
+            # EXIF 회전 정보 처리
+            try:
+                from PIL.ExifTags import ORIENTATION
+
+                exif = img._getexif()
+                if exif is not None:
+                    orientation = exif.get(ORIENTATION)
+                    if orientation == 3:
+                        img = img.rotate(180, expand=True)
+                    elif orientation == 6:
+                        img = img.rotate(270, expand=True)
+                    elif orientation == 8:
+                        img = img.rotate(90, expand=True)
+            except (AttributeError, KeyError, TypeError):
+                # EXIF 데이터가 없거나 처리할 수 없는 경우 무시
+                pass
+
         except Exception as e:
             raise ValueError(f"이미지 파일을 읽을 수 없습니다: {str(e)}")
 
@@ -146,7 +167,7 @@ class PodService:
 
         # 썸네일 저장
         thumbnail_filename = f"{uuid.uuid4()}.jpg"
-        thumbnail_path = f"uploads/pods/thumbnails/{thumbnail_filename}"
+        thumbnail_path = f"/uploads/pods/thumbnails/{thumbnail_filename}"
 
         # 디렉토리 생성
         os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
