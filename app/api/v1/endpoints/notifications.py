@@ -226,8 +226,89 @@ async def mark_notification_as_read(
             detail="알림을 찾을 수 없거나 권한이 없습니다.",
         )
 
+    # NotificationResponse 직접 생성 (MissingGreenlet 오류 방지)
+    related_user_dto = None
+    if notification.related_user:
+        related_user_dto = SimpleUserDto(
+            id=notification.related_user.id,
+            nickname=notification.related_user.nickname,
+            profile_image=notification.related_user.profile_image,
+            intro=notification.related_user.intro or "",
+            tendency_type="",  # TODO: 필요시 조회
+            is_following=False,
+        )
+
+    related_pod_dto = None
+    if notification.related_pod:
+        from app.schemas.pod_review import SimplePodDto
+        from datetime import datetime, date, time
+
+        # meeting_date와 meeting_time을 하나의 timestamp로 변환
+        meeting_timestamp = 0
+        if (
+            notification.related_pod.meeting_date
+            and notification.related_pod.meeting_time
+        ):
+            try:
+                dt = datetime.combine(
+                    notification.related_pod.meeting_date,
+                    notification.related_pod.meeting_time,
+                )
+                meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
+            except:
+                meeting_timestamp = 0
+
+        # sub_categories를 문자열에서 리스트로 파싱
+        sub_categories_list = []
+        if notification.related_pod.sub_categories:
+            try:
+                import json
+
+                if isinstance(notification.related_pod.sub_categories, list):
+                    sub_categories_list = notification.related_pod.sub_categories
+                else:
+                    sub_categories_list = json.loads(
+                        notification.related_pod.sub_categories
+                    )
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                sub_categories_list = []
+
+        related_pod_dto = SimplePodDto(
+            id=notification.related_pod.id,
+            title=notification.related_pod.title,
+            thumbnail_url=notification.related_pod.thumbnail_url
+            or notification.related_pod.image_url
+            or "",
+            sub_categories=sub_categories_list,
+            meeting_place=notification.related_pod.place or "",
+            meeting_date=meeting_timestamp,
+        )
+
+    # related_id를 int로 변환
+    related_id_int = None
+    if notification.related_id is not None:
+        try:
+            related_id_int = int(notification.related_id)
+        except (ValueError, TypeError):
+            related_id_int = None
+
+    notification_dto = NotificationResponse(
+        id=notification.id,
+        title=notification.title,
+        body=notification.body,
+        type=get_notification_main_type(notification.notification_type),
+        value=notification.notification_value,
+        related_id=related_id_int,
+        category=notification.category,
+        is_read=notification.is_read,
+        read_at=notification.read_at,
+        created_at=notification.created_at,
+        related_user=related_user_dto,
+        related_pod=related_pod_dto,
+    )
+
     return BaseResponse.ok(
-        data=NotificationResponse.model_validate(notification),
+        data=notification_dto,
         message_ko="알림을 읽음 처리했습니다.",
         http_status=HttpStatus.OK,
     )
