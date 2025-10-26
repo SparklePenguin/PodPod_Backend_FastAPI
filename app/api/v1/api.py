@@ -15,6 +15,7 @@ from .endpoints import (
     health,
     notifications,
     user_notification_settings,
+    random_profile_images,
 )
 from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
@@ -76,3 +77,8 @@ api_router.include_router(admin_router)
 
 # 헬스 체크 라우터
 api_router.include_router(health.router, tags=["health"])
+
+# 랜덤 프로필 이미지 라우터
+api_router.include_router(
+    random_profile_images.router, prefix="/profile-images", tags=["profile-images"]
+)

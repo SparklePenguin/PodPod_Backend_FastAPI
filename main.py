@@ -109,6 +109,10 @@ app.openapi_tags = [
         "name": "internal",
         "description": "⚠️ 내부용 API - 개발/테스트 목적으로만 사용됩니다.",
     },
+    {
+        "name": "profile-images",
+        "description": "랜덤 프로필 이미지 API",
+    },
 ]
 
 # 보안 스키마 정의
@@ -128,6 +132,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 # 정적 파일 서빙 설정
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/static", StaticFiles(directory="."), name="static")
 
 # API 라우터 포함
 app.include_router(api_router, prefix="/api/v1")

@@ -22,6 +22,8 @@ from app.schemas.artist_image import (
 )
 from app.crud.artist import ArtistCRUD
 from app.core.http_status import HttpStatus
+import os
+import random
 
 router = APIRouter()
 

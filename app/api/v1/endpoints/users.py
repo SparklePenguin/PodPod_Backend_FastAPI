@@ -33,6 +33,8 @@ from app.schemas.auth import SignUpRequest
 from app.schemas.common import BaseResponse
 from app.core.http_status import HttpStatus
 from app.core.logging_config import get_logger
+import os
+import random
 
 router = APIRouter()
 
