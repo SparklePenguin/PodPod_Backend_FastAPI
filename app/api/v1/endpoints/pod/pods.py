@@ -19,6 +19,7 @@ from app.schemas.pod import (
     PodDto,
 )
 from app.schemas.pod.pod_dto import PodSearchRequest
+from app.schemas.pod.image_order import ImageOrder
 from app.schemas.common import (
     BaseResponse,
     PageDto,
@@ -601,10 +602,10 @@ async def update_pod(
     selected_artist_id: Optional[int] = Form(
         None, alias="selectedArtistId", description="선택된 아티스트 ID"
     ),
-    image_order: Optional[str] = Form(
+    image_orders: Optional[str] = Form(
         None,
-        alias="imageOrder",
-        description="이미지 순서 JSON (기존: {url: '...', type: 'existing'}, 신규: {file: UploadFile, type: 'new'})",
+        alias="imageOrders",
+        description="이미지 순서 JSON 문자열 (기존: {type: 'existing', url: '...'}, 신규: {type: 'new', fileIndex: 0})",
     ),
     new_images: Optional[list[UploadFile]] = File(
         None, alias="newImages", description="새로 업로드할 이미지 파일 리스트"
@@ -614,6 +615,17 @@ async def update_pod(
 ):
     """파티 정보 수정 (이미지 업로드 지원)"""
     from datetime import date, time
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    # 모든 Form 데이터 로깅
+    logger.info(f"[API] 받은 모든 Form 데이터:")
+    logger.info(f"[API] - title: {title}")
+    logger.info(f"[API] - description: {description}")
+    logger.info(f"[API] - image_orders: '{image_orders}'")
+    logger.info(f"[API] - image_orders 타입: {type(image_orders)}")
+    logger.info(f"[API] - new_images 개수: {len(new_images) if new_images else 0}")
 
     # 업데이트할 필드들 준비
     update_fields = {}
@@ -651,7 +663,7 @@ async def update_pod(
         pod_id=pod_id,
         current_user_id=current_user_id,
         update_fields=update_fields,
-        image_order=image_order,
+        image_orders=image_orders,
         new_images=new_images,
     )
 

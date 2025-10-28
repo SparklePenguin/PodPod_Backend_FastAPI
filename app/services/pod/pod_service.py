@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import date, time
@@ -6,6 +6,7 @@ from app.crud.pod.pod import PodCRUD
 from app.crud.pod.pod_application import PodApplicationCRUD
 from app.schemas.pod import PodCreateRequest, PodDto
 from app.schemas.pod.simple_application_dto import SimpleApplicationDto
+from app.schemas.pod.image_order import ImageOrder
 from app.schemas.common import PageDto
 from app.utils.file_upload import save_upload_file
 from fastapi import UploadFile
@@ -201,7 +202,7 @@ class PodService:
         pod_id: int,
         current_user_id: int,
         update_fields: dict,
-        image_order: Optional[str] = None,
+        image_orders: Optional[str] = None,
         new_images: Optional[list[UploadFile]] = None,
     ) -> Optional[PodDto]:
         """파티 수정 (이미지 관리 포함)"""
@@ -218,10 +219,20 @@ class PodService:
             raise_error("POD_ACCESS_DENIED")
 
         # 이미지 순서 처리
-        if image_order is not None:
+        logger.info(f"[파티 업데이트] image_orders 값: '{image_orders}'")
+        logger.info(f"[파티 업데이트] image_orders 타입: {type(image_orders)}")
+        logger.info(
+            f"[파티 업데이트] new_images 개수: {len(new_images) if new_images else 0}"
+        )
+
+        if image_orders is not None and image_orders.strip():
             try:
-                # JSON 파싱
-                order_data = json.loads(image_order)
+                # JSON 형태로 파싱
+                logger.info(f"[파티 업데이트] JSON 파싱 시도: {image_orders}")
+                order_data = json.loads(image_orders)
+                image_order_objects = [
+                    ImageOrder.model_validate(item) for item in order_data
+                ]
 
                 # 기존 이미지 모두 삭제
                 await self._delete_pod_images(pod_id)
@@ -235,28 +246,41 @@ class PodService:
                 thumbnail_url = None
 
                 # 순서대로 이미지 처리
-                for index, item in enumerate(order_data):
-                    if item.get("type") == "existing":
+                existing_count = 0
+                new_count = 0
+
+                for index, order_item in enumerate(image_order_objects):
+                    logger.info(
+                        f"[파티 업데이트] 처리 중인 이미지 {index}: type={order_item.type}, url={order_item.url}, fileIndex={order_item.file_index}"
+                    )
+
+                    if order_item.type == "existing":
                         # 기존 이미지
-                        image_url = item.get("url")
-                        if image_url:
+                        if order_item.url:
                             pod_image = PodImage(
                                 pod_id=pod_id,
-                                image_url=image_url,
-                                thumbnail_url=None,  # 기존 이미지는 썸네일 재생성 안함
+                                image_url=order_item.url,
+                                thumbnail_url=order_item.url,
                                 display_order=index,
                             )
                             self.db.add(pod_image)
+                            existing_count += 1
 
                             # 첫 번째 이미지면 썸네일로 설정
                             if index == 0:
-                                thumbnail_url = image_url
+                                thumbnail_url = order_item.url
 
-                    elif item.get("type") == "new":
+                            logger.info(
+                                f"[파티 업데이트] 기존 이미지 추가: {order_item.url}"
+                            )
+
+                    elif order_item.type == "new":
                         # 새 이미지
-                        file_index = item.get("fileIndex", 0)
-                        if file_index in new_images_dict:
-                            image = new_images_dict[file_index]
+                        if (
+                            order_item.file_index is not None
+                            and order_item.file_index in new_images_dict
+                        ):
+                            image = new_images_dict[order_item.file_index]
 
                             # 이미지 저장
                             image_url = await save_upload_file(
@@ -279,18 +303,83 @@ class PodService:
                                 display_order=index,
                             )
                             self.db.add(pod_image)
+                            new_count += 1
 
                             # 첫 번째 이미지면 썸네일로 설정
                             if index == 0:
                                 thumbnail_url = image_thumbnail_url
 
+                            logger.info(f"[파티 업데이트] 새 이미지 추가: {image_url}")
+                        else:
+                            logger.warning(
+                                f"[파티 업데이트] 새 이미지 파일을 찾을 수 없음: fileIndex={order_item.file_index}, 사용 가능한 파일: {list(new_images_dict.keys())}"
+                            )
+
                 # 썸네일 업데이트
                 if thumbnail_url:
                     update_fields["thumbnail_url"] = thumbnail_url
 
+                logger.info(
+                    f"[파티 업데이트] 이미지 처리 완료: 총 {len(image_order_objects)}개 (기존: {existing_count}개, 새: {new_count}개)"
+                )
+
             except (json.JSONDecodeError, KeyError, ValueError) as e:
                 logger.error(f"이미지 순서 파싱 오류: {e}")
-                raise_error("INVALID_IMAGE_ORDER")
+                from fastapi import HTTPException
+
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error_code": "BAD_REQUEST",
+                        "code": 4000,
+                        "message": "이미지 순서 데이터가 올바르지 않습니다.",
+                    },
+                )
+
+        # 새 이미지만 있는 경우 (image_orders 없이)
+        elif new_images:
+            logger.info(f"[파티 업데이트] 새 이미지만 처리: {len(new_images)}개")
+
+            # 기존 이미지 모두 삭제
+            await self._delete_pod_images(pod_id)
+
+            thumbnail_url = None
+
+            # 새 이미지들을 순서대로 추가
+            for index, image in enumerate(new_images):
+                logger.info(
+                    f"[파티 업데이트] 새 이미지 처리 중 {index}: {image.filename}"
+                )
+
+                # 이미지 저장
+                image_url = await save_upload_file(image, "uploads/pods/images")
+
+                # 썸네일 생성
+                image_thumbnail_url = None
+                try:
+                    image_thumbnail_url = await self._create_thumbnail_from_image(image)
+                except ValueError as e:
+                    image_thumbnail_url = image_url
+
+                pod_image = PodImage(
+                    pod_id=pod_id,
+                    image_url=image_url,
+                    thumbnail_url=image_thumbnail_url,
+                    display_order=index,
+                )
+                self.db.add(pod_image)
+
+                # 첫 번째 이미지면 썸네일로 설정
+                if index == 0:
+                    thumbnail_url = image_thumbnail_url
+
+                logger.info(f"[파티 업데이트] 새 이미지 저장 완료: {image_url}")
+
+            # 썸네일 업데이트
+            if thumbnail_url:
+                update_fields["thumbnail_url"] = thumbnail_url
+
+            logger.info(f"[파티 업데이트] 새 이미지만 처리 완료: {len(new_images)}개")
 
         # 파티 기본 정보 업데이트
         if update_fields:
