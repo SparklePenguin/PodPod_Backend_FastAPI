@@ -303,6 +303,7 @@ class PodCRUD:
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준 + 최근 7일간 생성
         base_conditions = and_(
             Pod.is_active == True,
+            Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.created_at >= seven_days_ago,  # 최근 7일간 생성
@@ -379,6 +380,7 @@ class PodCRUD:
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
             Pod.is_active == True,
+            Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외
@@ -452,6 +454,7 @@ class PodCRUD:
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
             Pod.is_active == True,
+            Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외
@@ -612,6 +615,7 @@ class PodCRUD:
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
             Pod.is_active == True,
+            Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
             Pod.owner_id != user_id,  # 본인이 개설한 파티 제외

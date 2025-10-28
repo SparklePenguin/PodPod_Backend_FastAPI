@@ -1225,8 +1225,8 @@ class PodService:
             participants = await self.crud.get_pod_participants(pod_id)
 
             # 상태별 알림 전송
-            if status == PodStatus.CONFIRMED:
-                # 파티 확정 알림
+            if status == PodStatus.COMPLETED:
+                # 파티 확정 알림 (모집 완료)
                 for participant in participants:
                     try:
                         if participant.fcm_token:
@@ -1249,8 +1249,8 @@ class PodService:
                             f"파티 확정 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
-            elif status == PodStatus.CANCELED:
-                # 파티 취소 알림
+            elif status == PodStatus.CLOSED:
+                # 파티 취소 알림 (종료)
                 for participant in participants:
                     try:
                         if participant.fcm_token:
@@ -1272,7 +1272,6 @@ class PodService:
                         logger.error(
                             f"파티 취소 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
-            elif status == PodStatus.COMPLETED:
                 # 파티 완료 알림
                 for participant in participants:
                     try:
