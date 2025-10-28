@@ -57,7 +57,10 @@ async def startup_events():
     from app.services.scheduler_service import start_scheduler
 
     asyncio.create_task(start_scheduler())
-    print("스케줄러 시작됨 (매시간 실행)")
+    print("스케줄러 시작됨:")
+    print("- 매일 아침 10시: 리뷰 유도 알림")
+    print("- 5분마다: 파티 시작 임박 알림")
+    print("- 1시간마다: 마감 임박 알림")
 
     print("애플리케이션 시작 이벤트 완료")
 

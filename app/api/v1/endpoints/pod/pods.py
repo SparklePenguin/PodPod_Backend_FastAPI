@@ -26,6 +26,7 @@ from app.schemas.common import (
 )
 from app.core.http_status import HttpStatus
 from app.core.error_codes import get_error_info
+from app.services.scheduler_service import scheduler
 
 
 router = APIRouter(dependencies=[])
@@ -836,3 +837,99 @@ async def delete_pod_member(
         data=result,
         message_ko=message,
     )
+
+
+@router.post(
+    "/test-scheduler",
+    summary="스케줄러 테스트",
+    description="파티 시작 임박 알림 스케줄러를 수동으로 실행합니다.",
+    tags=["pods"],
+)
+async def test_scheduler(
+    db: AsyncSession = Depends(get_db),
+):
+    """스케줄러 테스트"""
+    try:
+        await scheduler._send_start_soon_reminders(db)
+        return BaseResponse.ok(data=None, message_ko="스케줄러 테스트 완료")
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"스케줄러 테스트 실패: {e}"
+        )
+
+
+@router.get(
+    "/debug-pods",
+    summary="파티 디버그",
+    description="모든 파티 정보를 조회합니다.",
+    tags=["pods"],
+)
+async def debug_pods(
+    db: AsyncSession = Depends(get_db),
+):
+    """파티 디버그"""
+    from sqlalchemy import select
+    from app.models.pod.pod import Pod
+
+    try:
+        query = select(Pod).order_by(Pod.id.desc()).limit(10)
+        result = await db.execute(query)
+        pods = result.scalars().all()
+
+        pod_data = []
+        for pod in pods:
+            pod_data.append(
+                {
+                    "id": pod.id,
+                    "title": pod.title,
+                    "meeting_date": str(pod.meeting_date),
+                    "meeting_time": str(pod.meeting_time),
+                    "status": pod.status,
+                    "created_at": str(pod.created_at),
+                }
+            )
+
+        return BaseResponse.ok(data=pod_data, message_ko="파티 디버그 완료")
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"파티 디버그 실패: {e}"
+        )
+
+
+@router.patch(
+    "/88/fix-date",
+    summary="파티 88번 날짜 수정",
+    description="파티 88번의 날짜를 오늘로 수정합니다.",
+    tags=["pods"],
+)
+async def fix_pod88_date(
+    db: AsyncSession = Depends(get_db),
+):
+    """파티 88번 날짜 수정"""
+    from sqlalchemy import select, update
+    from app.models.pod.pod import Pod
+    from datetime import date
+
+    try:
+        # 파티 88번 조회
+        query = select(Pod).where(Pod.id == 88)
+        result = await db.execute(query)
+        pod = result.scalar_one_or_none()
+
+        if not pod:
+            return BaseResponse.ok(
+                data=None, message_ko="파티 88번을 찾을 수 없습니다."
+            )
+
+        # 날짜를 오늘로 수정
+        update_query = update(Pod).where(Pod.id == 88).values(meeting_date=date.today())
+        await db.execute(update_query)
+        await db.commit()
+
+        return BaseResponse.ok(
+            data=None, message_ko="파티 88번 날짜가 오늘로 수정되었습니다."
+        )
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"파티 88번 날짜 수정 실패: {e}"
+        )

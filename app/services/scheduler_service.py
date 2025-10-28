@@ -43,7 +43,7 @@ class SchedulerService:
             logger.error(f"리뷰 리마인드 체크 중 오류: {e}")
 
     async def check_start_soon_reminders(self):
-        """파티 시작 1시간 전 알림 체크 (10분마다)"""
+        """파티 시작 1시간 전 알림 체크 (5분마다)"""
         try:
             # 데이터베이스 세션 생성
             async for db in get_db():
@@ -57,7 +57,63 @@ class SchedulerService:
         except Exception as e:
             logger.error(f"파티 시작 임박 알림 체크 중 오류: {e}")
 
-    async def _send_day_reminders(self, db: AsyncSession):
+    async def check_deadline_reminders(self):
+        """마감 임박 알림 체크 (1시간마다)"""
+        try:
+            # 데이터베이스 세션 생성
+            async for db in get_db():
+                try:
+                    # 파티 마감 임박 알림 (24시간 전 + 인원 부족)
+                    await self._send_low_attendance_reminders(db)
+
+                    # 좋아요한 파티 마감 임박 알림 (1일 전)
+                    await self._send_saved_pod_deadline_reminders(db)
+
+                finally:
+                    await db.close()
+
+        except Exception as e:
+            logger.error(f"마감 임박 알림 체크 중 오류: {e}")
+
+    async def _has_sent_review_reminder(
+        self, db: AsyncSession, user_id: int, pod_id: int, reminder_type: str
+    ) -> bool:
+        """리뷰 리마인드 알림을 이미 보냈는지 확인"""
+        from app.models.notification import Notification
+
+        query = select(Notification).where(
+            and_(
+                Notification.user_id == user_id,
+                Notification.related_pod_id == pod_id,
+                Notification.notification_value == reminder_type,
+                Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+            )
+        )
+
+        result = await db.execute(query)
+        existing_notification = result.scalar_one_or_none()
+
+        return existing_notification is not None
+
+    async def _has_sent_start_soon_reminder(
+        self, db: AsyncSession, user_id: int, pod_id: int
+    ) -> bool:
+        """파티 시작 임박 알림을 이미 보냈는지 확인"""
+        from app.models.notification import Notification
+
+        query = select(Notification).where(
+            and_(
+                Notification.user_id == user_id,
+                Notification.related_pod_id == pod_id,
+                Notification.notification_value == "POD_START_SOON",
+                Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+            )
+        )
+
+        result = await db.execute(query)
+        existing_notification = result.scalar_one_or_none()
+
+        return existing_notification is not None
         """1일 전 모임 리뷰 유도 알림"""
         yesterday = date.today() - timedelta(days=1)
 
@@ -125,6 +181,15 @@ class SchedulerService:
             # 각 참여자에게 알림 전송
             for participant in participants:
                 try:
+                    # 이미 오늘 같은 알림을 보냈는지 확인
+                    if await self._has_sent_review_reminder(
+                        db, participant.id, pod.id, reminder_type
+                    ):
+                        logger.info(
+                            f"{reminder_type} 알림 이미 전송됨: user_id={participant.id}, pod_id={pod.id}"
+                        )
+                        continue
+
                     if participant.fcm_token:
                         if reminder_type == "REVIEW_REMINDER_DAY":
                             await self.fcm_service.send_review_reminder_day(
@@ -222,18 +287,51 @@ class SchedulerService:
         now = datetime.now()
         one_hour_later = now + timedelta(hours=1)
 
+        logger.info(f"현재 시간: {now}")
+        logger.info(f"1시간 후: {one_hour_later}")
+        logger.info(f"오늘 날짜: {now.date()}")
+
+        # 디버깅: 오늘 날짜의 모든 파티 조회
+        debug_query = select(Pod).where(Pod.meeting_date == now.date())
+        debug_result = await db.execute(debug_query)
+        today_pods = debug_result.scalars().all()
+
+        logger.info(f"오늘 날짜의 모든 파티: {len(today_pods)}개")
+        for pod in today_pods:
+            logger.info(
+                f"- 파티 ID: {pod.id}, 제목: {pod.title}, 시간: {pod.meeting_time}, 상태: {pod.status}"
+            )
+
+        # 파티 88번 특별 조회
+        pod88_query = select(Pod).where(Pod.id == 88)
+        pod88_result = await db.execute(pod88_query)
+        pod88 = pod88_result.scalar_one_or_none()
+
+        if pod88:
+            logger.info(
+                f"파티 88번 정보: ID={pod88.id}, 제목={pod88.title}, 날짜={pod88.meeting_date}, 시간={pod88.meeting_time}, 상태={pod88.status}"
+            )
+        else:
+            logger.info("파티 88번을 찾을 수 없습니다.")
+
         # 1시간 후 시작하는 모임들 조회
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == now.date(),
                 Pod.meeting_time >= now.time(),
                 Pod.meeting_time <= one_hour_later.time(),
-                Pod.status == "CONFIRMED",  # 확정된 모임만
+                Pod.status.in_(["CONFIRMED", "COMPLETED"]),  # 확정되거나 완료된 모임
             )
         )
 
         result = await db.execute(query)
         starting_soon_pods = result.scalars().all()
+
+        logger.info(f"파티 시작 임박 알림 대상: {len(starting_soon_pods)}개")
+        for pod in starting_soon_pods:
+            logger.info(
+                f"- 파티 ID: {pod.id}, 제목: {pod.title}, 시간: {pod.meeting_time}, 상태: {pod.status}"
+            )
 
         for pod in starting_soon_pods:
             await self._send_start_soon_to_participants(db, pod)
@@ -263,6 +361,15 @@ class SchedulerService:
             # 각 참여자에게 알림 전송
             for participant in participants:
                 try:
+                    # 이미 오늘 같은 알림을 보냈는지 확인
+                    if await self._has_sent_start_soon_reminder(
+                        db, participant.id, pod.id
+                    ):
+                        logger.info(
+                            f"파티 시작 임박 알림 이미 전송됨: user_id={participant.id}, pod_id={pod.id}"
+                        )
+                        continue
+
                     if participant.fcm_token:
                         await self.fcm_service.send_pod_start_soon(
                             token=participant.fcm_token,
@@ -394,12 +501,29 @@ class SchedulerService:
 scheduler = SchedulerService()
 
 
-async def run_hourly_scheduler():
-    """1시간마다 실행되는 스케줄러 (리뷰, 마감 임박 알림)"""
+async def run_daily_scheduler():
+    """매일 아침 10시에 실행되는 스케줄러 (리뷰, 마감 임박 알림)"""
     while True:
         try:
-            logger.info("시간별 스케줄러 실행 시작 (리뷰, 마감 임박 알림)")
+            # 다음 아침 10시까지 대기
+            await wait_until_10am()
+
+            logger.info("일일 스케줄러 실행 시작 (리뷰, 마감 임박 알림)")
             await scheduler.check_review_reminders()
+            logger.info("일일 스케줄러 실행 완료")
+
+        except Exception as e:
+            logger.error(f"일일 스케줄러 실행 중 오류: {e}")
+            # 오류 발생 시 1시간 후 재시도
+            await asyncio.sleep(60 * 60)
+
+
+async def run_hourly_scheduler():
+    """1시간마다 실행되는 스케줄러 (마감 임박 알림만)"""
+    while True:
+        try:
+            logger.info("시간별 스케줄러 실행 시작 (마감 임박 알림)")
+            await scheduler.check_deadline_reminders()
             logger.info("시간별 스케줄러 실행 완료")
 
             # 1시간 대기
@@ -411,21 +535,21 @@ async def run_hourly_scheduler():
             await asyncio.sleep(10 * 60)
 
 
-async def run_10min_scheduler():
-    """10분마다 실행되는 스케줄러 (파티 시작 임박 알림)"""
+async def run_5min_scheduler():
+    """5분마다 실행되는 스케줄러 (파티 시작 임박 알림)"""
     while True:
         try:
-            logger.info("10분 스케줄러 실행 시작 (파티 시작 임박 알림)")
+            logger.info("5분 스케줄러 실행 시작 (파티 시작 임박 알림)")
             await scheduler.check_start_soon_reminders()
-            logger.info("10분 스케줄러 실행 완료")
+            logger.info("5분 스케줄러 실행 완료")
 
-            # 10분 대기
-            await asyncio.sleep(10 * 60)
+            # 5분 대기
+            await asyncio.sleep(5 * 60)
 
         except Exception as e:
-            logger.error(f"10분 스케줄러 실행 중 오류: {e}")
-            # 오류 발생 시 5분 후 재시도
-            await asyncio.sleep(5 * 60)
+            logger.error(f"5분 스케줄러 실행 중 오류: {e}")
+            # 오류 발생 시 2분 후 재시도
+            await asyncio.sleep(2 * 60)
 
 
 async def wait_until_10am():
@@ -451,8 +575,11 @@ async def wait_until_10am():
 async def start_scheduler():
     """스케줄러 시작"""
     logger.info("스케줄러 시작:")
-    logger.info("- 10분마다: 파티 시작 임박 알림")
-    logger.info("- 1시간마다: 리뷰, 마감 임박 알림")
+    logger.info("- 매일 아침 10시: 리뷰 유도 알림")
+    logger.info("- 5분마다: 파티 시작 임박 알림")
+    logger.info("- 1시간마다: 마감 임박 알림")
 
-    # 두 스케줄러를 병렬로 실행
-    await asyncio.gather(run_10min_scheduler(), run_hourly_scheduler())
+    # 세 개 스케줄러를 병렬로 실행
+    await asyncio.gather(
+        run_daily_scheduler(), run_5min_scheduler(), run_hourly_scheduler()
+    )
