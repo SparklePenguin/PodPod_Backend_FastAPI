@@ -195,6 +195,170 @@ class PodService:
     async def update_pod(self, pod_id: int, **fields) -> Optional[Pod]:
         return await self.crud.update_pod(pod_id, **fields)
 
+    # - MARK: 파티 수정 (이미지 포함)
+    async def update_pod_with_images(
+        self,
+        pod_id: int,
+        current_user_id: int,
+        update_fields: dict,
+        image_order: Optional[str] = None,
+        new_images: Optional[list[UploadFile]] = None,
+    ) -> Optional[PodDto]:
+        """파티 수정 (이미지 관리 포함)"""
+        from app.models.pod.pod_image import PodImage
+        import json
+
+        # 파티 정보 조회 및 권한 확인
+        pod = await self.crud.get_pod_by_id(pod_id)
+        if not pod:
+            return None
+
+        # 파티 소유자 확인
+        if pod.owner_id != current_user_id:
+            raise_error("POD_ACCESS_DENIED")
+
+        # 이미지 순서 처리
+        if image_order is not None:
+            try:
+                # JSON 파싱
+                order_data = json.loads(image_order)
+
+                # 기존 이미지 모두 삭제
+                await self._delete_pod_images(pod_id)
+
+                # 새 이미지들을 딕셔너리로 매핑 (인덱스 기반)
+                new_images_dict = {}
+                if new_images:
+                    for i, img in enumerate(new_images):
+                        new_images_dict[i] = img
+
+                thumbnail_url = None
+
+                # 순서대로 이미지 처리
+                for index, item in enumerate(order_data):
+                    if item.get("type") == "existing":
+                        # 기존 이미지
+                        image_url = item.get("url")
+                        if image_url:
+                            pod_image = PodImage(
+                                pod_id=pod_id,
+                                image_url=image_url,
+                                thumbnail_url=None,  # 기존 이미지는 썸네일 재생성 안함
+                                display_order=index,
+                            )
+                            self.db.add(pod_image)
+
+                            # 첫 번째 이미지면 썸네일로 설정
+                            if index == 0:
+                                thumbnail_url = image_url
+
+                    elif item.get("type") == "new":
+                        # 새 이미지
+                        file_index = item.get("fileIndex", 0)
+                        if file_index in new_images_dict:
+                            image = new_images_dict[file_index]
+
+                            # 이미지 저장
+                            image_url = await save_upload_file(
+                                image, "uploads/pods/images"
+                            )
+
+                            # 썸네일 생성
+                            image_thumbnail_url = None
+                            try:
+                                image_thumbnail_url = (
+                                    await self._create_thumbnail_from_image(image)
+                                )
+                            except ValueError as e:
+                                image_thumbnail_url = image_url
+
+                            pod_image = PodImage(
+                                pod_id=pod_id,
+                                image_url=image_url,
+                                thumbnail_url=image_thumbnail_url,
+                                display_order=index,
+                            )
+                            self.db.add(pod_image)
+
+                            # 첫 번째 이미지면 썸네일로 설정
+                            if index == 0:
+                                thumbnail_url = image_thumbnail_url
+
+                # 썸네일 업데이트
+                if thumbnail_url:
+                    update_fields["thumbnail_url"] = thumbnail_url
+
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                logger.error(f"이미지 순서 파싱 오류: {e}")
+                raise_error("INVALID_IMAGE_ORDER")
+
+        # 파티 기본 정보 업데이트
+        if update_fields:
+            # sub_categories를 JSON 문자열로 변환
+            if "sub_categories" in update_fields and isinstance(
+                update_fields["sub_categories"], list
+            ):
+                import json
+
+                update_fields["sub_categories"] = json.dumps(
+                    update_fields["sub_categories"], ensure_ascii=False
+                )
+
+            await self.crud.update_pod(pod_id, **update_fields)
+
+        await self.db.commit()
+
+        # 파티 정보 다시 조회하여 DTO로 변환
+        updated_pod = await self.crud.get_pod_by_id(pod_id)
+        if updated_pod:
+            await self.db.refresh(updated_pod, ["images"])
+            pod_dto = await self._enrich_pod_dto(updated_pod, current_user_id)
+
+            # 알림 전송
+            await self._send_pod_update_notification(pod_id, updated_pod)
+
+            return pod_dto
+
+        return None
+
+    async def _delete_pod_images(self, pod_id: int):
+        """파티의 모든 이미지 삭제"""
+        from app.models.pod.pod_image import PodImage
+
+        result = await self.db.execute(
+            select(PodImage).where(PodImage.pod_id == pod_id)
+        )
+        images = result.scalars().all()
+
+        for image in images:
+            await self.db.delete(image)
+
+    async def _send_pod_update_notification(self, pod_id: int, pod: Pod):
+        """파티 수정 알림 전송"""
+        try:
+            fcm_service = FCMService()
+            participants = await self.crud.get_pod_participants(pod_id)
+
+            for participant in participants:
+                if participant.id != pod.owner_id and participant.fcm_token:
+                    try:
+                        await fcm_service.send_pod_updated(
+                            token=participant.fcm_token,
+                            party_name=pod.title,
+                            pod_id=pod_id,
+                            db=self.db,
+                            user_id=participant.id,
+                        )
+                        logger.info(
+                            f"파티 수정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"파티 수정 알림 전송 실패: user_id={participant.id}, error={e}"
+                        )
+        except Exception as e:
+            logger.error(f"파티 수정 알림 처리 중 오류: {e}")
+
     # - MARK: 파티 수정 (알림 포함)
     async def update_pod_with_notification(
         self, pod_id: int, **fields

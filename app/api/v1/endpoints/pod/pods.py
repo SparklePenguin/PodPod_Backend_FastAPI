@@ -564,23 +564,108 @@ async def get_pod_detail(
 # - MARK: 파티 수정
 @router.put(
     "/{pod_id}",
-    response_model=BaseResponse[None],
+    response_model=BaseResponse[PodDto],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[None],
+            "model": BaseResponse[PodDto],
             "description": "파티 수정 성공",
         },
     },
     summary="파티 수정",
-    description="특정 파티의 정보를 수정합니다.",
+    description="특정 파티의 정보를 수정합니다. 이미지 업로드 지원.",
     tags=["pods"],
 )
 async def update_pod(
     pod_id: int,
+    title: Optional[str] = Form(None, alias="title", description="파티 제목"),
+    description: Optional[str] = Form(
+        None, alias="description", description="파티 설명"
+    ),
+    sub_categories: Optional[list[str]] = Form(
+        None, alias="subCategories", description="서브 카테고리"
+    ),
+    capacity: Optional[int] = Form(None, alias="capacity", description="최대 인원수"),
+    place: Optional[str] = Form(None, alias="place", description="장소명"),
+    address: Optional[str] = Form(None, alias="address", description="주소"),
+    sub_address: Optional[str] = Form(
+        None, alias="subAddress", description="상세 주소"
+    ),
+    x: Optional[float] = Form(None, alias="x", description="경도 (longitude)"),
+    y: Optional[float] = Form(None, alias="y", description="위도 (latitude)"),
+    meeting_date: Optional[str] = Form(
+        None, alias="meetingDate", description="만남 날짜 (YYYY-MM-DD)"
+    ),
+    meeting_time: Optional[str] = Form(
+        None, alias="meetingTime", description="만남 시간 (HH:MM)"
+    ),
+    selected_artist_id: Optional[int] = Form(
+        None, alias="selectedArtistId", description="선택된 아티스트 ID"
+    ),
+    image_order: Optional[str] = Form(
+        None,
+        alias="imageOrder",
+        description="이미지 순서 JSON (기존: {url: '...', type: 'existing'}, 신규: {file: UploadFile, type: 'new'})",
+    ),
+    new_images: Optional[list[UploadFile]] = File(
+        None, alias="newImages", description="새로 업로드할 이미지 파일 리스트"
+    ),
+    current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
-    await pod_service.update_pod_with_notification(pod_id)
-    return BaseResponse.ok()
+    """파티 정보 수정 (이미지 업로드 지원)"""
+    from datetime import date, time
+
+    # 업데이트할 필드들 준비
+    update_fields = {}
+
+    # 기본 정보 업데이트
+    if title is not None:
+        update_fields["title"] = title
+    if description is not None:
+        update_fields["description"] = description
+    if sub_categories is not None:
+        update_fields["sub_categories"] = sub_categories
+    if capacity is not None:
+        update_fields["capacity"] = capacity
+    if place is not None:
+        update_fields["place"] = place
+    if address is not None:
+        update_fields["address"] = address
+    if sub_address is not None:
+        update_fields["sub_address"] = sub_address
+    if x is not None:
+        update_fields["x"] = x
+    if y is not None:
+        update_fields["y"] = y
+    if selected_artist_id is not None:
+        update_fields["selected_artist_id"] = selected_artist_id
+
+    # 날짜와 시간 파싱
+    if meeting_date is not None:
+        update_fields["meeting_date"] = date.fromisoformat(meeting_date)
+    if meeting_time is not None:
+        update_fields["meeting_time"] = time.fromisoformat(meeting_time)
+
+    # 파티 업데이트 실행 (이미지 포함)
+    updated_pod = await pod_service.update_pod_with_images(
+        pod_id=pod_id,
+        current_user_id=current_user_id,
+        update_fields=update_fields,
+        image_order=image_order,
+        new_images=new_images,
+    )
+
+    if updated_pod is None:
+        error_info = get_error_info("POD_UPDATE_FAILED")
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            http_status=HttpStatus.BAD_REQUEST,
+            message_ko=error_info.message_ko,
+            message_en=error_info.message_en,
+        )
+
+    return BaseResponse.ok(data=updated_pod)
 
 
 # - MARK: 파티 삭제
