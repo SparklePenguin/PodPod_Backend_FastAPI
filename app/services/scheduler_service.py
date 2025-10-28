@@ -19,7 +19,7 @@ class SchedulerService:
         self.fcm_service = FCMService()
 
     async def check_review_reminders(self):
-        """모임 종료 후 리뷰 유도 알림 체크"""
+        """모임 종료 후 리뷰 유도 알림 체크 (1시간마다)"""
         try:
             # 데이터베이스 세션 생성
             async for db in get_db():
@@ -29,9 +29,6 @@ class SchedulerService:
 
                     # 1주일 전 모임들 조회 (REVIEW_REMINDER_WEEK)
                     await self._send_week_reminders(db)
-
-                    # 파티 시작 임박 알림 (1시간 전)
-                    await self._send_start_soon_reminders(db)
 
                     # 파티 마감 임박 알림 (24시간 전 + 인원 부족)
                     await self._send_low_attendance_reminders(db)
@@ -44,6 +41,21 @@ class SchedulerService:
 
         except Exception as e:
             logger.error(f"리뷰 리마인드 체크 중 오류: {e}")
+
+    async def check_start_soon_reminders(self):
+        """파티 시작 1시간 전 알림 체크 (10분마다)"""
+        try:
+            # 데이터베이스 세션 생성
+            async for db in get_db():
+                try:
+                    # 파티 시작 임박 알림 (1시간 전)
+                    await self._send_start_soon_reminders(db)
+
+                finally:
+                    await db.close()
+
+        except Exception as e:
+            logger.error(f"파티 시작 임박 알림 체크 중 오류: {e}")
 
     async def _send_day_reminders(self, db: AsyncSession):
         """1일 전 모임 리뷰 유도 알림"""
@@ -382,21 +394,38 @@ class SchedulerService:
 scheduler = SchedulerService()
 
 
-async def run_daily_scheduler():
-    """매일 아침 10시에 실행되는 스케줄러"""
+async def run_hourly_scheduler():
+    """1시간마다 실행되는 스케줄러 (리뷰, 마감 임박 알림)"""
     while True:
         try:
-            # 다음 아침 10시까지 대기
-            await wait_until_10am()
-
-            logger.info("일일 스케줄러 실행 시작 (아침 10시)")
+            logger.info("시간별 스케줄러 실행 시작 (리뷰, 마감 임박 알림)")
             await scheduler.check_review_reminders()
-            logger.info("일일 스케줄러 실행 완료")
+            logger.info("시간별 스케줄러 실행 완료")
+
+            # 1시간 대기
+            await asyncio.sleep(60 * 60)
 
         except Exception as e:
-            logger.error(f"일일 스케줄러 실행 중 오류: {e}")
-            # 오류 발생 시 1시간 후 재시도
-            await asyncio.sleep(60 * 60)
+            logger.error(f"시간별 스케줄러 실행 중 오류: {e}")
+            # 오류 발생 시 10분 후 재시도
+            await asyncio.sleep(10 * 60)
+
+
+async def run_10min_scheduler():
+    """10분마다 실행되는 스케줄러 (파티 시작 임박 알림)"""
+    while True:
+        try:
+            logger.info("10분 스케줄러 실행 시작 (파티 시작 임박 알림)")
+            await scheduler.check_start_soon_reminders()
+            logger.info("10분 스케줄러 실행 완료")
+
+            # 10분 대기
+            await asyncio.sleep(10 * 60)
+
+        except Exception as e:
+            logger.error(f"10분 스케줄러 실행 중 오류: {e}")
+            # 오류 발생 시 5분 후 재시도
+            await asyncio.sleep(5 * 60)
 
 
 async def wait_until_10am():
@@ -421,5 +450,9 @@ async def wait_until_10am():
 # 스케줄러 시작 함수
 async def start_scheduler():
     """스케줄러 시작"""
-    logger.info("일일 알림 스케줄러 시작 (매일 아침 10시 실행)")
-    await run_daily_scheduler()
+    logger.info("스케줄러 시작:")
+    logger.info("- 10분마다: 파티 시작 임박 알림")
+    logger.info("- 1시간마다: 리뷰, 마감 임박 알림")
+
+    # 두 스케줄러를 병렬로 실행
+    await asyncio.gather(run_10min_scheduler(), run_hourly_scheduler())
