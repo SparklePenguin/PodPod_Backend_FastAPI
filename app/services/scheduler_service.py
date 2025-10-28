@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 from app.models.pod import Pod, PodMember, PodLike
 from app.models.pod.pod_rating import PodRating
 from app.models.user import User
@@ -101,19 +101,47 @@ class SchedulerService:
         """파티 시작 임박 알림을 이미 보냈는지 확인"""
         from app.models.notification import Notification
 
+        # 디버깅: 해당 사용자의 모든 POD_START_SOON 알림 조회
+        debug_query = select(Notification).where(
+            and_(
+                Notification.user_id == user_id,
+                Notification.notification_value == "POD_START_SOON",
+                Notification.created_at >= date.today(),
+            )
+        )
+        debug_result = await db.execute(debug_query)
+        debug_notifications = debug_result.scalars().all()
+
+        logger.info(
+            f"디버깅: user_id={user_id}의 오늘 POD_START_SOON 알림 {len(debug_notifications)}개"
+        )
+        for notif in debug_notifications:
+            logger.info(
+                f"  - 알림 ID: {notif.id}, related_pod_id: {notif.related_pod_id}, related_id: {notif.related_id}"
+            )
+
         query = select(Notification).where(
             and_(
                 Notification.user_id == user_id,
-                Notification.related_pod_id == pod_id,
                 Notification.notification_value == "POD_START_SOON",
                 Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+                # related_pod_id 또는 related_id 중 하나라도 일치하면 중복
+                or_(
+                    Notification.related_pod_id == pod_id,
+                    Notification.related_id == str(pod_id),
+                ),
             )
         )
 
         result = await db.execute(query)
-        existing_notification = result.scalar_one_or_none()
+        existing_notifications = result.scalars().all()
 
-        return existing_notification is not None
+        logger.info(
+            f"중복 체크: user_id={user_id}, pod_id={pod_id}, 기존 알림 존재={len(existing_notifications) > 0}"
+        )
+        return len(existing_notifications) > 0
+
+    async def _send_day_reminders(self, db: AsyncSession):
         """1일 전 모임 리뷰 유도 알림"""
         yesterday = date.today() - timedelta(days=1)
 
@@ -195,6 +223,7 @@ class SchedulerService:
                             await self.fcm_service.send_review_reminder_day(
                                 token=participant.fcm_token,
                                 party_name=pod.title,
+                                pod_id=pod.id,
                                 db=db,
                                 user_id=participant.id,
                             )
@@ -202,6 +231,7 @@ class SchedulerService:
                             await self.fcm_service.send_review_reminder_week(
                                 token=participant.fcm_token,
                                 party_name=pod.title,
+                                pod_id=pod.id,
                                 db=db,
                                 user_id=participant.id,
                             )
@@ -261,6 +291,7 @@ class SchedulerService:
                             await self.fcm_service.send_review_reminder_week(
                                 token=participant.fcm_token,
                                 party_name=pod.title,
+                                pod_id=pod.id,
                                 db=db,
                                 user_id=participant.id,
                             )

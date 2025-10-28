@@ -933,3 +933,98 @@ async def fix_pod88_date(
         return BaseResponse.ok(
             data={"error": str(e)}, message_ko=f"파티 88번 날짜 수정 실패: {e}"
         )
+
+
+@router.post(
+    "/test-review-notification",
+    summary="리뷰 알림 테스트",
+    description="리뷰 유도 알림을 수동으로 전송합니다.",
+    tags=["pods"],
+)
+async def test_review_notification(
+    db: AsyncSession = Depends(get_db),
+):
+    """리뷰 알림 테스트"""
+    try:
+        await scheduler._send_day_reminders(db)
+        return BaseResponse.ok(data=None, message_ko="리뷰 알림 테스트 완료")
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"리뷰 알림 테스트 실패: {e}"
+        )
+
+
+@router.post(
+    "/cleanup-null-notifications",
+    summary="null 알림 정리",
+    description="relatedId가 null인 알림들을 삭제합니다.",
+    tags=["pods"],
+)
+async def cleanup_null_notifications(
+    db: AsyncSession = Depends(get_db),
+):
+    """null 알림 정리"""
+    from sqlalchemy import delete
+    from app.models.notification import Notification
+
+    try:
+        # relatedId가 null인 알림들 삭제
+        delete_query = delete(Notification).where(Notification.related_id.is_(None))
+        result = await db.execute(delete_query)
+        await db.commit()
+
+        deleted_count = result.rowcount
+        return BaseResponse.ok(
+            data={"deleted_count": deleted_count},
+            message_ko=f"{deleted_count}개의 null 알림이 삭제되었습니다.",
+        )
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"null 알림 정리 실패: {e}"
+        )
+
+
+@router.get(
+    "/debug-notifications",
+    summary="알림 디버그",
+    description="POD_START_SOON 알림들을 조회합니다.",
+    tags=["pods"],
+)
+async def debug_notifications(
+    db: AsyncSession = Depends(get_db),
+):
+    """알림 디버그"""
+    from sqlalchemy import select
+    from app.models.notification import Notification
+
+    try:
+        query = (
+            select(Notification)
+            .where(Notification.notification_value == "POD_START_SOON")
+            .order_by(Notification.created_at.desc())
+            .limit(10)
+        )
+
+        result = await db.execute(query)
+        notifications = result.scalars().all()
+
+        notification_data = []
+        for notification in notifications:
+            notification_data.append(
+                {
+                    "id": notification.id,
+                    "user_id": notification.user_id,
+                    "related_pod_id": notification.related_pod_id,
+                    "related_id": notification.related_id,
+                    "notification_value": notification.notification_value,
+                    "created_at": str(notification.created_at),
+                    "title": notification.title,
+                    "body": notification.body,
+                }
+            )
+
+        return BaseResponse.ok(data=notification_data, message_ko="알림 디버그 완료")
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"알림 디버그 실패: {e}"
+        )

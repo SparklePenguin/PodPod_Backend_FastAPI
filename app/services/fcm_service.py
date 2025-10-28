@@ -607,6 +607,7 @@ class FCMService:
         self,
         token: str,
         party_name: str,
+        pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
     ) -> bool:
@@ -615,13 +616,20 @@ class FCMService:
             ReviewNotiSubType.REVIEW_REMINDER_DAY, party_name=party_name
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_review_reminder_week(
         self,
         token: str,
         party_name: str,
+        pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
     ) -> bool:
@@ -630,7 +638,13 @@ class FCMService:
             ReviewNotiSubType.REVIEW_REMINDER_WEEK, party_name=party_name
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_review_others_created(
