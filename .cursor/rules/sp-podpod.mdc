@@ -3,7 +3,7 @@ alwaysApply: true
 ---
 
 ## 1. 데이터베이스
-- 마이그레이션: `./migrate.sh` | SQL 실행: `./execute_sql.sh "쿼리"` | mysql 직접 사용 금지
+- 마이그레이션: `infisical run --env=dev --path=/Backend -- ./venv/bin/alembic upgrade heads` | SQL 실행: `infisical run --env=dev --path=/Backend -- sh -c "mysql -h localhost -u root -p\$MYSQL_PASSWORD podpod -e \"쿼리\""` | mysql 직접 사용 금지
 
 ## 2. 환경변수 (Infisical)
 - Backend: `infisical secrets get KEY --env=dev --path=/Backend` | GoogleSheet: `--path=/GoogleSheet` | `run.py`가 자동 로드
