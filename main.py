@@ -20,6 +20,7 @@ from app.core.exceptions import (
     BusinessException,
 )
 import logging
+from fastapi.responses import JSONResponse
 
 # 로깅 설정
 setup_logging()
@@ -129,6 +130,22 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(ValueError, value_error_handler)
 app.add_exception_handler(BusinessException, business_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
+
+
+# 헬스체크 엔드포인트
+@app.get("/health")
+async def health_check():
+    """헬스체크 엔드포인트 - GCP Cloud Run에서 사용"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "healthy",
+            "service": "podpod-backend",
+            "version": settings.APP_VERSION,
+            "environment": settings.ENVIRONMENT,
+        },
+    )
+
 
 # 정적 파일 서빙 설정
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
