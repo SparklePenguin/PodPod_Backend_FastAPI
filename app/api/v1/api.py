@@ -19,6 +19,7 @@ from .endpoints import (
 )
 from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
+from .endpoints import webhooks
 
 api_router = APIRouter()
 
@@ -82,3 +83,6 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(
     random_profile_images.router, prefix="/profile-images", tags=["profile-images"]
 )
+
+# 웹훅 라우터
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
