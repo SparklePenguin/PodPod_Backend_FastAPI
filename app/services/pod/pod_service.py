@@ -401,6 +401,26 @@ class PodService:
         updated_pod = await self.crud.get_pod_by_id(pod_id)
         if updated_pod:
             await self.db.refresh(updated_pod, ["images"])
+
+            # thumbnail_url이 변경되었고 채팅방이 있으면 Sendbird 채널 cover_url 업데이트
+            if "thumbnail_url" in update_fields and updated_pod.chat_channel_url:
+                try:
+                    from app.services.sendbird_service import SendbirdService
+
+                    sendbird_service = SendbirdService()
+                    await sendbird_service.update_channel_cover_url(
+                        channel_url=updated_pod.chat_channel_url,
+                        cover_url=updated_pod.thumbnail_url or "",
+                    )
+                    logger.info(
+                        f"Sendbird 채널 cover_url 업데이트 완료: pod_id={pod_id}, channel_url={updated_pod.chat_channel_url}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Sendbird 채널 cover_url 업데이트 실패: pod_id={pod_id}, error={e}"
+                    )
+                    # 채널 업데이트 실패는 파티 업데이트를 막지 않음
+
             pod_dto = await self._enrich_pod_dto(updated_pod, current_user_id)
 
             # 알림 전송

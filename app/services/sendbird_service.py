@@ -274,6 +274,56 @@ class SendbirdService:
             traceback.print_exc()
             return None
 
+    async def update_channel_cover_url(
+        self, channel_url: str, cover_url: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        채널 커버 이미지 URL 업데이트
+
+        Args:
+            channel_url: 채널 URL
+            cover_url: 업데이트할 커버 이미지 URL
+
+        Returns:
+            업데이트된 채널 정보 또는 None
+        """
+        try:
+            import httpx
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"채널 커버 이미지 업데이트 시도: {channel_url}, cover_url={cover_url}"
+            )
+
+            url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/group_channels/{channel_url}"
+            headers = {"Api-Token": self.api_token, "Content-Type": "application/json"}
+
+            # 업데이트할 데이터 준비
+            update_data = {"cover_url": cover_url}
+
+            async with httpx.AsyncClient() as client:
+                response = await client.put(url, headers=headers, json=update_data)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    logger.info(f"채널 커버 이미지 업데이트 성공: {channel_url}")
+                    return result
+                else:
+                    logger.error(
+                        f"Sendbird API 오류: {response.status_code} - {response.text}"
+                    )
+                    return None
+
+        except Exception as e:
+            import logging
+            import traceback
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Sendbird API 요청 실패: {e}")
+            logger.error(f"상세 오류: {traceback.format_exc()}")
+            return None
+
     async def add_members_to_channel(
         self, channel_url: str, user_ids: List[str]
     ) -> bool:

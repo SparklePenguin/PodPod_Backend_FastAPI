@@ -143,7 +143,8 @@ class PodCRUD:
                 user_ids=[owner_id],
                 name=title,
                 channel_url=channel_url,
-                cover_url=image_url,  # 채팅방 커버 이미지로 파티 이미지 사용
+                cover_url=thumbnail_url
+                or image_url,  # 채팅방 커버 이미지로 썸네일 우선 사용
                 data=simple_pod_dto.model_dump(mode="json", by_alias=True),
             )
 
