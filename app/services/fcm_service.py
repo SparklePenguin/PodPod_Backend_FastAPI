@@ -143,6 +143,7 @@ class FCMService:
             logger.info(f"FCM 알림 전송 성공: {response}")
 
             # DB에 알림 저장 (db와 user_id가 제공된 경우에만)
+            # 단, 채팅 메시지 알림(CHAT_MESSAGE_RECEIVED)은 DB에 저장하지 않음
             if db and user_id:
                 try:
                     if not data:
@@ -153,6 +154,13 @@ class FCMService:
 
                     notification_type = data.get("type", "UNKNOWN")
                     notification_value = data.get("value", "UNKNOWN")
+
+                    # 채팅 메시지 알림은 DB에 저장하지 않음 (FCM만 전송)
+                    if notification_value == "CHAT_MESSAGE_RECEIVED":
+                        logger.info(
+                            f"채팅 메시지 알림은 DB에 저장하지 않음 (FCM만 전송): user_id={user_id}"
+                        )
+                        return True
 
                     if (
                         notification_type == "UNKNOWN"
@@ -613,7 +621,7 @@ class FCMService:
     ) -> bool:
         """리뷰 작성 유도 알림 (1일 후) 전송"""
         body, data = self._format_message(
-            ReviewNotiSubType.REVIEW_REMINDER_DAY, party_name=party_name
+            ReviewNotiSubType.REVIEW_REMINDER_DAY, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -635,7 +643,7 @@ class FCMService:
     ) -> bool:
         """리뷰 작성 리마인드 알림 (1주일 후) 전송"""
         body, data = self._format_message(
-            ReviewNotiSubType.REVIEW_REMINDER_WEEK, party_name=party_name
+            ReviewNotiSubType.REVIEW_REMINDER_WEEK, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,

@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 from app.models.pod import Pod, PodMember, PodLike
 from app.models.pod.pod_rating import PodRating
+from app.models.pod.pod_status import PodStatus
 from app.models.user import User
 from app.services.fcm_service import FCMService
 from app.core.database import get_db
@@ -24,6 +25,9 @@ class SchedulerService:
             # 데이터베이스 세션 생성
             async for db in get_db():
                 try:
+                    # 파티 상태 자동 변경 (미팅일이 된 확정 파티를 종료로)
+                    await self._update_completed_pods_to_closed(db)
+
                     # 1일 전 모임들 조회 (REVIEW_REMINDER_DAY)
                     await self._send_day_reminders(db)
 
@@ -48,6 +52,9 @@ class SchedulerService:
             # 데이터베이스 세션 생성
             async for db in get_db():
                 try:
+                    # 파티 상태 자동 변경 (미팅일이 지난 확정 파티를 종료로)
+                    await self._update_completed_pods_to_closed(db)
+
                     # 파티 시작 임박 알림 (1시간 전)
                     await self._send_start_soon_reminders(db)
 
@@ -526,6 +533,42 @@ class SchedulerService:
                     logger.error(
                         f"좋아요한 파티 마감 임박 알림 전송 실패: user_id={user.id}, error={e}"
                     )
+
+    async def _update_completed_pods_to_closed(self, db: AsyncSession):
+        """확정(COMPLETED) 상태인 파티가 미팅일이 지나면 종료(CLOSED)로 변경"""
+        try:
+            today = date.today()
+
+            # 미팅일이 오늘 이하이고 COMPLETED 상태인 파티들 조회 (과거에 패스된 것도 포함)
+            query = select(Pod).where(
+                and_(
+                    Pod.meeting_date <= today,
+                    Pod.status == PodStatus.COMPLETED,
+                )
+            )
+
+            result = await db.execute(query)
+            completed_pods = result.scalars().all()
+
+            logger.info(f"미팅일이 지난 확정 파티: {len(completed_pods)}개")
+
+            # 각 파티 상태를 CLOSED로 변경
+            for pod in completed_pods:
+                try:
+                    pod.status = PodStatus.CLOSED
+                    logger.info(
+                        f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, COMPLETED → CLOSED"
+                    )
+                except Exception as e:
+                    logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")
+
+            # 변경사항 커밋
+            await db.commit()
+            logger.info(f"파티 상태 변경 완료: {len(completed_pods)}개")
+
+        except Exception as e:
+            logger.error(f"파티 상태 자동 변경 처리 실패: {e}")
+            await db.rollback()
 
 
 # 스케줄러 인스턴스

@@ -984,6 +984,38 @@ async def cleanup_null_notifications(
         )
 
 
+@router.post(
+    "/cleanup-chat-notifications",
+    summary="채팅 메시지 알림 정리",
+    description="CHAT_MESSAGE_RECEIVED 알림들을 삭제합니다.",
+    tags=["pods"],
+)
+async def cleanup_chat_notifications(
+    db: AsyncSession = Depends(get_db),
+):
+    """채팅 메시지 알림 정리"""
+    from sqlalchemy import delete
+    from app.models.notification import Notification
+
+    try:
+        # CHAT_MESSAGE_RECEIVED 알림들 삭제
+        delete_query = delete(Notification).where(
+            Notification.notification_value == "CHAT_MESSAGE_RECEIVED"
+        )
+        result = await db.execute(delete_query)
+        await db.commit()
+
+        deleted_count = result.rowcount
+        return BaseResponse.ok(
+            data={"deleted_count": deleted_count},
+            message_ko=f"{deleted_count}개의 채팅 메시지 알림이 삭제되었습니다.",
+        )
+    except Exception as e:
+        return BaseResponse.ok(
+            data={"error": str(e)}, message_ko=f"채팅 메시지 알림 정리 실패: {e}"
+        )
+
+
 @router.get(
     "/debug-notifications",
     summary="알림 디버그",

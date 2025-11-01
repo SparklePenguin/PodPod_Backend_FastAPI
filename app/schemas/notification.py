@@ -142,13 +142,13 @@ class ReviewNotiSubType(Enum):
     REVIEW_REMINDER_DAY = (
         "😊 오늘 [party_name] 어떠셨나요? 소중한 리뷰를 남겨보세요!",
         ["party_name"],
-        None,
+        "pod_id",
     )
     # 3. 리뷰 미작성자 일주일 리마인드 (대상: 리뷰 미작성자)
     REVIEW_REMINDER_WEEK = (
         "💭 [party_name] 후기가 궁금해요. 어땠는지 들려주세요!",
         ["party_name"],
-        None,
+        "pod_id",
     )
     # 4. 내가 참여한 파티에 다른 사람이 후기 작성 (대상: 참여자)
     REVIEW_OTHERS_CREATED = (
