@@ -552,13 +552,41 @@ class SchedulerService:
 
             logger.info(f"미팅일이 지난 확정 파티: {len(completed_pods)}개")
 
-            # 각 파티 상태를 CLOSED로 변경
+            # 각 파티 상태를 CLOSED로 변경 및 채팅방 삭제
             for pod in completed_pods:
                 try:
+                    # 파티 상태를 CLOSED로 변경
                     pod.status = PodStatus.CLOSED
                     logger.info(
                         f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, COMPLETED → CLOSED"
                     )
+
+                    # 채팅방이 있으면 삭제
+                    if pod.chat_channel_url:
+                        try:
+                            from app.services.sendbird_service import SendbirdService
+
+                            channel_url = pod.chat_channel_url  # 삭제 전 URL 저장
+                            sendbird_service = SendbirdService()
+                            delete_success = await sendbird_service.delete_channel(
+                                channel_url
+                            )
+
+                            if delete_success:
+                                # 데이터베이스에서 채팅방 URL 제거
+                                pod.chat_channel_url = None
+                                logger.info(
+                                    f"채팅방 삭제 완료: pod_id={pod.id}, channel_url={channel_url}"
+                                )
+                            else:
+                                logger.warning(
+                                    f"채팅방 삭제 실패: pod_id={pod.id}, channel_url={channel_url}"
+                                )
+                        except Exception as e:
+                            logger.error(
+                                f"채팅방 삭제 중 오류: pod_id={pod.id}, channel_url={channel_url}, error={e}"
+                            )
+
                 except Exception as e:
                     logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")
 
