@@ -21,11 +21,11 @@ class ArtistService:
 
     # - MARK: 아티스트 목록 조회 (간소화)
     async def get_artists_simple(
-        self, page: int = 1, page_size: int = 20, is_active: bool = True
+        self, page: int = 1, size: int = 20, is_active: bool = True
     ) -> PageDto[ArtistSimpleDto]:
         """아티스트 목록 조회 (간소화 - ArtistUnit의 artist_id에 해당하는 아티스트 이름만)"""
         artist_units, total_count = await self.artist_crud.get_artist_units_with_names(
-            page=page, size=page_size, is_active=is_active
+            page=page, size=size, is_active=is_active
         )
 
         # ArtistUnit의 artist_id에 해당하는 아티스트 이름만 추출
@@ -42,14 +42,14 @@ class ArtistService:
                     )
 
         # 페이지네이션 계산
-        total_pages = (total_count + page_size - 1) // page_size
+        total_pages = (total_count + size - 1) // size
         has_next = page < total_pages
         has_prev = page > 1
 
         return PageDto[ArtistSimpleDto](
             items=simple_artists,
             current_page=page,
-            size=page_size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,
@@ -58,11 +58,11 @@ class ArtistService:
 
     # - MARK: 아티스트 목록 조회
     async def get_artists(
-        self, page: int = 1, page_size: int = 20, is_active: bool = True
+        self, page: int = 1, size: int = 20, is_active: bool = True
     ) -> PageDto[ArtistDto]:
         """아티스트 목록 조회 (페이지네이션 및 필터링 지원)"""
         artists, total_count = await self.artist_crud.get_all(
-            page=page, size=page_size, is_active=is_active
+            page=page, size=size, is_active=is_active
         )
 
         artist_dtos = [
@@ -74,14 +74,14 @@ class ArtistService:
         ]
 
         # 페이지네이션 정보 계산
-        total_pages = (total_count + page_size - 1) // page_size
+        total_pages = (total_count + size - 1) // size
         has_next = page < total_pages
         has_prev = page > 1
 
         return PageDto[ArtistDto](
             items=artist_dtos,
             current_page=page,
-            size=page_size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,

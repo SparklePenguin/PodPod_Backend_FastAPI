@@ -41,7 +41,7 @@ class ArtistCRUD:
 
     # - MARK: 아티스트 목록 조회
     async def get_all(
-        self, page: int = 1, page_size: int = 20, is_active: bool = True
+        self, page: int = 1, size: int = 20, is_active: bool = True
     ) -> tuple[List[Artist], int]:
         """아티스트 목록 조회 (페이지네이션 및 is_active 필터링 지원)
         ArtistUnit을 기준으로 각 unit의 artist_id에 해당하는 대표 아티스트만 반환
@@ -51,7 +51,7 @@ class ArtistCRUD:
         """
         # ArtistUnit을 기준으로 조회 (is_active 필터 적용)
         artist_units, total_count = await self.get_artist_units_with_names(
-            page=page, size=page_size, is_active=is_active
+            page=page, size=size, is_active=is_active
         )
 
         # 각 unit의 artist_id로 Artist 조회
@@ -330,13 +330,13 @@ class ArtistCRUD:
             return None
 
     async def get_artist_units_with_names(
-        self, page: int = 1, page_size: int = 20, is_active: bool = True
+        self, page: int = 1, size: int = 20, is_active: bool = True
     ) -> tuple[List[ArtistUnit], int]:
         """ArtistUnit과 연결된 Artist 이름을 조회합니다.
 
         Args:
             page: 페이지 번호
-            page_size: 페이지 크기
+            size: 페이지 크기
             is_active: 활성화 상태 필터
 
         Returns:
@@ -364,8 +364,8 @@ class ArtistCRUD:
         total_count = count_result.scalar()
 
         # 페이지네이션 적용
-        offset = (page - 1) * page_size
-        result = await self.db.execute(query.offset(offset).limit(page_size))
+        offset = (page - 1) * size
+        result = await self.db.execute(query.offset(offset).limit(size))
         artist_units = result.scalars().all()
 
         return artist_units, total_count
