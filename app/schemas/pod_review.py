@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_serializer
 from typing import Optional
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from app.schemas.follow import SimpleUserDto
 
 
@@ -75,6 +75,16 @@ class PodReviewDto(BaseModel):
     )
     created_at: datetime = Field(..., alias="createdAt", description="작성 시간")
     updated_at: datetime = Field(..., alias="updatedAt", description="수정 시간")
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_datetime(self, dt: datetime) -> str:
+        """datetime을 ISO format (Z 포함)으로 변환"""
+        if dt is None:
+            return None
+        # timezone 정보가 없으면 UTC로 추가
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
 
     model_config = {
         "from_attributes": True,

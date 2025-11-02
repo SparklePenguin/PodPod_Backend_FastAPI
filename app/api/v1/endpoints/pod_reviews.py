@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/",
+    "",
     response_model=BaseResponse[PodReviewDto],
     summary="후기 생성",
     description="새로운 파티 후기를 작성합니다.",

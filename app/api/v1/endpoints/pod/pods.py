@@ -8,6 +8,7 @@ from fastapi import (
     UploadFile,
     Query,
     Body,
+    Path,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -527,6 +528,54 @@ async def get_pods(
             error=error_info.error_key,
             error_code=error_info.code,
             dev_note=str(e),
+        )
+
+
+# - MARK: 파티별 후기 목록 조회
+@router.get(
+    "/{pod_id}/reviews",
+    response_model=BaseResponse[PageDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[PageDto],
+            "description": "파티 후기 목록 조회 성공",
+        },
+    },
+    summary="파티별 후기 목록 조회",
+    description="특정 파티의 후기 목록을 페이지네이션으로 조회합니다.",
+    tags=["pods"],
+)
+async def get_pod_reviews(
+    pod_id: int = Path(..., description="파티 ID"),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """파티별 후기 목록 조회"""
+    try:
+        from app.services.pod_review_service import PodReviewService
+
+        review_service = PodReviewService(db)
+        reviews = await review_service.get_reviews_by_pod(pod_id, page, size)
+
+        return BaseResponse.ok(
+            data=reviews,
+            http_status=HttpStatus.OK,
+            message_ko="파티 후기 목록을 조회했습니다.",
+            message_en="Pod reviews retrieved successfully.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="후기 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving reviews.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=None,
         )
 
 

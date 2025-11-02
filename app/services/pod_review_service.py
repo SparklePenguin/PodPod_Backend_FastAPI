@@ -283,6 +283,22 @@ class PodReviewService:
 
             # SimpleUserDto 생성 - 안전하게 처리
             try:
+                # 성향 타입 조회
+                user_tendency_type = None
+                if hasattr(review, "user") and review.user:
+                    user_id = getattr(review.user, "id", 0)
+                    if user_id:
+                        from app.models.tendency import UserTendencyResult
+                        result = await self.db.execute(
+                            select(UserTendencyResult).where(
+                                UserTendencyResult.user_id == user_id
+                            )
+                        )
+                        user_tendency = result.scalar_one_or_none()
+                        user_tendency_type = (
+                            user_tendency.tendency_type if user_tendency else None
+                        )
+
                 user_follow = SimpleUserDto(
                     id=(
                         getattr(review.user, "id", 0)
@@ -304,7 +320,7 @@ class PodReviewService:
                         if hasattr(review, "user") and review.user
                         else ""
                     ),
-                    tendency_type="",  # 필요시 별도 조회
+                    tendency_type=user_tendency_type or "",
                     is_following=False,  # 필요시 별도 조회
                 )
             except Exception as e:
