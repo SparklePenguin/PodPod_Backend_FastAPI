@@ -31,6 +31,7 @@ class FollowService:
         self.pod_crud = PodCRUD(db)
         self.user_crud = UserCRUD(db)
         from app.crud.pod_review import PodReviewCRUD
+
         self.review_crud = PodReviewCRUD(db)
 
     async def follow_user(self, follower_id: int, following_id: int) -> FollowResponse:
@@ -181,7 +182,7 @@ class FollowService:
             # 후기 목록 조회
             reviews = await self.review_crud.get_all_reviews_by_pod(pod.id)
             from app.services.pod_review_service import PodReviewService
-            
+
             review_service = PodReviewService(self.db)
             review_dtos = []
             for review in reviews:
