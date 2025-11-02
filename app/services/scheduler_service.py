@@ -461,8 +461,32 @@ class SchedulerService:
                 await self._send_low_attendance_to_owner(db, pod)
 
     async def _send_low_attendance_to_owner(self, db: AsyncSession, pod: Pod):
-        """파티장에게 인원 부족 알림 전송"""
+        """파티장에게 인원 부족 알림 전송 (최근 24시간 내 이미 보낸 경우 제외)"""
         try:
+            # 최근 24시간 내 같은 알림이 이미 있는지 확인
+            from app.models.notification import Notification
+            from datetime import datetime, timedelta
+
+            twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+
+            existing_notification_query = select(Notification).where(
+                and_(
+                    Notification.user_id == pod.owner_id,
+                    Notification.related_pod_id == pod.id,
+                    Notification.notification_value == "POD_LOW_ATTENDANCE",
+                    Notification.created_at >= twenty_four_hours_ago,
+                )
+            )
+
+            existing_result = await db.execute(existing_notification_query)
+            existing_notification = existing_result.scalar_one_or_none()
+
+            if existing_notification:
+                logger.info(
+                    f"최근 24시간 내 이미 인원 부족 알림을 보냈음: owner_id={pod.owner_id}, pod_id={pod.id}, 기존 알림_id={existing_notification.id}"
+                )
+                return  # 이미 보낸 알림이 있으면 다시 보내지 않음
+
             # 파티장 정보 조회
             owner_query = select(User).where(User.id == pod.owner_id)
             owner_result = await db.execute(owner_query)
@@ -561,7 +585,7 @@ class SchedulerService:
                         f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, COMPLETED → CLOSED"
                     )
 
-                    # 채팅방이 있으면 삭제
+                    # 채팅방이 있으면 Sendbird에서만 삭제 (DB는 유지)
                     if pod.chat_channel_url:
                         try:
                             from app.services.sendbird_service import SendbirdService
@@ -573,18 +597,17 @@ class SchedulerService:
                             )
 
                             if delete_success:
-                                # 데이터베이스에서 채팅방 URL 제거
-                                pod.chat_channel_url = None
+                                # Sendbird에서만 삭제하고 DB의 chat_channel_url은 유지
                                 logger.info(
-                                    f"채팅방 삭제 완료: pod_id={pod.id}, channel_url={channel_url}"
+                                    f"Sendbird 채팅방 삭제 완료 (DB URL 유지): pod_id={pod.id}, channel_url={channel_url}"
                                 )
                             else:
                                 logger.warning(
-                                    f"채팅방 삭제 실패: pod_id={pod.id}, channel_url={channel_url}"
+                                    f"Sendbird 채팅방 삭제 실패: pod_id={pod.id}, channel_url={channel_url}"
                                 )
                         except Exception as e:
                             logger.error(
-                                f"채팅방 삭제 중 오류: pod_id={pod.id}, channel_url={channel_url}, error={e}"
+                                f"Sendbird 채팅방 삭제 중 오류: pod_id={pod.id}, channel_url={pod.chat_channel_url}, error={e}"
                             )
 
                 except Exception as e:

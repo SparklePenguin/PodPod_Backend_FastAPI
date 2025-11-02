@@ -516,7 +516,13 @@ class FCMService:
             PodNotiSubType.POD_LOW_ATTENDANCE, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_pod_id=pod_id,
         )
 
     # ========== 파티 상태 알림 ==========
