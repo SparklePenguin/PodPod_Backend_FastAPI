@@ -32,7 +32,7 @@ class ArtistScheduleService:
     async def get_schedules(
         self,
         page: int = 1,
-        page_size: int = 20,
+        size: int = 20,
         artist_id: Optional[int] = None,
         unit_id: Optional[int] = None,
         schedule_type: Optional[int] = None,
@@ -40,7 +40,7 @@ class ArtistScheduleService:
         """스케줄 목록 조회"""
         result = await self.crud.get_schedules(
             page=page,
-            size=page_size,
+            size=size,
             artist_id=artist_id,
             unit_id=unit_id,
             schedule_type=schedule_type,

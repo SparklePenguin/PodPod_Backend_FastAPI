@@ -165,6 +165,13 @@ class PodCRUD:
 
         return pod
 
+    async def get_pods_with_chat_channels(self) -> List[Pod]:
+        """채팅방 URL이 있는 모든 파티 조회"""
+        result = await self.db.execute(
+            select(Pod).where(Pod.chat_channel_url.isnot(None))
+        )
+        return list(result.scalars().all())
+
     # - MARK: 파티 조회
     async def get_pod_by_id(self, pod_id: int) -> Optional[Pod]:
         result = await self.db.execute(

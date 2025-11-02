@@ -86,7 +86,7 @@ class ArtistScheduleCRUD:
     async def get_schedules(
         self,
         page: int = 1,
-        page_size: int = 20,
+        size: int = 20,
         artist_id: Optional[int] = None,
         unit_id: Optional[int] = None,
         schedule_type: Optional[int] = None,
@@ -121,8 +121,8 @@ class ArtistScheduleCRUD:
         total_count = await self.db.scalar(count_query)
 
         # 페이지네이션
-        offset = (page - 1) * page_size
-        query = query.offset(offset).limit(page_size)
+        offset = (page - 1) * size
+        query = query.offset(offset).limit(size)
 
         result = await self.db.execute(query)
         schedules = result.scalars().all()
@@ -131,8 +131,8 @@ class ArtistScheduleCRUD:
             "items": schedules,
             "total_count": total_count,
             "page": page,
-            "page_size": page_size,
-            "total_pages": (total_count + page_size - 1) // page_size,
+            "size": size,
+            "total_pages": (total_count + size - 1) // size,
         }
 
     async def find_artist_by_ko_name(self, ko_name: str) -> Optional[Artist]:

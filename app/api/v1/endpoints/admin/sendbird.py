@@ -81,7 +81,9 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                     data=json.dumps(
                         {
                             "id": pod.id,
+                            "ownerId": pod.owner_id,
                             "title": pod.title,
+                            "thumbnailUrl": pod.thumbnail_url or "",
                             "place": pod.place,
                             "meetingDate": (
                                 int(
@@ -424,7 +426,9 @@ async def update_channel_metadata(
                 new_metadata = json.dumps(
                     {
                         "id": pod.id,
+                        "ownerId": pod.owner_id,
                         "title": pod.title,
+                        "thumbnailUrl": pod.thumbnail_url or "",
                         "place": pod.place,
                         "meetingDate": (
                             int(
