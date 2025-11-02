@@ -51,7 +51,7 @@ class ArtistCRUD:
         """
         # ArtistUnit을 기준으로 조회 (is_active 필터 적용)
         artist_units, total_count = await self.get_artist_units_with_names(
-            page=page, page_size=page_size, is_active=is_active
+            page=page, size=page_size, is_active=is_active
         )
 
         # 각 unit의 artist_id로 Artist 조회

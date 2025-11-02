@@ -74,7 +74,7 @@ class ArtistSuggestionService:
         return PageDto[ArtistSuggestionDto](
             items=suggestion_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -102,7 +102,7 @@ class ArtistSuggestionService:
         return PageDto[ArtistSuggestionRankingDto](
             items=ranking_dtos,
             current_page=page,
-            page_size=limit,
+            size=limit,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -130,7 +130,7 @@ class ArtistSuggestionService:
         return PageDto[ArtistSuggestionDto](
             items=suggestion_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,

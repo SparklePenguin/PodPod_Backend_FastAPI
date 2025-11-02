@@ -72,7 +72,7 @@ async def get_artist_schedules(
     try:
         result = await artist_schedule_service.get_schedules(
             page=page,
-            page_size=size,
+            size=size,
             artist_id=artist_id,
             unit_id=unit_id,
             schedule_type=schedule_type,

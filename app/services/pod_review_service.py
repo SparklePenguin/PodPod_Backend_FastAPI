@@ -108,7 +108,7 @@ class PodReviewService:
         return PageDto[PodReviewDto](
             items=review_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -132,7 +132,7 @@ class PodReviewService:
         return PageDto[PodReviewDto](
             items=review_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -158,7 +158,7 @@ class PodReviewService:
         return PageDto[PodReviewDto](
             items=review_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -237,6 +237,11 @@ class PodReviewService:
                         if hasattr(review, "pod") and review.pod
                         else 0
                     ),
+                    owner_id=(
+                        getattr(review.pod, "owner_id", 0)
+                        if hasattr(review, "pod") and review.pod
+                        else 0
+                    ),
                     title=(
                         getattr(review.pod, "title", "")
                         if hasattr(review, "pod") and review.pod
@@ -272,6 +277,7 @@ class PodReviewService:
                 # 기본값으로 SimplePodDto 생성
                 simple_pod = SimplePodDto(
                     id=0,
+                    owner_id=0,
                     title="",
                     thumbnail_url="",
                     sub_categories=[],
@@ -289,6 +295,7 @@ class PodReviewService:
                     user_id = getattr(review.user, "id", 0)
                     if user_id:
                         from app.models.tendency import UserTendencyResult
+
                         result = await self.db.execute(
                             select(UserTendencyResult).where(
                                 UserTendencyResult.user_id == user_id

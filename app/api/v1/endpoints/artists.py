@@ -57,7 +57,7 @@ async def get_artists_simple(
 ):
     """아티스트 목록 조회 (간소화 - ArtistUnit의 artist_id에 해당하는 아티스트 정보)"""
     page_data = await artist_service.get_artists_simple(
-        page=page, page_size=size, is_active=is_active
+        page=page, size=size, is_active=is_active
     )
     return BaseResponse.ok(data=page_data)
 
@@ -87,7 +87,7 @@ async def get_artists(
 ):
     """아티스트 목록 조회 (페이지네이션 및 is_active 필터링 지원)"""
     page_data = await artist_service.get_artists(
-        page=page, page_size=size, is_active=is_active
+        page=page, size=size, is_active=is_active
     )
     return BaseResponse.ok(data=page_data)
 

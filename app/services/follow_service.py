@@ -81,7 +81,7 @@ class FollowService:
         return PageDto(
             items=users,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,
@@ -127,7 +127,7 @@ class FollowService:
         return PageDto(
             items=users,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,
@@ -216,7 +216,7 @@ class FollowService:
         return PageDto(
             items=pod_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,
@@ -250,7 +250,7 @@ class FollowService:
         return PageDto(
             items=users,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,

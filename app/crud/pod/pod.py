@@ -131,6 +131,7 @@ class PodCRUD:
 
             simple_pod_dto = SimplePodDto(
                 id=pod.id,
+                owner_id=owner_id,
                 title=title,
                 thumbnail_url=thumbnail_url or image_url or "",
                 sub_categories=sub_categories,

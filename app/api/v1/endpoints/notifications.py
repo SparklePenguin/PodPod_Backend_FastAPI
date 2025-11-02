@@ -131,6 +131,7 @@ async def get_notifications(
 
             related_pod_dto = SimplePodDto(
                 id=n.related_pod.id,
+                owner_id=n.related_pod.owner_id,
                 title=n.related_pod.title,
                 thumbnail_url=n.related_pod.thumbnail_url
                 or n.related_pod.image_url
@@ -169,7 +170,7 @@ async def get_notifications(
     page_dto = PageDto[NotificationResponse](
         items=notification_dtos,
         current_page=page,
-        page_size=size,
+        size=size,
         total_count=total_count,
         total_pages=total_pages,
         has_next=page < total_pages,
@@ -275,6 +276,7 @@ async def mark_notification_as_read(
 
         related_pod_dto = SimplePodDto(
             id=notification.related_pod.id,
+            owner_id=notification.related_pod.owner_id,
             title=notification.related_pod.title,
             thumbnail_url=notification.related_pod.thumbnail_url
             or notification.related_pod.image_url

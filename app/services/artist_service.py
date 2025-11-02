@@ -25,7 +25,7 @@ class ArtistService:
     ) -> PageDto[ArtistSimpleDto]:
         """아티스트 목록 조회 (간소화 - ArtistUnit의 artist_id에 해당하는 아티스트 이름만)"""
         artist_units, total_count = await self.artist_crud.get_artist_units_with_names(
-            page=page, page_size=page_size, is_active=is_active
+            page=page, size=page_size, is_active=is_active
         )
 
         # ArtistUnit의 artist_id에 해당하는 아티스트 이름만 추출
@@ -49,7 +49,7 @@ class ArtistService:
         return PageDto[ArtistSimpleDto](
             items=simple_artists,
             current_page=page,
-            page_size=page_size,
+            size=page_size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,
@@ -62,7 +62,7 @@ class ArtistService:
     ) -> PageDto[ArtistDto]:
         """아티스트 목록 조회 (페이지네이션 및 필터링 지원)"""
         artists, total_count = await self.artist_crud.get_all(
-            page=page, page_size=page_size, is_active=is_active
+            page=page, size=page_size, is_active=is_active
         )
 
         artist_dtos = [
@@ -81,7 +81,7 @@ class ArtistService:
         return PageDto[ArtistDto](
             items=artist_dtos,
             current_page=page,
-            page_size=page_size,
+            size=page_size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=has_next,

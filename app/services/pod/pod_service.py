@@ -716,7 +716,7 @@ class PodService:
         return PageDto[PodDto](
             items=pod_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -756,7 +756,7 @@ class PodService:
         return PageDto[PodDto](
             items=pod_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -794,7 +794,7 @@ class PodService:
         return PageDto[PodDto](
             items=pod_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -833,7 +833,7 @@ class PodService:
         return PageDto[PodDto](
             items=pod_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -874,7 +874,7 @@ class PodService:
         return PageDto[PodDto](
             items=pod_dtos,
             current_page=page,
-            page_size=size,
+            size=size,
             total_count=total_count,
             total_pages=total_pages,
             has_next=page < total_pages,
@@ -943,7 +943,7 @@ class PodService:
         return PageDto[PodDto](
             items=pod_dtos,
             current_page=result["page"],
-            page_size=result["page_size"],
+            size=result["page_size"],
             total_count=result["total_count"],
             total_pages=result["total_pages"],
             has_next=result["page"] < result["total_pages"],
@@ -966,7 +966,7 @@ class PodService:
         return PageDto(
             items=pod_dtos,
             current_page=result["page"],
-            page_size=result["page_size"],
+            size=result["page_size"],
             total_count=result["total_count"],
             total_pages=result["total_pages"],
             has_next=result["page"] < result["total_pages"],
@@ -990,7 +990,7 @@ class PodService:
         return PageDto(
             items=pod_dtos,
             current_page=result["page"],
-            page_size=result["page_size"],
+            size=result["page_size"],
             total_count=result["total_count"],
             total_pages=result["total_pages"],
             has_next=result["page"] < result["total_pages"],

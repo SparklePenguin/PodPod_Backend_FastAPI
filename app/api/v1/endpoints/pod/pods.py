@@ -502,7 +502,7 @@ async def get_pods(
             end_date=search_request.end_date,
             location=search_request.location,
             page=search_request.page or 1,
-            page_size=search_request.page_size or 20,
+            size=search_request.page_size or 20,
         )
 
         return BaseResponse.ok(result, message_ko="팟 목록 조회 성공", http_status=200)

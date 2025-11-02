@@ -8,6 +8,7 @@ class SimplePodDto(BaseModel):
     """간단한 파티 정보 DTO"""
 
     id: int = Field(..., alias="id", description="파티 ID", example=1)
+    owner_id: int = Field(..., alias="ownerId", description="파티장 ID", example=1)
     title: str = Field(
         ..., alias="title", description="파티 제목", example="아이돌 굿즈 구매"
     )

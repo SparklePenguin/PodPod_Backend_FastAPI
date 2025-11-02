@@ -141,6 +141,7 @@ async def handle_sendbird_webhook(
 
                 simple_pod = SimplePodDto(
                     id=pod.id,
+                    owner_id=pod.owner_id,
                     title=pod.title,
                     thumbnail_url=pod.thumbnail_url or pod.image_url or "",
                     sub_categories=sub_categories,

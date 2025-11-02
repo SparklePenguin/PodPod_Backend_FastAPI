@@ -40,7 +40,7 @@ class ArtistScheduleService:
         """스케줄 목록 조회"""
         result = await self.crud.get_schedules(
             page=page,
-            page_size=page_size,
+            size=page_size,
             artist_id=artist_id,
             unit_id=unit_id,
             schedule_type=schedule_type,
