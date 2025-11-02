@@ -30,6 +30,8 @@ class FollowService:
         self.crud = FollowCRUD(db)
         self.pod_crud = PodCRUD(db)
         self.user_crud = UserCRUD(db)
+        from app.crud.pod_review import PodReviewCRUD
+        self.review_crud = PodReviewCRUD(db)
 
     async def follow_user(self, follower_id: int, following_id: int) -> FollowResponse:
         """사용자 팔로우"""
@@ -176,6 +178,16 @@ class FollowService:
                 return int(dt.timestamp() * 1000)  # milliseconds
 
             # PodDto를 수동으로 생성하여 MissingGreenlet 오류 방지
+            # 후기 목록 조회
+            reviews = await self.review_crud.get_all_reviews_by_pod(pod.id)
+            from app.services.pod_review_service import PodReviewService
+            
+            review_service = PodReviewService(self.db)
+            review_dtos = []
+            for review in reviews:
+                review_dto = await review_service._convert_to_dto(review)
+                review_dtos.append(review_dto)
+
             pod_dto = PodDto(
                 id=pod.id,
                 owner_id=pod.owner_id,
@@ -204,6 +216,7 @@ class FollowService:
                 joined_users_count=joined_users_count,
                 like_count=like_count,
                 joined_users=[],  # 팔로우 파티 목록에서는 빈 배열로 설정
+                reviews=review_dtos,  # 후기 목록
             )
 
             pod_dtos.append(pod_dto)

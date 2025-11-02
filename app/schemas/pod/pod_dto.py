@@ -13,6 +13,12 @@ from app.schemas.pod.simple_application_dto import SimpleApplicationDto
 from app.schemas.pod.pod_image_dto import PodImageDto
 from app.schemas.follow import SimpleUserDto
 
+# 순환 import 방지를 위한 TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.schemas.pod_review import PodReviewDto
+
 
 class PodSearchRequest(BaseModel):
     """팟 검색 요청"""
@@ -156,6 +162,11 @@ class PodDto(BaseModel):
         alias="joinedUsers",
         description="파티에 참여 중인 사용자 목록",
     )
+    reviews: List["PodReviewDto"] = Field(
+        default_factory=list,
+        alias="reviews",
+        description="파티 후기 목록",
+    )
     created_at: datetime.datetime = Field(
         alias="createdAt", example="2025-01-01T00:00:00"
     )
@@ -217,3 +228,9 @@ class PodDto(BaseModel):
             )
 
         return valid_sub_categories
+
+
+# Forward reference 해결을 위해 PodReviewDto import 후 모델 재빌드
+from app.schemas.pod_review import PodReviewDto  # noqa: E402
+
+PodDto.model_rebuild()

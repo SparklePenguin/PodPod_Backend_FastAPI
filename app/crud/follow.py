@@ -207,9 +207,11 @@ class FollowCRUD:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[Pod], int]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
+        from app.models.pod.pod_status import PodStatus
+
         offset = (page - 1) * size
 
-        # 팔로우하는 사용자들이 만든 파티 조회 (활성화된 팔로우만)
+        # 팔로우하는 사용자들이 만든 파티 조회 (활성화된 팔로우만, 모집중인 파티만)
         query = (
             select(Pod)
             .options(selectinload(Pod.images))
@@ -219,6 +221,7 @@ class FollowCRUD:
                     Follow.follower_id == user_id,
                     Follow.is_active == True,  # 활성화된 팔로우만
                     Pod.is_active == True,  # 활성화된 파티만
+                    Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
                 )
             )
             .order_by(desc(Pod.created_at))
@@ -228,7 +231,7 @@ class FollowCRUD:
         result = await self.db.execute(query)
         pods = result.scalars().all()
 
-        # 총 파티 수 조회 (활성화된 팔로우만)
+        # 총 파티 수 조회 (활성화된 팔로우만, 모집중인 파티만)
         count_query = (
             select(func.count(Pod.id))
             .join(Follow, Pod.owner_id == Follow.following_id)
@@ -237,6 +240,7 @@ class FollowCRUD:
                     Follow.follower_id == user_id,
                     Follow.is_active == True,  # 활성화된 팔로우만
                     Pod.is_active == True,  # 활성화된 파티만
+                    Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
                 )
             )
         )

@@ -79,6 +79,17 @@ class PodReviewCRUD:
 
         return reviews, total_count
 
+    async def get_all_reviews_by_pod(self, pod_id: int) -> List[PodReview]:
+        """특정 파티의 모든 후기 목록 조회 (페이지네이션 없음)"""
+        query = (
+            select(PodReview)
+            .options(selectinload(PodReview.pod), selectinload(PodReview.user))
+            .where(PodReview.pod_id == pod_id)
+            .order_by(desc(PodReview.created_at))
+        )
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
     async def get_reviews_by_user(
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[PodReview], int]:
