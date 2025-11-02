@@ -139,6 +139,32 @@ class PodReviewService:
             has_prev=page > 1,
         )
 
+    async def get_reviews_received_by_user(
+        self, user_id: int, page: int = 1, size: int = 20
+    ) -> PageDto[PodReviewDto]:
+        """특정 사용자가 참여한 파티에 대한 받은 리뷰 목록 조회 (본인이 작성한 리뷰 제외)"""
+        reviews, total_count = await self.crud.get_reviews_received_by_user(
+            user_id, page, size
+        )
+
+        review_dtos = []
+        for review in reviews:
+            review_dto = await self._convert_to_dto(review)
+            review_dtos.append(review_dto)
+
+        # PageDto 생성
+        total_pages = math.ceil(total_count / size) if total_count > 0 else 0
+
+        return PageDto[PodReviewDto](
+            items=review_dtos,
+            current_page=page,
+            page_size=size,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1,
+        )
+
     async def update_review(
         self, review_id: int, user_id: int, request: PodReviewUpdateRequest
     ) -> Optional[PodReviewDto]:

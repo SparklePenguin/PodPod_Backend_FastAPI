@@ -1,9 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc, func
+from sqlalchemy import select, and_, desc, func, or_
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Tuple
 from app.models.pod_review import PodReview
 from app.models.pod.pod import Pod
+from app.models.pod.pod_member import PodMember
 from app.models.user import User
 from app.models.tendency import UserTendencyResult
 
@@ -153,3 +154,56 @@ class PodReviewCRUD:
             "avg_rating": round(avg_rating, 1),
             "total_reviews": total_reviews,
         }
+
+    async def get_reviews_received_by_user(
+        self, user_id: int, page: int = 1, size: int = 20
+    ) -> Tuple[List[PodReview], int]:
+        """특정 사용자가 참여한 파티에 대한 받은 리뷰 목록 조회 (본인이 작성한 리뷰 제외)"""
+        offset = (page - 1) * size
+
+        # 내가 참여한 파티 ID 목록 조회
+        # 1. PodMember로 참여한 파티
+        member_pods_query = select(PodMember.pod_id).where(PodMember.user_id == user_id)
+        member_pods_result = await self.db.execute(member_pods_query)
+        member_pod_ids = [row[0] for row in member_pods_result.all()]
+
+        # 2. 내가 개설한 파티 (owner_id)
+        owner_pods_query = select(Pod.id).where(Pod.owner_id == user_id)
+        owner_pods_result = await self.db.execute(owner_pods_query)
+        owner_pod_ids = [row[0] for row in owner_pods_result.all()]
+
+        # 참여한 모든 파티 ID 합치기
+        all_pod_ids = list(set(member_pod_ids + owner_pod_ids))
+
+        if not all_pod_ids:
+            # 참여한 파티가 없으면 빈 리스트 반환
+            return [], 0
+
+        # 해당 파티들에 대한 리뷰 중에서 내가 작성하지 않은 리뷰들 조회
+        query = (
+            select(PodReview)
+            .options(selectinload(PodReview.pod), selectinload(PodReview.user))
+            .where(
+                and_(
+                    PodReview.pod_id.in_(all_pod_ids),
+                    PodReview.user_id != user_id,  # 내가 작성하지 않은 리뷰
+                )
+            )
+            .order_by(desc(PodReview.created_at))
+            .offset(offset)
+            .limit(size)
+        )
+        result = await self.db.execute(query)
+        reviews = result.scalars().all()
+
+        # 총 리뷰 수 조회
+        count_query = select(func.count(PodReview.id)).where(
+            and_(
+                PodReview.pod_id.in_(all_pod_ids),
+                PodReview.user_id != user_id,
+            )
+        )
+        count_result = await self.db.execute(count_query)
+        total_count = count_result.scalar()
+
+        return reviews, total_count

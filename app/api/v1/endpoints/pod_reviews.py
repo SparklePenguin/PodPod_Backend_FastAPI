@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 
 from app.core.database import get_db
 from app.api.deps import get_current_user_id
@@ -178,49 +179,6 @@ async def get_reviews_by_pod(
         )
 
 
-@router.get(
-    "/user/{user_id}",
-    response_model=BaseResponse[PageDto[PodReviewDto]],
-    summary="사용자별 후기 목록 조회",
-    description="특정 사용자가 작성한 후기 목록을 페이지네이션으로 조회합니다.",
-    responses={
-        200: {
-            "description": "후기 목록 조회 성공",
-        },
-    },
-)
-async def get_reviews_by_user(
-    user_id: int = Path(..., description="사용자 ID"),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
-    size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
-    ),
-    db: AsyncSession = Depends(get_db),
-):
-    """사용자별 후기 목록 조회"""
-    try:
-        review_service = PodReviewService(db)
-        reviews = await review_service.get_reviews_by_user(user_id, page, size)
-
-        return BaseResponse.ok(
-            data=reviews,
-            http_status=HttpStatus.OK,
-            message_ko="사용자 후기 목록을 조회했습니다.",
-            message_en="User reviews retrieved successfully.",
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="후기 목록 조회 중 오류가 발생했습니다.",
-            message_en="An error occurred while retrieving reviews.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
-        )
-
-
 @router.put(
     "/{review_id}",
     response_model=BaseResponse[PodReviewDto],
@@ -359,17 +317,20 @@ async def delete_review(
 
 
 @router.get(
-    "/user",
+    "/user/written",
     response_model=BaseResponse[PageDto[PodReviewDto]],
-    summary="내가 작성한 후기 목록 조회",
-    description="현재 로그인한 사용자가 작성한 후기 목록을 페이지네이션으로 조회합니다.",
+    summary="사용자가 작성한 후기 목록 조회",
+    description="특정 사용자(또는 현재 로그인한 사용자)가 작성한 후기 목록을 페이지네이션으로 조회합니다.",
     responses={
         200: {
-            "description": "내가 작성한 후기 목록 조회 성공",
+            "description": "사용자가 작성한 후기 목록 조회 성공",
         },
     },
 )
-async def get_my_reviews(
+async def get_user_written_reviews(
+    user_id: Optional[int] = Query(
+        None, alias="userId", description="조회할 사용자 ID (없으면 현재 사용자)"
+    ),
     page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
     size: int = Query(
         20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
@@ -377,16 +338,70 @@ async def get_my_reviews(
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    """내가 작성한 후기 목록 조회"""
+    """사용자가 작성한 후기 목록 조회"""
     try:
+        # user_id가 제공되지 않으면 현재 사용자 ID 사용
+        target_user_id = user_id if user_id is not None else current_user_id
+
         review_service = PodReviewService(db)
-        reviews = await review_service.get_reviews_by_user(current_user_id, page, size)
+        reviews = await review_service.get_reviews_by_user(target_user_id, page, size)
 
         return BaseResponse.ok(
             data=reviews,
             http_status=HttpStatus.OK,
-            message_ko="내가 작성한 후기 목록을 조회했습니다.",
-            message_en="Successfully retrieved my reviews.",
+            message_ko="사용자가 작성한 후기 목록을 조회했습니다.",
+            message_en="User written reviews retrieved successfully.",
+        )
+    except Exception as e:
+        error_info = get_error_info("INTERNAL_SERVER_ERROR")
+        return BaseResponse(
+            data=None,
+            http_status=error_info.http_status,
+            message_ko="후기 목록 조회 중 오류가 발생했습니다.",
+            message_en="An error occurred while retrieving reviews.",
+            error=error_info.error_key,
+            error_code=error_info.code,
+            dev_note=None,
+        )
+
+
+@router.get(
+    "/user/received",
+    response_model=BaseResponse[PageDto[PodReviewDto]],
+    summary="사용자가 받은 후기 목록 조회",
+    description="특정 사용자(또는 현재 로그인한 사용자)가 참여한 파티에 대한 받은 후기 목록을 페이지네이션으로 조회합니다.",
+    responses={
+        200: {
+            "description": "사용자가 받은 후기 목록 조회 성공",
+        },
+    },
+)
+async def get_user_received_reviews(
+    user_id: Optional[int] = Query(
+        None, alias="userId", description="조회할 사용자 ID (없으면 현재 사용자)"
+    ),
+    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    size: int = Query(
+        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+    ),
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """사용자가 받은 후기 목록 조회"""
+    try:
+        # user_id가 제공되지 않으면 현재 사용자 ID 사용
+        target_user_id = user_id if user_id is not None else current_user_id
+
+        review_service = PodReviewService(db)
+        reviews = await review_service.get_reviews_received_by_user(
+            target_user_id, page, size
+        )
+
+        return BaseResponse.ok(
+            data=reviews,
+            http_status=HttpStatus.OK,
+            message_ko="사용자가 받은 후기 목록을 조회했습니다.",
+            message_en="User received reviews retrieved successfully.",
         )
     except Exception as e:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
