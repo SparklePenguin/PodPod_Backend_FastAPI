@@ -84,7 +84,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                             "ownerId": pod.owner_id,
                             "title": pod.title,
                             "thumbnailUrl": pod.thumbnail_url or "",
-                            "place": pod.place,
+                            "meetingPlace": pod.place,
                             "meetingDate": (
                                 int(
                                     datetime.combine(
@@ -429,7 +429,7 @@ async def update_channel_metadata(
                         "ownerId": pod.owner_id,
                         "title": pod.title,
                         "thumbnailUrl": pod.thumbnail_url or "",
-                        "place": pod.place,
+                        "meetingPlace": pod.place,
                         "meetingDate": (
                             int(
                                 datetime.combine(
