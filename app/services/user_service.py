@@ -324,9 +324,11 @@ class UserService:
                 # 본인 정보 조회 시: 팔로우 여부 없이 통계만
                 follow_stats = await self.follow_service.get_follow_stats(user.id, None)
             user_data["follow_stats"] = follow_stats
+            user_data["is_following"] = follow_stats.is_following
         except Exception:
             # 팔로우 통계 조회 실패 시 None으로 설정
             user_data["follow_stats"] = None
+            user_data["is_following"] = False
 
         return user_data
 

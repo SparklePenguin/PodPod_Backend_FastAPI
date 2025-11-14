@@ -19,6 +19,12 @@ class UserDto(BaseModel):
     tendency_type: Optional[str] = Field(
         default=None, alias="tendencyType"
     )  # 성향 타입
+    is_following: bool = Field(
+        default=False,
+        alias="isFollowing",
+        description="현재 사용자 기준 팔로우 여부",
+        example=False,
+    )
     follow_stats: Optional[FollowStatsResponse] = Field(
         default=None, alias="followStats", description="팔로우 통계 정보"
     )
