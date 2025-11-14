@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, desc, or_, delete
+from sqlalchemy import select, and_, func, desc, or_, delete, exists
 from sqlalchemy.orm import selectinload
 from typing import Optional, List, Tuple
 from datetime import datetime
@@ -108,6 +108,23 @@ class FollowCRUD:
                 and_(
                     Follow.follower_id == user_id,
                     Follow.following_id != user_id,  # 자기 자신 제외
+                    Follow.is_active == True,  # 활성화된 팔로우만
+                    ~exists(
+                        select(UserBlock.id).where(
+                            and_(
+                                UserBlock.blocker_id == user_id,
+                                UserBlock.blocked_id == User.id,
+                            )
+                        )
+                    ),  # 내가 차단한 사용자 제외
+                    ~exists(
+                        select(UserBlock.id).where(
+                            and_(
+                                UserBlock.blocker_id == User.id,
+                                UserBlock.blocked_id == user_id,
+                            )
+                        )
+                    ),  # 나를 차단한 사용자 제외
                 )
             )
             .order_by(desc(Follow.created_at))
@@ -122,6 +139,23 @@ class FollowCRUD:
             and_(
                 Follow.follower_id == user_id,
                 Follow.following_id != user_id,  # 자기 자신 제외
+                Follow.is_active == True,
+                ~exists(
+                    select(UserBlock.id).where(
+                        and_(
+                            UserBlock.blocker_id == user_id,
+                            UserBlock.blocked_id == Follow.following_id,
+                        )
+                    )
+                ),
+                ~exists(
+                    select(UserBlock.id).where(
+                        and_(
+                            UserBlock.blocker_id == Follow.following_id,
+                            UserBlock.blocked_id == user_id,
+                        )
+                    )
+                ),
             )
         )
         count_result = await self.db.execute(count_query)
@@ -144,6 +178,23 @@ class FollowCRUD:
                 and_(
                     Follow.following_id == user_id,
                     Follow.follower_id != user_id,  # 자기 자신 제외
+                    Follow.is_active == True,
+                    ~exists(
+                        select(UserBlock.id).where(
+                            and_(
+                                UserBlock.blocker_id == user_id,
+                                UserBlock.blocked_id == User.id,
+                            )
+                        )
+                    ),
+                    ~exists(
+                        select(UserBlock.id).where(
+                            and_(
+                                UserBlock.blocker_id == User.id,
+                                UserBlock.blocked_id == user_id,
+                            )
+                        )
+                    ),
                 )
             )
             .order_by(desc(Follow.created_at))
@@ -158,6 +209,23 @@ class FollowCRUD:
             and_(
                 Follow.following_id == user_id,
                 Follow.follower_id != user_id,  # 자기 자신 제외
+                Follow.is_active == True,
+                ~exists(
+                    select(UserBlock.id).where(
+                        and_(
+                            UserBlock.blocker_id == user_id,
+                            UserBlock.blocked_id == Follow.follower_id,
+                        )
+                    )
+                ),
+                ~exists(
+                    select(UserBlock.id).where(
+                        and_(
+                            UserBlock.blocker_id == Follow.follower_id,
+                            UserBlock.blocked_id == user_id,
+                        )
+                    )
+                ),
             )
         )
         count_result = await self.db.execute(count_query)
@@ -257,7 +325,7 @@ class FollowCRUD:
 
         # 이미 팔로우한 사용자 서브쿼리
         following_subquery = select(Follow.following_id).where(
-            Follow.follower_id == user_id
+            and_(Follow.follower_id == user_id, Follow.is_active == True)
         )
 
         # 내가 차단한 사용자 서브쿼리
