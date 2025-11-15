@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from app.models.user import User
 from app.models.preferred_artist import PreferredArtist
+from app.models.pod.pod_application import PodApplication
 from typing import List, Optional, Dict, Any
 
 
@@ -135,5 +136,12 @@ class UserCRUD:
         사용자 삭제
         - ON DELETE CASCADE로 인해 관련 데이터(preferred_artists, follows 등)도 함께 삭제됨
         """
+        # pod_applications.reviewed_by FK 해제
+        await self.db.execute(
+            update(PodApplication)
+            .where(PodApplication.reviewed_by == user_id)
+            .values(reviewed_by=None)
+        )
+
         await self.db.execute(delete(User).where(User.id == user_id))
         await self.db.commit()
