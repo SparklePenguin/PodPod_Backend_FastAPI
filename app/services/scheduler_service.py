@@ -562,11 +562,12 @@ class SchedulerService:
         """확정(COMPLETED) 상태인 파티가 미팅일이 지나면 종료(CLOSED)로 변경"""
         try:
             today = date.today()
+            tomorrow = today + timedelta(days=1)
 
-            # 미팅일이 오늘 이하이고 COMPLETED 상태인 파티들 조회 (과거에 패스된 것도 포함)
+            # 미팅일이 내일이고 COMPLETED 상태인 파티들 조회
             query = select(Pod).where(
                 and_(
-                    Pod.meeting_date <= today,
+                    Pod.meeting_date == tomorrow,
                     Pod.status == PodStatus.COMPLETED,
                 )
             )
