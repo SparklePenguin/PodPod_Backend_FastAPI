@@ -262,7 +262,7 @@ class SchedulerService:
     async def _send_review_reminder_to_non_reviewers(
         self, db: AsyncSession, pod: Pod, reminder_type: str
     ):
-        """리뷰 미작성자들에게만 리마인드 알림 전송"""
+        """리뷰 미작성자들에게만 리마인드 알림 전송 (파티장 제외)"""
         try:
             # 모임 참여자 목록 조회
             participants_query = (
@@ -272,16 +272,8 @@ class SchedulerService:
                 .distinct()
             )
 
-            # 파티장도 포함
-            owner_query = select(User).where(User.id == pod.owner_id)
-            owner_result = await db.execute(owner_query)
-            owner = owner_result.scalar_one_or_none()
-
             result = await db.execute(participants_query)
             participants = result.scalars().all()
-
-            if owner and owner not in participants:
-                participants.append(owner)
 
             # 리뷰를 작성한 사용자들 조회
             reviewers_query = select(PodRating.user_id).where(
@@ -290,8 +282,11 @@ class SchedulerService:
             reviewers_result = await db.execute(reviewers_query)
             reviewer_ids = {row[0] for row in reviewers_result.all()}
 
-            # 리뷰 미작성자들에게만 알림 전송
+            # 리뷰 미작성자들에게만 알림 전송 (파티장 제외)
             for participant in participants:
+                # 파티장 제외
+                if participant.id == pod.owner_id:
+                    continue
                 if participant.id not in reviewer_ids:
                     try:
                         if participant.fcm_token:

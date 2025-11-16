@@ -521,27 +521,6 @@ class PodService:
                             f"파티 수정 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
-            # 파티장에게도 알림 전송 (선택사항)
-            try:
-                owner_result = await self.db.execute(
-                    select(User).where(User.id == pod.owner_id)
-                )
-                owner = owner_result.scalar_one_or_none()
-                if owner and owner.fcm_token:
-                    await fcm_service.send_pod_updated(
-                        token=owner.fcm_token,
-                        party_name=pod.title,
-                        pod_id=pod_id,
-                        db=self.db,
-                        user_id=owner.id,
-                        related_user_id=pod.owner_id,
-                    )
-                    logger.info(f"파티장에게 수정 알림 전송 성공: owner_id={owner.id}")
-            except Exception as e:
-                logger.error(
-                    f"파티장 알림 전송 실패: owner_id={pod.owner_id}, error={e}"
-                )
-
         except Exception as e:
             logger.error(f"파티 수정 알림 처리 중 오류: {e}")
 
@@ -1275,8 +1254,11 @@ class PodService:
 
             # 상태별 알림 전송
             if status == PodStatus.COMPLETED:
-                # 파티 확정 알림 (모집 완료)
+                # 파티 확정 알림 (모집 완료) - 파티장 제외 참여자에게 전송
                 for participant in participants:
+                    # 파티장 제외
+                    if participant.id == pod.owner_id:
+                        continue
                     try:
                         if participant.fcm_token:
                             await fcm_service.send_pod_confirmed(
@@ -1300,8 +1282,11 @@ class PodService:
                         )
 
             elif status == PodStatus.CLOSED:
-                # 파티 취소 알림 (종료)
+                # 파티 취소 알림 (종료) - 파티장 제외 참여자에게 전송
                 for participant in participants:
+                    # 파티장 제외
+                    if participant.id == pod.owner_id:
+                        continue
                     try:
                         if participant.fcm_token:
                             await fcm_service.send_pod_canceled(

@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.crud.pod.pod import PodCRUD
 from app.crud.pod.recruitment import RecruitmentCRUD
 from app.crud.pod.pod_application import PodApplicationCRUD
@@ -6,6 +7,7 @@ from app.core.error_codes import raise_error
 from app.schemas.pod.pod_application_dto import PodApplicationDto
 from app.schemas.follow import SimpleUserDto
 from app.models.user import User
+from app.models.pod.pod_status import PodStatus
 from app.services.fcm_service import FCMService
 import logging
 
@@ -160,6 +162,11 @@ class RecruitmentService:
                     application_user_id,
                     role="member",
                     message=application_message,
+                )
+
+                # 새 멤버 참여 알림 전송 (파티장, 신청자 제외 참여 유저)
+                await self._send_new_member_notification(
+                    application_pod_id, application_user_id
                 )
 
                 # 샌드버드 채팅방에 멤버 초대
@@ -440,6 +447,69 @@ class RecruitmentService:
                 "success": success,
                 "message": "신청이 성공적으로 취소되었습니다.",
             }
+
+    # - MARK: 새 멤버 참여 알림
+    async def _send_new_member_notification(
+        self, pod_id: int, new_member_id: int
+    ) -> None:
+        """새 멤버 참여 시 파티장, 신청자 제외 참여 유저에게 알림 전송"""
+        try:
+            # 파티 정보 조회
+            pod = await self.pod_crud.get_pod_by_id(pod_id)
+            if not pod:
+                return
+
+            # 신청자 정보 조회
+            new_member_result = await self.db.execute(
+                select(User).where(User.id == new_member_id)
+            )
+            new_member = new_member_result.scalar_one_or_none()
+            if not new_member:
+                return
+
+            # 파티 참여자 목록 조회
+            participants = await self.pod_crud.get_pod_participants(pod_id)
+
+            # FCM 서비스 초기화
+            fcm_service = FCMService()
+
+            # 파티장, 신청자 제외 참여 유저에게 알림 전송
+            for participant in participants:
+                # 파티장 제외
+                if participant.id == pod.owner_id:
+                    continue
+                # 신청자 제외
+                if participant.id == new_member_id:
+                    continue
+
+                try:
+                    if participant.fcm_token:
+                        await fcm_service.send_pod_new_member(
+                            token=participant.fcm_token,
+                            nickname=new_member.nickname,
+                            party_name=pod.title,
+                            pod_id=pod_id,
+                            db=self.db,
+                            user_id=participant.id,
+                            related_user_id=new_member_id,
+                        )
+                        logger.info(
+                            f"새 멤버 참여 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}, new_member_id={new_member_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"FCM 토큰이 없는 사용자: user_id={participant.id}"
+                        )
+
+                except Exception as e:
+                    logger.error(
+                        f"새 멤버 참여 알림 전송 실패: user_id={participant.id}, error={e}"
+                    )
+
+        except Exception as e:
+            logger.error(
+                f"새 멤버 참여 알림 처리 중 오류: pod_id={pod_id}, new_member_id={new_member_id}, error={e}"
+            )
 
     # - MARK: 좋아요한 파티에 자리 생김 알림
     async def _send_spot_opened_notifications(self, pod_id: int, pod) -> None:

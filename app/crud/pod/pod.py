@@ -929,8 +929,10 @@ class PodCRUD:
                     await fcm_service.send_pod_views_threshold(
                         token=owner.fcm_token,
                         party_name=pod.title,
+                        pod_id=pod_id,
                         db=self.db,
                         user_id=owner.id,
+                        related_user_id=pod.owner_id,
                     )
                     import logging
 

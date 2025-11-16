@@ -388,42 +388,75 @@ class PodReviewService:
                 )
                 return
 
-            # 파티 참여자 목록 조회 (리뷰 작성자 제외)
-            participants = await self.pod_crud.get_pod_participants(pod_id)
+            # 파티장 정보 조회
+            owner_result = await self.db.execute(
+                select(User).where(User.id == pod.owner_id)
+            )
+            owner = owner_result.scalar_one_or_none()
 
-            if not participants:
-                logger.info(f"파티 참여자가 없음: pod_id={pod_id}")
+            if not owner:
+                logger.warning(f"파티장 정보를 찾을 수 없음: pod_id={pod_id}")
                 return
 
             # FCM 서비스 초기화
             fcm_service = FCMService()
 
-            # 각 참여자에게 알림 전송 (리뷰 작성자 제외)
-            for participant in participants:
-                if participant.id != reviewer_id:
-                    try:
-                        if participant.fcm_token:
-                            await fcm_service.send_review_created(
-                                token=participant.fcm_token,
-                                nickname=reviewer.nickname,
-                                party_name=pod.title,
-                                review_id=review_id,
-                                db=self.db,
-                                user_id=participant.id,
-                                related_user_id=reviewer_id,  # 리뷰 작성자
-                                related_pod_id=pod_id,  # 리뷰를 남긴 파티
-                            )
-                            logger.info(
-                                f"리뷰 생성 알림 전송 성공: participant_id={participant.id}, review_id={review_id}"
-                            )
-                        else:
-                            logger.warning(
-                                f"FCM 토큰이 없는 참여자: participant_id={participant.id}"
-                            )
-                    except Exception as e:
-                        logger.error(
-                            f"리뷰 생성 알림 전송 실패: participant_id={participant.id}, error={e}"
+            # 파티장에게만 알림 전송 (리뷰 작성자가 파티장이 아닌 경우)
+            if owner.id != reviewer_id:
+                try:
+                    if owner.fcm_token:
+                        await fcm_service.send_review_created(
+                            token=owner.fcm_token,
+                            nickname=reviewer.nickname,
+                            party_name=pod.title,
+                            review_id=review_id,
+                            db=self.db,
+                            user_id=owner.id,
+                            related_user_id=reviewer_id,  # 리뷰 작성자
+                            related_pod_id=pod_id,  # 리뷰를 남긴 파티
                         )
+                        logger.info(
+                            f"리뷰 생성 알림 전송 성공 (파티장): owner_id={owner.id}, review_id={review_id}"
+                        )
+                    else:
+                        logger.warning(f"파티장 FCM 토큰이 없음: owner_id={owner.id}")
+                except Exception as e:
+                    logger.error(
+                        f"리뷰 생성 알림 전송 실패 (파티장): owner_id={owner.id}, error={e}"
+                    )
+
+            # 리뷰 작성자 제외 참여자들에게 REVIEW_OTHERS_CREATED 알림 전송
+            participants = await self.pod_crud.get_pod_participants(pod_id)
+            for participant in participants:
+                # 리뷰 작성자 제외
+                if participant.id == reviewer_id:
+                    continue
+                # 파티장은 이미 REVIEW_CREATED를 받았으므로 제외
+                if participant.id == pod.owner_id:
+                    continue
+
+                try:
+                    if participant.fcm_token:
+                        await fcm_service.send_review_others_created(
+                            token=participant.fcm_token,
+                            nickname=reviewer.nickname,
+                            review_id=review_id,
+                            pod_id=pod_id,
+                            db=self.db,
+                            user_id=participant.id,
+                            related_user_id=reviewer_id,
+                        )
+                        logger.info(
+                            f"다른 사람 리뷰 생성 알림 전송 성공: participant_id={participant.id}, review_id={review_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"FCM 토큰이 없는 참여자: participant_id={participant.id}"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"다른 사람 리뷰 생성 알림 전송 실패: participant_id={participant.id}, error={e}"
+                    )
 
         except Exception as e:
             logger.error(
