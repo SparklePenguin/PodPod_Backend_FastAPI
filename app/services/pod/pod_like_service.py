@@ -66,8 +66,10 @@ class PodLikeService:
                     await fcm_service.send_pod_likes_threshold(
                         token=owner.fcm_token,
                         party_name=pod.title,
+                        pod_id=pod_id,
                         db=self.db,
                         user_id=owner.id,
+                        related_user_id=pod.owner_id,
                     )
                     logger.info(
                         f"좋아요 10개 달성 알림 전송 성공: pod_id={pod_id}, owner_id={owner.id}"

@@ -460,6 +460,7 @@ class PodService:
                             pod_id=pod_id,
                             db=self.db,
                             user_id=participant.id,
+                            related_user_id=pod.owner_id,
                         )
                         logger.info(
                             f"파티 수정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
@@ -506,6 +507,7 @@ class PodService:
                                 pod_id=pod_id,
                                 db=self.db,
                                 user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
                                 f"파티 수정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
@@ -532,6 +534,7 @@ class PodService:
                         pod_id=pod_id,
                         db=self.db,
                         user_id=owner.id,
+                        related_user_id=pod.owner_id,
                     )
                     logger.info(f"파티장에게 수정 알림 전송 성공: owner_id={owner.id}")
             except Exception as e:
@@ -1282,6 +1285,7 @@ class PodService:
                                 pod_id=pod_id,
                                 db=self.db,
                                 user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
                                 f"파티 확정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
@@ -1306,6 +1310,7 @@ class PodService:
                                 pod_id=pod_id,
                                 db=self.db,
                                 user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
                                 f"파티 취소 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
@@ -1328,6 +1333,7 @@ class PodService:
                                 pod_id=pod_id,
                                 db=self.db,
                                 user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
                                 f"파티 완료 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"

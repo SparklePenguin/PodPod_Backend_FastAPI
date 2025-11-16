@@ -480,6 +480,7 @@ class RecruitmentService:
                             pod_id=pod_id,
                             db=self.db,
                             user_id=user.id,
+                            related_user_id=pod.owner_id,
                         )
                         logger.info(
                             f"좋아요한 파티 자리 생김 알림 전송 성공: user_id={user.id}, pod_id={pod_id}"

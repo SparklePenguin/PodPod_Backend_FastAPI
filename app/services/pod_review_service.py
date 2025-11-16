@@ -410,6 +410,8 @@ class PodReviewService:
                                 review_id=review_id,
                                 db=self.db,
                                 user_id=participant.id,
+                                related_user_id=reviewer_id,  # 리뷰 작성자
+                                related_pod_id=pod_id,  # 리뷰를 남긴 파티
                             )
                             logger.info(
                                 f"리뷰 생성 알림 전송 성공: participant_id={participant.id}, review_id={review_id}"

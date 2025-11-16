@@ -415,6 +415,7 @@ class SchedulerService:
                             pod_id=pod.id,
                             db=db,
                             user_id=participant.id,
+                            related_user_id=pod.owner_id,
                         )
                         logger.info(
                             f"파티 시작 임박 알림 전송 성공: user_id={participant.id}, pod_id={pod.id}"
@@ -499,6 +500,7 @@ class SchedulerService:
                     pod_id=pod.id,
                     db=db,
                     user_id=owner.id,
+                    related_user_id=pod.owner_id,
                 )
                 logger.info(
                     f"파티 마감 임박 알림 전송 성공: owner_id={owner.id}, pod_id={pod.id}"
@@ -546,6 +548,7 @@ class SchedulerService:
                             pod_id=pod.id,
                             db=db,
                             user_id=user.id,
+                            related_user_id=pod.owner_id,
                         )
                         logger.info(
                             f"좋아요한 파티 마감 임박 알림 전송 성공: user_id={user.id}, pod_id={pod.id}"
@@ -559,15 +562,15 @@ class SchedulerService:
                     )
 
     async def _update_completed_pods_to_closed(self, db: AsyncSession):
-        """확정(COMPLETED) 상태인 파티가 미팅일이 지나면 종료(CLOSED)로 변경"""
+        """확정(COMPLETED) 상태인 파티가 미팅일 다음 날부터 종료(CLOSED)로 변경"""
         try:
             today = date.today()
-            tomorrow = today + timedelta(days=1)
 
-            # 미팅일이 내일이고 COMPLETED 상태인 파티들 조회
+            # 미팅일이 오늘보다 이전인 COMPLETED 상태인 파티들 조회 (미팅일 다음 날부터 CLOSED로 변경)
             query = select(Pod).where(
                 and_(
-                    Pod.meeting_date == tomorrow,
+                    Pod.meeting_date
+                    < today,  # 미팅일이 오늘보다 이전 (미팅일 다음 날부터)
                     Pod.status == PodStatus.COMPLETED,
                 )
             )

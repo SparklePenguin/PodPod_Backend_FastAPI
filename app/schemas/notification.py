@@ -96,19 +96,19 @@ class PodStatusNotiSubType(Enum):
     POD_LIKES_THRESHOLD = (
         "🎉 [party_name] 모임에 좋아요가 10개 이상 쌓였어요!",
         ["party_name"],
-        None,
+        "pod_id",
     )
     # 2. 조회수 10회 이상 달성 (대상: 파티장)
     POD_VIEWS_THRESHOLD = (
         "🔥 [party_name]에 관심이 몰리고 있어요. 인기 모임이 될지도 몰라요!",
         ["party_name"],
-        None,
+        "pod_id",
     )
     # 3. 파티 완료 (대상: 참여자들)
     POD_COMPLETED = (
         "🎉 [party_name] 모임이 완료되었습니다! 즐거운 시간 보내셨나요?",
         ["party_name"],
-        None,
+        "pod_id",
     )
 
 

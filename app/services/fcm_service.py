@@ -427,6 +427,7 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 새 멤버 참여 알림 전송"""
         body, data = self._format_message(
@@ -436,7 +437,14 @@ class FCMService:
             pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_updated(
@@ -446,13 +454,21 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 정보 수정 알림 전송"""
         body, data = self._format_message(
             PodNotiSubType.POD_UPDATED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_confirmed(
@@ -462,13 +478,21 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 확정 알림 전송"""
         body, data = self._format_message(
             PodNotiSubType.POD_CONFIRMED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_canceled(
@@ -478,13 +502,21 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 취소 알림 전송"""
         body, data = self._format_message(
             PodNotiSubType.POD_CANCELED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_start_soon(
@@ -494,13 +526,21 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 시작 1시간 전 알림 전송"""
         body, data = self._format_message(
             PodNotiSubType.POD_START_SOON, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_low_attendance(
@@ -510,6 +550,7 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 마감 임박 알림 전송"""
         body, data = self._format_message(
@@ -522,6 +563,7 @@ class FCMService:
             data=data,
             db=db,
             user_id=user_id,
+            related_user_id=related_user_id,
             related_pod_id=pod_id,
         )
 
@@ -531,30 +573,52 @@ class FCMService:
         self,
         token: str,
         party_name: str,
+        pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 좋아요 10개 달성 알림 전송"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_LIKES_THRESHOLD, party_name=party_name
+            PodStatusNotiSubType.POD_LIKES_THRESHOLD,
+            party_name=party_name,
+            pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_views_threshold(
         self,
         token: str,
         party_name: str,
+        pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 조회수 10회 달성 알림 전송"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_VIEWS_THRESHOLD, party_name=party_name
+            PodStatusNotiSubType.POD_VIEWS_THRESHOLD,
+            party_name=party_name,
+            pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     # ========== 추천 알림 ==========
@@ -566,6 +630,7 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """좋아요한 파티 마감 임박 알림 전송"""
         body, data = self._format_message(
@@ -574,7 +639,14 @@ class FCMService:
             pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_saved_pod_spot_opened(
@@ -584,6 +656,7 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """좋아요한 파티에 자리 생김 알림 전송"""
         body, data = self._format_message(
@@ -592,7 +665,14 @@ class FCMService:
             pod_id=pod_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     # ========== 리뷰 알림 ==========
@@ -605,6 +685,8 @@ class FCMService:
         review_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
+        related_pod_id: Optional[int] = None,
     ) -> bool:
         """리뷰 등록 알림 전송"""
         body, data = self._format_message(
@@ -614,7 +696,14 @@ class FCMService:
             review_id=review_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=related_pod_id,
         )
 
     async def send_review_reminder_day(
@@ -666,8 +755,10 @@ class FCMService:
         token: str,
         nickname: str,
         review_id: int,
+        pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """다른 참여자 리뷰 작성 알림 전송"""
         body, data = self._format_message(
@@ -676,7 +767,14 @@ class FCMService:
             review_id=review_id,
         )
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     async def send_pod_completed(
@@ -686,7 +784,7 @@ class FCMService:
         pod_id: int,
         db: Optional[AsyncSession] = None,
         user_id: Optional[int] = None,
-        related_pod_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
     ) -> bool:
         """파티 완료 알림 전송"""
         body, data = self._format_message(
@@ -696,7 +794,14 @@ class FCMService:
         )
 
         return await self.send_notification(
-            token=token, title="PodPod", body=body, data=data, db=db, user_id=user_id
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
         )
 
     # ========== 팔로우 알림 ==========
