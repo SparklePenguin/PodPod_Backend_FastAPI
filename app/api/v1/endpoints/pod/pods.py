@@ -73,15 +73,11 @@ async def create_pod(
     ),
     x: Optional[float] = Form(None, alias="x", description="경도 (longitude)"),
     y: Optional[float] = Form(None, alias="y", description="위도 (latitude)"),
+    # 이제 meetingDate 하나로 UTC datetime을 받음
     meeting_date: str = Form(
         ...,
         alias="meetingDate",
-        description="만남 날짜 (YYYY-MM-DD)",
-    ),
-    meeting_time: str = Form(
-        ...,
-        alias="meetingTime",
-        description="만남 시간 (HH:MM)",
+        description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     ),
     selected_artist_id: int = Form(
         ...,
@@ -97,11 +93,25 @@ async def create_pod(
     # sub_categories는 이미 리스트이므로 그대로 사용
     sub_category_list = sub_categories
 
-    # 날짜와 시간 파싱
-    from datetime import date, time
+    # meetingDate(UTC datetime) 파싱 → date/time 분리
+    from datetime import date, time, datetime, timezone
+    import logging
 
-    parsed_meeting_date = date.fromisoformat(meeting_date)
-    parsed_meeting_time = time.fromisoformat(meeting_time)
+    logger = logging.getLogger(__name__)
+
+    normalized = meeting_date.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(normalized)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt_utc = dt.astimezone(timezone.utc)
+
+    parsed_meeting_date: date = dt_utc.date()
+    parsed_meeting_time: time = dt_utc.time()
+
+    logger.info(
+        f"[파티 생성] UTC 시간 저장: 원본={meeting_date}, UTC datetime={dt_utc.isoformat()}, "
+        f"date={parsed_meeting_date}, time={parsed_meeting_time}"
+    )
 
     # PodCreateRequest 객체 생성
     req = PodCreateRequest(
@@ -643,11 +653,11 @@ async def update_pod(
     ),
     x: Optional[float] = Form(None, alias="x", description="경도 (longitude)"),
     y: Optional[float] = Form(None, alias="y", description="위도 (latitude)"),
+    # 이제 meetingDate 하나로 UTC datetime을 받음
     meeting_date: Optional[str] = Form(
-        None, alias="meetingDate", description="만남 날짜 (YYYY-MM-DD)"
-    ),
-    meeting_time: Optional[str] = Form(
-        None, alias="meetingTime", description="만남 시간 (HH:MM)"
+        None,
+        alias="meetingDate",
+        description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     ),
     selected_artist_id: Optional[int] = Form(
         None, alias="selectedArtistId", description="선택된 아티스트 ID"
@@ -702,11 +712,24 @@ async def update_pod(
     if selected_artist_id is not None:
         update_fields["selected_artist_id"] = selected_artist_id
 
-    # 날짜와 시간 파싱
+    # 날짜와 시간 파싱 (meetingDate: UTC datetime → date/time 분리)
     if meeting_date is not None:
-        update_fields["meeting_date"] = date.fromisoformat(meeting_date)
-    if meeting_time is not None:
-        update_fields["meeting_time"] = time.fromisoformat(meeting_time)
+        from datetime import datetime, timezone
+
+        normalized = meeting_date.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        dt_utc = dt.astimezone(timezone.utc)
+
+        update_fields["meeting_date"] = dt_utc.date()
+        update_fields["meeting_time"] = dt_utc.time()
+
+        logger.info(
+            f"[파티 수정] UTC 시간 저장: 원본={meeting_date}, UTC datetime={dt_utc.isoformat()}, "
+            f"date={update_fields['meeting_date']}, time={update_fields['meeting_time']}"
+        )
 
     # 파티 업데이트 실행 (이미지 포함)
     updated_pod = await pod_service.update_pod_with_images(

@@ -104,12 +104,16 @@ async def get_notifications(
             from app.schemas.pod_review import SimplePodDto
             from datetime import datetime, date, time
 
-            # meeting_date와 meeting_time을 하나의 timestamp로 변환
+            # meeting_date와 meeting_time을 하나의 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
             meeting_timestamp = 0
             if n.related_pod.meeting_date and n.related_pod.meeting_time:
                 try:
+                    from datetime import timezone
+
                     dt = datetime.combine(
-                        n.related_pod.meeting_date, n.related_pod.meeting_time
+                        n.related_pod.meeting_date,
+                        n.related_pod.meeting_time,
+                        tzinfo=timezone.utc,
                     )
                     meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
                 except:
@@ -244,16 +248,19 @@ async def mark_notification_as_read(
         from app.schemas.pod_review import SimplePodDto
         from datetime import datetime, date, time
 
-        # meeting_date와 meeting_time을 하나의 timestamp로 변환
+        # meeting_date와 meeting_time을 하나의 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
         meeting_timestamp = 0
         if (
             notification.related_pod.meeting_date
             and notification.related_pod.meeting_time
         ):
             try:
+                from datetime import timezone
+
                 dt = datetime.combine(
                     notification.related_pod.meeting_date,
                     notification.related_pod.meeting_time,
+                    tzinfo=timezone.utc,
                 )
                 meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
             except:

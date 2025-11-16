@@ -118,15 +118,17 @@ class PodCRUD:
 
             # SimplePodDto 객체 생성 (meeting_date와 meeting_time을 하나로 합쳐서 timestamp로 변환)
             def _convert_to_combined_timestamp(meeting_date, meeting_time):
-                """date와 time 객체를 하나의 timestamp로 변환"""
+                """date와 time 객체를 UTC로 해석하여 하나의 timestamp로 변환"""
                 if meeting_date is None:
                     return None
                 if meeting_time is None:
                     # time이 없으면 date만 사용 (00:00:00)
-                    dt = datetime.combine(meeting_date, time.min)
+                    dt = datetime.combine(meeting_date, time.min, tzinfo=timezone.utc)
                 else:
-                    # date와 time을 결합
-                    dt = datetime.combine(meeting_date, meeting_time)
+                    # date와 time을 결합 (UTC로 해석)
+                    dt = datetime.combine(
+                        meeting_date, meeting_time, tzinfo=timezone.utc
+                    )
                 return int(dt.timestamp() * 1000)  # milliseconds
 
             simple_pod_dto = SimplePodDto(

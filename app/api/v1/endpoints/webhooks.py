@@ -10,7 +10,7 @@ from app.schemas.pod_review import SimplePodDto
 from app.services.fcm_service import FCMService
 from app.crud.user import UserCRUD
 from app.crud.pod.pod import PodCRUD
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 
 
 router = APIRouter()
@@ -120,15 +120,19 @@ async def handle_sendbird_webhook(
             pod_crud = PodCRUD(db)
             pod = await pod_crud.get_pod_by_id(pod_id)
             if pod:
-                # meeting_date와 meeting_time을 timestamp로 변환
+                # meeting_date와 meeting_time을 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
                 def _convert_to_timestamp(meeting_date, meeting_time):
-                    """date와 time 객체를 하나의 timestamp로 변환"""
+                    """date와 time 객체를 UTC로 해석하여 하나의 timestamp로 변환"""
                     if meeting_date is None:
                         return 0
                     if meeting_time is None:
-                        dt = datetime.combine(meeting_date, time.min)
+                        dt = datetime.combine(
+                            meeting_date, time.min, tzinfo=timezone.utc
+                        )
                     else:
-                        dt = datetime.combine(meeting_date, meeting_time)
+                        dt = datetime.combine(
+                            meeting_date, meeting_time, tzinfo=timezone.utc
+                        )
                     return int(dt.timestamp() * 1000)  # milliseconds
 
                 # sub_categories 파싱

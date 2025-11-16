@@ -1004,18 +1004,29 @@ class PodService:
         """Pod를 PodDto로 변환하고 추가 정보를 설정"""
         from app.schemas.pod.pod_image_dto import PodImageDto
 
-        # meeting_date와 meeting_time을 timestamp로 변환
+        # meeting_date와 meeting_time을 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
         def _convert_to_timestamp(meeting_date, meeting_time):
-            """date와 time 객체를 timestamp로 변환"""
+            """date와 time 객체를 UTC로 해석하여 timestamp로 변환"""
             if meeting_date is None:
                 return None
-            from datetime import datetime, time as time_module
+            from datetime import datetime, time as time_module, timezone
 
             if meeting_time is None:
-                dt = datetime.combine(meeting_date, time_module.min)
+                dt = datetime.combine(
+                    meeting_date, time_module.min, tzinfo=timezone.utc
+                )
             else:
-                dt = datetime.combine(meeting_date, meeting_time)
-            return int(dt.timestamp() * 1000)  # milliseconds
+                dt = datetime.combine(meeting_date, meeting_time, tzinfo=timezone.utc)
+            timestamp_ms = int(dt.timestamp() * 1000)  # milliseconds
+
+            # UTC 변환 확인 로그
+            logger.info(
+                f"[파티 조회] UTC timestamp 변환: pod_id={pod.id}, "
+                f"DB 저장값(date={meeting_date}, time={meeting_time}), "
+                f"UTC datetime={dt.isoformat()}, timestamp_ms={timestamp_ms}"
+            )
+
+            return timestamp_ms
 
         # 이미지 리스트 조회
         images_dto = []

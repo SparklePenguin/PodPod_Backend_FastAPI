@@ -165,17 +165,21 @@ class FollowService:
             # 사용자가 좋아요했는지 확인
             is_liked = await self.pod_crud.is_liked_by_user(pod.id, user_id)
 
-            # meeting_date와 meeting_time을 timestamp로 변환
+            # meeting_date와 meeting_time을 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
             def _convert_to_timestamp(meeting_date, meeting_time):
-                """date와 time 객체를 timestamp로 변환"""
+                """date와 time 객체를 UTC로 해석하여 timestamp로 변환"""
                 if meeting_date is None:
                     return None
-                from datetime import datetime, time as time_module
+                from datetime import datetime, time as time_module, timezone
 
                 if meeting_time is None:
-                    dt = datetime.combine(meeting_date, time_module.min)
+                    dt = datetime.combine(
+                        meeting_date, time_module.min, tzinfo=timezone.utc
+                    )
                 else:
-                    dt = datetime.combine(meeting_date, meeting_time)
+                    dt = datetime.combine(
+                        meeting_date, meeting_time, tzinfo=timezone.utc
+                    )
                 return int(dt.timestamp() * 1000)  # milliseconds
 
             # PodDto를 수동으로 생성하여 MissingGreenlet 오류 방지
