@@ -193,25 +193,6 @@ class RecruitmentService:
                     f"status={updated_pod.status}"
                 )
 
-                # 정원 가득 참 알림은 승낙 알림 이후에 생성되도록 플래그만 저장
-                # (알림 순서를 명확히 하기 위해)
-                capacity_full_notification_needed = (
-                    actual_member_count >= updated_pod.capacity
-                    or updated_pod.status == PodStatus.COMPLETED
-                )
-                if capacity_full_notification_needed:
-                    logger.info(
-                        f"[파티 정원 가득 참] 알림 전송 예정: pod_id={application_pod_id}, "
-                        f"actual_member_count={actual_member_count}, capacity={updated_pod.capacity}, "
-                        f"status={updated_pod.status}"
-                    )
-                else:
-                    logger.info(
-                        f"[파티 정원 미달] 알림 전송 안 함: pod_id={application_pod_id}, "
-                        f"actual_member_count={actual_member_count}, capacity={updated_pod.capacity}, "
-                        f"status={updated_pod.status}"
-                    )
-
                 # 새 멤버 참여 알림 전송 (파티장, 신청자 제외 참여 유저)
                 await self._send_new_member_notification(
                     application_pod_id, application_user_id
@@ -282,13 +263,33 @@ class RecruitmentService:
                     await fcm_service.send_pod_request_approved(
                         token=user.fcm_token,
                         party_name=pod.title if pod else "파티",
-                        pod_id=application.pod_id,
+                        pod_id=application_pod_id,  # application.pod_id 대신 application_pod_id 사용
                         db=self.db,
                         user_id=user.id,
                         related_user_id=reviewed_by,
                         related_pod_id=application_pod_id,
                     )
                     logger.info(f"신청자 {user.id}에게 파티 승인 알림 전송 완료")
+
+                    # 정원 가득 참 알림 전송 (승인 알림 이후)
+                    # 다시 파티 정보를 조회하여 최신 상태 확인
+                    final_pod = await self.pod_crud.get_pod_by_id(application_pod_id)
+                    if final_pod:
+                        final_member_count = await self.pod_crud.get_joined_users_count(
+                            application_pod_id
+                        )
+                        if (
+                            final_member_count >= final_pod.capacity
+                            or final_pod.status == PodStatus.COMPLETED
+                        ):
+                            logger.info(
+                                f"[파티 정원 가득 참] 알림 전송 시작: pod_id={application_pod_id}, "
+                                f"final_member_count={final_member_count}, capacity={final_pod.capacity}, "
+                                f"status={final_pod.status}"
+                            )
+                            await self._send_capacity_full_notification(
+                                application_pod_id, final_pod
+                            )
                 elif status.lower() == "rejected":
                     # 거절 알림
                     await fcm_service.send_pod_request_rejected(

@@ -34,7 +34,7 @@ class SchedulerService:
                     # 1주일 전 모임들 조회 (REVIEW_REMINDER_WEEK)
                     await self._send_week_reminders(db)
 
-                    # 파티 마감 임박 알림 (24시간 전 + 인원 부족)
+                    # 파티 마감 임박 알림 (모집 중이고 내일 마감되는 파티)
                     await self._send_low_attendance_reminders(db)
 
                     # 좋아요한 파티 마감 임박 알림 (1일 전)
@@ -474,43 +474,68 @@ class SchedulerService:
             logger.error(f"파티 시작 임박 알림 처리 실패: pod_id={pod.id}, error={e}")
 
     async def _send_low_attendance_reminders(self, db: AsyncSession):
-        """파티 마감 임박 + 인원 부족 알림"""
+        """파티 마감 임박 알림 (모집 중이고 24시간 안에 마감되는 파티)"""
         now = datetime.now()
         twenty_four_hours_later = now + timedelta(hours=24)
+        today = now.date()
+        tomorrow = today + timedelta(days=1)
 
-        # 24시간 후 마감되는 모임들 조회
+        # 24시간 안에 마감되는 모집 중인 파티들 조회
+        # 조건: meeting_date + meeting_time이 now와 now + 24hours 사이
         # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
-        query = select(Pod).where(
+
+        # 오늘 날짜이고 현재 시간 이후인 파티
+        today_query = select(Pod).where(
             and_(
-                Pod.meeting_date == twenty_four_hours_later.date(),
-                func.upper(Pod.status)
-                == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
+                Pod.meeting_date == today,
+                Pod.meeting_time >= now.time(),
+                func.upper(Pod.status) == PodStatus.RECRUITING.value.upper(),
             )
         )
 
-        result = await db.execute(query)
-        closing_soon_pods = result.scalars().all()
+        # 내일 날짜이고 24시간 이내인 파티
+        tomorrow_query = select(Pod).where(
+            and_(
+                Pod.meeting_date == tomorrow,
+                Pod.meeting_time <= twenty_four_hours_later.time(),
+                func.upper(Pod.status) == PodStatus.RECRUITING.value.upper(),
+            )
+        )
+
+        # 두 쿼리 결과 합치기
+        today_result = await db.execute(today_query)
+        tomorrow_result = await db.execute(tomorrow_query)
+        today_pods = today_result.scalars().all()
+        tomorrow_pods = tomorrow_result.scalars().all()
+
+        # 모든 파티를 합치고, 실제로 24시간 안에 마감되는지 확인
+        all_pods = list(today_pods) + list(tomorrow_pods)
+        closing_soon_pods = []
+
+        for pod in all_pods:
+            # meeting_date + meeting_time을 datetime으로 결합
+            meeting_datetime = datetime.combine(pod.meeting_date, pod.meeting_time)
+
+            # 24시간 안에 마감되는지 확인
+            if now <= meeting_datetime <= twenty_four_hours_later:
+                closing_soon_pods.append(pod)
+
+        logger.info(
+            f"파티 마감 임박 알림 대상: {len(closing_soon_pods)}개 (24시간 안에 마감, 모집 중)"
+        )
 
         for pod in closing_soon_pods:
-            # 현재 참여자 수 확인
-            participants_query = select(PodMember.user_id).where(
-                PodMember.pod_id == pod.id
-            )
-            participants_result = await db.execute(participants_query)
-            participant_count = len(participants_result.all()) + 1  # 파티장 포함
-
-            # 인원 부족 체크 (예: 정원의 70% 미만)
-            if participant_count < (pod.capacity * 0.7):
-                await self._send_low_attendance_to_owner(db, pod)
+            # 모집 중이고 24시간 안에 마감되는 파티면 알림 전송 (중복 체크는 _send_low_attendance_to_owner에서 처리)
+            await self._send_low_attendance_to_owner(db, pod)
 
     async def _send_low_attendance_to_owner(self, db: AsyncSession, pod: Pod):
-        """파티장에게 인원 부족 알림 전송 (최근 24시간 내 이미 보낸 경우 제외)"""
+        """파티장에게 파티 마감 임박 알림 전송 (최근 24시간 내 이미 보낸 경우 제외)"""
         try:
             # 최근 24시간 내 같은 알림이 이미 있는지 확인
             from app.models.notification import Notification
-            from datetime import datetime, timedelta
+            from datetime import datetime, timedelta, timezone
 
-            twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+            twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
             existing_notification_query = select(Notification).where(
                 and_(
@@ -526,7 +551,7 @@ class SchedulerService:
 
             if existing_notification:
                 logger.info(
-                    f"최근 24시간 내 이미 인원 부족 알림을 보냈음: owner_id={pod.owner_id}, pod_id={pod.id}, 기존 알림_id={existing_notification.id}"
+                    f"[파티 마감 임박 알림] 최근 24시간 내 이미 전송됨: owner_id={pod.owner_id}, pod_id={pod.id}, 기존 알림_id={existing_notification.id}, created_at={existing_notification.created_at}"
                 )
                 return  # 이미 보낸 알림이 있으면 다시 보내지 않음
 
