@@ -722,22 +722,22 @@ class SchedulerService:
 
             for pod in unconfirmed_pods:
                 try:
-                    # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
-                    pod_status = str(pod.status).upper()
-                    if pod_status == PodStatus.RECRUITING.value:
+                    # enum 비교 시 안전하게 처리
+                    # pod.status가 enum 객체이므로 .value로 실제 값을 가져옴
+                    pod_status_value = (
+                        pod.status.value.upper()
+                        if hasattr(pod.status, "value")
+                        else str(pod.status).upper()
+                    )
+                    if pod_status_value == PodStatus.RECRUITING.value.upper():
                         # 파티 상태를 CANCELED로 변경
                         pod.status = PodStatus.CANCELED
                         logger.info(
                             f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED"
                         )
                     else:
-                        # status 접근 시 안전하게 처리
-                        try:
-                            status_str = str(pod.status).upper()
-                        except Exception:
-                            status_str = "UNKNOWN"
                         logger.warning(
-                            f"파티 상태가 RECRUITING이 아님: pod_id={pod.id}, status={status_str}"
+                            f"파티 상태가 RECRUITING이 아님: pod_id={pod.id}, status={pod_status_value}"
                         )
                 except Exception as e:
                     logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")
