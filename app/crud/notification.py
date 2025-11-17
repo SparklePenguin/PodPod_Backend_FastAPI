@@ -135,7 +135,14 @@ class NotificationCRUD:
             notification_id: 알림 ID
             user_id: 사용자 ID (권한 확인용)
         """
-        notification = await self.get_by_id(db, notification_id)
+        # 관계를 미리 로드하여 lazy loading 에러 방지
+        query = select(Notification).where(Notification.id == notification_id)
+        query = query.options(
+            selectinload(Notification.related_user),
+            selectinload(Notification.related_pod),
+        )
+        result = await db.execute(query)
+        notification = result.scalar_one_or_none()
 
         if not notification or notification.user_id != user_id:
             return None
