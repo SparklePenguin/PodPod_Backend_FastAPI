@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
 
 
@@ -35,7 +35,10 @@ class Follow(Base):
         comment="팔로우 활성화 여부",
     )
     created_at = Column(
-        DateTime, default=datetime.utcnow, nullable=False, comment="팔로우 생성 시간"
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        comment="팔로우 생성 시간",
     )
 
     # 관계 설정

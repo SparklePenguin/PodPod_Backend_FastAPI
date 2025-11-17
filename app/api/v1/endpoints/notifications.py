@@ -48,6 +48,9 @@ async def get_notifications(
     """알림 목록 조회"""
     skip = (page - 1) * size
 
+    # category를 대문자로 변환 (DB에는 대문자로 저장됨)
+    category_upper = category.upper() if category else None
+
     # 알림 목록 조회
     notifications = await notification_crud.get_user_notifications(
         db=db,
@@ -55,12 +58,12 @@ async def get_notifications(
         skip=skip,
         limit=size,
         unread_only=unread_only,
-        category=category,
+        category=category_upper,
     )
 
     # 전체 개수 조회 (unread_only, category 고려)
     total_count = await notification_crud.get_total_count(
-        db=db, user_id=current_user_id, unread_only=unread_only, category=category
+        db=db, user_id=current_user_id, unread_only=unread_only, category=category_upper
     )
 
     # 총 페이지 수 계산

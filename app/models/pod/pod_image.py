@@ -14,6 +14,6 @@ class PodImage(Base):
     image_url = Column(String(500), nullable=False)  # 이미지 URL
     thumbnail_url = Column(String(500), nullable=True)  # 썸네일 URL
     display_order = Column(Integer, nullable=False, default=0)  # 표시 순서
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     pod = relationship("Pod", back_populates="images")

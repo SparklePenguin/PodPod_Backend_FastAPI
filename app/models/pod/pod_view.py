@@ -18,7 +18,7 @@ class PodView(Base):
     user_agent = Column(String(500), nullable=True)  # 브라우저 정보
     created_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
     pod = relationship("Pod", back_populates="views")

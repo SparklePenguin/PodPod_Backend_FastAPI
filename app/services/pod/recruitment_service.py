@@ -172,10 +172,45 @@ class RecruitmentService:
                     message=application_message,
                 )
 
-                # 새 멤버 추가 후 인원이 가득 찬 경우 파티장에게 알림 전송
-                new_member_count = current_member_count + 1
-                if new_member_count >= pod.capacity:
-                    await self._send_capacity_full_notification(application_pod_id, pod)
+                # add_member 후 실제 멤버 수를 다시 조회하여 정확히 확인
+                # (add_member 내부에서 커밋이 일어났으므로 최신 상태 확인 필요)
+                # 세션 캐시 무효화하여 최신 데이터 조회
+                self.db.expire_all()
+
+                updated_pod = await self.pod_crud.get_pod_by_id(application_pod_id)
+                if not updated_pod:
+                    logger.error(f"파티를 찾을 수 없음: pod_id={application_pod_id}")
+                    raise_error("POD_NOT_FOUND")
+
+                # get_joined_users_count를 사용하여 owner 포함 총 인원수 정확히 계산
+                actual_member_count = await self.pod_crud.get_joined_users_count(
+                    application_pod_id
+                )
+
+                logger.info(
+                    f"[파티 승낙 후 인원 확인] pod_id={application_pod_id}, "
+                    f"actual_member_count={actual_member_count}, capacity={updated_pod.capacity}, "
+                    f"status={updated_pod.status}"
+                )
+
+                # 정원 가득 참 알림은 승낙 알림 이후에 생성되도록 플래그만 저장
+                # (알림 순서를 명확히 하기 위해)
+                capacity_full_notification_needed = (
+                    actual_member_count >= updated_pod.capacity
+                    or updated_pod.status == PodStatus.COMPLETED
+                )
+                if capacity_full_notification_needed:
+                    logger.info(
+                        f"[파티 정원 가득 참] 알림 전송 예정: pod_id={application_pod_id}, "
+                        f"actual_member_count={actual_member_count}, capacity={updated_pod.capacity}, "
+                        f"status={updated_pod.status}"
+                    )
+                else:
+                    logger.info(
+                        f"[파티 정원 미달] 알림 전송 안 함: pod_id={application_pod_id}, "
+                        f"actual_member_count={actual_member_count}, capacity={updated_pod.capacity}, "
+                        f"status={updated_pod.status}"
+                    )
 
                 # 새 멤버 참여 알림 전송 (파티장, 신청자 제외 참여 유저)
                 await self._send_new_member_notification(
@@ -465,6 +500,10 @@ class RecruitmentService:
     async def _send_capacity_full_notification(self, pod_id: int, pod) -> None:
         """파티 정원이 가득 찬 경우 파티장에게 알림 전송"""
         try:
+            logger.info(
+                f"[정원 가득 참 알림] 시작: pod_id={pod_id}, owner_id={pod.owner_id}"
+            )
+
             # 파티장 정보 조회
             owner_result = await self.db.execute(
                 select(User).where(User.id == pod.owner_id)
@@ -472,7 +511,9 @@ class RecruitmentService:
             owner = owner_result.scalar_one_or_none()
 
             if not owner:
-                logger.warning(f"파티장 정보를 찾을 수 없음: pod_id={pod_id}")
+                logger.warning(
+                    f"[정원 가득 참 알림] 파티장 정보를 찾을 수 없음: pod_id={pod_id}, owner_id={pod.owner_id}"
+                )
                 return
 
             # FCM 서비스 초기화
@@ -480,6 +521,10 @@ class RecruitmentService:
 
             # 파티장에게 알림 전송
             if owner.fcm_token:
+                logger.info(
+                    f"[정원 가득 참 알림] FCM 전송 시도: owner_id={owner.id}, pod_id={pod_id}, "
+                    f"fcm_token={owner.fcm_token[:20] if owner.fcm_token else 'None'}..."
+                )
                 await fcm_service.send_pod_capacity_full(
                     token=owner.fcm_token,
                     party_name=pod.title,
@@ -489,14 +534,17 @@ class RecruitmentService:
                     related_user_id=pod.owner_id,
                 )
                 logger.info(
-                    f"파티 정원 가득 참 알림 전송 성공: owner_id={owner.id}, pod_id={pod_id}"
+                    f"[정원 가득 참 알림] 전송 성공: owner_id={owner.id}, pod_id={pod_id}"
                 )
             else:
-                logger.warning(f"파티장 FCM 토큰이 없음: owner_id={owner.id}")
+                logger.warning(
+                    f"[정원 가득 참 알림] 파티장 FCM 토큰이 없음: owner_id={owner.id}, pod_id={pod_id}"
+                )
 
         except Exception as e:
             logger.error(
-                f"파티 정원 가득 참 알림 처리 중 오류: pod_id={pod_id}, error={e}"
+                f"[정원 가득 참 알림] 처리 중 오류: pod_id={pod_id}, error={e}",
+                exc_info=True,
             )
 
     # - MARK: 새 멤버 참여 알림

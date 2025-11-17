@@ -22,11 +22,11 @@ class User(Base):
         Enum(UserState), default=UserState.PREFERRED_ARTISTS
     )  # 사용자 온보딩 상태
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # 소셜 로그인 관련 필드

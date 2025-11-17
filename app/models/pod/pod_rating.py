@@ -16,12 +16,12 @@ class PodRating(Base):
     review = Column(String(500), nullable=True)  # 리뷰 내용
     created_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     pod = relationship("Pod", back_populates="ratings")

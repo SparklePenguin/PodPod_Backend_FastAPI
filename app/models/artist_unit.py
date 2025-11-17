@@ -13,11 +13,11 @@ class ArtistUnit(Base):
     type = Column(String(20), nullable=True)  # "group" 또는 "single"
     is_filter = Column(Boolean, default=True)
     is_active = Column(Boolean, default=False)  # 아티스트 이미지 디자인 유무
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # BLIP/연동 관련 식별자

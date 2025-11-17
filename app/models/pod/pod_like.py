@@ -16,7 +16,7 @@ class PodLike(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     pod_id = Column(Integer, ForeignKey("pods.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("pod_id", "user_id", name="uq_pod_likes_pod_user"),

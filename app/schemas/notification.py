@@ -247,12 +247,25 @@ def get_notification_category(type: str) -> str:
     알림 타입으로 카테고리 반환
 
     Args:
-        type: 알림 타입 (예: PodNotificationType, FollowNotificationType)
+        type: 알림 타입 (예: PodNotificationType, FollowNotificationType) 또는 NotificationType enum 값 (예: POD, POD_STATUS)
 
     Returns:
         카테고리 (POD, COMMUNITY, NOTICE)
     """
-    return NOTIFICATION_TYPE_CATEGORY_MAP.get(type, NotificationCategory.POD).value
+    # 먼저 클래스명으로 찾기 시도
+    if type in NOTIFICATION_TYPE_CATEGORY_MAP:
+        return NOTIFICATION_TYPE_CATEGORY_MAP[type].value
+
+    # 클래스명이 아니면 NotificationType enum 값으로 찾기 시도
+    try:
+        notification_type_enum = NotificationType(type)
+        if notification_type_enum in NOTIFICATION_MAIN_TYPE_CATEGORY_MAP:
+            return NOTIFICATION_MAIN_TYPE_CATEGORY_MAP[notification_type_enum].value
+    except ValueError:
+        pass
+
+    # 둘 다 아니면 기본값 반환
+    return NotificationCategory.POD.value
 
 
 def get_notification_main_type(notification_type: str) -> str:

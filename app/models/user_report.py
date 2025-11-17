@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
 
 
@@ -40,14 +40,14 @@ class UserReport(Base):
         comment="신고와 함께 차단 여부",
     )
     created_at = Column(
-        DateTime, default=datetime.utcnow, nullable=False, comment="신고 생성 시간"
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        comment="신고 생성 시간",
     )
 
     # 관계 설정
-    reporter = relationship(
-        "User", foreign_keys=[reporter_id], backref="reports_made"
-    )
+    reporter = relationship("User", foreign_keys=[reporter_id], backref="reports_made")
     reported_user = relationship(
         "User", foreign_keys=[reported_user_id], backref="reports_received"
     )
-
