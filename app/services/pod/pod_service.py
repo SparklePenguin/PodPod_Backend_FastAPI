@@ -626,7 +626,7 @@ class PodService:
                 "left": True,
                 "is_owner": True,
                 "members_removed": len(member_ids),
-                "pod_status": "CLOSED",
+                "pod_status": PodStatus.CLOSED.value,
             }
 
         else:

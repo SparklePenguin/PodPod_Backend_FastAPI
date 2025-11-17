@@ -450,7 +450,7 @@ class SchedulerService:
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == twenty_four_hours_later.date(),
-                Pod.status == "RECRUITING",  # 모집 중인 모임만
+                Pod.status == PodStatus.RECRUITING,  # 모집 중인 모임만
             )
         )
 
@@ -662,7 +662,7 @@ class SchedulerService:
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == tomorrow,
-                Pod.status == "RECRUITING",  # 모집 중인 모임만
+                Pod.status == PodStatus.RECRUITING,  # 모집 중인 모임만
             )
         )
 
