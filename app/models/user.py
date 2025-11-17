@@ -22,6 +22,7 @@ class User(Base):
         Enum(UserState), default=UserState.PREFERRED_ARTISTS
     )  # 사용자 온보딩 상태
     is_active = Column(Boolean, default=True)
+    is_del = Column(Boolean, default=False, index=True)  # 소프트 삭제 플래그
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,

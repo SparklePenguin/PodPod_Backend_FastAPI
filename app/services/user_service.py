@@ -4,6 +4,7 @@ from app.crud.user import UserCRUD
 from app.crud.artist import ArtistCRUD
 from app.crud.user_block import UserBlockCRUD
 from app.crud.follow import FollowCRUD
+from app.crud.pod.pod_application import PodApplicationCRUD
 from app.schemas.common import BaseResponse
 from app.schemas.user import (
     UpdateProfileRequest,
@@ -30,6 +31,7 @@ class UserService:
         self.follow_service = FollowService(db)
         self.block_crud = UserBlockCRUD(db)
         self.follow_crud = FollowCRUD(db)
+        self.pod_application_crud = PodApplicationCRUD(db)
         self.db = db
 
         # - MARK: 사용자 생성
@@ -103,7 +105,7 @@ class UserService:
         user = await self.user_crud.get_by_auth_provider_id(
             auth_provider, auth_provider_id
         )
-        if not user:
+        if not user or user.is_del:
             return None
 
         # UserDto 생성 시 상태 정보 포함
@@ -120,7 +122,7 @@ class UserService:
     # - MARK: 사용자 조회
     async def get_user(self, user_id: int) -> UserDto:
         user = await self.user_crud.get_by_id(user_id)
-        if not user:
+        if not user or user.is_del:
             raise_error("USER_NOT_FOUND")
 
         # UserDto 생성 시 상태 정보 포함
@@ -133,7 +135,7 @@ class UserService:
     ) -> UserDto:
         """다른 사용자 정보 조회 (팔로우 통계 포함)"""
         user = await self.user_crud.get_by_id(user_id)
-        if not user:
+        if not user or user.is_del:
             raise_error("USER_NOT_FOUND")
 
         # UserDto 생성 시 상태 정보 및 팔로우 통계 포함
@@ -408,25 +410,95 @@ class UserService:
 
     async def delete_user(self, user_id: int) -> None:
         """
-        사용자 삭제
-        - 사용자와 관련된 모든 데이터를 삭제합니다.
+        사용자 삭제 (소프트 삭제)
+        - 삭제되어도 문제없는 데이터는 삭제
+        - 다른 곳에서 조회되거나 문제 생기는 데이터는 isDel로 처리
         """
+        from sqlalchemy import delete, update, select
+        from app.models.notification import Notification
+        from app.models.user_notification_settings import UserNotificationSettings
+        from app.models.pod import PodLike, PodMember, PodView, Pod
+        from app.models.pod.pod_status import PodStatus
+        from app.models.user import User
+
         # 사용자 존재 확인
         user = await self.user_crud.get_by_id(user_id)
         if not user:
             raise_error("USER_NOT_FOUND")
 
-        # 관련 데이터 먼저 삭제
+        # 이미 삭제된 사용자인지 확인
+        if user.is_del:
+            return
+
+        # ========== 삭제 가능한 데이터 (개인 데이터) ==========
         # 1. 선호 아티스트 삭제
         preferred_artist_ids = await self.user_crud.get_preferred_artist_ids(user_id)
         for artist_id in preferred_artist_ids:
             await self.user_crud.remove_preferred_artist(user_id, artist_id)
 
-        # 2. 팔로우 관계 삭제
-        await self.follow_crud.delete_all_by_user(user_id)
+        # 2. 파티 신청서 삭제
+        await self.pod_application_crud.delete_all_by_user_id(user_id)
 
-        # 3. 차단 관계 삭제
-        await self.block_crud.delete_all_by_user(user_id)
+        # 3. 파티 조회 기록 삭제
+        await self.db.execute(delete(PodView).where(PodView.user_id == user_id))
+        await self.db.commit()
 
-        # 4. 사용자 삭제
-        await self.user_crud.delete(user_id)
+        # 4. 파티 좋아요 삭제
+        await self.db.execute(delete(PodLike).where(PodLike.user_id == user_id))
+        await self.db.commit()
+
+        # 5. 파티 멤버십 삭제
+        await self.db.execute(delete(PodMember).where(PodMember.user_id == user_id))
+        await self.db.commit()
+
+        # 6. 알림 삭제 (user_id와 sender_id 모두)
+        await self.db.execute(
+            delete(Notification).where(
+                (Notification.user_id == user_id) | (Notification.sender_id == user_id)
+            )
+        )
+        await self.db.commit()
+
+        # 7. 알림 설정 삭제
+        await self.db.execute(
+            delete(UserNotificationSettings).where(
+                UserNotificationSettings.user_id == user_id
+            )
+        )
+        await self.db.commit()
+
+        # ========== 소프트 삭제 처리 (다른 곳에서 조회 가능한 데이터) ==========
+        # 8. 파티장인 파티 처리 - 상태를 CANCELED로 변경
+        pods_query = select(Pod).where(Pod.owner_id == user_id)
+        pods_result = await self.db.execute(pods_query)
+        owner_pods = pods_result.scalars().all()
+
+        for pod in owner_pods:
+            pod.status = PodStatus.CANCELED
+            pod.is_active = False
+        await self.db.commit()
+
+        # 9. 팔로우/차단/신고 관계는 유지 (상대방이 볼 수 있으므로)
+        # - 팔로우 관계: 유지 (isDel 처리된 사용자도 조회 가능)
+        # - 차단 관계: 유지
+        # - 신고 관계: 유지 (관리자가 볼 수 있으므로)
+
+        # 10. 파티 후기/평점은 유지 (다른 사람들이 볼 수 있으므로)
+        # - PodReview: 유지
+        # - PodRating: 유지
+
+        # 11. 사용자 소프트 삭제 처리
+        await self.db.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                is_del=True,
+                is_active=False,
+                nickname=None,  # 개인정보 삭제
+                email=None,
+                profile_image=None,
+                intro=None,
+                fcm_token=None,
+            )
+        )
+        await self.db.commit()

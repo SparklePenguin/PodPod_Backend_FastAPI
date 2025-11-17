@@ -129,3 +129,13 @@ class PodApplicationCRUD:
         await self.db.commit()
         await self.db.refresh(application)
         return True
+
+    # - MARK: 사용자의 모든 신청서 삭제
+    async def delete_all_by_user_id(self, user_id: int) -> None:
+        """사용자의 모든 파티 신청서 삭제"""
+        from sqlalchemy import delete
+
+        await self.db.execute(
+            delete(PodApplication).where(PodApplication.user_id == user_id)
+        )
+        await self.db.commit()
