@@ -622,6 +622,11 @@ class PodService:
             await self.crud.update_pod_status(pod_id, PodStatus.CANCELED)
             logger.info(f"파티 {pod_id} 상태를 CANCELED로 변경")
 
+            # 파티 비활성화 (소프트 삭제)
+            pod.is_active = False
+            await self.db.commit()
+            logger.info(f"파티 {pod_id} 비활성화 완료 (is_active=False)")
+
             return {
                 "left": True,
                 "is_owner": True,
@@ -671,7 +676,56 @@ class PodService:
 
     # - MARK: 파티 삭제
     async def delete_pod(self, pod_id: int) -> None:
-        return await self.crud.delete_pod(pod_id)
+        """파티 삭제 (파티장이 나가는 것과 동일한 로직)"""
+        logger.info(f"파티 삭제 시도: pod_id={pod_id}")
+
+        # 파티 조회
+        pod = await self.crud.get_pod_by_id(pod_id)
+        if not pod:
+            logger.error(f"파티를 찾을 수 없음: pod_id={pod_id}")
+            raise_error("POD_NOT_FOUND")
+
+        # 모든 멤버 조회
+        all_members = await self.crud.get_pod_members(pod_id)
+        member_ids = [member.user_id for member in all_members]
+
+        # Sendbird 채팅방에서 모든 멤버 제거
+        if pod.chat_channel_url:
+            try:
+                from app.services.sendbird_service import SendbirdService
+
+                sendbird_service = SendbirdService()
+
+                # 모든 멤버를 채팅방에서 제거
+                for member_id in member_ids:
+                    success = await sendbird_service.remove_member_from_channel(
+                        channel_url=pod.chat_channel_url, user_id=str(member_id)
+                    )
+                    if success:
+                        logger.info(f"멤버 {member_id}를 채팅방에서 제거 완료")
+                    else:
+                        logger.warning(f"멤버 {member_id} 채팅방 제거 실패")
+
+                # 파티장도 채팅방에서 제거
+                await sendbird_service.remove_member_from_channel(
+                    channel_url=pod.chat_channel_url, user_id=str(pod.owner_id)
+                )
+
+            except Exception as e:
+                logger.error(f"Sendbird 채팅방 멤버 제거 실패: {e}")
+
+        # 파티장만 데이터베이스에서 제거 (멤버는 유지하여 상태 확인 가능하도록)
+        await self.crud.remove_pod_member(pod_id, pod.owner_id)
+        logger.info(f"파티장 {pod.owner_id}를 파티에서 제거 완료 (멤버는 유지)")
+
+        # 파티 상태를 CANCELED로 변경
+        await self.crud.update_pod_status(pod_id, PodStatus.CANCELED)
+        logger.info(f"파티 {pod_id} 상태를 CANCELED로 변경")
+
+        # 파티 비활성화 (소프트 삭제)
+        pod.is_active = False
+        await self.db.commit()
+        logger.info(f"파티 {pod_id} 삭제 완료 (is_active=False)")
 
     # - MARK: 요즘 인기 있는 파티 조회
     async def get_trending_pods(

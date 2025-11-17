@@ -9,6 +9,7 @@ from app.models.pod.pod_like import PodLike
 from app.models.pod.pod_status import PodStatus
 from app.models.user import User
 from app.schemas.pod_review import SimplePodDto
+from app.models.pod.pod_enums import get_subcategories_by_main_category
 from datetime import date, time, datetime, timedelta, timezone
 import json
 
@@ -170,7 +171,12 @@ class PodCRUD:
     async def get_pods_with_chat_channels(self) -> List[Pod]:
         """채팅방 URL이 있는 모든 파티 조회"""
         result = await self.db.execute(
-            select(Pod).where(Pod.chat_channel_url.isnot(None))
+            select(Pod).where(
+                and_(
+                    Pod.chat_channel_url.isnot(None),
+                    Pod.is_active == True,
+                )
+            )
         )
         return list(result.scalars().all())
 
@@ -798,20 +804,29 @@ class PodCRUD:
         offset = (page - 1) * size
 
         # 기본 쿼리
-        search_query = (
-            select(Pod)
-            .options(selectinload(Pod.images))
-            .where(
-                and_(
-                    Pod.is_active == True,
-                    or_(
-                        Pod.title.contains(query),
-                        Pod.description.contains(query),
-                        Pod.place.contains(query),
-                    ),
+        # query가 비어있으면 검색 조건 없이 is_active만 체크
+        if query and query.strip():
+            search_query = (
+                select(Pod)
+                .options(selectinload(Pod.images))
+                .where(
+                    and_(
+                        Pod.is_active == True,
+                        or_(
+                            Pod.title.contains(query),
+                            Pod.description.contains(query),
+                            Pod.place.contains(query),
+                        ),
+                    )
                 )
             )
-        )
+        else:
+            # query가 비어있으면 is_active만 체크
+            search_query = (
+                select(Pod)
+                .options(selectinload(Pod.images))
+                .where(Pod.is_active == True)
+            )
 
         # 조건 추가
         if selected_artist_id:
@@ -832,6 +847,19 @@ class PodCRUD:
                     Pod.address.contains(location),
                 )
             )
+
+        # main_category가 있으면 해당 메인 카테고리의 서브 카테고리들로 필터링
+        if main_category:
+            main_category_subcategories = get_subcategories_by_main_category(
+                main_category
+            )
+            if main_category_subcategories:
+                main_category_conditions = []
+                for sub_cat in main_category_subcategories:
+                    main_category_conditions.append(
+                        Pod.sub_categories.contains(sub_cat)
+                    )
+                search_query = search_query.where(or_(*main_category_conditions))
 
         if sub_categories:
             category_conditions = []

@@ -732,8 +732,10 @@ class SchedulerService:
                     if pod_status_value == PodStatus.RECRUITING.value.upper():
                         # 파티 상태를 CANCELED로 변경
                         pod.status = PodStatus.CANCELED
+                        # 파티 비활성화 (소프트 삭제)
+                        pod.is_active = False
                         logger.info(
-                            f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED"
+                            f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED, is_active=False"
                         )
 
                         # 채팅방이 있으면 Sendbird에서 삭제 (DB는 유지)
