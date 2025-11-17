@@ -581,7 +581,7 @@ class PodService:
         is_owner = pod.owner_id == user_id
 
         if is_owner:
-            # 파티장이 나가는 경우 - 모든 멤버 강제 퇴장
+            # 파티장이 나가는 경우 - 멤버는 유지하고 채팅방에서만 모두 제거
             logger.info(f"파티장이 나가는 경우: pod_id={pod_id}, owner_id={user_id}")
 
             # 모든 멤버 조회
@@ -613,20 +613,20 @@ class PodService:
                 except Exception as e:
                     logger.error(f"Sendbird 채팅방 멤버 제거 실패: {e}")
 
-            # 모든 멤버를 데이터베이스에서 제거
-            for member_id in member_ids:
-                await self.crud.remove_pod_member(pod_id, member_id)
-                logger.info(f"멤버 {member_id}를 파티에서 제거 완료")
+            # 파티장만 데이터베이스에서 제거 (멤버는 유지하여 상태 확인 가능하도록)
+            # 멤버는 그대로 두고 파티장만 나가기
+            await self.crud.remove_pod_member(pod_id, user_id)
+            logger.info(f"파티장 {user_id}를 파티에서 제거 완료 (멤버는 유지)")
 
-            # 파티 상태를 CLOSED로 변경
-            await self.crud.update_pod_status(pod_id, PodStatus.CLOSED)
-            logger.info(f"파티 {pod_id} 상태를 CLOSED로 변경")
+            # 파티 상태를 CANCELED로 변경
+            await self.crud.update_pod_status(pod_id, PodStatus.CANCELED)
+            logger.info(f"파티 {pod_id} 상태를 CANCELED로 변경")
 
             return {
                 "left": True,
                 "is_owner": True,
-                "members_removed": len(member_ids),
-                "pod_status": PodStatus.CLOSED.value,
+                "members_removed": 0,  # 멤버는 유지하므로 0
+                "pod_status": PodStatus.CANCELED.value,
             }
 
         else:
