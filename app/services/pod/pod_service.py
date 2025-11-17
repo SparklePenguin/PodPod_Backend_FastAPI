@@ -1309,6 +1309,31 @@ class PodService:
                             f"파티 취소 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
+                # 채팅방이 있으면 Sendbird에서 삭제 (DB는 유지)
+                if pod.chat_channel_url:
+                    try:
+                        from app.services.sendbird_service import SendbirdService
+
+                        channel_url = pod.chat_channel_url  # 삭제 전 URL 저장
+                        sendbird_service = SendbirdService()
+                        delete_success = await sendbird_service.delete_channel(
+                            channel_url
+                        )
+
+                        if delete_success:
+                            # Sendbird에서만 삭제하고 DB의 chat_channel_url은 유지
+                            logger.info(
+                                f"Sendbird 채팅방 삭제 완료 (DB URL 유지): pod_id={pod_id}, channel_url={channel_url}"
+                            )
+                        else:
+                            logger.warning(
+                                f"Sendbird 채팅방 삭제 실패: pod_id={pod_id}, channel_url={channel_url}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Sendbird 채팅방 삭제 중 오류: pod_id={pod_id}, channel_url={pod.chat_channel_url}, error={e}"
+                        )
+
             elif status == PodStatus.CLOSED:
                 # 파티 완료 알림
                 for participant in participants:

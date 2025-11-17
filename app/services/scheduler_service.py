@@ -735,6 +735,33 @@ class SchedulerService:
                         logger.info(
                             f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED"
                         )
+
+                        # 채팅방이 있으면 Sendbird에서 삭제 (DB는 유지)
+                        if pod.chat_channel_url:
+                            try:
+                                from app.services.sendbird_service import (
+                                    SendbirdService,
+                                )
+
+                                channel_url = pod.chat_channel_url  # 삭제 전 URL 저장
+                                sendbird_service = SendbirdService()
+                                delete_success = await sendbird_service.delete_channel(
+                                    channel_url
+                                )
+
+                                if delete_success:
+                                    # Sendbird에서만 삭제하고 DB의 chat_channel_url은 유지
+                                    logger.info(
+                                        f"Sendbird 채팅방 삭제 완료 (DB URL 유지): pod_id={pod.id}, channel_url={channel_url}"
+                                    )
+                                else:
+                                    logger.warning(
+                                        f"Sendbird 채팅방 삭제 실패: pod_id={pod.id}, channel_url={channel_url}"
+                                    )
+                            except Exception as e:
+                                logger.error(
+                                    f"Sendbird 채팅방 삭제 중 오류: pod_id={pod.id}, channel_url={pod.chat_channel_url}, error={e}"
+                                )
                     else:
                         logger.warning(
                             f"파티 상태가 RECRUITING이 아님: pod_id={pod.id}, status={pod_status_value}"
