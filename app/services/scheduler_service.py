@@ -156,7 +156,7 @@ class SchedulerService:
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == yesterday,
-                Pod.status.in_(["CONFIRMED", "COMPLETED"]),  # 확정되거나 완료된 모임
+                Pod.status == PodStatus.COMPLETED,  # 모집 완료된 모임
             )
         )
 
@@ -175,9 +175,7 @@ class SchedulerService:
 
         # 1주일 전 종료된 모임들 조회
         query = select(Pod).where(
-            and_(
-                Pod.meeting_date == week_ago, Pod.status.in_(["CONFIRMED", "COMPLETED"])
-            )
+            and_(Pod.meeting_date == week_ago, Pod.status == PodStatus.COMPLETED)
         )
 
         result = await db.execute(query)
@@ -362,7 +360,7 @@ class SchedulerService:
                 Pod.meeting_date == now.date(),
                 Pod.meeting_time >= now.time(),
                 Pod.meeting_time <= one_hour_later.time(),
-                Pod.status.in_(["CONFIRMED", "COMPLETED"]),  # 확정되거나 완료된 모임
+                Pod.status == PodStatus.COMPLETED,  # 모집 완료된 모임
             )
         )
 

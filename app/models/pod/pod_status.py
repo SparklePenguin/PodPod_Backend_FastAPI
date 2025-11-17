@@ -7,3 +7,4 @@ class PodStatus(str, Enum):
     RECRUITING = "RECRUITING"  # 모집중
     COMPLETED = "COMPLETED"  # 모집 완료
     CLOSED = "CLOSED"  # 종료
+    CANCELED = "CANCELED"  # 취소

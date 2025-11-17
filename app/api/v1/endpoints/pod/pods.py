@@ -797,7 +797,7 @@ async def delete_pod(
         },
     },
     summary="파티 상태 업데이트",
-    description="파티장이 파티의 상태를 변경합니다. (RECRUITING, COMPLETED, CLOSED 등)",
+    description="파티장이 파티의 상태를 변경합니다. (RECRUITING, COMPLETED, CLOSED, CANCELED 등)",
     tags=["pods"],
 )
 async def update_pod_status(

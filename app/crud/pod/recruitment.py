@@ -54,15 +54,6 @@ class RecruitmentCRUD:
         )
         self.db.add(pod_member)
 
-        # 멤버 추가 후 정원이 가득 찼는지 확인하고 상태 업데이트
-        if role == "member":
-            # 새 멤버 추가 후의 총 멤버 수 (owner 포함)
-            # current_member_count는 PodMember 수만 카운트하므로, owner를 포함하려면 +1
-            new_member_count = current_member_count + 1  # PodMember 수 (새 멤버 포함)
-            total_count = new_member_count + 1  # owner 포함 총 인원수
-            if total_count >= pod.capacity and pod.status == PodStatus.RECRUITING:
-                pod.status = PodStatus.COMPLETED
-
         await self.db.commit()
         await self.db.refresh(pod_member)
         return pod_member
