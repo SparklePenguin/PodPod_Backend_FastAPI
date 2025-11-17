@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func
 from app.models.pod import Pod, PodMember, PodLike
 from app.models.pod.pod_rating import PodRating
 from app.models.pod.pod_status import PodStatus
@@ -159,10 +159,12 @@ class SchedulerService:
         yesterday = date.today() - timedelta(days=1)
 
         # 어제 종료된 모임들 조회
+        # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == yesterday,
-                Pod.status == PodStatus.COMPLETED,  # 모집 완료된 모임
+                func.upper(Pod.status)
+                == PodStatus.COMPLETED.value.upper(),  # 대소문자 무시 비교
             )
         )
 
@@ -180,8 +182,13 @@ class SchedulerService:
         week_ago = date.today() - timedelta(days=7)
 
         # 1주일 전 종료된 모임들 조회
+        # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
-            and_(Pod.meeting_date == week_ago, Pod.status == PodStatus.COMPLETED)
+            and_(
+                Pod.meeting_date == week_ago,
+                func.upper(Pod.status)
+                == PodStatus.COMPLETED.value.upper(),  # 대소문자 무시 비교
+            )
         )
 
         result = await db.execute(query)
@@ -361,12 +368,14 @@ class SchedulerService:
             logger.info("파티 88번을 찾을 수 없습니다.")
 
         # 1시간 후 시작하는 모임들 조회
+        # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == now.date(),
                 Pod.meeting_time >= now.time(),
                 Pod.meeting_time <= one_hour_later.time(),
-                Pod.status == PodStatus.COMPLETED,  # 모집 완료된 모임
+                func.upper(Pod.status)
+                == PodStatus.COMPLETED.value.upper(),  # 대소문자 무시 비교
             )
         )
 
@@ -380,7 +389,15 @@ class SchedulerService:
             )
 
         for pod in starting_soon_pods:
-            await self._send_start_soon_to_participants(db, pod)
+            try:
+                # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
+                pod_status = str(pod.status).upper()
+                if pod_status == PodStatus.COMPLETED.value:
+                    await self._send_start_soon_to_participants(db, pod)
+            except Exception as e:
+                logger.error(
+                    f"파티 시작 임박 알림 전송 실패: pod_id={pod.id}, error={e}"
+                )
 
     async def _send_start_soon_to_participants(self, db: AsyncSession, pod: Pod):
         """파티 시작 임박 알림을 참여자들에게 전송"""
@@ -447,10 +464,12 @@ class SchedulerService:
         twenty_four_hours_later = now + timedelta(hours=24)
 
         # 24시간 후 마감되는 모임들 조회
+        # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == twenty_four_hours_later.date(),
-                Pod.status == PodStatus.RECRUITING,  # 모집 중인 모임만
+                func.upper(Pod.status)
+                == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
             )
         )
 
@@ -545,12 +564,14 @@ class SchedulerService:
         one_hour_later = now + timedelta(hours=1)
 
         # 오늘 날짜이고 1시간 후 시작하는 모집 중인 파티들 조회
+        # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == now.date(),
                 Pod.meeting_time >= now.time(),
                 Pod.meeting_time <= one_hour_later.time(),
-                Pod.status == PodStatus.RECRUITING,  # 모집 중인 파티만
+                func.upper(Pod.status)
+                == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
             )
         )
 
@@ -603,11 +624,13 @@ class SchedulerService:
             current_time = now.time()
 
             # 오늘 날짜이고 미팅 시간이 지났는데 모집 중인 파티들 조회
+            # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
             query = select(Pod).where(
                 and_(
                     Pod.meeting_date == today,
                     Pod.meeting_time < current_time,  # 미팅 시간이 지남
-                    Pod.status == PodStatus.RECRUITING,  # 모집 중인 파티만
+                    func.upper(Pod.status)
+                    == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
                 )
             )
 
@@ -618,11 +641,18 @@ class SchedulerService:
 
             for pod in unconfirmed_pods:
                 try:
-                    # 파티 상태를 CANCELED로 변경
-                    pod.status = PodStatus.CANCELED
-                    logger.info(
-                        f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED"
-                    )
+                    # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
+                    pod_status = str(pod.status).upper()
+                    if pod_status == PodStatus.RECRUITING.value:
+                        # 파티 상태를 CANCELED로 변경
+                        pod.status = PodStatus.CANCELED
+                        logger.info(
+                            f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED"
+                        )
+                    else:
+                        logger.warning(
+                            f"파티 상태가 RECRUITING이 아님: pod_id={pod.id}, status={pod.status}"
+                        )
                 except Exception as e:
                     logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")
 
@@ -659,10 +689,12 @@ class SchedulerService:
         tomorrow = date.today() + timedelta(days=1)
 
         # 내일 마감되는 파티들 조회
+        # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
             and_(
                 Pod.meeting_date == tomorrow,
-                Pod.status == PodStatus.RECRUITING,  # 모집 중인 모임만
+                func.upper(Pod.status)
+                == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
             )
         )
 
@@ -717,11 +749,13 @@ class SchedulerService:
             today = date.today()
 
             # 미팅일이 오늘보다 이전인 COMPLETED 상태인 파티들 조회 (미팅일 다음 날부터 CLOSED로 변경)
+            # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
             query = select(Pod).where(
                 and_(
                     Pod.meeting_date
                     < today,  # 미팅일이 오늘보다 이전 (미팅일 다음 날부터)
-                    Pod.status == PodStatus.COMPLETED,
+                    func.upper(Pod.status)
+                    == PodStatus.COMPLETED.value.upper(),  # 대소문자 무시 비교
                 )
             )
 

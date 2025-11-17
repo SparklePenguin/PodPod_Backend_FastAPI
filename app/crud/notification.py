@@ -151,7 +151,14 @@ class NotificationCRUD:
             notification.is_read = True
             notification.read_at = datetime.now(timezone.utc)
             await db.commit()
-            await db.refresh(notification)
+            # refresh는 관계를 무효화할 수 있으므로, 관계를 다시 로드하기 위해 다시 쿼리
+            query = select(Notification).where(Notification.id == notification_id)
+            query = query.options(
+                selectinload(Notification.related_user),
+                selectinload(Notification.related_pod),
+            )
+            result = await db.execute(query)
+            notification = result.scalar_one()
 
         return notification
 
