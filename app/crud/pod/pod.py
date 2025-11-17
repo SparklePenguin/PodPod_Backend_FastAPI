@@ -301,7 +301,7 @@ class PodCRUD:
         2. 좋아요 수 높은 순
         3. 최신순
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         seven_days_ago = now - timedelta(days=7)
 
         # 차단된 유저가 만든 파티 제외 조건
@@ -378,7 +378,7 @@ class PodCRUD:
         1. 시작 시간이 가까운 순
         2. 조회수 높은 순
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         twenty_four_hours_later = now + timedelta(hours=24)
 
         # 차단된 유저가 만든 파티 제외 조건
@@ -452,7 +452,7 @@ class PodCRUD:
            - 가장 최근에 참여한 5개의 팟의 카테고리와 동일한 카테고리 우선
            - 가장 최근에 참여한 5개의 팟의 동일한 지역의 모임 우선
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         ninety_days_ago = now - timedelta(days=90)
 
         # 차단된 유저가 만든 파티 제외 조건
@@ -620,7 +620,7 @@ class PodCRUD:
         1. 에디터가 설정한 지역의 모임 우선 (선택사항)
         2. 조회수 높은 순
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         seven_days_ago = now - timedelta(days=7)
 
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준

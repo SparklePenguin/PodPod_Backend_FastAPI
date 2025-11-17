@@ -6,7 +6,7 @@ from app.models.pod.pod_status import PodStatus
 from app.models.user import User
 from app.services.fcm_service import FCMService
 from app.core.database import get_db
-from datetime import datetime, date, timedelta, time
+from datetime import datetime, date, timedelta, time, timezone
 import asyncio
 import logging
 
@@ -337,7 +337,7 @@ class SchedulerService:
 
     async def _send_start_soon_reminders(self, db: AsyncSession):
         """파티 시작 1시간 전 알림"""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         one_hour_later = now + timedelta(hours=1)
 
         logger.info(f"현재 시간: {now}")
@@ -475,7 +475,7 @@ class SchedulerService:
 
     async def _send_low_attendance_reminders(self, db: AsyncSession):
         """파티 마감 임박 알림 (모집 중이고 24시간 안에 마감되는 파티)"""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         twenty_four_hours_later = now + timedelta(hours=24)
         today = now.date()
         tomorrow = today + timedelta(days=1)
@@ -513,8 +513,10 @@ class SchedulerService:
         closing_soon_pods = []
 
         for pod in all_pods:
-            # meeting_date + meeting_time을 datetime으로 결합
-            meeting_datetime = datetime.combine(pod.meeting_date, pod.meeting_time)
+            # meeting_date + meeting_time을 datetime으로 결합 (UTC로 해석)
+            meeting_datetime = datetime.combine(
+                pod.meeting_date, pod.meeting_time, tzinfo=timezone.utc
+            )
 
             # 24시간 안에 마감되는지 확인
             if now <= meeting_datetime <= twenty_four_hours_later:
@@ -581,15 +583,18 @@ class SchedulerService:
     async def _has_sent_canceled_soon_reminder(
         self, db: AsyncSession, user_id: int, pod_id: int
     ) -> bool:
-        """파티 취소 임박 알림을 이미 보냈는지 확인"""
+        """파티 취소 임박 알림을 이미 보냈는지 확인 (최근 24시간 내)"""
         from app.models.notification import Notification
+        from datetime import datetime, timedelta, timezone
+
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
         query = select(Notification).where(
             and_(
                 Notification.user_id == user_id,
                 Notification.related_pod_id == pod_id,
                 Notification.notification_value == "POD_CANCELED_SOON",
-                Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+                Notification.created_at >= twenty_four_hours_ago,  # 최근 24시간 내
             )
         )
 
@@ -599,28 +604,60 @@ class SchedulerService:
         return existing_notification is not None
 
     async def _send_canceled_soon_reminders(self, db: AsyncSession):
-        """파티 취소 임박 알림 (모집 중 상태 / 1시간 전)"""
-        now = datetime.now()
+        """파티 취소 임박 알림 (모집 중 상태 / 1시간 안에 시작하는 파티)"""
+        now = datetime.now(timezone.utc)
         one_hour_later = now + timedelta(hours=1)
+        today = now.date()
+        tomorrow = today + timedelta(days=1)
 
-        # 오늘 날짜이고 1시간 후 시작하는 모집 중인 파티들 조회
+        # 1시간 안에 시작하는 모집 중인 파티들 조회
+        # 조건: meeting_date + meeting_time이 now와 now + 1hour 사이
         # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
-        query = select(Pod).where(
+
+        # 오늘 날짜이고 현재 시간 이후인 파티
+        today_query = select(Pod).where(
             and_(
-                Pod.meeting_date == now.date(),
+                Pod.meeting_date == today,
                 Pod.meeting_time >= now.time(),
-                Pod.meeting_time <= one_hour_later.time(),
-                func.upper(Pod.status)
-                == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
+                func.upper(Pod.status) == PodStatus.RECRUITING.value.upper(),
             )
         )
 
-        result = await db.execute(query)
-        canceling_soon_pods = result.scalars().all()
+        # 내일 날짜이고 1시간 이내인 파티
+        tomorrow_query = select(Pod).where(
+            and_(
+                Pod.meeting_date == tomorrow,
+                Pod.meeting_time <= one_hour_later.time(),
+                func.upper(Pod.status) == PodStatus.RECRUITING.value.upper(),
+            )
+        )
 
-        logger.info(f"파티 취소 임박 알림 대상: {len(canceling_soon_pods)}개")
+        # 두 쿼리 결과 합치기
+        today_result = await db.execute(today_query)
+        tomorrow_result = await db.execute(tomorrow_query)
+        today_pods = today_result.scalars().all()
+        tomorrow_pods = tomorrow_result.scalars().all()
+
+        # 모든 파티를 합치고, 실제로 1시간 안에 시작하는지 확인
+        all_pods = list(today_pods) + list(tomorrow_pods)
+        canceling_soon_pods = []
+
+        for pod in all_pods:
+            # meeting_date + meeting_time을 datetime으로 결합 (UTC로 해석)
+            meeting_datetime = datetime.combine(
+                pod.meeting_date, pod.meeting_time, tzinfo=timezone.utc
+            )
+
+            # 1시간 안에 시작하는지 확인 (현재 시간 이후 ~ 1시간 후 이전)
+            if now < meeting_datetime <= one_hour_later:
+                canceling_soon_pods.append(pod)
+
+        logger.info(
+            f"파티 취소 임박 알림 대상: {len(canceling_soon_pods)}개 (1시간 안에 시작, 모집 중)"
+        )
 
         for pod in canceling_soon_pods:
+            # 모집 중이고 1시간 안에 시작하는 파티면 알림 전송 (중복 체크는 _send_canceled_soon_to_owner에서 처리)
             await self._send_canceled_soon_to_owner(db, pod)
 
     async def _send_canceled_soon_to_owner(self, db: AsyncSession, pod: Pod):
@@ -659,23 +696,27 @@ class SchedulerService:
     async def _cancel_unconfirmed_pods(self, db: AsyncSession):
         """모집 중인데 확정 안된 파티를 취소로 변경 (미팅 시간이 지난 경우)"""
         try:
-            now = datetime.now()
-            today = now.date()
-            current_time = now.time()
+            now = datetime.now(timezone.utc)
 
-            # 오늘 날짜이고 미팅 시간이 지났는데 모집 중인 파티들 조회
+            # 모집 중인 모든 파티 조회 (날짜 제한 없이)
             # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
             query = select(Pod).where(
-                and_(
-                    Pod.meeting_date == today,
-                    Pod.meeting_time < current_time,  # 미팅 시간이 지남
-                    func.upper(Pod.status)
-                    == PodStatus.RECRUITING.value.upper(),  # 대소문자 무시 비교
-                )
+                func.upper(Pod.status) == PodStatus.RECRUITING.value.upper()
             )
 
             result = await db.execute(query)
-            unconfirmed_pods = result.scalars().all()
+            all_recruiting_pods = result.scalars().all()
+
+            # meeting_datetime으로 정확히 비교하여 미팅 시간이 지난 파티만 필터링
+            unconfirmed_pods = []
+            for pod in all_recruiting_pods:
+                # meeting_date + meeting_time을 datetime으로 결합 (UTC로 해석)
+                meeting_datetime = datetime.combine(
+                    pod.meeting_date, pod.meeting_time, tzinfo=timezone.utc
+                )
+                # 미팅 시간이 지났거나 같으면 취소 (<=)
+                if meeting_datetime <= now:
+                    unconfirmed_pods.append(pod)
 
             logger.info(f"확정 안된 모집 중 파티: {len(unconfirmed_pods)}개")
 
@@ -912,7 +953,7 @@ async def run_5min_scheduler():
 
 async def wait_until_10am():
     """다음 아침 10시까지 대기"""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # 오늘 아침 10시
     today_10am = now.replace(hour=10, minute=0, second=0, microsecond=0)

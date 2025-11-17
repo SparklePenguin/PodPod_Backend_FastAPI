@@ -902,7 +902,7 @@ class PodService:
         end_date: Optional[date] = None,
         location: Optional[list[str]] = None,
         page: int = 1,
-        page_size: int = 20,
+        size: int = 20,
     ) -> PageDto[PodDto]:
         """팟 검색"""
         result = await self.crud.search_pods(
@@ -913,7 +913,7 @@ class PodService:
             end_date=end_date,
             location=location[0] if location and len(location) > 0 else None,
             page=page,
-            size=page_size,
+            size=size,
         )
 
         # DTO 변환
