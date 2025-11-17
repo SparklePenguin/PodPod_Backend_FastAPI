@@ -110,6 +110,12 @@ class PodStatusNotiSubType(Enum):
         ["party_name"],
         "pod_id",
     )
+    # 4. 파티 정원 가득 참 (대상: 파티장)
+    POD_CAPACITY_FULL = (
+        "👋 [party_name] 참여 인원이 모두 모였어요!",
+        ["party_name"],
+        "pod_id",
+    )
 
 
 class RecommendNotiSubType(Enum):

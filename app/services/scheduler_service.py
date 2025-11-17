@@ -289,6 +289,15 @@ class SchedulerService:
                     continue
                 if participant.id not in reviewer_ids:
                     try:
+                        # 이미 오늘 같은 알림을 보냈는지 확인
+                        if await self._has_sent_review_reminder(
+                            db, participant.id, pod.id, reminder_type
+                        ):
+                            logger.info(
+                                f"{reminder_type} 알림 이미 전송됨: user_id={participant.id}, pod_id={pod.id}"
+                            )
+                            continue
+
                         if participant.fcm_token:
                             await self.fcm_service.send_review_reminder_week(
                                 token=participant.fcm_token,
@@ -506,6 +515,26 @@ class SchedulerService:
         except Exception as e:
             logger.error(f"파티 마감 임박 알림 처리 실패: pod_id={pod.id}, error={e}")
 
+    async def _has_sent_saved_pod_deadline(
+        self, db: AsyncSession, user_id: int, pod_id: int
+    ) -> bool:
+        """좋아요한 파티 마감 임박 알림을 이미 보냈는지 확인"""
+        from app.models.notification import Notification
+
+        query = select(Notification).where(
+            and_(
+                Notification.user_id == user_id,
+                Notification.related_pod_id == pod_id,
+                Notification.notification_value == "SAVED_POD_DEADLINE",
+                Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+            )
+        )
+
+        result = await db.execute(query)
+        existing_notification = result.scalar_one_or_none()
+
+        return existing_notification is not None
+
     async def _send_saved_pod_deadline_reminders(self, db: AsyncSession):
         """좋아요한 파티 마감 임박 알림"""
         tomorrow = date.today() + timedelta(days=1)
@@ -536,6 +565,13 @@ class SchedulerService:
             # 각 좋아요한 사용자에게 알림 전송
             for user in liked_users:
                 try:
+                    # 이미 오늘 같은 알림을 보냈는지 확인
+                    if await self._has_sent_saved_pod_deadline(db, user.id, pod.id):
+                        logger.info(
+                            f"좋아요한 파티 마감 임박 알림 이미 전송됨: user_id={user.id}, pod_id={pod.id}"
+                        )
+                        continue
+
                     if user.fcm_token:
                         await self.fcm_service.send_saved_pod_deadline(
                             token=user.fcm_token,
