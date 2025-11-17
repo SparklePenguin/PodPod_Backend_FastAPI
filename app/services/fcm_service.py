@@ -567,6 +567,30 @@ class FCMService:
             related_pod_id=pod_id,
         )
 
+    async def send_pod_canceled_soon(
+        self,
+        token: str,
+        party_name: str,
+        pod_id: int,
+        db: Optional[AsyncSession] = None,
+        user_id: Optional[int] = None,
+        related_user_id: Optional[int] = None,
+    ) -> bool:
+        """파티 취소 임박 알림 전송"""
+        body, data = self._format_message(
+            PodNotiSubType.POD_CANCELED_SOON, party_name=party_name, pod_id=pod_id
+        )
+        return await self.send_notification(
+            token=token,
+            title="PodPod",
+            body=body,
+            data=data,
+            db=db,
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=pod_id,
+        )
+
     # ========== 파티 상태 알림 ==========
 
     async def send_pod_likes_threshold(

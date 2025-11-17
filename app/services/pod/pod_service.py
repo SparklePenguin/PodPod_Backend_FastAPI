@@ -1281,8 +1281,8 @@ class PodService:
                             f"파티 확정 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
-            elif status == PodStatus.CLOSED:
-                # 파티 취소 알림 (종료) - 파티장 제외 참여자에게 전송
+            elif status == PodStatus.CANCELED:
+                # 파티 취소 알림 - 파티장 제외 참여자에게 전송
                 for participant in participants:
                     # 파티장 제외
                     if participant.id == pod.owner_id:
@@ -1308,6 +1308,8 @@ class PodService:
                         logger.error(
                             f"파티 취소 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
+
+            elif status == PodStatus.CLOSED:
                 # 파티 완료 알림
                 for participant in participants:
                     try:

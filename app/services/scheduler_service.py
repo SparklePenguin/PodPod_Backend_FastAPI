@@ -55,8 +55,14 @@ class SchedulerService:
                     # 파티 상태 자동 변경 (미팅일이 지난 확정 파티를 종료로)
                     await self._update_completed_pods_to_closed(db)
 
+                    # 모집 중인데 확정 안된 파티를 취소로 변경
+                    await self._cancel_unconfirmed_pods(db)
+
                     # 파티 시작 임박 알림 (1시간 전)
                     await self._send_start_soon_reminders(db)
+
+                    # 파티 취소 임박 알림 (모집 중 상태 / 1시간 전)
+                    await self._send_canceled_soon_reminders(db)
 
                 finally:
                     await db.close()
@@ -512,6 +518,121 @@ class SchedulerService:
 
         except Exception as e:
             logger.error(f"파티 마감 임박 알림 처리 실패: pod_id={pod.id}, error={e}")
+
+    async def _has_sent_canceled_soon_reminder(
+        self, db: AsyncSession, user_id: int, pod_id: int
+    ) -> bool:
+        """파티 취소 임박 알림을 이미 보냈는지 확인"""
+        from app.models.notification import Notification
+
+        query = select(Notification).where(
+            and_(
+                Notification.user_id == user_id,
+                Notification.related_pod_id == pod_id,
+                Notification.notification_value == "POD_CANCELED_SOON",
+                Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+            )
+        )
+
+        result = await db.execute(query)
+        existing_notification = result.scalar_one_or_none()
+
+        return existing_notification is not None
+
+    async def _send_canceled_soon_reminders(self, db: AsyncSession):
+        """파티 취소 임박 알림 (모집 중 상태 / 1시간 전)"""
+        now = datetime.now()
+        one_hour_later = now + timedelta(hours=1)
+
+        # 오늘 날짜이고 1시간 후 시작하는 모집 중인 파티들 조회
+        query = select(Pod).where(
+            and_(
+                Pod.meeting_date == now.date(),
+                Pod.meeting_time >= now.time(),
+                Pod.meeting_time <= one_hour_later.time(),
+                Pod.status == PodStatus.RECRUITING,  # 모집 중인 파티만
+            )
+        )
+
+        result = await db.execute(query)
+        canceling_soon_pods = result.scalars().all()
+
+        logger.info(f"파티 취소 임박 알림 대상: {len(canceling_soon_pods)}개")
+
+        for pod in canceling_soon_pods:
+            await self._send_canceled_soon_to_owner(db, pod)
+
+    async def _send_canceled_soon_to_owner(self, db: AsyncSession, pod: Pod):
+        """파티장에게 취소 임박 알림 전송"""
+        try:
+            # 이미 오늘 같은 알림을 보냈는지 확인
+            if await self._has_sent_canceled_soon_reminder(db, pod.owner_id, pod.id):
+                logger.info(
+                    f"파티 취소 임박 알림 이미 전송됨: owner_id={pod.owner_id}, pod_id={pod.id}"
+                )
+                return
+
+            # 파티장 정보 조회
+            owner_query = select(User).where(User.id == pod.owner_id)
+            owner_result = await db.execute(owner_query)
+            owner = owner_result.scalar_one_or_none()
+
+            if owner and owner.fcm_token:
+                await self.fcm_service.send_pod_canceled_soon(
+                    token=owner.fcm_token,
+                    party_name=pod.title,
+                    pod_id=pod.id,
+                    db=db,
+                    user_id=owner.id,
+                    related_user_id=pod.owner_id,
+                )
+                logger.info(
+                    f"파티 취소 임박 알림 전송 성공: owner_id={owner.id}, pod_id={pod.id}"
+                )
+            else:
+                logger.warning(f"파티장 FCM 토큰이 없음: owner_id={pod.owner_id}")
+
+        except Exception as e:
+            logger.error(f"파티 취소 임박 알림 처리 실패: pod_id={pod.id}, error={e}")
+
+    async def _cancel_unconfirmed_pods(self, db: AsyncSession):
+        """모집 중인데 확정 안된 파티를 취소로 변경 (미팅 시간이 지난 경우)"""
+        try:
+            now = datetime.now()
+            today = now.date()
+            current_time = now.time()
+
+            # 오늘 날짜이고 미팅 시간이 지났는데 모집 중인 파티들 조회
+            query = select(Pod).where(
+                and_(
+                    Pod.meeting_date == today,
+                    Pod.meeting_time < current_time,  # 미팅 시간이 지남
+                    Pod.status == PodStatus.RECRUITING,  # 모집 중인 파티만
+                )
+            )
+
+            result = await db.execute(query)
+            unconfirmed_pods = result.scalars().all()
+
+            logger.info(f"확정 안된 모집 중 파티: {len(unconfirmed_pods)}개")
+
+            for pod in unconfirmed_pods:
+                try:
+                    # 파티 상태를 CANCELED로 변경
+                    pod.status = PodStatus.CANCELED
+                    logger.info(
+                        f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED"
+                    )
+                except Exception as e:
+                    logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")
+
+            # 변경사항 커밋
+            if unconfirmed_pods:
+                await db.commit()
+                logger.info(f"파티 취소 완료: {len(unconfirmed_pods)}개")
+
+        except Exception as e:
+            logger.error(f"확정 안된 파티 취소 처리 중 오류: {e}")
 
     async def _has_sent_saved_pod_deadline(
         self, db: AsyncSession, user_id: int, pod_id: int

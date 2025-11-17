@@ -83,7 +83,13 @@ class PodNotiSubType(Enum):
     )
     # 9. 파티 마감 임박 (대상: 파티장)
     POD_LOW_ATTENDANCE = (
-        "😢 [party_name] 모임 참여 인원이 부족해요. 다른 유저에게 공유해볼까요?",
+        "😢 [party_name] 오늘 파티가 확정되지 않으면 취소돼요. 시간이 더 필요하다면 일정을 수정할 수 있어요!",
+        ["party_name"],
+        "pod_id",
+    )
+    # 10. 파티 취소 임박 (대상: 파티장)
+    POD_CANCELED_SOON = (
+        "😢 [party_name] 팟티가 곧 취소돼요!",
         ["party_name"],
         "pod_id",
     )
