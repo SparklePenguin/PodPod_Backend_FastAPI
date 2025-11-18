@@ -4,7 +4,7 @@ FCM 푸시 알림 메시지 스키마
 
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 
 from app.schemas.pod_review import SimplePodDto
@@ -339,10 +339,13 @@ class NotificationResponse(NotificationBase):
 
     @field_serializer("read_at", "created_at")
     def serialize_datetime(self, dt: Optional[datetime], _info) -> Optional[int]:
-        """datetime을 timestamp(초)로 변환"""
+        """datetime을 timestamp(밀리초)로 변환"""
         if dt is None:
             return None
-        return int(dt.timestamp())
+        # naive datetime을 UTC로 인식 (DB에서 읽은 값은 UTC로 저장된 naive datetime)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)  # JavaScript/Flutter는 밀리초 단위 사용
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

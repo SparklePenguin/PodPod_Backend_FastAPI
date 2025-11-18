@@ -149,7 +149,7 @@ class NotificationCRUD:
 
         if not notification.is_read:
             notification.is_read = True
-            notification.read_at = datetime.now(timezone.utc)
+            notification.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
             await db.commit()
             # refresh는 관계를 무효화할 수 있으므로, 관계를 다시 로드하기 위해 다시 쿼리
             query = select(Notification).where(Notification.id == notification_id)
@@ -172,7 +172,9 @@ class NotificationCRUD:
         stmt = (
             update(Notification)
             .where(Notification.user_id == user_id, Notification.is_read == False)
-            .values(is_read=True, read_at=datetime.now(timezone.utc))
+            .values(
+                is_read=True, read_at=datetime.now(timezone.utc).replace(tzinfo=None)
+            )
         )
 
         result = await db.execute(stmt)

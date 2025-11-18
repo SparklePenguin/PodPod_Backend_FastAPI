@@ -173,7 +173,16 @@ class FCMService:
 
                     category = get_notification_category(notification_type)
 
-                    await notification_crud.create_notification(
+                    # 알림 생성 전 현재 시간 로깅
+                    from datetime import datetime, timezone
+
+                    before_create = datetime.now(timezone.utc)
+                    logger.info(
+                        f"[알림 생성 전] user_id={user_id}, notification_value={notification_value}, "
+                        f"현재 시간(UTC): {before_create.isoformat()}"
+                    )
+
+                    notification = await notification_crud.create_notification(
                         db=db,
                         user_id=user_id,
                         related_user_id=related_user_id,
@@ -185,8 +194,13 @@ class FCMService:
                         related_id=data.get("relatedId"),
                         category=category,
                     )
+
+                    # 알림 생성 후 저장된 시간 확인
                     logger.info(
-                        f"알림 DB 저장 성공: user_id={user_id}, category={category}"
+                        f"[알림 생성 후] notification_id={notification.id}, user_id={user_id}, "
+                        f"notification_value={notification_value}, "
+                        f"DB 저장 시간(UTC): {notification.created_at.isoformat() if notification.created_at else 'None'}, "
+                        f"생성 전 시간(UTC): {before_create.isoformat()}"
                     )
                 except Exception as db_error:
                     logger.error(f"알림 DB 저장 실패: {db_error}")

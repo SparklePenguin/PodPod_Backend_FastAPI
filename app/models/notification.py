@@ -57,7 +57,10 @@ class Notification(Base):
 
     # 타임스탬프
     created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+        DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        nullable=False,
+        index=True,
     )
 
     # 관계 설정
