@@ -183,9 +183,7 @@ class PodCRUD:
     # - MARK: 파티 조회
     async def get_pod_by_id(self, pod_id: int) -> Optional[Pod]:
         result = await self.db.execute(
-            select(Pod)
-            .options(selectinload(Pod.images))
-            .where(Pod.id == pod_id, Pod.is_active == True)
+            select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
         )
         return result.scalar_one_or_none()
 
@@ -759,11 +757,7 @@ class PodCRUD:
         self, pod_id: int, user_id: Optional[int] = None
     ) -> Optional[Pod]:
         """파티 상세 정보 조회"""
-        query = (
-            select(Pod)
-            .options(selectinload(Pod.images))
-            .where(Pod.id == pod_id, Pod.is_active == True)
-        )
+        query = select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
 
         result = await self.db.execute(query)
         pod = result.scalar_one_or_none()

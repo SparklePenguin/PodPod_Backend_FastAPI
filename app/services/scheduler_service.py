@@ -782,15 +782,18 @@ class SchedulerService:
     async def _has_sent_saved_pod_deadline(
         self, db: AsyncSession, user_id: int, pod_id: int
     ) -> bool:
-        """좋아요한 파티 마감 임박 알림을 이미 보냈는지 확인"""
+        """좋아요한 파티 마감 임박 알림을 이미 보냈는지 확인 (최근 24시간 내)"""
         from app.models.notification import Notification
+        from datetime import datetime, timedelta, timezone
+
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
         query = select(Notification).where(
             and_(
                 Notification.user_id == user_id,
                 Notification.related_pod_id == pod_id,
                 Notification.notification_value == "SAVED_POD_DEADLINE",
-                Notification.created_at >= date.today(),  # 오늘 보낸 것만 확인
+                Notification.created_at >= twenty_four_hours_ago,  # 최근 24시간 내
             )
         )
 
