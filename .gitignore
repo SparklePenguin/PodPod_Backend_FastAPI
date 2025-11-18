@@ -268,3 +268,14 @@ Thumbs.db
 
 # Uploaded files
 uploads/
+
+# User images and MVP data files
+UserImages/
+mvp/
+
+# Large data files
+matched_artists.json
+error_codes_backup.json
+erd_export.sql
+clear_user_data.sql
+unmatched_files.md
