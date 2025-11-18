@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+## 1. 데이터베이스
+- 마이그레이션: `infisical run --env=dev --path=/Backend -- ./venv/bin/alembic upgrade heads` | SQL 실행: `infisical run --env=dev --path=/Backend -- sh -c "mysql -h localhost -u root -p\$MYSQL_PASSWORD podpod -e \"쿼리\""` | mysql 직접 사용 금지
+
+## 2. 환경변수 (Infisical)
+- Backend: `infisical secrets get KEY --env=dev --path=/Backend` | GoogleSheet: `--path=/GoogleSheet` | `run.py`가 자동 로드
+
+## 3. 스키마 규칙
+- 필드명: camelCase (Field(alias="camelCase")) | 열거형(Enum) 값: UPPER_SNAKE_CASE (예: POD_JOIN_REQUEST, POD, COMMUNITY) | model_config = {"populate_by_name": True} | typing import 확인
+- Path 파라미터: 경로 변수명과 함수 파라미터명이 일치해야 함 (snake_case 사용) | alias 사용 금지 | 예: `/{user_id}` → `user_id: int = Path(...)`
+
+## 4. 응답 형식 (필수)
+- BaseResponse: 모든 API는 `BaseResponse.ok(data, message_ko, http_status)` 사용 | PageDto: 리스트 조회 시 사용 (items, currentPage, pageSize, totalCount, totalPages, hasNext, hasPrev)
+
+## 5. 서버
+- 자동 재시작 (수동 재시작 불필요)
+- 서버 재시작이 필요할 것 같으면 사용자에게 요청
+
+## 6. 작업 마무리
+- 항상 가정으로 끝나지 말고 API 확인 후 마무리
+- 필요시 토큰 요청

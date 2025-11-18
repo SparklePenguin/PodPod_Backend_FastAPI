@@ -12,7 +12,7 @@ from jose import jwt, JWTError
 import time
 
 from app.services.oauth_service import OauthService
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 from app.core.config import settings
 
 
@@ -26,18 +26,13 @@ class _AppleUserInfo(BaseModel):
 # - MARK: Apple 로그인 요청
 class AppleLoginRequest(BaseModel):
     identity_token: str = Field(alias="identityToken")
-    authorization_code: Optional[str] = Field(
-        default=None,
-        alias="authorizationCode",
-    )
-    user: Optional[_AppleUserInfo] = Field(
-        default=None,
-        alias="user",
+    authorization_code: Optional[str] = Field(default=None, alias="authorizationCode")
+    user: Optional[_AppleUserInfo] = Field(default=None, alias="user")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
     )
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: Apple 콜백 파라미터
@@ -242,7 +237,7 @@ class AppleOauthService:
         self,
         apple_login_request: AppleLoginRequest,
         audience: str = "com.sparkle-penguin.podpod",
-    ) -> SuccessResponse:
+    ):
         """Apple 로그인 처리"""
         try:
             # Apple 토큰 검증
@@ -263,11 +258,7 @@ class AppleOauthService:
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="invalid_apple_token",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=str(e),
-                ).model_dump(),
+                detail=str(e),
             )
 
         # Apple 사용자 정보를 OAuth 서비스 형식에 맞게 변환
@@ -284,6 +275,7 @@ class AppleOauthService:
             oauth_provider="apple",
             oauth_user_id=str(apple_user_info["sub"]),
             oauth_user_info=apple_user_info,
+            fcm_token=apple_login_request.fcm_token,
         )
 
     async def handle_apple_callback(
@@ -294,33 +286,21 @@ class AppleOauthService:
         if params.error:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code=params.error,
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=params.error_description or "Apple authentication failed",
-                ).model_dump(),
+                detail=params.error_description or "Apple authentication failed",
             )
 
         # Authorization Code가 없는 경우
         if not params.code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="missing_authorization_code",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message="Authorization code is required",
-                ).model_dump(),
+                detail="Authorization code is required",
             )
 
         # ID Token이 없는 경우
         if not params.id_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="missing_id_token",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message="ID token is required",
-                ).model_dump(),
+                detail="ID token is required",
             )
 
         # Apple 로그인 처리
@@ -335,7 +315,7 @@ class AppleOauthService:
 
         # Android Deep Link로 리다이렉트
         return RedirectResponse(
-            url=f"intent://callback?{sign_in_response.model_dump()}"
+            url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
             "#Intent;package=sparkle_penguin.podpod;"
             f"scheme={settings.APPLE_SCHEME};end"
         )

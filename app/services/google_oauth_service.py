@@ -4,18 +4,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from pydantic import BaseModel, Field
+from typing import Optional
 from app.services.oauth_service import OauthService
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 from app.core.config import settings
 
 
 # - MARK: 구글 로그인 요청
 class GoogleLoginRequest(BaseModel):
     id_token: str = Field(alias="idToken")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = {"populate_by_name": True}
 
 
 class GoogleOauthService:
@@ -38,7 +40,7 @@ class GoogleOauthService:
 
     async def sign_in_with_google(
         self, google_login_request: GoogleLoginRequest
-    ) -> SuccessResponse:
+    ) -> dict:
         """Google 로그인 처리"""
         try:
             # Google 토큰 검증
@@ -49,11 +51,7 @@ class GoogleOauthService:
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="invalid_google_token",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=str(e),
-                ).model_dump(),
+                detail=str(e),
             )
 
         # Google 사용자 정보를 OAuth 서비스 형식에 맞게 변환
@@ -64,4 +62,5 @@ class GoogleOauthService:
             oauth_provider="google",
             oauth_user_id=str(google_user_info["sub"]),
             oauth_user_info=google_user_info,
+            fcm_token=google_login_request.fcm_token,
         )

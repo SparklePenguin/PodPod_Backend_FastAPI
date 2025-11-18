@@ -22,11 +22,12 @@ class User(Base):
         Enum(UserState), default=UserState.PREFERRED_ARTISTS
     )  # 사용자 온보딩 상태
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    is_del = Column(Boolean, default=False, index=True)  # 소프트 삭제 플래그
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # 소셜 로그인 관련 필드
@@ -35,5 +36,38 @@ class User(Base):
         String(100), unique=True, index=True, nullable=True
     )  # 소셜 제공자의 고유 ID
 
+    # FCM 토큰 (푸시 알림용)
+    fcm_token = Column(String(500), nullable=True)  # Firebase Cloud Messaging 토큰
+
     # 관계 설정
     preferred_artists = relationship("PreferredArtist", back_populates="user")
+    notification_settings = relationship(
+        "UserNotificationSettings", back_populates="user", uselist=False
+    )
+
+    # 팔로우 관계
+    following = relationship(
+        "Follow", foreign_keys="Follow.follower_id", back_populates="follower"
+    )
+    followers = relationship(
+        "Follow", foreign_keys="Follow.following_id", back_populates="following"
+    )
+
+    # 차단 관계
+    blocking = relationship(
+        "UserBlock", foreign_keys="UserBlock.blocker_id", back_populates="blocker"
+    )
+    blocked_by = relationship(
+        "UserBlock", foreign_keys="UserBlock.blocked_id", back_populates="blocked"
+    )
+
+    # 파티 후기 관계
+    pod_reviews = relationship("PodReview", back_populates="user")
+
+    # 알림 관계
+    notifications = relationship(
+        "Notification", foreign_keys="Notification.user_id", back_populates="user"
+    )
+    notification_settings = relationship(
+        "UserNotificationSettings", back_populates="user", uselist=False
+    )

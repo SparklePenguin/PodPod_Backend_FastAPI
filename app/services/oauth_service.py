@@ -7,7 +7,7 @@ from app.services.user_service import UserService
 from app.services.session_service import SessionService
 from app.schemas.auth import CredentialDto, SignUpRequest, SignInResponse
 from app.schemas.user import UserDto
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 
 
 # - MARK: OAuth 서비스
@@ -20,8 +20,12 @@ class OauthService:
 
     # - MARK: OAuth 로그인 처리 (범용)
     async def sign_in_with_oauth(
-        self, oauth_provider: str, oauth_user_id: str, oauth_user_info: Dict[str, Any]
-    ) -> SuccessResponse:
+        self,
+        oauth_provider: str,
+        oauth_user_id: str,
+        oauth_user_info: Dict[str, Any],
+        fcm_token: str = None,
+    ):
         """OAuth 로그인 처리 (범용)"""
         try:
             # 기존 사용자 확인 (auth_provider_id로)
@@ -30,8 +34,12 @@ class OauthService:
             )
 
             if existing_user:
-                # 기존 사용자가 있으면 그 사용자로 로그인
+                # 기존 사용자가 있으면 FCM 토큰 업데이트
                 user = existing_user
+                if fcm_token:
+                    await self.user_crud.update_profile(
+                        existing_user.id, {"fcm_token": fcm_token}
+                    )
             else:
                 # 새 사용자 생성
                 user = await self.user_service.create_user(
@@ -42,6 +50,7 @@ class OauthService:
                         profile_image=oauth_user_info.get("image_url"),
                         auth_provider=oauth_provider,
                         auth_provider_id=str(oauth_user_id),
+                        fcm_token=fcm_token,
                     )
                 )
 
@@ -56,18 +65,10 @@ class OauthService:
                 user=user,  # user는 이미 UserDto 타입
             )
 
-            return SuccessResponse(
-                code=200,
-                message=f"{oauth_provider}_login_success",
-                data=sign_in_response.model_dump(by_alias=True),
-            )
+            return sign_in_response
 
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code=f"{oauth_provider}_login_failed",
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=str(e),
-                ).model_dump(),
+                detail=str(e),
             )

@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     MYSQL_HOST: str = "localhost"
     MYSQL_PORT: int = 3306
     MYSQL_DATABASE: str = "podpod"
-    
+
+    # Sendbird 설정
+    SENDBIRD_APP_ID: Optional[str] = os.getenv("SENDBIRD_APP_ID")
+    SENDBIRD_API_TOKEN: Optional[str] = os.getenv("SENDBIRD_API_TOKEN")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 필수 환경변수 검증
@@ -20,11 +24,12 @@ class Settings(BaseSettings):
                 "Infisical을 사용하여 환경변수를 주입해주세요. "
                 "직접 환경변수 설정은 지원되지 않습니다."
             )
-    
+
     @property
     def DATABASE_URL(self) -> str:
         import urllib.parse
-        encoded_password = urllib.parse.quote(self.MYSQL_PASSWORD, safe='')
+
+        encoded_password = urllib.parse.quote(self.MYSQL_PASSWORD, safe="")
         return f"mysql+aiomysql://{self.MYSQL_USER}:{encoded_password}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
 
     # JWT 설정
@@ -35,10 +40,11 @@ class Settings(BaseSettings):
     # 앱 설정
     APP_NAME: str = "PodPod API"
     APP_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = "development"  # development, production
 
     # 카카오 OAuth 설정
-    KAKAO_CLIENT_ID: Optional[str] = os.getenv("KAKAO_CLIENT_ID")
-    KAKAO_CLIENT_SECRET: Optional[str] = os.getenv("KAKAO_CLIENT_SECRET")
+    KAKAO_CLIENT_ID: str = os.getenv("KAKAO_CLIENT_ID")
+    KAKAO_CLIENT_SECRET: str = os.getenv("KAKAO_CLIENT_SECRET")
     KAKAO_REDIRECT_URI: str = "http://localhost:3000/auth/kakao/callback"
     KAKAO_TOKEN_URL: str = "https://kauth.kakao.com/oauth/token"
     KAKAO_USER_INFO_URL: str = "https://kapi.kakao.com/v2/user/me"
@@ -60,6 +66,19 @@ class Settings(BaseSettings):
     )
     APPLE_SCHEME: Optional[str] = os.getenv("APPLE_SCHEME")
     APPLE_ISSUER: str = "https://appleid.apple.com"
+
+    # Google Sheets 설정
+    GOOGLE_CREDENTIALS_PATH: str = "credentials.json"
+    GOOGLE_SHEETS_ID: Optional[str] = os.getenv("GOOGLE_SHEETS_ID")
+    GOOGLE_SHEETS_RANGE: str = os.getenv(
+        "GOOGLE_SHEETS_RANGE", "1xxx: 인증/로그인 관련 오류!A:F"
+    )
+    GOOGLE_SHEETS_CREDENTIALS: Optional[str] = os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+
+    # Firebase Cloud Messaging 설정
+    FIREBASE_SERVICE_ACCOUNT_KEY: Optional[str] = os.getenv(
+        "FIREBASE_SERVICE_ACCOUNT_KEY"
+    )
 
 
 settings = Settings()

@@ -1,9 +1,9 @@
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.schemas.common import SuccessResponse, ErrorResponse
+from app.schemas.common import BaseResponse
 from app.services.oauth_service import OauthService
+from app.core.error_codes import raise_error
 import httpx
-from fastapi import HTTPException, status
 from app.core.config import settings
 from pydantic import BaseModel, Field
 
@@ -63,10 +63,11 @@ class KakaoTokenResponse(BaseModel):
     scope: List[str] = Field(
         default=[], alias="scope"
     )  # 인증된 사용자의 정보 조회 권한 범위
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 사용자 정보 응답
@@ -105,20 +106,15 @@ class KakaoOauthService:
 
     async def sign_in_with_kakao(
         self, kakao_sign_in_request: KakaoTokenResponse
-    ) -> SuccessResponse:
+    ) -> dict:
         try:
             kakao_user_info = await self.get_kakao_user_info(
                 kakao_sign_in_request.access_token
             )
 
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code="user_info_request_failed",
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=str(e),
-                ).model_dump(),
+            raise_error(
+                "OAUTH_USER_INFO_FETCH_FAILED", additional_data={"details": str(e)}
             )
 
         # 카카오 사용자 정보를 OAuth 서비스 형식에 맞게 변환
@@ -139,32 +135,22 @@ class KakaoOauthService:
             oauth_provider="kakao",
             oauth_user_id=str(kakao_user_info.id),
             oauth_user_info=oauth_user_info,
+            fcm_token=kakao_sign_in_request.fcm_token,
         )
 
-    async def handle_kakao_callback(
-        self, params: KakaoCallBackParam
-    ) -> SuccessResponse:
+    async def handle_kakao_callback(self, params: KakaoCallBackParam) -> dict:
         """카카오 콜백 처리"""
         # 인가 코드 요청 실패 처리
         if params.error:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="kakao_oauth_error",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=params.error or "카카오 OAuth 인증 실패",
-                ).model_dump(),
+            raise_error(
+                "OAUTH_AUTHENTICATION_FAILED", additional_data={"error": params.error}
             )
 
         # 인가 코드가 없는 경우
         if not params.code:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorResponse(
-                    error_code="missing_authorization_code",
-                    status=status.HTTP_400_BAD_REQUEST,
-                    message=params.error or "인가 코드가 필요합니다",
-                ).model_dump(),
+            raise_error(
+                "OAUTH_AUTHENTICATION_FAILED",
+                additional_data={"error": "인가 코드가 필요합니다"},
             )
 
         # 토큰 요청
@@ -175,14 +161,7 @@ class KakaoOauthService:
             )
 
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ErrorResponse(
-                    error_code="token_request_failed",
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    message=str(e),
-                ).model_dump(),
-            )
+            raise_error("EXTERNAL_API_CALL_FAILED", additional_data={"details": str(e)})
 
         return await self.sign_in_with_kakao(token_response)
 
@@ -214,13 +193,9 @@ class KakaoOauthService:
             )
 
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=ErrorResponse(
-                        error_code="get_kakao_token_failed",
-                        status=response.status_code,
-                        message=response.text,
-                    ).model_dump(),
+                raise_error(
+                    "EXTERNAL_API_CALL_FAILED",
+                    additional_data={"details": response.text},
                 )
 
             return KakaoTokenResponse(**response.json())
@@ -238,13 +213,9 @@ class KakaoOauthService:
             )
 
             if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=ErrorResponse(
-                        error_code="get_kakao_user_info_failed",
-                        status=response.status_code,
-                        message=response.text,
-                    ).model_dump(),
+                raise_error(
+                    "EXTERNAL_API_CALL_FAILED",
+                    additional_data={"details": response.text},
                 )
 
             return _KakaoUserInfoResponse(**response.json())

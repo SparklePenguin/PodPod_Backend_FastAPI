@@ -3,6 +3,17 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from app.core.database import Base
+
+# 모델들이 메타데이터에 등록되도록 명시적으로 import
+from app.models import (  # noqa: F401
+    artist,
+    artist_image,
+    artist_name,
+    artist_unit,
+    preferred_artist,
+    tendency,
+    user,
+)
 import os
 
 # this is the Alembic Config object, which provides
@@ -57,14 +68,14 @@ def run_migrations_online() -> None:
     """
     # MySQL용 동기 엔진 생성
     configuration = config.get_section(config.config_ini_section, {})
-    
-    # 환경변수에서 MySQL 설정 가져오기 (Infisical에서 주입됨)
-    mysql_user = os.getenv("MYSQL_USER", "root")
-    mysql_password = os.getenv("MYSQL_PASSWORD")  # 필수: Infisical에서 주입되어야 함
-    mysql_host = os.getenv("MYSQL_HOST", "localhost")
-    mysql_port = os.getenv("MYSQL_PORT", "3306")
-    mysql_database = os.getenv("MYSQL_DATABASE", "podpod")
-    
+
+    # 환경변수에서 MySQL 설정 가져오기 (./migrate.sh을 통해 주입됨)
+    mysql_user: str = "root"
+    mysql_password = os.getenv("MYSQL_PASSWORD")
+    mysql_host: str = "localhost"
+    mysql_port: int = 3306
+    mysql_database: str = "podpod"
+
     # 필수 환경변수 검증
     if not mysql_password:
         raise ValueError(
@@ -72,13 +83,24 @@ def run_migrations_online() -> None:
             "Infisical을 사용하여 환경변수를 주입해주세요. "
             "직접 환경변수 설정은 지원되지 않습니다."
         )
-    
-    # 비밀번호에 @ 문자가 있으면 URL 인코딩
+
+    # 비밀번호 URL 인코딩 (latin1로 인코딩 불가한 유니코드 비밀번호 폴백 처리)
     import urllib.parse
-    encoded_password = urllib.parse.quote(mysql_password, safe='')
-    
-    configuration["sqlalchemy.url"] = f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}:{mysql_port}/{mysql_database}"
-    
+
+    safe_password = mysql_password
+    try:
+        # latin1로 인코딩 가능하면 그대로 사용
+        mysql_password.encode("latin1")
+    except UnicodeEncodeError:
+        # UTF-8 바이트를 latin1로 재해석하여 PyMySQL에 동일 바이트 전달
+        safe_password = mysql_password.encode("utf-8").decode("latin1")
+
+    encoded_password = urllib.parse.quote(safe_password, safe="")
+
+    configuration["sqlalchemy.url"] = (
+        f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}:{mysql_port}/{mysql_database}"
+    )
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

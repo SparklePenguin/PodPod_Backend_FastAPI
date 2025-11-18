@@ -6,6 +6,7 @@ from app.api.deps import (
     get_kakao_oauth_service,
     get_google_oauth_service,
     get_apple_oauth_service,
+    get_current_user_id,
 )
 from app.services.kakao_oauth_service import KakaoOauthService, KakaoTokenResponse
 from app.services.google_oauth_service import GoogleOauthService, GoogleLoginRequest
@@ -18,31 +19,38 @@ from app.services.session_service import SessionService
 from app.schemas.auth import (
     TokenRefreshRequest,
 )
-from app.schemas.common import ErrorResponse, SuccessResponse
-from pydantic import BaseModel
+from app.schemas.common import BaseResponse
+from app.core.http_status import HttpStatus
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 security = HTTPBearer()
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: Optional[str] = None
-    auth_provider: Optional[str] = None
-    auth_provider_id: Optional[str] = None
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    profile_image: Optional[str] = None
+    email: str = Field(alias="email")
+    password: Optional[str] = Field(default=None, alias="password")
+    auth_provider: Optional[str] = Field(default=None, alias="authProvider")
+    auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")
+    username: Optional[str] = Field(default=None, alias="username")
+    full_name: Optional[str] = Field(default=None, alias="fullName")
+    profile_image: Optional[str] = Field(default=None, alias="profileImage")
+    fcm_token: Optional[str] = Field(
+        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 카카오 로그인
 @router.post(
     "/kakao",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "카카오 로그인 성공"},
-        400: {"model": ErrorResponse, "description": "카카오 인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "카카오 로그인 성공",
+        },
     },
 )
 async def sign_in_with_kakao(
@@ -50,17 +58,19 @@ async def sign_in_with_kakao(
     kakao_oauth_service: KakaoOauthService = Depends(get_kakao_oauth_service),
 ):
     """카카오 로그인"""
-    return await kakao_oauth_service.sign_in_with_kakao(kakao_sign_in_request)
+    result = await kakao_oauth_service.sign_in_with_kakao(kakao_sign_in_request)
+    return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
 # - MARK: Google 로그인
 @router.post(
     "/google",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "Google 로그인 성공"},
-        400: {"model": ErrorResponse, "description": "Google 인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "Google 로그인 성공",
+        },
     },
 )
 async def sign_in_with_google(
@@ -68,17 +78,19 @@ async def sign_in_with_google(
     google_oauth_service: GoogleOauthService = Depends(get_google_oauth_service),
 ):
     """Google 로그인"""
-    return await google_oauth_service.sign_in_with_google(google_login_request)
+    result = await google_oauth_service.sign_in_with_google(google_login_request)
+    return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
 # - MARK: Apple 로그인
 @router.post(
     "/apple",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        200: {"model": SuccessResponse, "description": "Apple 로그인 성공"},
-        400: {"model": ErrorResponse, "description": "Apple 인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "Apple 로그인 성공",
+        },
     },
 )
 async def sign_in_with_apple(
@@ -86,17 +98,18 @@ async def sign_in_with_apple(
     apple_oauth_service: AppleOauthService = Depends(get_apple_oauth_service),
 ):
     """Apple 로그인"""
-    return await apple_oauth_service.sign_in_with_apple(apple_login_request)
+    result = await apple_oauth_service.sign_in_with_apple(apple_login_request)
+    return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
 @router.post(
     "",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        400: {"model": ErrorResponse, "description": "잘못된 요청"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        422: {"description": "입력 데이터 검증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "세션 생성 성공",
+        },
     },
 )
 async def create_session(
@@ -104,34 +117,38 @@ async def create_session(
     auth_service: SessionService = Depends(get_session_service),
 ):
     """세션 생성 (이메일 로그인 + 소셜 로그인 통합)"""
-    return await auth_service.login(login_data)
+    result = await auth_service.login(login_data)
+    return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
 @router.delete(
     "",
-    response_model=SuccessResponse,
+    status_code=HttpStatus.NO_CONTENT,
     responses={
-        200: {"model": SuccessResponse, "description": "로그아웃 성공"},
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.NO_CONTENT: {
+            "description": "로그아웃 성공 (No Content)",
+        },
     },
     dependencies=[Depends(security)],
 )
 async def delete_session(
+    current_user_id: int = Depends(get_current_user_id),
     auth_service: SessionService = Depends(get_session_service),
     token: str = Depends(security),
 ):
-    """로그아웃 (세션 삭제)"""
-    return await auth_service.logout(token.credentials)
+    """로그아웃 (세션 삭제 및 FCM 토큰 삭제)"""
+    await auth_service.logout(token.credentials, current_user_id)
+    return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
 @router.put(
     "",
-    response_model=SuccessResponse,
+    response_model=BaseResponse[dict],
     responses={
-        401: {"model": ErrorResponse, "description": "인증 실패"},
-        501: {"model": ErrorResponse, "description": "구현되지 않은 기능"},
-        500: {"model": ErrorResponse, "description": "서버 내부 오류"},
+        HttpStatus.OK: {
+            "model": BaseResponse[dict],
+            "description": "토큰 갱신 성공",
+        },
     },
 )
 async def refresh_session(
@@ -145,35 +162,28 @@ async def refresh_session(
         TokenDecodeError,
         TokenBlacklistedError,
     )
-    from app.schemas.common import ErrorResponse
 
     try:
         credential = await auth_service.refresh_token(refresh_data.refresh_token)
-        return SuccessResponse(
-            code=200,
-            message="token_refreshed_successfully",
-            data=credential.model_dump(by_alias=True),
-        )
+        return BaseResponse.ok(data=credential.model_dump(by_alias=True))
     except (
         TokenExpiredError,
         TokenInvalidError,
         TokenDecodeError,
         TokenBlacklistedError,
     ) as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=ErrorResponse(
-                error_code=e.code,
-                status=e.status,
-                message=e.message,
-            ).model_dump(),
+        return BaseResponse.error(
+            error_key="TOKEN_INVALID",
+            error_code=1002,
+            http_status=HttpStatus.UNAUTHORIZED,
+            message_ko=e.message,
+            message_en=e.message,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=ErrorResponse(
-                error_code="token_refresh_failed",
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message=f"토큰 갱신 실패: {str(e)}",
-            ).model_dump(),
+        return BaseResponse.error(
+            error_key="TOKEN_REFRESH_FAILED",
+            error_code=5001,
+            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            message_ko=f"토큰 갱신 실패: {str(e)}",
+            message_en=f"Token refresh failed: {str(e)}",
         )
