@@ -317,7 +317,6 @@ class PodCRUD:
 
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준 + 최근 7일간 생성
         base_conditions = and_(
-            Pod.is_active == True,
             Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
@@ -394,7 +393,6 @@ class PodCRUD:
 
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
-            Pod.is_active == True,
             Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
@@ -468,7 +466,6 @@ class PodCRUD:
 
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
-            Pod.is_active == True,
             Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
@@ -860,6 +857,9 @@ class PodCRUD:
             for category in sub_categories:
                 category_conditions.append(Pod.sub_categories.contains(category))
             search_query = search_query.where(or_(*category_conditions))
+
+        # is_active == True 필터가 항상 적용되도록 보장 (다른 조건들이 추가되어도 유지)
+        search_query = search_query.where(Pod.is_active == True)
 
         # 정렬 (최신순)
         search_query = search_query.order_by(desc(Pod.created_at))
