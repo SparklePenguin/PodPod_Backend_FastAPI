@@ -521,6 +521,7 @@ class UserService:
                 profile_image=None,
                 intro=None,
                 fcm_token=None,
+                terms_accepted=False,  # 약관 동의 초기화
             )
         )
         await self.db.commit()
