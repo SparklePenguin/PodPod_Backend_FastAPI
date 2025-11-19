@@ -339,24 +339,20 @@ class UserService:
         return user_data
 
     # - MARK: 약관 동의
-    async def accept_terms(self, user_id: int) -> UserDto:
+    async def accept_terms(self, user_id: int, terms_accepted: bool = True) -> UserDto:
         """약관 동의 처리"""
-        from sqlalchemy import update
-
         # 사용자 존재 확인
         user = await self.user_crud.get_by_id(user_id)
         if not user:
             raise_error("USER_NOT_FOUND")
 
-        # 약관 동의 업데이트
-        await self.db.execute(
-            update(User).where(User.id == user_id).values(terms_accepted=True)
-        )
+        # 약관 동의 업데이트 (직접 객체 수정)
+        user.terms_accepted = terms_accepted
         await self.db.commit()
+        await self.db.refresh(user)  # 세션 갱신
 
         # 업데이트된 사용자 정보 조회
-        updated_user = await self.user_crud.get_by_id(user_id)
-        user_data = await self._prepare_user_dto_data(updated_user, user_id)
+        user_data = await self._prepare_user_dto_data(user, user_id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 사용자 차단

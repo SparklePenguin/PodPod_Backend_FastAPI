@@ -107,6 +107,15 @@ class UpdatePreferredArtistsRequest(BaseModel):
     }
 
 
+# - MARK: 약관 동의 요청
+class AcceptTermsRequest(BaseModel):
+    terms_accepted: bool = Field(
+        default=True, alias="termsAccepted", description="약관 동의 여부"
+    )
+
+    model_config = {"populate_by_name": True}
+
+
 # - MARK: 차단 관련 스키마
 class BlockedUserDto(BaseModel):
     """차단된 사용자 정보 DTO"""
