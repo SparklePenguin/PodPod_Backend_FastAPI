@@ -463,6 +463,37 @@ async def update_fcm_token(
     )
 
 
+@router.post(
+    "/terms",
+    response_model=BaseResponse[UserDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "약관 동의 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+    },
+    summary="약관 동의",
+    description="사용자가 약관에 동의합니다.",
+    tags=["users"],
+)
+async def accept_terms(
+    current_user_id: int = Depends(get_current_user_id),
+    user_service: UserService = Depends(get_user_service),
+):
+    """약관 동의"""
+    user = await user_service.accept_terms(current_user_id)
+    return BaseResponse.ok(
+        data=user,
+        message_ko="약관 동의가 완료되었습니다.",
+        message_en="Terms accepted successfully.",
+        http_status=HttpStatus.OK,
+    )
+
+
 @router.delete(
     "",
     status_code=HttpStatus.NO_CONTENT,

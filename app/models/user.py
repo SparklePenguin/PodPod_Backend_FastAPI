@@ -39,6 +39,9 @@ class User(Base):
     # FCM 토큰 (푸시 알림용)
     fcm_token = Column(String(500), nullable=True)  # Firebase Cloud Messaging 토큰
 
+    # 약관 동의
+    terms_accepted = Column(Boolean, default=False, nullable=False)  # 약관 동의 여부
+
     # 관계 설정
     preferred_artists = relationship("PreferredArtist", back_populates="user")
     notification_settings = relationship(

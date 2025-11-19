@@ -28,6 +28,9 @@ class UserDto(BaseModel):
     follow_stats: Optional[FollowStatsResponse] = Field(
         default=None, alias="followStats", description="팔로우 통계 정보"
     )
+    terms_accepted: bool = Field(
+        default=False, alias="termsAccepted", description="약관 동의 여부"
+    )
     created_at: Optional[datetime.datetime] = Field(default=None, alias="createdAt")
     updated_at: Optional[datetime.datetime] = Field(default=None, alias="updatedAt")
 
