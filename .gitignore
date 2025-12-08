@@ -241,9 +241,27 @@ logs/
 # Configuration files with sensitive data
 config.ini
 settings.ini
+.env
+.env.*
 .env.local
 .env.production
 .env.staging
+
+# 환경별 config 파일은 Git에 포함 (민감 정보 없음)
+# config.dev.yaml
+# config.stg.yaml
+# config.prod.yaml
+
+# 개인 설정 파일 (있다면)
+config.local.yaml
+config.*.local.yaml
+
+# 민감 정보가 포함된 파일
+credentials.json
+service-account-key.json
+firebase-*.json
+*-key.json
+*.pem
 
 # Temporary files
 tmp/

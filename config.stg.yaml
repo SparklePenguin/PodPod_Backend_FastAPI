@@ -1,0 +1,56 @@
+# PodPod FastAPI 스테이징 환경 설정
+
+# 환경 식별
+environment: "staging"
+
+# 데이터베이스 설정 (비밀번호는 Infisical에서 주입)
+database:
+  host: "localhost"  # 스테이징 DB 호스트로 변경 필요
+  port: 3306
+  name: "podpod_staging"
+  user: "root"
+
+# 서버 설정
+server:
+  host: "0.0.0.0"    # 외부 접근 허용
+  port: 8000
+  reload: false       # 자동 리로드 비활성화
+  debug: false        # 디버그 모드 비활성화
+
+# Infisical 설정
+infisical:
+  enabled: true
+  env: "staging"
+
+# JWT 설정
+jwt:
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# OAuth Redirect URI (스테이징 환경)
+oauth:
+  kakao_redirect_uri: "https://staging.podpod.com/auth/kakao/callback"
+  apple_redirect_uri: "https://staging.podpod.com/auth/apple/callback"
+  kakao_token_url: "https://kauth.kakao.com/oauth/token"
+  kakao_user_info_url: "https://kapi.kakao.com/v2/user/me"
+  apple_public_keys_url: "https://appleid.apple.com/auth/keys"
+  apple_token_url: "https://appleid.apple.com/auth/token"
+  apple_issuer: "https://appleid.apple.com"
+
+# Google Sheets 설정
+google_sheets:
+  credentials_path: "credentials.json"
+  range: "1xxx: 인증/로그인 관련 오류!A:F"
+
+# 로깅 설정
+logging:
+  level: "INFO"
+  console: true
+  file_rotation: true
+  retention_days: 30
+  max_file_size: "10MB"
+
+# 앱 설정
+app:
+  name: "PodPod API (Staging)"
+  version: "1.0.0"

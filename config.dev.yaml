@@ -1,0 +1,56 @@
+# PodPod FastAPI 개발 환경 설정
+
+# 환경 식별
+environment: "development"
+
+# 데이터베이스 설정 (비밀번호는 Infisical에서 주입)
+database:
+  host: "localhost"
+  port: 3306
+  name: "podpod_dev"
+  user: "root"
+
+# 서버 설정
+server:
+  host: "127.0.0.1"  # 로컬에서만 접근
+  port: 8000
+  reload: true        # 자동 리로드 활성화
+  debug: true         # 디버그 모드
+
+# Infisical 설정
+infisical:
+  enabled: true
+  env: "dev"
+
+# JWT 설정
+jwt:
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# OAuth Redirect URI (개발 환경)
+oauth:
+  kakao_redirect_uri: "http://localhost:3000/auth/kakao/callback"
+  apple_redirect_uri: "http://localhost:3000/auth/apple/callback"
+  kakao_token_url: "https://kauth.kakao.com/oauth/token"
+  kakao_user_info_url: "https://kapi.kakao.com/v2/user/me"
+  apple_public_keys_url: "https://appleid.apple.com/auth/keys"
+  apple_token_url: "https://appleid.apple.com/auth/token"
+  apple_issuer: "https://appleid.apple.com"
+
+# Google Sheets 설정
+google_sheets:
+  credentials_path: "credentials.json"
+  range: "1xxx: 인증/로그인 관련 오류!A:F"
+
+# 로깅 설정
+logging:
+  level: "DEBUG"           # 개발 환경에서는 상세 로그
+  console: true
+  file_rotation: true
+  retention_days: 7        # 개발 환경에서는 짧게 보관
+  max_file_size: "10MB"
+
+# 앱 설정
+app:
+  name: "PodPod API (Dev)"
+  version: "1.0.0"
