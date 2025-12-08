@@ -28,18 +28,47 @@ class OauthService:
     ):
         """OAuth 로그인 처리 (범용)"""
         try:
-            # 기존 사용자 확인 (auth_provider_id로)
-            existing_user = await self.user_service.get_user_by_auth_provider_id(
+            # 기존 사용자 확인 (auth_provider_id로, 삭제된 사용자 포함)
+            existing_user_raw = await self.user_crud.get_by_auth_provider_id(
                 auth_provider=oauth_provider, auth_provider_id=str(oauth_user_id)
             )
 
-            if existing_user:
-                # 기존 사용자가 있으면 FCM 토큰 업데이트
-                user = existing_user
-                if fcm_token:
-                    await self.user_crud.update_profile(
-                        existing_user.id, {"fcm_token": fcm_token}
+            if existing_user_raw:
+                # 소프트 삭제된 사용자인 경우 복구
+                if existing_user_raw.is_del:
+                    from sqlalchemy import update
+                    from app.models.user import User
+
+                    await self.db.execute(
+                        update(User)
+                        .where(User.id == existing_user_raw.id)
+                        .values(
+                            is_del=False,
+                            is_active=True,
+                            nickname=oauth_user_info.get("nickname")
+                            or existing_user_raw.nickname,
+                            profile_image=oauth_user_info.get("image_url")
+                            or existing_user_raw.profile_image,
+                            email=oauth_user_info.get("email")
+                            or existing_user_raw.email,
+                            fcm_token=fcm_token or existing_user_raw.fcm_token,
+                        )
                     )
+                    await self.db.commit()
+                    await self.db.refresh(existing_user_raw)
+
+                # 기존 사용자 정보 조회 (복구된 경우 포함)
+                existing_user = await self.user_service.get_user_by_auth_provider_id(
+                    auth_provider=oauth_provider, auth_provider_id=str(oauth_user_id)
+                )
+
+                if existing_user:
+                    # 기존 사용자가 있으면 FCM 토큰 업데이트
+                    user = existing_user
+                    if fcm_token:
+                        await self.user_crud.update_profile(
+                            existing_user.id, {"fcm_token": fcm_token}
+                        )
             else:
                 # 새 사용자 생성
                 user = await self.user_service.create_user(

@@ -28,6 +28,9 @@ class UserDto(BaseModel):
     follow_stats: Optional[FollowStatsResponse] = Field(
         default=None, alias="followStats", description="팔로우 통계 정보"
     )
+    terms_accepted: bool = Field(
+        default=False, alias="termsAccepted", description="약관 동의 여부"
+    )
     created_at: Optional[datetime.datetime] = Field(default=None, alias="createdAt")
     updated_at: Optional[datetime.datetime] = Field(default=None, alias="updatedAt")
 
@@ -102,6 +105,15 @@ class UpdatePreferredArtistsRequest(BaseModel):
             else x.replace("_", "").lower()
         ),
     }
+
+
+# - MARK: 약관 동의 요청
+class AcceptTermsRequest(BaseModel):
+    terms_accepted: bool = Field(
+        default=True, alias="termsAccepted", description="약관 동의 여부"
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 # - MARK: 차단 관련 스키마

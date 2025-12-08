@@ -26,6 +26,7 @@ from app.schemas.user import (
     UserDto,
     UserDtoInternal,
     BlockUserResponse,
+    AcceptTermsRequest,
 )
 from app.schemas.follow import SimpleUserDto
 from app.schemas.common.page_dto import PageDto
@@ -37,6 +38,39 @@ import os
 import random
 
 router = APIRouter()
+
+
+# - MARK: 인증 필요 API
+@router.post(
+    "/terms",
+    response_model=BaseResponse[UserDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "약관 동의 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+    },
+    summary="약관 동의",
+    description="사용자가 약관에 동의합니다.",
+    tags=["users"],
+)
+async def accept_terms(
+    request: AcceptTermsRequest,
+    current_user_id: int = Depends(get_current_user_id),
+    user_service: UserService = Depends(get_user_service),
+):
+    """약관 동의"""
+    user = await user_service.accept_terms(current_user_id, request.terms_accepted)
+    return BaseResponse.ok(
+        data=user,
+        message_ko="약관 동의가 완료되었습니다.",
+        message_en="Terms accepted successfully.",
+        http_status=HttpStatus.OK,
+    )
 
 
 # - MARK: 공개 API
@@ -62,7 +96,6 @@ async def create_user(
     return BaseResponse.ok(data=user, http_status=HttpStatus.CREATED)
 
 
-# - MARK: 인증 필요 API
 @router.get(
     "",
     response_model=BaseResponse[UserDto],
@@ -404,34 +437,6 @@ async def unblock_user(
 
 
 # - MARK: 사용자 관리 API
-@router.get(
-    "/{user_id}",
-    response_model=BaseResponse[UserDto],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[UserDto],
-            "description": "사용자 조회 성공",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "사용자를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
-)
-async def get_user_by_id(
-    user_id: int,
-    current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
-):
-    """특정 사용자 조회"""
-    user = await user_service.get_user_with_follow_stats(user_id, current_user_id)
-    return BaseResponse.ok(data=user)
-
-
 @router.put(
     "/fcm-token",
     response_model=BaseResponse[dict],
@@ -461,6 +466,34 @@ async def update_fcm_token(
         message_ko="FCM 토큰이 업데이트되었습니다.",
         message_en="FCM token updated successfully.",
     )
+
+
+@router.get(
+    "/{user_id}",
+    response_model=BaseResponse[UserDto],
+    responses={
+        HttpStatus.OK: {
+            "model": BaseResponse[UserDto],
+            "description": "사용자 조회 성공",
+        },
+        HttpStatus.NOT_FOUND: {
+            "model": BaseResponse[None],
+            "description": "사용자를 찾을 수 없음",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR: {
+            "model": BaseResponse[None],
+            "description": "서버 내부 오류",
+        },
+    },
+)
+async def get_user_by_id(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    user_service: UserService = Depends(get_user_service),
+):
+    """특정 사용자 조회"""
+    user = await user_service.get_user_with_follow_stats(user_id, current_user_id)
+    return BaseResponse.ok(data=user)
 
 
 @router.delete(

@@ -18,6 +18,7 @@ from app.schemas.artist import ArtistDto
 from app.schemas.common.page_dto import PageDto
 from app.core.security import get_password_hash
 from app.models.user_state import UserState
+from app.models.user import User
 from typing import List, Optional
 
 from app.core.error_codes import raise_error
@@ -299,6 +300,9 @@ class UserService:
             "nickname": user.nickname,
             "profile_image": user.profile_image,
             "intro": user.intro,
+            "terms_accepted": (
+                user.terms_accepted if hasattr(user, "terms_accepted") else False
+            ),
             "created_at": user.created_at,
             "updated_at": user.updated_at,
         }
@@ -333,6 +337,23 @@ class UserService:
             user_data["is_following"] = False
 
         return user_data
+
+    # - MARK: 약관 동의
+    async def accept_terms(self, user_id: int, terms_accepted: bool = True) -> UserDto:
+        """약관 동의 처리"""
+        # 사용자 존재 확인
+        user = await self.user_crud.get_by_id(user_id)
+        if not user:
+            raise_error("USER_NOT_FOUND")
+
+        # 약관 동의 업데이트 (직접 객체 수정)
+        user.terms_accepted = terms_accepted
+        await self.db.commit()
+        await self.db.refresh(user)  # 세션 갱신
+
+        # 업데이트된 사용자 정보 조회
+        user_data = await self._prepare_user_dto_data(user, user_id)
+        return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 사용자 차단
     async def block_user(
@@ -451,10 +472,11 @@ class UserService:
         await self.db.execute(delete(PodMember).where(PodMember.user_id == user_id))
         await self.db.commit()
 
-        # 6. 알림 삭제 (user_id와 sender_id 모두)
+        # 6. 알림 삭제 (user_id와 related_user_id 모두)
         await self.db.execute(
             delete(Notification).where(
-                (Notification.user_id == user_id) | (Notification.sender_id == user_id)
+                (Notification.user_id == user_id)
+                | (Notification.related_user_id == user_id)
             )
         )
         await self.db.commit()
@@ -499,6 +521,7 @@ class UserService:
                 profile_image=None,
                 intro=None,
                 fcm_token=None,
+                terms_accepted=False,  # 약관 동의 초기화
             )
         )
         await self.db.commit()
