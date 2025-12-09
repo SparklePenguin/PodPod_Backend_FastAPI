@@ -38,6 +38,15 @@ if ! infisical run --env=staging --path=/backend -- echo "check" &> /dev/null; t
     exit 1
 fi
 
+# Docker Hub 로그인 확인
+echo "🔐 Checking Docker Hub authentication..."
+if [ ! -f "$HOME/.docker/config.json" ] || ! grep -q "auths" "$HOME/.docker/config.json" 2>/dev/null; then
+    echo "⚠️  Docker Hub에 로그인되어 있지 않습니다."
+    echo "📝 다음 명령어로 로그인해주세요:"
+    echo "  docker login"
+    exit 1
+fi
+
 # Docker Hub 사용자명 입력
 read -p "Docker Hub 사용자명을 입력하세요: " DOCKER_USERNAME
 if [ -z "$DOCKER_USERNAME" ]; then

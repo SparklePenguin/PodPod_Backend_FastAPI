@@ -38,6 +38,15 @@ if ! infisical run --env=prod --path=/backend -- echo "check" &> /dev/null; then
     exit 1
 fi
 
+# Docker Hub 로그인 확인
+echo "🔐 Checking Docker Hub authentication..."
+if [ ! -f "$HOME/.docker/config.json" ] || ! grep -q "auths" "$HOME/.docker/config.json" 2>/dev/null; then
+    echo "⚠️  Docker Hub에 로그인되어 있지 않습니다."
+    echo "📝 다음 명령어로 로그인해주세요:"
+    echo "  docker login"
+    exit 1
+fi
+
 # 프로덕션 배포 확인
 echo "⚠️  프로덕션 환경에 배포하려고 합니다."
 read -p "계속하시겠습니까? (yes/no): " -r

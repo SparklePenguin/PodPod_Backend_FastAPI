@@ -5,7 +5,7 @@ environment: "production"
 
 # 데이터베이스 설정 (비밀번호는 Infisical에서 주입)
 database:
-  host: "localhost"  # 프로덕션 DB 호스트로 변경 필요
+  host: "host.docker.internal"  # Docker 컨테이너에서 호스트 MySQL 접속
   port: 3306
   name: "podpod"
   user: "root"
