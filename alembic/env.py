@@ -70,11 +70,11 @@ def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
 
     # 환경변수에서 MySQL 설정 가져오기 (./migrate.sh을 통해 주입됨)
-    mysql_user: str = "root"
+    mysql_user: str = os.getenv("MYSQL_USER", "root")
     mysql_password = os.getenv("MYSQL_PASSWORD")
-    mysql_host: str = "localhost"
-    mysql_port: int = 3306
-    mysql_database: str = "podpod"
+    mysql_host: str = os.getenv("MYSQL_HOST", "localhost")
+    mysql_port: int = int(os.getenv("MYSQL_PORT", "3306"))
+    mysql_database: str = os.getenv("MYSQL_DATABASE", "podpod")
 
     # 필수 환경변수 검증
     if not mysql_password:

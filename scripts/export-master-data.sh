@@ -72,6 +72,7 @@ mysqldump \
     --skip-triggers \
     --skip-add-locks \
     --skip-comments \
+    --complete-insert \
     --compact > "$OUTPUT_FILE"
 
 if [ $? -eq 0 ]; then

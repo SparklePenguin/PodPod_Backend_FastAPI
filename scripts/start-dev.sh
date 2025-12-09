@@ -59,7 +59,7 @@ read -p "Alembic 마이그레이션을 실행하시겠습니까? (테이블 생�
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🔄 Running Alembic migrations..."
-    docker exec podpod-app-dev alembic upgrade head
+    docker exec podpod-api-dev alembic upgrade head
 
     if [ $? -eq 0 ]; then
         echo "✅ 마이그레이션 완료"
