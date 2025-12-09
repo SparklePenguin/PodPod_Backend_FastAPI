@@ -9,6 +9,8 @@ services:
       CONFIG_FILE: config.prod.yaml
 
       # 데이터베이스 연결 (Infisical에서 주입)
+      MYSQL_HOST: host.docker.internal
+      MYSQL_DATABASE: podpod
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
       # 보안 관련
