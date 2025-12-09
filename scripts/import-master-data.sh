@@ -61,8 +61,25 @@ case $ENV_CHOICE in
         echo ""
         echo ""
 
+        # 기존 마스터 데이터 삭제
+        echo "🗑️  기존 마스터 데이터 삭제 중..."
+        docker exec podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev -e "
+            SET FOREIGN_KEY_CHECKS=0;
+            TRUNCATE TABLE schedule_contents;
+            TRUNCATE TABLE schedule_members;
+            TRUNCATE TABLE artist_schedules;
+            TRUNCATE TABLE artist_images;
+            TRUNCATE TABLE artist_names;
+            TRUNCATE TABLE artist_units;
+            TRUNCATE TABLE artists;
+            TRUNCATE TABLE locations;
+            TRUNCATE TABLE tendency_results;
+            TRUNCATE TABLE tendency_surveys;
+            SET FOREIGN_KEY_CHECKS=1;
+        " 2>&1 | grep -v "Warning"
+
         echo "🔄 데이터 import 중..."
-        docker exec -i podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev < "$MASTER_DATA_FILE"
+        docker exec -i podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev < "$MASTER_DATA_FILE" 2>&1 | grep -v "Warning"
 
         if [ $? -eq 0 ]; then
             echo ""
@@ -96,8 +113,25 @@ case $ENV_CHOICE in
         echo ""
         echo ""
 
+        # 기존 마스터 데이터 삭제
+        echo "🗑️  기존 마스터 데이터 삭제 중..."
+        mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -e "
+            SET FOREIGN_KEY_CHECKS=0;
+            TRUNCATE TABLE schedule_contents;
+            TRUNCATE TABLE schedule_members;
+            TRUNCATE TABLE artist_schedules;
+            TRUNCATE TABLE artist_images;
+            TRUNCATE TABLE artist_names;
+            TRUNCATE TABLE artist_units;
+            TRUNCATE TABLE artists;
+            TRUNCATE TABLE locations;
+            TRUNCATE TABLE tendency_results;
+            TRUNCATE TABLE tendency_surveys;
+            SET FOREIGN_KEY_CHECKS=1;
+        " 2>&1 | grep -v "Warning"
+
         echo "🔄 데이터 import 중..."
-        mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$MASTER_DATA_FILE"
+        mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$MASTER_DATA_FILE" 2>&1 | grep -v "Warning"
 
         if [ $? -eq 0 ]; then
             echo ""
@@ -123,8 +157,25 @@ case $ENV_CHOICE in
         echo ""
         echo ""
 
+        # 기존 마스터 데이터 삭제
+        echo "🗑️  기존 마스터 데이터 삭제 중..."
+        mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -e "
+            SET FOREIGN_KEY_CHECKS=0;
+            TRUNCATE TABLE schedule_contents;
+            TRUNCATE TABLE schedule_members;
+            TRUNCATE TABLE artist_schedules;
+            TRUNCATE TABLE artist_images;
+            TRUNCATE TABLE artist_names;
+            TRUNCATE TABLE artist_units;
+            TRUNCATE TABLE artists;
+            TRUNCATE TABLE locations;
+            TRUNCATE TABLE tendency_results;
+            TRUNCATE TABLE tendency_surveys;
+            SET FOREIGN_KEY_CHECKS=1;
+        " 2>&1 | grep -v "Warning"
+
         echo "🔄 데이터 import 중..."
-        mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$MASTER_DATA_FILE"
+        mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "$MASTER_DATA_FILE" 2>&1 | grep -v "Warning"
 
         if [ $? -eq 0 ]; then
             echo ""

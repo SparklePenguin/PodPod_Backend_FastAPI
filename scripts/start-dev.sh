@@ -82,7 +82,25 @@ if [ -f "seeds/master_data.sql" ]; then
         if [ -z "$MYSQL_PASSWORD" ]; then
             echo "❌ MYSQL_PASSWORD를 Infisical에서 가져올 수 없습니다."
         else
-            docker exec -i podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev < seeds/master_data.sql
+            # 기존 마스터 데이터 삭제
+            echo "🗑️  기존 마스터 데이터 삭제 중..."
+            docker exec podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev -e "
+                SET FOREIGN_KEY_CHECKS=0;
+                TRUNCATE TABLE schedule_contents;
+                TRUNCATE TABLE schedule_members;
+                TRUNCATE TABLE artist_schedules;
+                TRUNCATE TABLE artist_images;
+                TRUNCATE TABLE artist_names;
+                TRUNCATE TABLE artist_units;
+                TRUNCATE TABLE artists;
+                TRUNCATE TABLE locations;
+                TRUNCATE TABLE tendency_results;
+                TRUNCATE TABLE tendency_surveys;
+                SET FOREIGN_KEY_CHECKS=1;
+            " 2>&1 | grep -v "Warning"
+
+            # 마스터 데이터 import
+            docker exec -i podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev < seeds/master_data.sql 2>&1 | grep -v "Warning"
 
             if [ $? -eq 0 ]; then
                 echo "✅ 마스터 데이터 import 완료"

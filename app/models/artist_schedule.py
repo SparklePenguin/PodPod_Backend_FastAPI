@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Text, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -43,9 +43,9 @@ class ArtistSchedule(Base):
         comment="일정 유형",
     )
     start_time = Column(
-        Integer, nullable=False, index=True, comment="일정 시작 시간 (밀리초)"
+        BigInteger, nullable=False, index=True, comment="일정 시작 시간 (밀리초)"
     )
-    end_time = Column(Integer, nullable=False, comment="일정 종료 시간 (밀리초)")
+    end_time = Column(BigInteger, nullable=False, comment="일정 종료 시간 (밀리초)")
     text = Column(Text, nullable=True, comment="일정 상세 설명")
     title = Column(String(500), nullable=False, comment="일정 제목")
     channel = Column(String(100), nullable=True, comment="방송 채널")
