@@ -134,6 +134,9 @@ class Settings(BaseSettings):
             kwargs.setdefault("DEBUG", server_config.get("debug", False))
 
         # 환경변수에서 민감한 정보 로드 (Infisical에서 주입)
+        # MYSQL_HOST도 환경 변수로 오버라이드 가능하도록 (도커 환경 지원)
+        if os.getenv("MYSQL_HOST"):
+            kwargs["MYSQL_HOST"] = os.getenv("MYSQL_HOST")
         kwargs.setdefault("MYSQL_PASSWORD", os.getenv("MYSQL_PASSWORD"))
         kwargs.setdefault("SECRET_KEY", os.getenv("SECRET_KEY", "your-secret-key-here"))
         kwargs.setdefault("SENDBIRD_APP_ID", os.getenv("SENDBIRD_APP_ID"))

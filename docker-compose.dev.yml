@@ -1,0 +1,93 @@
+services:
+  # MySQL 데이터베이스 (개발 환경 전용)
+  db:
+    image: mysql:8.0
+    container_name: podpod-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: podpod_dev
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
+    networks:
+      - podpod-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # FastAPI 애플리케이션
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: podpod-api-dev
+    restart: unless-stopped
+    environment:
+      # 환경 설정 파일 지정
+      CONFIG_FILE: config.dev.yaml
+
+      # 데이터베이스 연결 (도커 컨테이너 내부에서는 서비스명으로 접근)
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: podpod_dev
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+      # 보안 관련 (Infisical에서 주입된 환경 변수 전달)
+      SECRET_KEY: ${SECRET_KEY}
+
+      # OAuth 설정
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID}
+      APPLE_KEY_ID: ${APPLE_KEY_ID}
+      APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
+      APPLE_SCHEME: ${APPLE_SCHEME}
+
+      # Sendbird
+      SENDBIRD_APP_ID: ${SENDBIRD_APP_ID}
+      SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN}
+
+      # Google Sheets
+      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
+      GOOGLE_SHEETS_CREDENTIALS: ${GOOGLE_SHEETS_CREDENTIALS}
+
+      # Firebase
+      FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      # 개발 환경에서는 코드 변경 시 자동 반영을 위한 볼륨 마운트
+      - .:/app
+      - /app/venv  # 가상환경은 제외
+      - ./uploads:/app/uploads  # 업로드 파일 영속성
+    networks:
+      - podpod-network
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  podpod-network:
+    driver: bridge
+
+volumes:
+  mysql_dev_data:
+    driver: local
