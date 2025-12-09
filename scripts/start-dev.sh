@@ -46,9 +46,59 @@ infisical run --env=dev --path=/backend -- docker-compose -f docker-compose.dev.
 echo "🔨 Building and starting containers with Infisical..."
 infisical run --env=dev --path=/backend -- docker-compose -f docker-compose.dev.yml up --build -d
 
+# 컨테이너가 시작될 때까지 대기
+echo ""
+echo "⏳ Waiting for database to be ready..."
+sleep 5
+
+# DB 초기화 확인
+echo ""
+echo "🗄️  데이터베이스 초기화"
+echo ""
+read -p "Alembic 마이그레이션을 실행하시겠습니까? (테이블 생성) (y/n): " -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "🔄 Running Alembic migrations..."
+    docker exec podpod-app-dev alembic upgrade head
+
+    if [ $? -eq 0 ]; then
+        echo "✅ 마이그레이션 완료"
+    else
+        echo "❌ 마이그레이션 실패"
+    fi
+fi
+
+# 마스터 데이터 import 확인
+echo ""
+if [ -f "seeds/master_data.sql" ]; then
+    read -p "마스터 데이터를 import하시겠습니까? (seeds/master_data.sql) (y/n): " -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "📥 Importing master data..."
+
+        # Infisical에서 MYSQL_PASSWORD 가져오기
+        MYSQL_PASSWORD=$(infisical secrets get MYSQL_PASSWORD --env=dev --path=/backend --plain)
+
+        if [ -z "$MYSQL_PASSWORD" ]; then
+            echo "❌ MYSQL_PASSWORD를 Infisical에서 가져올 수 없습니다."
+        else
+            docker exec -i podpod-mysql-dev mysql -u root -p"$MYSQL_PASSWORD" podpod_dev < seeds/master_data.sql
+
+            if [ $? -eq 0 ]; then
+                echo "✅ 마스터 데이터 import 완료"
+            else
+                echo "❌ 마스터 데이터 import 실패"
+            fi
+        fi
+    fi
+else
+    echo "ℹ️  마스터 데이터 파일이 없습니다 (seeds/master_data.sql)"
+    echo "   ./scripts/export-master-data.sh 를 실행하여 데이터를 추출하세요."
+fi
+
 # 로그 확인
 echo ""
-echo "✅ Containers are starting..."
+echo "✅ Containers are running..."
 echo ""
 echo "📋 Useful commands:"
 echo "  - View logs:        infisical run --env=dev --path=/backend -- docker-compose -f docker-compose.dev.yml logs -f"
