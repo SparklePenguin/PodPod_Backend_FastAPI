@@ -31,7 +31,8 @@ fi
 
 # Docker Hub 로그인 확인
 echo "🔐 Checking Docker Hub authentication..."
-if ! docker info | grep -q "Username"; then
+# Docker CLI config 파일 확인
+if [ ! -f "$HOME/.docker/config.json" ] || ! grep -q "auths" "$HOME/.docker/config.json" 2>/dev/null; then
     echo "⚠️  Docker Hub에 로그인되어 있지 않습니다."
     echo "📝 다음 명령어로 로그인해주세요:"
     echo "  docker login"
