@@ -100,6 +100,7 @@ echo "🗄️  데이터베이스 초기화"
 echo ""
 read -p "Alembic 마이그레이션을 실행하시겠습니까? (테이블 생성) (y/n): " -r
 echo
+MIGRATION_SUCCESS=true
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🔄 Running Alembic migrations..."
     docker exec podpod-api-stg alembic upgrade head
@@ -108,11 +109,18 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "✅ 마이그레이션 완료"
     else
         echo "❌ 마이그레이션 실패"
+        MIGRATION_SUCCESS=false
     fi
 fi
 
 # 마스터 데이터 import 확인
 echo ""
+if [ "$MIGRATION_SUCCESS" = false ]; then
+    echo "⚠️  마이그레이션이 실패하여 마스터 데이터 import를 건너뜁니다."
+    echo "❌ 스크립트를 종료합니다."
+    exit 1
+fi
+
 if [ -f "seeds/master_data.sql" ]; then
     read -p "마스터 데이터를 import하시겠습니까? (seeds/master_data.sql) (y/n): " -r
     echo
