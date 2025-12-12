@@ -31,7 +31,7 @@ fi
 
 # Infisical 로그인 확인
 echo "🔐 Checking Infisical authentication..."
-if ! infisical run --env=staging --path=/backend -- echo "check" &> /dev/null; then
+if ! infisical run --env=staging --path=/backend -- echo "check" </dev/null &> /dev/null; then
     echo "⚠️  Infisical에 로그인되어 있지 않습니다."
     echo "📝 다음 명령어로 로그인해주세요:"
     echo "  infisical login"
