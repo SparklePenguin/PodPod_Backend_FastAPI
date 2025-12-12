@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     # 앱 설정
     APP_NAME: str = "PodPod API"
     APP_VERSION: str = "1.0.0"
+    ROOT_PATH: str = ""  # Nginx 프록시 경로 (예: /stg, /rm)
 
     # 카카오 OAuth 설정
     KAKAO_CLIENT_ID: Optional[str] = None
@@ -128,6 +129,7 @@ class Settings(BaseSettings):
             app_config = config.get("app", {})
             kwargs.setdefault("APP_NAME", app_config.get("name", "PodPod API"))
             kwargs.setdefault("APP_VERSION", app_config.get("version", "1.0.0"))
+            kwargs.setdefault("ROOT_PATH", app_config.get("root_path", ""))
 
             # 서버 설정
             server_config = config.get("server", {})

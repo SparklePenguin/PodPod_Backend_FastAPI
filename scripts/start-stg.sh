@@ -186,8 +186,8 @@ echo "  - View logs:        infisical run --env=staging --path=/backend -- docke
 echo "  - Stop containers:  infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml down"
 echo "  - Restart:          infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml restart"
 echo ""
-echo "🌐 API URL: http://localhost:8000"
-echo "📚 API Docs: http://localhost:8000/docs"
+echo "🌐 API URL: https://sp-podpod.com/stg"
+echo "📚 API Docs: https://sp-podpod.com/stg/docs"
 echo ""
 
 # 로그 자동 표시 (선택사항 - Ctrl+C로 종료)

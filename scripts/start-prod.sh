@@ -118,6 +118,6 @@ echo "  - View logs:        infisical run --env=prod --path=/backend -- docker-c
 echo "  - Stop containers:  infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml down"
 echo "  - Restart:          infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml restart"
 echo ""
-echo "🌐 API URL: http://localhost:8000"
-echo "📚 API Docs: http://localhost:8000/docs"
+echo "🌐 API URL: https://sp-podpod.com"
+echo "📚 API Docs: https://sp-podpod.com/docs"
 echo ""

@@ -54,3 +54,4 @@ logging:
 app:
   name: "PodPod API (Staging)"
   version: "1.0.0"
+  root_path: "/stg"  # Nginx 프록시 경로

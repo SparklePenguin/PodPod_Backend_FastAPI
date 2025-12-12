@@ -37,7 +37,7 @@ services:
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./uploads:/app/uploads  # 업로드 파일 영속성
       - ./logs:/app/logs  # 로그 파일

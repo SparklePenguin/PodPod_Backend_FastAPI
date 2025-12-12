@@ -56,6 +56,7 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="소셜 로그인을 지원하는 FastAPI 백엔드",
     lifespan=lifespan,
+    root_path=settings.ROOT_PATH if hasattr(settings, 'ROOT_PATH') else "",
 )
 
 # CORS 미들웨어 추가
