@@ -65,9 +65,10 @@ fi
 
 export DOCKER_USERNAME
 
-# 기존 컨테이너 정리
+# 기존 컨테이너 정리 (DOCKER_USERNAME 사용하지 않음)
 echo "🧹 Cleaning up old containers..."
-infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml down
+docker stop podpod-api-prod 2>/dev/null || true
+docker rm podpod-api-prod 2>/dev/null || true
 
 # 최신 이미지 pull
 echo "📥 Pulling latest image from Docker Hub..."
