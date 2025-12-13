@@ -39,10 +39,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./uploads:/app/uploads  # 업로드 파일 영속성
-      - ./logs:/app/logs  # 로그 파일
+      - ./uploads/prod:/app/uploads  # 프로덕션 업로드 파일
+      - ./logs/prod:/app/logs  # 프로덕션 로그 파일
     networks:
-      - podpod-network
+      - podpod-network-prod
     # 프로덕션에서는 worker 수를 증가시켜 성능 향상
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
     healthcheck:
@@ -62,5 +62,5 @@ services:
           memory: 512M
 
 networks:
-  podpod-network:
+  podpod-network-prod:
     driver: bridge

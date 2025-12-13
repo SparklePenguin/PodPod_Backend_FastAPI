@@ -39,10 +39,10 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./uploads:/app/uploads  # 업로드 파일 영속성
-      - ./logs:/app/logs  # 로그 파일
+      - ./uploads/stg:/app/uploads  # 스테이징 업로드 파일
+      - ./logs/stg:/app/logs  # 스테이징 로그 파일
     networks:
-      - podpod-network
+      - podpod-network-stg
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -52,5 +52,5 @@ services:
       start_period: 40s
 
 networks:
-  podpod-network:
+  podpod-network-stg:
     driver: bridge
