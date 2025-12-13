@@ -43,11 +43,6 @@ if [ "$CURRENT_BRANCH" != "dev" ]; then
     git checkout dev
 fi
 
-# SSH 세션에서 키체인 접근을 위해 unlock
-echo ""
-echo "🔓 Unlocking keychain..."
-security unlock-keychain
-
 # 원격 저장소에서 최신 코드 가져오기
 echo ""
 echo "📥 Fetching latest changes from origin..."
