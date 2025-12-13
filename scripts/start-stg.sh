@@ -58,7 +58,7 @@ export DOCKER_USERNAME
 
 # 기존 컨테이너 정리
 echo "🧹 Cleaning up old containers..."
-infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml down
+infisical run --env=staging --path=/backend -- docker-compose -p podpod-stg -f docker-compose.stg.yml down
 
 # 최신 이미지 pull
 echo "📥 Pulling latest image from Docker Hub..."
@@ -87,7 +87,7 @@ fi
 
 # 컨테이너 실행
 echo "🔨 Starting containers with Infisical..."
-infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml up -d
+infisical run --env=staging --path=/backend -- docker-compose -p podpod-stg -f docker-compose.stg.yml up -d
 
 # 컨테이너가 시작될 때까지 대기
 echo ""
@@ -182,9 +182,9 @@ echo ""
 echo "✅ Containers are running..."
 echo ""
 echo "📋 Useful commands:"
-echo "  - View logs:        infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml logs -f"
-echo "  - Stop containers:  infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml down"
-echo "  - Restart:          infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml restart"
+echo "  - View logs:        infisical run --env=staging --path=/backend -- docker-compose -p podpod-stg -f docker-compose.stg.yml logs -f"
+echo "  - Stop containers:  infisical run --env=staging --path=/backend -- docker-compose -p podpod-stg -f docker-compose.stg.yml down"
+echo "  - Restart:          infisical run --env=staging --path=/backend -- docker-compose -p podpod-stg -f docker-compose.stg.yml restart"
 echo ""
 echo "🌐 API URL: https://sp-podpod.com/stg"
 echo "📚 API Docs: https://sp-podpod.com/stg/docs"
@@ -194,5 +194,5 @@ echo ""
 read -p "로그를 실시간으로 보시겠습니까? (y/n): " -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    infisical run --env=staging --path=/backend -- docker-compose -f docker-compose.stg.yml logs -f
+    infisical run --env=staging --path=/backend -- docker-compose -p podpod-stg -f docker-compose.stg.yml logs -f
 fi

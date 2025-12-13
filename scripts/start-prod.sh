@@ -67,7 +67,7 @@ export DOCKER_USERNAME
 
 # 기존 컨테이너 정리
 echo "🧹 Cleaning up old containers..."
-infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml down
+infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml down
 
 # 최신 이미지 pull
 echo "📥 Pulling latest image from Docker Hub..."
@@ -96,7 +96,7 @@ fi
 
 # 컨테이너 실행
 echo "🔨 Starting containers with Infisical..."
-infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml up -d
+infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml up -d
 
 # 헬스체크
 echo ""
@@ -104,19 +104,19 @@ echo "🏥 Waiting for health check..."
 sleep 10
 
 # 컨테이너 상태 확인
-if infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+if infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml ps | grep -q "Up"; then
     echo "✅ Production deployment successful!"
 else
     echo "❌ Deployment failed. Check logs:"
-    echo "   infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml logs"
+    echo "   infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml logs"
     exit 1
 fi
 
 echo ""
 echo "📋 Useful commands:"
-echo "  - View logs:        infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml logs -f"
-echo "  - Stop containers:  infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml down"
-echo "  - Restart:          infisical run --env=prod --path=/backend -- docker-compose -f docker-compose.prod.yml restart"
+echo "  - View logs:        infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml logs -f"
+echo "  - Stop containers:  infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml down"
+echo "  - Restart:          infisical run --env=prod --path=/backend -- docker-compose -p podpod-prod -f docker-compose.prod.yml restart"
 echo ""
 echo "🌐 API URL: https://sp-podpod.com"
 echo "📚 API Docs: https://sp-podpod.com/docs"
