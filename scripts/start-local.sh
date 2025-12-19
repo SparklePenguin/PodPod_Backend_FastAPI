@@ -507,12 +507,75 @@ else
 fi
 
 echo ""
+
+# Prometheus 실행 여부 확인
+echo "📊 Prometheus 모니터링"
+read -p "Prometheus를 함께 실행하시겠습니까? (y/n): " -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Prometheus 설치 확인
+    if ! command -v prometheus &> /dev/null; then
+        echo "⚠️  Prometheus가 설치되지 않았습니다."
+        echo ""
+
+        if command -v brew &> /dev/null; then
+            read -p "Prometheus를 자동으로 설치하시겠습니까? (y/n): " -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                echo "📥 Prometheus 설치 중..."
+                brew install prometheus
+
+                if [ $? -eq 0 ]; then
+                    echo "✅ Prometheus 설치 완료"
+                else
+                    echo "❌ Prometheus 설치 실패"
+                    echo "📝 수동으로 설치하세요: brew install prometheus"
+                fi
+            fi
+        else
+            echo "📝 Prometheus 설치 방법:"
+            echo "  - macOS: brew install prometheus"
+            echo "  - Ubuntu/Debian: sudo apt-get install prometheus"
+        fi
+    fi
+
+    # Prometheus 실행
+    if command -v prometheus &> /dev/null; then
+        # 기존 Prometheus 프로세스 확인
+        if pgrep -f "prometheus.*prometheus.dev.yml" > /dev/null; then
+            echo "⚠️  Prometheus가 이미 실행 중입니다."
+            echo "🛑 기존 Prometheus 프로세스 중지 중..."
+            pkill -f "prometheus.*prometheus.dev.yml"
+            sleep 2
+        fi
+
+        echo "🚀 Prometheus 시작 중..."
+        echo "📊 Prometheus URL: http://localhost:9090"
+
+        # Prometheus를 백그라운드로 실행
+        prometheus --config.file=prometheus.dev.yml > prometheus.log 2>&1 &
+        PROMETHEUS_PID=$!
+
+        echo "✅ Prometheus가 백그라운드로 실행되었습니다. (PID: $PROMETHEUS_PID)"
+        echo "📝 로그: tail -f prometheus.log"
+        echo ""
+
+        # 종료 시 Prometheus도 함께 종료하도록 trap 설정
+        trap "echo '🛑 Prometheus 중지 중...'; kill $PROMETHEUS_PID 2>/dev/null; exit" INT TERM
+    fi
+fi
+
+echo ""
 echo "=========================================="
 echo "🎉 PodPod Backend 로컬 서버 시작"
 echo "=========================================="
 echo ""
 echo "🌐 API URL: http://localhost:${PORT}"
 echo "📚 API Docs: http://localhost:${PORT}/docs"
+echo "📊 Metrics: http://localhost:${PORT}/metrics"
+if command -v prometheus &> /dev/null && pgrep -f "prometheus.*prometheus.dev.yml" > /dev/null; then
+    echo "📈 Prometheus: http://localhost:9090"
+fi
 echo ""
 echo "💡 종료하려면 Ctrl+C를 누르세요."
 echo ""

@@ -48,3 +48,6 @@ sendbird-platform-sdk==2.1.0
 # Firebase Cloud Messaging (푸시 알림)
 firebase-admin==6.5.0
 
+# Monitoring (모니터링)
+prometheus-fastapi-instrumentator==7.0.0
+

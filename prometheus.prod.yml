@@ -1,0 +1,51 @@
+# Prometheus 설정 파일 - 프로덕션 환경 (prod)
+global:
+  scrape_interval: 30s      # 메트릭 수집 주기 (프로덕션에서는 적절한 간격으로)
+  evaluation_interval: 30s  # 규칙 평가 주기
+  external_labels:
+    environment: 'production'
+    cluster: 'podpod-prod'
+
+# Alertmanager 설정 (프로덕션에서는 필수)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# 규칙 파일 로드
+# rule_files:
+#   - "alert_rules.yml"
+#   - "recording_rules.yml"
+
+# 메트릭 수집 대상 설정
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PodPod FastAPI 앱 모니터링 (프로덕션)
+  - job_name: 'podpod_fastapi_prod'
+    static_configs:
+      - targets: ['localhost:${PORT}']  # FastAPI 서버 주소 (환경변수에서 PORT 읽어옴)
+    metrics_path: '/metrics'             # Instrumentator가 노출하는 메트릭 경로
+    scrape_interval: 30s                 # 프로덕션에서는 적절한 간격으로
+    scrape_timeout: 10s
+    scheme: http
+    # 프로덕션 환경에서는 HTTPS 사용 권장
+    # scheme: https
+    # tls_config:
+    #   ca_file: /path/to/ca.crt
+    #   cert_file: /path/to/client.crt
+    #   key_file: /path/to/client.key
+
+  # MySQL 모니터링 (선택사항 - mysqld_exporter 필요)
+  # - job_name: 'mysql_prod'
+  #   static_configs:
+  #     - targets: ['localhost:9104']
+
+  # Node Exporter (시스템 메트릭 수집 - 선택사항)
+  # - job_name: 'node_exporter'
+  #   static_configs:
+  #     - targets: ['localhost:9100']

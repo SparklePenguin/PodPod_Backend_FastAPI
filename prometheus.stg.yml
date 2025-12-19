@@ -1,0 +1,41 @@
+# Prometheus 설정 파일 - 스테이징 환경 (stg)
+global:
+  scrape_interval: 15s      # 메트릭 수집 주기
+  evaluation_interval: 15s  # 규칙 평가 주기
+  external_labels:
+    environment: 'staging'
+    cluster: 'podpod-stg'
+
+# Alertmanager 설정 (선택사항)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           # - alertmanager:9093
+
+# 규칙 파일 로드 (선택사항)
+# rule_files:
+#   - "first_rules.yml"
+#   - "second_rules.yml"
+
+# 메트릭 수집 대상 설정
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PodPod FastAPI 앱 모니터링 (스테이징)
+  - job_name: 'podpod_fastapi_stg'
+    static_configs:
+      - targets: ['localhost:${PORT}']  # FastAPI 서버 주소 (환경변수에서 PORT 읽어옴)
+    metrics_path: '/metrics'             # Instrumentator가 노출하는 메트릭 경로
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    scheme: http
+    # 프로덕션과 유사한 환경이지만 더 자주 수집
+
+  # MySQL 모니터링 (선택사항 - mysqld_exporter 필요)
+  # - job_name: 'mysql_stg'
+  #   static_configs:
+  #     - targets: ['localhost:9104']

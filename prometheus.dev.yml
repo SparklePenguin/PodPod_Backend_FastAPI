@@ -1,0 +1,40 @@
+# Prometheus 설정 파일 - 개발 환경 (dev)
+global:
+  scrape_interval: 15s      # 메트릭 수집 주기
+  evaluation_interval: 15s  # 규칙 평가 주기
+  external_labels:
+    environment: 'dev'
+    cluster: 'podpod-dev'
+
+# Alertmanager 설정 (선택사항)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           # - alertmanager:9093
+
+# 규칙 파일 로드 (선택사항)
+# rule_files:
+#   - "first_rules.yml"
+#   - "second_rules.yml"
+
+# 메트릭 수집 대상 설정
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PodPod FastAPI 앱 모니터링
+  - job_name: 'podpod_fastapi_dev'
+    static_configs:
+      - targets: ['localhost:8000']  # FastAPI 서버 주소 (포트 변경 시 이 파일도 수정 필요)
+    metrics_path: '/metrics'          # Instrumentator가 노출하는 메트릭 경로
+    scrape_interval: 5s                # 개발 환경에서는 더 자주 수집
+    scrape_timeout: 5s
+    scheme: http
+
+  # MySQL 모니터링 (선택사항 - mysqld_exporter 필요)
+  # - job_name: 'mysql_dev'
+  #   static_configs:
+  #     - targets: ['localhost:9104']

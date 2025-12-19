@@ -1,26 +1,28 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.security import HTTPBearer
-from fastapi.exceptions import RequestValidationError
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import ValidationError
+import logging
 from contextlib import asynccontextmanager
-from app.core.database import init_db
+
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
+from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.api import api_router
 from app.core.config import settings
-from app.core.logging_config import setup_logging, get_logger
-from app.middleware.logging_middleware import LoggingMiddleware
-from app.core.startup import startup_events, sync_startup_events
+from app.core.database import init_db
 from app.core.exceptions import (
+    BusinessException,
+    business_exception_handler,
+    general_exception_handler,
     http_exception_handler,
     validation_exception_handler,
     value_error_handler,
-    business_exception_handler,
-    general_exception_handler,
-    BusinessException,
 )
-import logging
-from fastapi.responses import JSONResponse
+from app.core.logging_config import setup_logging
+from app.core.startup import startup_events, sync_startup_events
+from app.middleware.logging_middleware import LoggingMiddleware
 
 # 로깅 설정
 setup_logging()
@@ -56,8 +58,11 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="소셜 로그인을 지원하는 FastAPI 백엔드",
     lifespan=lifespan,
-    root_path=settings.ROOT_PATH if hasattr(settings, 'ROOT_PATH') else "",
+    root_path=settings.ROOT_PATH if hasattr(settings, "ROOT_PATH") else "",
 )
+
+# Prometheus 메트릭 수집 설정
+Instrumentator().instrument(app).expose(app)
 
 # CORS 미들웨어 추가
 app.add_middleware(
