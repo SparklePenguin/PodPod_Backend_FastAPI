@@ -163,7 +163,6 @@ cython_debug/
 #  *.iws
 
 # VS Code
-.vscode/
 *.code-workspace
 
 # Local History for Visual Studio Code
@@ -242,10 +241,6 @@ logs/
 config.ini
 settings.ini
 .env
-.env.*
-.env.local
-.env.production
-.env.staging
 
 # 환경별 config 파일은 Git에 포함 (민감 정보 없음)
 # config.dev.yaml

@@ -1,0 +1,29 @@
+{
+  // VSCode 전용 기능 설정 (포맷팅은 .editorconfig 참조)
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // Ruff 설정
+  "ruff.enable": true,
+  "ruff.lint.enable": true,
+  "ruff.configurationPreference": "filesystemFirst",
+
+  // 파일 네스팅 설정
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "config.dev.yaml": "config.*.yaml",
+    "docker-compose.dev.yml": "docker-compose.*.yml",
+    "Dockerfile": ".dockerignore", 
+    ".env": ".env.example",
+    "pyproject.toml": "setup.py, setup.cfg"
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.pythonProjects": []
+}
