@@ -3,9 +3,9 @@ from typing import List
 from datetime import datetime
 import json
 from app.core.database import get_db
-from app.crud.pod.pod import PodCRUD
-from app.services.sendbird_service import SendbirdService
-from app.schemas.common.base_response import BaseResponse
+from app.features.pods.repositories.pod_repository import PodCRUD
+from app.core.services.sendbird_service import SendbirdService
+from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,17 +57,25 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
 
         for pod in pods:
             try:
+                # Pod 속성들을 안전하게 가져오기
+                pod_id: int = getattr(pod, "id", 0)
+                pod_title: str = getattr(pod, "title", "")
+                pod_owner_id: int = getattr(pod, "owner_id", 0)
+                pod_thumbnail_url: str | None = getattr(pod, "thumbnail_url", None)
+                pod_place: str | None = getattr(pod, "place", None)
+                
                 # 채널 URL 생성 (pod_{pod_id}_chat 형식)
-                channel_url = f"pod_{pod.id}_chat"
+                channel_url = f"pod_{pod_id}_chat"
 
                 # 이미 채팅방이 있는지 확인
-                if pod.chat_channel_url:
+                chat_channel_url: str | None = getattr(pod, "chat_channel_url", None)
+                if chat_channel_url:
                     success_count += 1
                     results.append(
                         {
-                            "pod_id": pod.id,
-                            "title": pod.title,
-                            "channel_url": pod.chat_channel_url,
+                            "pod_id": pod_id,
+                            "title": pod_title,
+                            "channel_url": chat_channel_url,
                             "status": "already_exists",
                         }
                     )
@@ -76,41 +84,42 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                 # Sendbird 채팅방 생성
                 channel_data = await sendbird_service.create_group_channel(
                     channel_url=channel_url,
-                    name=f"{pod.title} 채팅방",
-                    user_ids=[str(pod.owner_id)],  # 파티 생성자만 초기 멤버
-                    data=json.dumps(
-                        {
-                            "id": pod.id,
-                            "ownerId": pod.owner_id,
-                            "title": pod.title,
-                            "thumbnailUrl": pod.thumbnail_url or "",
-                            "meetingPlace": pod.place,
-                            "meetingDate": (
-                                int(
-                                    datetime.combine(
-                                        pod.meeting_date, pod.meeting_time
-                                    ).timestamp()
-                                    * 1000
-                                )
-                            ),
-                            "subCategories": (
-                                json.loads(pod.sub_categories)
-                                if pod.sub_categories
-                                else []
-                            ),
-                        },
-                        ensure_ascii=False,
-                    ),
+                    name=f"{pod_title} 채팅방",
+                    user_ids=[str(pod_owner_id)],  # 파티 생성자만 초기 멤버
+                    data={
+                        "id": pod_id,
+                        "ownerId": pod_owner_id,
+                        "title": pod_title,
+                        "thumbnailUrl": pod_thumbnail_url or "",
+                        "meetingPlace": pod_place or "",
+                        "meetingDate": (
+                            int(
+                                datetime.combine(
+                                    meeting_date,
+                                    meeting_time,
+                                ).timestamp()
+                                * 1000
+                            )
+                            if (meeting_date := getattr(pod, "meeting_date", None))
+                            and (meeting_time := getattr(pod, "meeting_time", None))
+                            else 0
+                        ),
+                        "subCategories": (
+                            json.loads(sub_categories)
+                            if (sub_categories := getattr(pod, "sub_categories", None))
+                            else []
+                        ),
+                    },
                 )
 
                 if channel_data:
                     # 데이터베이스에 채팅방 URL 저장
-                    await pod_crud.update_chat_channel_url(pod.id, channel_url)
+                    await pod_crud.update_chat_channel_url(pod_id, channel_url)
                     success_count += 1
                     results.append(
                         {
-                            "pod_id": pod.id,
-                            "title": pod.title,
+                            "pod_id": pod_id,
+                            "title": pod_title,
                             "channel_url": channel_url,
                             "status": "created",
                         }
@@ -119,8 +128,8 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                     error_count += 1
                     results.append(
                         {
-                            "pod_id": pod.id,
-                            "title": pod.title,
+                            "pod_id": pod_id,
+                            "title": pod_title,
                             "channel_url": channel_url,
                             "status": "failed",
                             "error": "Sendbird 채팅방 생성 실패",
@@ -128,11 +137,13 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                     )
 
             except Exception as e:
+                pod_id: int = getattr(pod, "id", 0)
+                pod_title: str = getattr(pod, "title", "")
                 error_count += 1
                 results.append(
                     {
-                        "pod_id": pod.id,
-                        "title": pod.title,
+                        "pod_id": pod_id,
+                        "title": pod_title,
                         "status": "failed",
                         "error": str(e),
                     }
@@ -204,17 +215,21 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_db)):
         for pod in pods_with_channels:
             try:
                 # Sendbird 채팅방 삭제
-                success = await sendbird_service.delete_channel(pod.chat_channel_url)
+                chat_channel_url: str | None = getattr(pod, "chat_channel_url", None)
+                if not chat_channel_url:
+                    continue
+                success = await sendbird_service.delete_channel(chat_channel_url)
 
                 if success:
                     # 데이터베이스에서 채팅방 URL 제거
-                    await pod_crud.update_chat_channel_url(pod.id, None)
+                    pod_id: int = getattr(pod, "id", 0)
+                    await pod_crud.update_chat_channel_url(pod_id, None)
                     success_count += 1
                     results.append(
                         {
                             "pod_id": pod.id,
                             "title": pod.title,
-                            "channel_url": pod.chat_channel_url,
+                            "channel_url": chat_channel_url,
                             "status": "success",
                         }
                     )
@@ -224,7 +239,7 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_db)):
                         {
                             "pod_id": pod.id,
                             "title": pod.title,
-                            "channel_url": pod.chat_channel_url,
+                            "channel_url": chat_channel_url,
                             "status": "failed",
                             "error": "Sendbird 채팅방 삭제 실패",
                         }
@@ -282,7 +297,10 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_db)):
         pods_without_channels = 0
 
         for pod in pods:
-            has_channel = pod.chat_channel_url is not None
+            pod_id: int = getattr(pod, "id", 0)
+            pod_title: str = getattr(pod, "title", "")
+            chat_channel_url: str | None = getattr(pod, "chat_channel_url", None)
+            has_channel = chat_channel_url is not None
             if has_channel:
                 pods_with_channels += 1
             else:
@@ -290,10 +308,10 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_db)):
 
             results.append(
                 {
-                    "pod_id": pod.id,
-                    "title": pod.title,
+                    "pod_id": pod_id,
+                    "title": pod_title,
                     "has_channel": has_channel,
-                    "channel_url": pod.chat_channel_url,
+                    "channel_url": chat_channel_url,
                 }
             )
 
@@ -353,25 +371,21 @@ async def get_channel_metadata(
                 http_status=HttpStatus.OK,
             )
         else:
-            return BaseResponse(
-                data=None,
-                error="CHANNEL_NOT_FOUND",
+            return BaseResponse.error(
+                error_key="CHANNEL_NOT_FOUND",
                 error_code=404,
                 http_status=HttpStatus.NOT_FOUND,
                 message_ko="채널을 찾을 수 없습니다",
                 message_en="Channel not found",
-                dev_note=None,
             )
 
     except Exception as e:
-        return BaseResponse(
-            data=None,
-            error="METADATA_FETCH_FAILED",
+        return BaseResponse.error(
+            error_key="METADATA_FETCH_FAILED",
             error_code=500,
             http_status=HttpStatus.INTERNAL_SERVER_ERROR,
             message_ko="메타데이터 조회 실패",
             message_en="Failed to fetch metadata",
-            dev_note=None,
         )
 
 
@@ -387,24 +401,20 @@ async def update_channel_metadata(
         try:
             sendbird_service = SendbirdService()
         except ValueError as e:
-            return BaseResponse(
-                data=None,
-                error="SENDBIRD_CONFIG_ERROR",
+            return BaseResponse.error(
+                error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
                 http_status=HttpStatus.BAD_REQUEST,
                 message_ko="Sendbird 설정이 누락되었습니다.",
                 message_en="Sendbird configuration is missing.",
-                dev_note=None,
             )
         except Exception as e:
-            return BaseResponse(
-                data=None,
-                error="SENDBIRD_SERVICE_ERROR",
+            return BaseResponse.error(
+                error_key="SENDBIRD_SERVICE_ERROR",
                 error_code=1002,
                 http_status=HttpStatus.INTERNAL_SERVER_ERROR,
                 message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
                 message_en=f"Failed to initialize Sendbird service: {str(e)}",
-                dev_note=None,
             )
 
         # 채팅방 URL이 있는 파티들 조회
@@ -422,41 +432,54 @@ async def update_channel_metadata(
 
         for pod in pods_with_channels:
             try:
+                # Pod 속성들을 안전하게 가져오기
+                pod_id: int = getattr(pod, "id", 0)
+                pod_title: str = getattr(pod, "title", "")
+                pod_owner_id: int = getattr(pod, "owner_id", 0)
+                pod_thumbnail_url: str | None = getattr(pod, "thumbnail_url", None)
+                pod_place: str | None = getattr(pod, "place", None)
+                
                 # 새로운 메타데이터 생성
-                new_metadata = json.dumps(
-                    {
-                        "id": pod.id,
-                        "ownerId": pod.owner_id,
-                        "title": pod.title,
-                        "thumbnailUrl": pod.thumbnail_url or "",
-                        "meetingPlace": pod.place,
-                        "meetingDate": (
-                            int(
-                                datetime.combine(
-                                    pod.meeting_date, pod.meeting_time
-                                ).timestamp()
-                                * 1000
-                            )
-                        ),
-                        "subCategories": (
-                            json.loads(pod.sub_categories) if pod.sub_categories else []
-                        ),
-                    },
-                    ensure_ascii=False,
-                )
+                new_metadata = {
+                    "id": pod_id,
+                    "ownerId": pod_owner_id,
+                    "title": pod_title,
+                    "thumbnailUrl": pod_thumbnail_url or "",
+                    "meetingPlace": pod_place or "",
+                    "meetingDate": (
+                        int(
+                            datetime.combine(
+                                meeting_date,
+                                meeting_time,
+                            ).timestamp()
+                            * 1000
+                        )
+                        if (meeting_date := getattr(pod, "meeting_date", None))
+                        and (meeting_time := getattr(pod, "meeting_time", None))
+                        else 0
+                    ),
+                    "subCategories": (
+                        json.loads(sub_categories)
+                        if (sub_categories := getattr(pod, "sub_categories", None))
+                        else []
+                    ),
+                }
 
                 # Sendbird 채널 메타데이터 업데이트
+                chat_channel_url: str | None = getattr(pod, "chat_channel_url", None)
+                if not chat_channel_url:
+                    continue
                 update_result = await sendbird_service.update_channel_metadata(
-                    pod.chat_channel_url, new_metadata
+                    chat_channel_url, new_metadata
                 )
 
                 if update_result:
                     success_count += 1
                     results.append(
                         {
-                            "pod_id": pod.id,
-                            "title": pod.title,
-                            "channel_url": pod.chat_channel_url,
+                            "pod_id": pod_id,
+                            "title": pod_title,
+                            "channel_url": chat_channel_url,
                             "status": "updated",
                         }
                     )
@@ -464,20 +487,22 @@ async def update_channel_metadata(
                     error_count += 1
                     results.append(
                         {
-                            "pod_id": pod.id,
-                            "title": pod.title,
-                            "channel_url": pod.chat_channel_url,
+                            "pod_id": pod_id,
+                            "title": pod_title,
+                            "channel_url": chat_channel_url,
                             "status": "failed",
                             "error": "메타데이터 업데이트 실패",
                         }
                     )
 
             except Exception as e:
+                pod_id: int = getattr(pod, "id", 0)
+                pod_title: str = getattr(pod, "title", "")
                 error_count += 1
                 results.append(
                     {
-                        "pod_id": pod.id,
-                        "title": pod.title,
+                        "pod_id": pod_id,
+                        "title": pod_title,
                         "status": "failed",
                         "error": str(e),
                     }
@@ -494,12 +519,10 @@ async def update_channel_metadata(
         )
 
     except Exception as e:
-        return BaseResponse(
-            data=None,
-            error="INTERNAL_SERVER_ERROR",
+        return BaseResponse.error(
+            error_key="INTERNAL_SERVER_ERROR",
             error_code=5000,
             http_status=HttpStatus.INTERNAL_SERVER_ERROR,
             message_ko=f"서버 오류: {str(e)}",
             message_en=f"Internal server error: {str(e)}",
-            dev_note=None,
         )

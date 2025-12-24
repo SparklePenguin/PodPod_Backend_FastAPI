@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Query, Depends
 from fastapi.security import HTTPBearer
 from typing import Optional
-from app.services.kakao_oauth_service import KakaoOauthService, KakaoCallBackParam
-from app.services.apple_oauth_service import AppleOauthService, AppleCallbackParam
-from app.schemas.common import BaseResponse
+from app.features.auth.services.kakao_oauth_service import KakaoOauthService, KakaoCallBackParam
+from app.features.auth.services.apple_oauth_service import AppleOauthService, AppleCallbackParam
+from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
 from app.api.deps import get_kakao_oauth_service, get_apple_oauth_service
 
@@ -41,7 +41,8 @@ async def kakao_callback(
         state=state,
     )
     result = await kakao_oauth_service.handle_kakao_callback(params)
-    return BaseResponse.ok(data=result.model_dump(by_alias=True))
+    # result는 이미 dict 타입이므로 model_dump 불필요
+    return BaseResponse.ok(data=result)
 
 
 # - MARK: Apple 콜백
@@ -85,4 +86,5 @@ async def apple_callback(
     )
 
     result = await apple_oauth_service.handle_apple_callback(callback_params)
-    return BaseResponse.ok(data=result.model_dump(by_alias=True))
+    # result는 RedirectResponse이므로 직접 반환
+    return result

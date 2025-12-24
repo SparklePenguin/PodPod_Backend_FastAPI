@@ -1,22 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from app.api.deps import get_db, get_current_user_id
-from app.services.follow_service import FollowService
-from app.schemas.follow import (
-    FollowRequest,
-    FollowResponse,
-    FollowListResponse,
-    FollowStatsResponse,
-    SimpleUserDto,
+
+from fastapi import APIRouter, Depends, Path, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_user_id, get_db
+from app.common.schemas import BaseResponse, PageDto
+from app.core.error_codes import get_error_info
+from app.core.http_status import HttpStatus
+from app.features.follow.schemas.follow import (
     FollowNotificationStatusResponse,
     FollowNotificationUpdateRequest,
+    FollowRequest,
+    FollowResponse,
+    FollowStatsResponse,
+    SimpleUserDto,
 )
-from app.schemas.pod.pod_dto import PodDto
-from app.schemas.common.page_dto import PageDto
-from app.schemas.common.base_response import BaseResponse
-from app.core.http_status import HttpStatus
-from app.core.error_codes import get_error_info
+from app.features.follow.services.follow_service import FollowService
+from app.features.pods.schemas import PodDto
 
 router = APIRouter()
 
@@ -41,25 +41,21 @@ async def follow_user(
             message_en="Successfully followed the user.",
         )
     except ValueError as e:
-        return BaseResponse(
-            data=None,
-            http_status=400,
+        return BaseResponse.error(
+            error_key="FOLLOW_FAILED",
+            error_code=4002,
+            http_status=HttpStatus.BAD_REQUEST,
             message_ko=str(e),
             message_en="Failed to follow user.",
-            error="FOLLOW_FAILED",
-            error_code=4002,
-            dev_note=None,
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
             http_status=error_info.http_status,
             message_ko="팔로우 중 오류가 발생했습니다.",
             message_en="An error occurred while following the user.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
         )
 
 
@@ -77,14 +73,12 @@ async def unfollow_user(
         )
 
         if not success:
-            return BaseResponse(
-                data=None,
-                http_status=404,
+            return BaseResponse.error(
+                error_key="FOLLOW_NOT_FOUND",
+                error_code=4001,
+                http_status=HttpStatus.NOT_FOUND,
                 message_ko="팔로우 관계를 찾을 수 없습니다.",
                 message_en="Follow relationship not found.",
-                error="FOLLOW_NOT_FOUND",
-                error_code=4001,
-                dev_note=None,
             )
 
         return BaseResponse.ok(
@@ -93,7 +87,7 @@ async def unfollow_user(
             message_ko="팔로우가 취소되었습니다.",
             message_en="Successfully unfollowed the user.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,
@@ -106,9 +100,11 @@ async def unfollow_user(
 
 @router.get("/followings", response_model=BaseResponse[PageDto[SimpleUserDto]])
 async def get_following_list(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -132,22 +128,22 @@ async def get_following_list(
         print(f"팔로우 목록 조회 오류: {e}")
         traceback.print_exc()
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
             http_status=error_info.http_status,
             message_ko="팔로우 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving following list.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
         )
 
 
 @router.get("/followers", response_model=BaseResponse[PageDto[SimpleUserDto]])
 async def get_followers_list(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -168,7 +164,7 @@ async def get_followers_list(
             message_ko="팔로워 목록을 조회했습니다.",
             message_en="Successfully retrieved followers list.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,
@@ -198,7 +194,7 @@ async def get_follow_stats(
             message_ko="팔로우 통계를 조회했습니다.",
             message_en="Successfully retrieved follow statistics.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,
@@ -211,9 +207,11 @@ async def get_follow_stats(
 
 @router.get("/pods", response_model=BaseResponse[PageDto[PodDto]])
 async def get_following_users_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -237,22 +235,22 @@ async def get_following_users_pods(
         print(f"팔로우하는 사용자의 파티 목록 조회 오류: {e}")
         traceback.print_exc()
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
             http_status=error_info.http_status,
             message_ko="팔로우하는 사용자의 파티 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving following users' pods.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
         )
 
 
 @router.get("/recommend", response_model=BaseResponse[PageDto[SimpleUserDto]])
 async def get_recommended_users(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -276,14 +274,12 @@ async def get_recommended_users(
         print(f"추천 유저 목록 조회 오류: {e}")
         traceback.print_exc()
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
+        return BaseResponse.error(
+            error_key=error_info.error_key,
+            error_code=error_info.code,
             http_status=error_info.http_status,
             message_ko="추천 유저 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving recommended users.",
-            error=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
         )
 
 
@@ -304,14 +300,12 @@ async def get_notification_status(
         )
 
         if not notification_status:
-            return BaseResponse(
-                data=None,
-                http_status=404,
+            return BaseResponse.error(
+                error_key="FOLLOW_NOT_FOUND",
+                error_code=4001,
+                http_status=HttpStatus.NOT_FOUND,
                 message_ko="팔로우 관계를 찾을 수 없습니다.",
                 message_en="Follow relationship not found.",
-                error="FOLLOW_NOT_FOUND",
-                error_code=4001,
-                dev_note=None,
             )
 
         return BaseResponse.ok(
@@ -320,7 +314,7 @@ async def get_notification_status(
             message_ko="알림 설정 상태를 조회했습니다.",
             message_en="Successfully retrieved notification status.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,
@@ -349,14 +343,12 @@ async def update_notification_status(
         )
 
         if not notification_status:
-            return BaseResponse(
-                data=None,
-                http_status=404,
+            return BaseResponse.error(
+                error_key="FOLLOW_NOT_FOUND",
+                error_code=4001,
+                http_status=HttpStatus.NOT_FOUND,
                 message_ko="팔로우 관계를 찾을 수 없습니다.",
                 message_en="Follow relationship not found.",
-                error="FOLLOW_NOT_FOUND",
-                error_code=4001,
-                dev_note=None,
             )
 
         return BaseResponse.ok(
@@ -365,7 +357,7 @@ async def update_notification_status(
             message_ko="알림 설정이 변경되었습니다.",
             message_en="Successfully updated notification status.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,

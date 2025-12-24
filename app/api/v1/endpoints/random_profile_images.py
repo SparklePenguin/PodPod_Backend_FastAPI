@@ -5,9 +5,9 @@
 from fastapi import APIRouter, Depends
 from typing import List
 
-from app.services.random_profile_image_service import RandomProfileImageService
-from app.schemas.random_profile_image import RandomProfileImageDto
-from app.schemas.common.base_response import BaseResponse
+from app.core.services.random_profile_image_service import RandomProfileImageService
+from app.features.users.schemas.random_profile_image import RandomProfileImageResponse
+from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
 
 router = APIRouter()
@@ -20,10 +20,10 @@ def get_random_profile_image_service() -> RandomProfileImageService:
 
 @router.get(
     "/random",
-    response_model=BaseResponse[RandomProfileImageDto],
+    response_model=BaseResponse[RandomProfileImageResponse],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[RandomProfileImageDto],
+            "model": BaseResponse[RandomProfileImageResponse],
             "description": "랜덤 프로필 이미지 조회 성공",
         },
     },
@@ -47,10 +47,10 @@ async def get_random_profile_image(
 
 @router.get(
     "/all",
-    response_model=BaseResponse[List[RandomProfileImageDto]],
+    response_model=BaseResponse[List[RandomProfileImageResponse]],
     responses={
         HttpStatus.OK: {
-            "model": BaseResponse[List[RandomProfileImageDto]],
+            "model": BaseResponse[List[RandomProfileImageResponse]],
             "description": "모든 프로필 이미지 조회 성공",
         },
     },

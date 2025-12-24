@@ -1,42 +1,57 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer
 from typing import Optional
+
+from fastapi import APIRouter, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
+
 from app.api.deps import (
-    get_session_service,
-    get_kakao_oauth_service,
-    get_google_oauth_service,
     get_apple_oauth_service,
     get_current_user_id,
+    get_google_oauth_service,
+    get_kakao_oauth_service,
+    get_session_service,
 )
-from app.services.kakao_oauth_service import KakaoOauthService, KakaoTokenResponse
-from app.services.google_oauth_service import GoogleOauthService, GoogleLoginRequest
-from app.services.apple_oauth_service import (
-    AppleOauthService,
-    AppleLoginRequest,
-    AppleCallbackParam,
-)
-from app.services.session_service import SessionService
-from app.schemas.auth import (
+from app.common.schemas import BaseResponse
+from app.core.http_status import HttpStatus
+from app.features.auth.schemas import (
     TokenRefreshRequest,
 )
-from app.schemas.common import BaseResponse
-from app.core.http_status import HttpStatus
-from pydantic import BaseModel, Field
+from app.features.auth.services.apple_oauth_service import (
+    AppleLoginRequest,
+    AppleOauthService,
+)
+from app.features.auth.services.google_oauth_service import (
+    GoogleLoginRequest,
+    GoogleOauthService,
+)
+from app.features.auth.services.kakao_oauth_service import (
+    KakaoOauthService,
+    KakaoTokenResponse,
+)
+from app.features.auth.services.session_service import SessionService
 
 router = APIRouter()
 security = HTTPBearer()
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(alias="email")
-    password: Optional[str] = Field(default=None, alias="password")
-    auth_provider: Optional[str] = Field(default=None, alias="authProvider")
-    auth_provider_id: Optional[str] = Field(default=None, alias="authProviderId")
-    username: Optional[str] = Field(default=None, alias="username")
-    full_name: Optional[str] = Field(default=None, alias="fullName")
-    profile_image: Optional[str] = Field(default=None, alias="profileImage")
+    email: str = Field(serialization_alias="email")
+    password: Optional[str] = Field(default=None, serialization_alias="password")
+    auth_provider: Optional[str] = Field(
+        default=None, serialization_alias="authProvider"
+    )
+    auth_provider_id: Optional[str] = Field(
+        default=None, serialization_alias="authProviderId"
+    )
+    username: Optional[str] = Field(default=None, serialization_alias="username")
+    full_name: Optional[str] = Field(default=None, serialization_alias="fullName")
+    profile_image: Optional[str] = Field(
+        default=None, serialization_alias="profileImage"
+    )
     fcm_token: Optional[str] = Field(
-        default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
+        default=None,
+        serialization_alias="fcmToken",
+        description="FCM 토큰 (푸시 알림용)",
     )
 
     model_config = {"populate_by_name": True}
@@ -59,7 +74,8 @@ async def sign_in_with_kakao(
 ):
     """카카오 로그인"""
     result = await kakao_oauth_service.sign_in_with_kakao(kakao_sign_in_request)
-    return BaseResponse.ok(data=result.model_dump(by_alias=True))
+    # result는 이미 dict 타입이므로 model_dump 불필요
+    return BaseResponse.ok(data=result)
 
 
 # - MARK: Google 로그인
@@ -79,7 +95,8 @@ async def sign_in_with_google(
 ):
     """Google 로그인"""
     result = await google_oauth_service.sign_in_with_google(google_login_request)
-    return BaseResponse.ok(data=result.model_dump(by_alias=True))
+    # result는 이미 dict 타입이므로 model_dump 불필요
+    return BaseResponse.ok(data=result)
 
 
 # - MARK: Apple 로그인
@@ -134,7 +151,7 @@ async def create_session(
 async def delete_session(
     current_user_id: int = Depends(get_current_user_id),
     auth_service: SessionService = Depends(get_session_service),
-    token: str = Depends(security),
+    token: HTTPAuthorizationCredentials = Depends(security),
 ):
     """로그아웃 (세션 삭제 및 FCM 토큰 삭제)"""
     await auth_service.logout(token.credentials, current_user_id)
@@ -157,10 +174,10 @@ async def refresh_session(
 ):
     """토큰 갱신"""
     from app.core.security import (
+        TokenBlacklistedError,
+        TokenDecodeError,
         TokenExpiredError,
         TokenInvalidError,
-        TokenDecodeError,
-        TokenBlacklistedError,
     )
 
     try:

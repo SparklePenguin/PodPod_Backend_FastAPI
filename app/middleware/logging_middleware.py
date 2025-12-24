@@ -1,11 +1,11 @@
-"""
-API 요청/응답 로깅 미들웨어
-"""
+"""API 요청/응답 로깅 미들웨어"""
 
 import time
 import uuid
-from fastapi import Request, Response
+
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from app.core.logging_config import get_logger
 
 logger = get_logger("api")

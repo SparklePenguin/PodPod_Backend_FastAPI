@@ -1,17 +1,16 @@
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
 
-from app.core.database import get_db
 from app.api.deps import get_current_user_id
-from app.services.artist_suggestion_service import ArtistSuggestionService
-from app.schemas.artist_suggestion import (
+from app.common.schemas import BaseResponse, PageDto
+from app.core.database import get_db
+from app.core.http_status import HttpStatus
+from app.features.artists.schemas.artist_suggestion_schemas import (
     ArtistSuggestionCreateRequest,
     ArtistSuggestionDto,
     ArtistSuggestionRankingDto,
 )
-from app.schemas.common import BaseResponse, PageDto
-from app.core.http_status import HttpStatus
+from app.features.artists.services.suggestion_service import ArtistSuggestionService
 
 router = APIRouter(tags=["artist-suggestions"])
 
@@ -65,9 +64,11 @@ async def create_artist_suggestion(
     },
 )
 async def get_artist_ranking(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     service: ArtistSuggestionService = Depends(get_artist_suggestion_service),
 ):

@@ -1,31 +1,24 @@
-from typing import Dict, Any, Optional, List
+import json
+import os
+from typing import Any, Dict, Optional
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    status,
-    Query,
     Path,
-    File,
-    UploadFile,
-    Form,
+    Query,
+    status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-import json
-import os
-from datetime import datetime
 
+from app.common.schemas import BaseResponse, PageDto
 from app.core.database import get_db
-from app.services.artist_schedule_service import ArtistScheduleService
-from app.schemas.common import BaseResponse, PageDto
-from app.schemas.artist_schedule import (
-    ArtistScheduleDto,
-    ArtistScheduleCreateRequest,
-)
-from app.crud.artist_schedule import ArtistScheduleCRUD
-from app.crud.artist import ArtistCRUD
 from app.core.http_status import HttpStatus
+from app.features.artists.schemas.artist_schedule_schemas import (
+    ArtistScheduleDto,
+)
+from app.features.artists.services.schedule_service import ArtistScheduleService
 
 router = APIRouter()
 
@@ -51,18 +44,20 @@ def get_artist_schedule_service(
     tags=["artist-schedules"],
 )
 async def get_artist_schedules(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     artist_id: Optional[int] = Query(
-        None, alias="artistId", description="아티스트 ID 필터"
+        None, serialization_alias="artistId", description="아티스트 ID 필터"
     ),
     unit_id: Optional[int] = Query(
-        None, alias="unitId", description="아티스트 유닛 ID 필터"
+        None, serialization_alias="unitId", description="아티스트 유닛 ID 필터"
     ),
     schedule_type: Optional[int] = Query(
-        None, alias="scheduleType", description="스케줄 유형 필터"
+        None, serialization_alias="scheduleType", description="스케줄 유형 필터"
     ),
     artist_schedule_service: ArtistScheduleService = Depends(
         get_artist_schedule_service

@@ -4,12 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.services.location_service import LocationService
-from app.schemas.location_dto import (
+from app.features.locations.services.location_service import LocationService
+from app.features.locations.schemas.location_dto import (
     LocationDto,
     LocationResponse,
 )
-from app.schemas.common import BaseResponse, PageDto
+from app.common.schemas import BaseResponse, PageDto
 from app.core.http_status import HttpStatus
 
 router = APIRouter()

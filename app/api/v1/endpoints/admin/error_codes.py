@@ -2,18 +2,19 @@
 에러 코드 관리 엔드포인트 (관리자용)
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from app.core.error_codes import (
-    load_error_codes_from_sheets,
-    load_error_codes_from_file,
-    get_cached_error_codes,
-    ERROR_CODES,
-)
-from app.core.config import settings
-from app.schemas.common import BaseResponse
-from app.core.http_status import HttpStatus
-from typing import Dict, Any, List
 import os
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, HTTPException
+
+from app.common.schemas import BaseResponse
+from app.core.config import settings
+from app.core.error_codes import (
+    get_cached_error_codes,
+    load_error_codes_from_file,
+    load_error_codes_from_sheets,
+)
+from app.core.http_status import HttpStatus
 
 router = APIRouter(prefix="/admin/error-codes", tags=["admin-error-codes"])
 
@@ -45,7 +46,9 @@ async def get_error_codes():
     summary="Google Sheets에서 에러 코드 다시 로드",
     description="Google Sheets에서 에러 코드를 다시 로드합니다.",
 )
-async def reload_from_sheets(spreadsheet_id: str = None, range_name: str = None):
+async def reload_from_sheets(
+    spreadsheet_id: Optional[str] = None, range_name: Optional[str] = None
+):
     """Google Sheets에서 에러 코드를 다시 로드합니다."""
     try:
         # 파라미터가 없으면 설정에서 가져오기
@@ -137,7 +140,7 @@ async def reload_from_file(file_path: str = "error_codes_backup.json"):
 async def validate_error_codes():
     """에러 코드의 유효성을 검증합니다."""
     try:
-        from app.services.google_sheets_service import google_sheets_service
+        from app.core.services.google_sheets_service import google_sheets_service
 
         error_codes = get_cached_error_codes()
         validation_errors = google_sheets_service.validate_error_codes(error_codes)
@@ -167,7 +170,7 @@ async def validate_error_codes():
 async def get_sheets_list():
     """Google Sheets에서 시트 목록을 가져옵니다."""
     try:
-        from app.services.google_sheets_service import google_sheets_service
+        from app.core.services.google_sheets_service import google_sheets_service
 
         if not settings.GOOGLE_SHEETS_ID:
             raise HTTPException(
@@ -177,6 +180,13 @@ async def get_sheets_list():
 
         # Google Sheets 서비스 초기화
         await google_sheets_service.initialize(settings.GOOGLE_SHEETS_ID, "Sheet1!A:A")
+
+        # 서비스가 초기화되었는지 확인
+        if not google_sheets_service.service:
+            raise HTTPException(
+                status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+                detail="Google Sheets 서비스 초기화에 실패했습니다.",
+            )
 
         # 시트 목록 가져오기
         result = (

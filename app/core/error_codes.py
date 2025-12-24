@@ -9,15 +9,16 @@ PodPod Backend API 에러 코드 체계
 - 5xxx: 서버/시스템 관련 오류
 """
 
-from typing import Dict, Any
-from fastapi import HTTPException
-from app.core.http_status import HttpStatus
-import os
 import json
-import asyncio
-from functools import lru_cache
-from datetime import datetime, timedelta
+import os
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from functools import lru_cache
+from typing import Any, Dict
+
+from fastapi import HTTPException
+
+from app.core.http_status import HttpStatus
 
 
 @dataclass
@@ -29,7 +30,7 @@ class ErrorInfo:
     message_ko: str
     message_en: str
     http_status: int
-    dev_note: str = None
+    dev_note: str | None = None
 
     @property
     def message(self) -> str:
@@ -101,7 +102,7 @@ def _load_from_cache() -> bool:
 
 async def load_error_codes_from_sheets(
     spreadsheet_id: str,
-    range_name: str = None,  # 더 이상 사용하지 않음
+    range_name: str | None = None,  # 더 이상 사용하지 않음
     force_reload: bool = False,
 ) -> bool:
     """
@@ -124,7 +125,7 @@ async def load_error_codes_from_sheets(
 
     try:
         # Lazy import to avoid circular imports
-        from app.services.google_sheets_service import google_sheets_service
+        from app.core.services.google_sheets_service import google_sheets_service
 
         # Google Sheets 서비스 초기화 (range_name은 더 이상 사용하지 않음)
         await google_sheets_service.initialize(spreadsheet_id, "Sheet1!A:A")
@@ -182,7 +183,7 @@ def load_error_codes_from_file(file_path: str) -> bool:
             file_data = json.load(f)
 
         # Lazy import to avoid circular imports
-        from app.services.google_sheets_service import google_sheets_service
+        from app.core.services.google_sheets_service import google_sheets_service
 
         # 데이터 검증
         validation_errors = google_sheets_service.validate_error_codes(file_data)
@@ -233,7 +234,7 @@ def get_error_info(error_key: str, language: str = "ko") -> ErrorInfo:
 
 
 def raise_error(
-    error_key: str, language: str = "ko", additional_data: Dict[str, Any] = None
+    error_key: str, language: str = "ko", additional_data: Dict[str, Any] | None = None
 ) -> None:
     """
     에러를 발생시킵니다.
@@ -266,7 +267,7 @@ def raise_error(
 
 
 def get_error_response(
-    error_key: str, language: str = "ko", additional_data: Dict[str, Any] = None
+    error_key: str, language: str = "ko", additional_data: Dict[str, Any] | None = None
 ) -> Dict[str, Any]:
     """
     에러 응답을 생성합니다 (HTTPException을 발생시키지 않음).

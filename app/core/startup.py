@@ -54,7 +54,7 @@ async def startup_events():
     await initialize_error_codes()
 
     # 스케줄러 시작
-    from app.services.scheduler_service import start_scheduler
+    from app.core.services.scheduler_service import start_scheduler
 
     asyncio.create_task(start_scheduler())
     print("스케줄러 시작됨:")

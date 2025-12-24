@@ -6,13 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
 from app.core.database import get_db
 from app.core.config import settings
-from app.services.kakao_oauth_service import KakaoOauthService
-from app.services.google_oauth_service import GoogleOauthService
-from app.services.apple_oauth_service import AppleOauthService
-from app.services.user_service import UserService
-from app.services.session_service import SessionService
-from app.services.artist_service import ArtistService
-from app.services.oauth_service import OauthService
+from app.features.auth.services.kakao_oauth_service import KakaoOauthService
+from app.features.auth.services.google_oauth_service import GoogleOauthService
+from app.features.auth.services.apple_oauth_service import AppleOauthService
+from app.features.users.services import UserService
+from app.features.auth.services.session_service import SessionService
+from app.features.artists.services.artist_service import ArtistService
+from app.features.auth.services.oauth_service import OauthService
 
 security = HTTPBearer()
 security_optional = HTTPBearer(auto_error=False)
@@ -46,7 +46,7 @@ def get_artist_service(db: AsyncSession = Depends(get_db)) -> ArtistService:
     return ArtistService(db)
 
 
-async def get_current_user_id(token: str = Depends(security)) -> int:
+async def get_current_user_id(token: HTTPAuthorizationCredentials = Depends(security)) -> int:
     """토큰에서 user_id 추출"""
     try:
         payload = jwt.decode(

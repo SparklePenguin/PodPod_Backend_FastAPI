@@ -26,5 +26,21 @@
     "prometheus.dev.yml": "prometheus.*.yml",
   },
   "python-envs.defaultEnvManager": "ms-python.python:system",
-  "python-envs.pythonProjects": []
+  "python-envs.pythonProjects": [],
+  
+  // Python 인터프리터 및 Pylance 설정
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.extraPaths": [],
+  "python.analysis.stubPath": "./typings",
+  
+  // 가상 환경의 Python 인터프리터 경로 지정 (상대 경로 사용)
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  
+  // Pylance가 import 오류를 무시하도록 설정 (임시 해결책)
+  // 실제로는 가상 환경에 패키지를 설치하고 올바른 인터프리터를 선택해야 합니다
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  }
 }

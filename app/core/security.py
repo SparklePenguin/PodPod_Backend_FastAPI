@@ -1,14 +1,14 @@
-from enum import Enum
 import time
 import uuid
-from passlib.context import CryptContext
-from jose import ExpiredSignatureError, JWTError, jwt
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Optional
 
+from jose import ExpiredSignatureError, JWTError, jwt
+from passlib.context import CryptContext
 from pydantic import BaseModel
-from .config import settings
 
+from .config import settings
 
 # 토큰 블랙리스트 (메모리 기반, 추후 Redis 등으로 대체 가능)
 _token_blacklist = set()
@@ -130,7 +130,7 @@ def create_refresh_token(
 
 
 # - MARK: 액세스 토큰 검증 함수
-def verify_token(token: str, token_type: str = None) -> int:
+def verify_token(token: str, token_type: str | None = None) -> int:
     """토큰 검증 후 user_id 리턴, 실패시 도메인 에러 발생"""
     # 블랙리스트 확인
     if is_token_blacklisted(token):
@@ -142,7 +142,7 @@ def verify_token(token: str, token_type: str = None) -> int:
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
         )
-        user_id: str = payload.get("sub")
+        user_id: str | None = payload.get("sub")
         if not user_id:
             raise TokenInvalidError()
 

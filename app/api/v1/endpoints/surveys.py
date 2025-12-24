@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, get_current_user_id
-from app.services.tendency_service import TendencyService
-from app.schemas.tendency import TendencySurveyDto, SubmitTendencyTestRequest, Tendency
-from app.schemas.common import BaseResponse
+from app.api.deps import get_current_user_id, get_db
+from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
+from app.features.tendencies.schemas import (
+    SubmitTendencyTestRequest,
+    Tendency,
+    TendencySurveyDto,
+)
+from app.features.tendencies.services.tendency_service import TendencyService
 
 router = APIRouter()
 
@@ -33,9 +37,14 @@ async def get_tendency_test_survey(
     """성향 테스트 설문 조회"""
     survey = await tendency_service.get_tendency_survey()
     if not survey:
+        from app.core.error_codes import get_error_info
+        error_info = get_error_info("NOT_FOUND")
         return BaseResponse.error(
-            code=HttpStatus.NOT_FOUND,
-            message="성향 테스트 설문을 찾을 수 없습니다.",
+            http_status=error_info.http_status,
+            error_key=error_info.error_key,
+            error_code=error_info.code,
+            message_ko="성향 테스트 설문을 찾을 수 없습니다.",
+            message_en="Tendency test survey not found.",
         )
     return BaseResponse.ok(data=survey.model_dump(by_alias=True))
 

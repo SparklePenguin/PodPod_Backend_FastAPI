@@ -1,11 +1,13 @@
-from fastapi import Request, status
-from fastapi.exceptions import HTTPException, RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.responses import JSONResponse
-from app.schemas.common import BaseResponse
-from app.core.http_status import HttpStatus
 import logging
 from typing import Union
+
+from fastapi import Request
+from fastapi.exceptions import HTTPException, RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.common.schemas import BaseResponse
+from app.core.http_status import HttpStatus
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +19,9 @@ class BusinessException(Exception):
         self,
         error_code: str,
         message_ko: str,
-        message_en: str = None,
+        message_en: str | None = None,
         status_code: int = 400,
-        dev_note: str = None,
+        dev_note: str | None = None,
     ):
         self.error_code = error_code
         self.message_ko = message_ko
@@ -123,8 +125,13 @@ async def value_error_handler(request: Request, exc: ValueError):
     )
 
 
-async def business_exception_handler(request: Request, exc: BusinessException):
+async def business_exception_handler(request: Request, exc: Exception):
     """BusinessException 처리 → BaseResponse 패턴으로 응답"""
+    # 타입 체크를 통해 BusinessException인지 확인
+    if not isinstance(exc, BusinessException):
+        # BusinessException이 아닌 경우 일반 예외 핸들러로 위임
+        return await general_exception_handler(request, exc)
+    
     logger.warning(f"Business Exception: {exc.error_code} - {exc.message_ko}")
 
     response = BaseResponse(

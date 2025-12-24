@@ -1,14 +1,16 @@
+from enum import Enum
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-from typing import Optional
-from enum import Enum
-from app.api.deps import get_current_user_id
-from app.schemas.common import BaseResponse
-from app.core.http_status import HttpStatus
-from app.services.fcm_service import FCMService
-from app.crud.user import UserCRUD
-from app.core.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_user_id
+from app.common.schemas import BaseResponse
+from app.core.database import get_db
+from app.core.http_status import HttpStatus
+from app.core.services.fcm_service import FCMService
+from app.features.users.repositories import UserRepository
 
 router = APIRouter()
 
@@ -50,10 +52,14 @@ class NotificationType(str, Enum):
 class SendNotificationRequest(BaseModel):
     """알림 전송 요청"""
 
-    user_id: int = Field(alias="userId", description="알림을 받을 사용자 ID")
-    title: str = Field(alias="title", description="알림 제목")
-    body: str = Field(alias="body", description="알림 내용")
-    data: Optional[dict] = Field(default=None, alias="data", description="추가 데이터")
+    user_id: int = Field(
+        serialization_alias="userId", description="알림을 받을 사용자 ID"
+    )
+    title: str = Field(serialization_alias="title", description="알림 제목")
+    body: str = Field(serialization_alias="body", description="알림 내용")
+    data: Optional[dict] = Field(
+        default=None, serialization_alias="data", description="추가 데이터"
+    )
 
     model_config = {"populate_by_name": True}
 
@@ -81,7 +87,7 @@ async def send_test_notification(
         fcm_service = FCMService()
 
         # 사용자의 FCM 토큰 조회
-        user_crud = UserCRUD(db)
+        user_crud = UserRepository(db)
         user = await user_crud.get_by_id(request.user_id)
 
         if not user:
@@ -93,7 +99,8 @@ async def send_test_notification(
                 message_en="User not found.",
             )
 
-        if not user.fcm_token:
+        fcm_token: str | None = getattr(user, "fcm_token", None)
+        if not fcm_token:
             return BaseResponse.error(
                 error_key="FCM_TOKEN_NOT_FOUND",
                 error_code=4005,
@@ -104,7 +111,7 @@ async def send_test_notification(
 
         # 알림 전송
         success = await fcm_service.send_notification(
-            token=user.fcm_token,
+            token=fcm_token,
             title=request.title,
             body=request.body,
             data=request.data,
@@ -162,9 +169,13 @@ async def send_test_notification(
     tags=["admin"],
 )
 async def send_test_notification_to_self(
-    title: str = Query(default="테스트 알림", alias="title", description="알림 제목"),
+    title: str = Query(
+        default="테스트 알림", serialization_alias="title", description="알림 제목"
+    ),
     body: str = Query(
-        default="FCM 알림 테스트입니다.", alias="body", description="알림 내용"
+        default="FCM 알림 테스트입니다.",
+        serialization_alias="body",
+        description="알림 내용",
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -175,10 +186,20 @@ async def send_test_notification_to_self(
         fcm_service = FCMService()
 
         # 현재 사용자의 FCM 토큰 조회
-        user_crud = UserCRUD(db)
+        user_crud = UserRepository(db)
         user = await user_crud.get_by_id(current_user_id)
 
-        if not user.fcm_token:
+        if not user:
+            return BaseResponse.error(
+                error_key="USER_NOT_FOUND",
+                error_code=4004,
+                http_status=HttpStatus.NOT_FOUND,
+                message_ko="사용자를 찾을 수 없습니다.",
+                message_en="User not found.",
+            )
+
+        fcm_token: str | None = getattr(user, "fcm_token", None)
+        if not fcm_token:
             return BaseResponse.error(
                 error_key="FCM_TOKEN_NOT_FOUND",
                 error_code=4005,
@@ -189,7 +210,7 @@ async def send_test_notification_to_self(
 
         # 알림 전송
         success = await fcm_service.send_notification(
-            token=user.fcm_token,
+            token=fcm_token,
             title=title,
             body=body,
             data={"type": "test", "test": "true"},
@@ -246,21 +267,27 @@ async def send_test_notification_to_self(
     tags=["admin"],
 )
 async def send_notification_by_type(
-    user_id: int = Query(..., alias="userId", description="알림을 받을 사용자 ID"),
+    user_id: int = Query(
+        ..., serialization_alias="userId", description="알림을 받을 사용자 ID"
+    ),
     notification_type: NotificationType = Query(
-        ..., alias="notificationType", description="알림 타입"
+        ..., serialization_alias="notificationType", description="알림 타입"
     ),
     party_name: Optional[str] = Query(
-        default="왕코가나지", alias="partyName", description="파티 이름 (선택)"
+        default="왕코가나지",
+        serialization_alias="partyName",
+        description="파티 이름 (선택)",
     ),
     nickname: Optional[str] = Query(
-        default="테스트유저", alias="nickname", description="닉네임 (선택)"
+        default="테스트유저",
+        serialization_alias="nickname",
+        description="닉네임 (선택)",
     ),
     pod_id: Optional[int] = Query(
-        default=20, alias="podId", description="파티 ID (선택)"
+        default=20, serialization_alias="podId", description="파티 ID (선택)"
     ),
     review_id: Optional[int] = Query(
-        default=1, alias="reviewId", description="리뷰 ID (선택)"
+        default=1, serialization_alias="reviewId", description="리뷰 ID (선택)"
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -270,7 +297,7 @@ async def send_notification_by_type(
         fcm_service = FCMService()
 
         # 사용자 FCM 토큰 조회
-        user_crud = UserCRUD(db)
+        user_crud = UserRepository(db)
         user = await user_crud.get_by_id(user_id)
 
         if not user:
@@ -282,7 +309,8 @@ async def send_notification_by_type(
                 message_en="User not found.",
             )
 
-        if not user.fcm_token:
+        fcm_token: str | None = getattr(user, "fcm_token", None)
+        if not fcm_token:
             return BaseResponse.error(
                 error_key="FCM_TOKEN_NOT_FOUND",
                 error_code=4005,
@@ -291,101 +319,106 @@ async def send_notification_by_type(
                 message_en="User's FCM token not found.",
             )
 
+        # 기본값 설정 (타입 안전성을 위해)
+        safe_party_name: str = party_name or "왕코가나지"
+        safe_nickname: str = nickname or "테스트유저"
+        safe_pod_id: int = pod_id or 20
+        safe_review_id: int = review_id or 1
+
         # 알림 타입별로 적절한 함수 호출
         success = False
         if notification_type == NotificationType.POD_JOIN_REQUEST:
             success = await fcm_service.send_pod_join_request(
-                token=user.fcm_token,
-                nickname=nickname,
-                pod_id=pod_id,
+                token=fcm_token,
+                nickname=safe_nickname,
+                pod_id=safe_pod_id,
                 db=db,
                 user_id=user_id,
                 related_user_id=10,  # 테스트용 신청자 ID
-                related_pod_id=pod_id,
             )
         elif notification_type == NotificationType.POD_REQUEST_APPROVED:
             success = await fcm_service.send_pod_request_approved(
-                token=user.fcm_token,
-                party_name=party_name,
-                pod_id=pod_id,
+                token=fcm_token,
+                party_name=safe_party_name,
+                pod_id=safe_pod_id,
                 db=db,
                 user_id=user_id,
                 related_user_id=6,  # 테스트용 승인자 ID
-                related_pod_id=pod_id,
+                related_pod_id=safe_pod_id,
             )
         elif notification_type == NotificationType.POD_REQUEST_REJECTED:
             success = await fcm_service.send_pod_request_rejected(
-                token=user.fcm_token,
-                party_name=party_name,
-                pod_id=pod_id,
+                token=fcm_token,
+                party_name=safe_party_name,
+                pod_id=safe_pod_id,
                 db=db,
                 user_id=user_id,
                 related_user_id=6,  # 테스트용 거절자 ID
-                related_pod_id=pod_id,
+                related_pod_id=safe_pod_id,
             )
         elif notification_type == NotificationType.POD_NEW_MEMBER:
             success = await fcm_service.send_pod_new_member(
-                user.fcm_token, nickname, party_name, pod_id
+                fcm_token, safe_nickname, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_UPDATED:
             success = await fcm_service.send_pod_updated(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_CONFIRMED:
             success = await fcm_service.send_pod_confirmed(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_CANCELED:
             success = await fcm_service.send_pod_canceled(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_START_SOON:
             success = await fcm_service.send_pod_start_soon(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_LOW_ATTENDANCE:
             success = await fcm_service.send_pod_low_attendance(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_LIKES_THRESHOLD:
             success = await fcm_service.send_pod_likes_threshold(
-                user.fcm_token, party_name
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.POD_VIEWS_THRESHOLD:
             success = await fcm_service.send_pod_views_threshold(
-                user.fcm_token, party_name
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.SAVED_POD_DEADLINE:
             success = await fcm_service.send_saved_pod_deadline(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.SAVED_POD_SPOT_OPENED:
             success = await fcm_service.send_saved_pod_spot_opened(
-                user.fcm_token, party_name, pod_id
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.REVIEW_CREATED:
             success = await fcm_service.send_review_created(
-                user.fcm_token, nickname, party_name, review_id
+                fcm_token, safe_nickname, safe_party_name, safe_review_id
             )
         elif notification_type == NotificationType.REVIEW_REMINDER_DAY:
             success = await fcm_service.send_review_reminder_day(
-                user.fcm_token, party_name
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.REVIEW_REMINDER_WEEK:
             success = await fcm_service.send_review_reminder_week(
-                user.fcm_token, party_name
+                fcm_token, safe_party_name, safe_pod_id
             )
         elif notification_type == NotificationType.REVIEW_OTHERS_CREATED:
             success = await fcm_service.send_review_others_created(
-                user.fcm_token, nickname, review_id
+                fcm_token, safe_nickname, safe_review_id, safe_pod_id
             )
         elif notification_type == NotificationType.FOLLOWED_BY_USER:
             success = await fcm_service.send_followed_by_user(
-                user.fcm_token, nickname, user_id
+                fcm_token, safe_nickname, user_id
             )
         elif notification_type == NotificationType.FOLLOWED_USER_CREATED_POD:
             success = await fcm_service.send_followed_user_created_pod(
-                user.fcm_token, nickname, party_name, pod_id
+                fcm_token, safe_nickname, safe_party_name, safe_pod_id
             )
 
         if success:

@@ -5,11 +5,11 @@ import logging
 import json
 
 from app.core.database import get_db
-from app.schemas.common.base_response import BaseResponse
-from app.schemas.pod_review import SimplePodDto
-from app.services.fcm_service import FCMService
-from app.crud.user import UserCRUD
-from app.crud.pod.pod import PodCRUD
+from app.common.schemas import BaseResponse
+from app.features.pods.schemas import SimplePodDto
+from app.core.services.fcm_service import FCMService
+from app.features.users.repositories import UserRepository
+from app.features.pods.repositories.pod_repository import PodCRUD
 from datetime import datetime, time, timezone
 
 
@@ -137,21 +137,32 @@ async def handle_sendbird_webhook(
 
                 # sub_categories 파싱
                 sub_categories = []
-                if pod.sub_categories:
+                sub_categories_value = getattr(pod, "sub_categories", None)
+                if sub_categories_value:
                     try:
-                        sub_categories = json.loads(pod.sub_categories)
+                        sub_categories = json.loads(sub_categories_value)
                     except (json.JSONDecodeError, TypeError):
                         sub_categories = []
 
+                # pod 속성을 안전하게 추출
+                pod_id_value: int = getattr(pod, "id", 0)
+                pod_owner_id: int = getattr(pod, "owner_id", 0)
+                pod_title: str = getattr(pod, "title", "")
+                pod_thumbnail_url: str | None = getattr(pod, "thumbnail_url", None)
+                pod_image_url: str | None = getattr(pod, "image_url", None)
+                pod_place: str = getattr(pod, "place", "")
+                pod_meeting_date = getattr(pod, "meeting_date", None)
+                pod_meeting_time = getattr(pod, "meeting_time", None)
+
                 simple_pod = SimplePodDto(
-                    id=pod.id,
-                    owner_id=pod.owner_id,
-                    title=pod.title,
-                    thumbnail_url=pod.thumbnail_url or pod.image_url or "",
+                    id=pod_id_value,
+                    owner_id=pod_owner_id,
+                    title=pod_title,
+                    thumbnail_url=pod_thumbnail_url or pod_image_url or "",
                     sub_categories=sub_categories,
-                    meeting_place=pod.place,
+                    meeting_place=pod_place,
                     meeting_date=_convert_to_timestamp(
-                        pod.meeting_date, pod.meeting_time
+                        pod_meeting_date, pod_meeting_time
                     ),
                 )
                 # SimplePodDto를 JSON 문자열로 변환
@@ -163,11 +174,15 @@ async def handle_sendbird_webhook(
     notified: List[int] = []
     if recipient_ids and message_text:
         fcm = FCMService()
-        user_crud = UserCRUD(db)
+        user_crud = UserRepository(db)
 
         for rid in recipient_ids:
             user = await user_crud.get_by_id(rid)
-            if not user or not user.fcm_token:
+            if not user:
+                continue
+            # fcm_token을 안전하게 추출
+            fcm_token: str | None = getattr(user, "fcm_token", None)
+            if not fcm_token:
                 continue
 
             # 제목: 파티 이름
@@ -197,7 +212,7 @@ async def handle_sendbird_webhook(
             logger.info(f"[Sendbird 웹훅] 최종 data: {data}")
             try:
                 await fcm.send_notification(
-                    token=user.fcm_token,
+                    token=fcm_token,
                     title=title,
                     body=body,
                     data=data,

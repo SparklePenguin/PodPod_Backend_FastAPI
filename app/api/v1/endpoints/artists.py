@@ -1,29 +1,26 @@
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    status,
-    Query,
-    Path,
     File,
-    UploadFile,
     Form,
+    HTTPException,
+    Path,
+    Query,
+    UploadFile,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.schemas import BaseResponse, PageDto
 from app.core.database import get_db
-from app.services.artist_service import ArtistService
-from app.schemas.common import BaseResponse, PageDto
-from app.schemas.artist import ArtistDto, ArtistSimpleDto
-from app.schemas.artist_image import (
-    ArtistImageDto,
-    UpdateArtistImageRequest,
-)
-from app.crud.artist import ArtistCRUD
 from app.core.http_status import HttpStatus
-import os
-import random
+from app.features.artists.repositories.artist_repository import ArtistCRUD
+from app.features.artists.schemas.artist_image import (
+    ArtistImageDto,
+)
+from app.features.artists.schemas.artist_schemas import ArtistDto, ArtistSimpleDto
+from app.features.artists.services.artist_service import ArtistService
 
 router = APIRouter()
 
@@ -46,12 +43,16 @@ def get_artist_service(db: AsyncSession = Depends(get_db)) -> ArtistService:
     description="아티스트 목록을 간소화된 형태로 조회합니다. ArtistUnit의 artist_id에 해당하는 아티스트 정보(unitId, artistId, 이름)를 반환합니다.",
 )
 async def get_artists_simple(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     is_active: bool = Query(
-        True, alias="isActive", description="활성화 상태 필터 (true/false)"
+        True,
+        serialization_alias="isActive",
+        description="활성화 상태 필터 (true/false)",
     ),
     artist_service: ArtistService = Depends(get_artist_service),
 ):
@@ -76,12 +77,16 @@ async def get_artists_simple(
     description="아티스트 목록을 페이지네이션과 필터링으로 조회합니다. 기본적으로 활성화된 아티스트만 반환합니다.",
 )
 async def get_artists(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     is_active: bool = Query(
-        True, alias="isActive", description="활성화 상태 필터 (true/false)"
+        True,
+        serialization_alias="isActive",
+        description="활성화 상태 필터 (true/false)",
     ),
     artist_service: ArtistService = Depends(get_artist_service),
 ):
@@ -192,13 +197,19 @@ async def get_artist_images(
 async def create_artist_image(
     artist_id: int = Path(..., description="아티스트 ID"),
     # Form 파라미터 (alias 작동 안함):
-    image: Optional[UploadFile] = File(None, description="이미지 파일", alias="image"),
-    path: Optional[str] = Form(None, description="이미지 경로"),
-    file_id: Optional[str] = Form(None, description="파일 ID", alias="fileId"),
-    is_animatable: bool = Form(
-        False, description="애니메이션 가능 여부", alias="isAnimatable"
+    image: Optional[UploadFile] = File(
+        None, description="이미지 파일", serialization_alias="image"
     ),
-    size: Optional[str] = Form(None, description="이미지 크기", alias="size"),
+    path: Optional[str] = Form(None, description="이미지 경로"),
+    file_id: Optional[str] = Form(
+        None, description="파일 ID", serialization_alias="fileId"
+    ),
+    is_animatable: bool = Form(
+        False, description="애니메이션 가능 여부", serialization_alias="isAnimatable"
+    ),
+    size: Optional[str] = Form(
+        None, description="이미지 크기", serialization_alias="size"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """아티스트에 새로운 이미지를 생성합니다. 이미지 파일 또는 폼 데이터로 생성 가능합니다."""
@@ -260,6 +271,12 @@ async def create_artist_image(
             raise HTTPException(
                 status_code=HttpStatus.BAD_REQUEST,
                 detail=message,
+            )
+
+        if not created_image:
+            raise HTTPException(
+                status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+                detail="이미지 생성에 실패했습니다.",
             )
 
         return BaseResponse.ok(

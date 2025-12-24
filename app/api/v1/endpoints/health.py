@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from app.core.database import get_db
-from app.schemas.common import BaseResponse
-from app.core.http_status import HttpStatus
 from datetime import datetime
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.common.schemas import BaseResponse
+from app.core.database import get_db
+from app.core.http_status import HttpStatus
 
 router = APIRouter()
 
@@ -13,14 +15,22 @@ router = APIRouter()
 class HealthCheckResponse(BaseModel):
     """서버 상태 응답"""
 
-    status: str = Field(alias="status", description="서버 상태", example="healthy")
+    status: str = Field(
+        serialization_alias="status", description="서버 상태", examples=["healthy"]
+    )
     timestamp: str = Field(
-        alias="timestamp", description="확인 시간", example="2025-10-09T12:00:00"
+        serialization_alias="timestamp",
+        description="확인 시간",
+        examples=["2025-10-09T12:00:00"],
     )
     database: str = Field(
-        alias="database", description="데이터베이스 상태", example="connected"
+        serialization_alias="database",
+        description="데이터베이스 상태",
+        examples=["connected"],
     )
-    version: str = Field(alias="version", description="API 버전", example="1.0.0")
+    version: str = Field(
+        serialization_alias="version", description="API 버전", examples=["1.0.0"]
+    )
 
     model_config = {"populate_by_name": True}
 

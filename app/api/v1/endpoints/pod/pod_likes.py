@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.api.deps import get_current_user_id
-from app.services.pod.pod_service import PodService
-from app.schemas.common import BaseResponse
-from app.schemas.pod import PodLikeDto
+from app.features.pods.services.pod_service import PodService
+from app.common.schemas import BaseResponse
+from app.features.pods.schemas.pod_like_dto import PodLikeDto
 
 
 router = APIRouter()

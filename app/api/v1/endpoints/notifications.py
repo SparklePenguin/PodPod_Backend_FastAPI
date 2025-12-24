@@ -2,26 +2,25 @@
 알림 API 엔드포인트
 """
 
+import logging
+import math
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
-import math
-import logging
 
 from app.api.deps import get_current_user_id, get_db
-from app.crud.notification import notification_crud
-from app.schemas.notification import (
+from app.common.schemas import BaseResponse, PageDto
+from app.core.http_status import HttpStatus
+from app.features.follow.schemas import SimpleUserDto
+from app.features.notifications.repositories.notification import notification_crud
+from app.features.notifications.schemas import (
+    NotificationCategory,
     NotificationResponse,
     NotificationUnreadCountResponse,
     get_notification_main_type,
 )
-from app.schemas.common.page_dto import PageDto
-from app.schemas.common.base_response import BaseResponse
-from app.schemas.follow import SimpleUserDto
-from app.schemas.pod.pod_dto import PodDto
-from app.core.http_status import HttpStatus
-from app.services.pod.pod_service import PodService
-from app.services.tendency_service import TendencyService
+from app.features.tendencies.services.tendency_service import TendencyService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -34,9 +33,11 @@ logger = logging.getLogger(__name__)
     description="사용자의 알림 목록을 조회합니다. 페이지네이션을 지원합니다.",
 )
 async def get_notifications(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     unread_only: bool = Query(False, description="읽지 않은 알림만 조회할지 여부"),
     category: Optional[str] = Query(
@@ -71,7 +72,6 @@ async def get_notifications(
 
     # DTO 변환 (related_user, related_pod 정보 포함)
     notification_dtos = []
-    pod_service = PodService(db)
     tendency_service = TendencyService(db)
 
     for n in notifications:
@@ -104,8 +104,9 @@ async def get_notifications(
         related_pod_dto = None
         if n.related_pod:
             # SimplePodDto로 변환
-            from app.schemas.pod_review import SimplePodDto
-            from datetime import datetime, date, time
+            from datetime import datetime
+
+            from app.features.pods.schemas import SimplePodDto
 
             # meeting_date와 meeting_time을 하나의 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
             meeting_timestamp = 0
@@ -119,7 +120,7 @@ async def get_notifications(
                         tzinfo=timezone.utc,
                     )
                     meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
-                except:
+                except Exception:
                     meeting_timestamp = 0
 
             # sub_categories를 문자열에서 리스트로 파싱
@@ -150,24 +151,46 @@ async def get_notifications(
 
         # related_id를 int로 변환 (None이면 None 유지)
         related_id_int = None
-        if n.related_id is not None:
+        related_id_value = getattr(n, "related_id", None)
+        if related_id_value is not None:
             try:
-                related_id_int = int(n.related_id)
+                related_id_int = int(related_id_value)
             except (ValueError, TypeError):
                 related_id_int = None
 
+        # ORM 속성을 안전하게 추출
+        notification_type_value: str | None = getattr(n, "notification_type", None)
+        notification_type_str: str = notification_type_value or ""
+
         # NotificationResponse 직접 생성 (MissingGreenlet 오류 방지)
+        # Pydantic v2에서는 필드명을 사용해야 함 (populate_by_name=True이지만 타입 체커는 필드명을 요구)
+        # 필수 필드들의 타입을 명시적으로 처리
+        notification_value: str = getattr(n, "notification_value", "") or ""
+        category_value = getattr(n, "category", "pod")
+        category_enum: NotificationCategory = (
+            NotificationCategory(category_value)
+            if isinstance(category_value, str)
+            else NotificationCategory.POD
+        )
+        created_at_value = getattr(n, "created_at", None)
+        if created_at_value is None:
+            from datetime import datetime, timezone
+
+            created_at_value = datetime.now(timezone.utc).replace(tzinfo=None)
+
         notification_dto = NotificationResponse(
-            id=n.id,
-            title=n.title,
-            body=n.body,
-            type=get_notification_main_type(n.notification_type),
-            value=n.notification_value,
+            id=getattr(n, "id", 0),
+            title=getattr(n, "title", ""),
+            body=getattr(n, "body", ""),
+            type=get_notification_main_type(notification_type_str),
+            value=notification_value,
             related_id=related_id_int,
-            category=n.category,
-            is_read=n.is_read,
-            read_at=n.read_at,
-            created_at=n.created_at,
+            category=category_enum,
+            is_read=getattr(n, "is_read", False),  # 필드명 사용
+            read_at=getattr(
+                n, "read_at", None
+            ),  # 필드명 사용 (serialization_alias는 출력 시에만 사용)
+            created_at=created_at_value,  # 필드명 사용
             related_user=related_user_dto,
             related_pod=related_pod_dto,
         )
@@ -204,7 +227,7 @@ async def get_unread_count(
         db=db, user_id=current_user_id
     )
     return BaseResponse.ok(
-        data=NotificationUnreadCountResponse(unread_count=unread_count),
+        data=NotificationUnreadCountResponse(unread_count=unread_count),  # 필드명 사용
         message_ko="읽지 않은 알림 개수 조회 성공",
         http_status=HttpStatus.OK,
     )
@@ -248,8 +271,9 @@ async def mark_notification_as_read(
 
     related_pod_dto = None
     if notification.related_pod:
-        from app.schemas.pod_review import SimplePodDto
-        from datetime import datetime, date, time
+        from datetime import datetime
+
+        from app.features.pods.schemas import SimplePodDto
 
         # meeting_date와 meeting_time을 하나의 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
         meeting_timestamp = 0
@@ -266,7 +290,7 @@ async def mark_notification_as_read(
                     tzinfo=timezone.utc,
                 )
                 meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
-            except:
+            except Exception:
                 meeting_timestamp = 0
 
         # sub_categories를 문자열에서 리스트로 파싱
@@ -298,23 +322,46 @@ async def mark_notification_as_read(
 
     # related_id를 int로 변환
     related_id_int = None
-    if notification.related_id is not None:
+    related_id_value = getattr(notification, "related_id", None)
+    if related_id_value is not None:
         try:
-            related_id_int = int(notification.related_id)
+            related_id_int = int(related_id_value)
         except (ValueError, TypeError):
             related_id_int = None
 
+    # ORM 속성을 안전하게 추출
+    notification_type_value: str | None = getattr(
+        notification, "notification_type", None
+    )
+    notification_type_str: str = notification_type_value or ""
+
+    # 필수 필드들의 타입을 명시적으로 처리
+    notification_value: str = getattr(notification, "notification_value", "") or ""
+    category_value = getattr(notification, "category", "pod")
+    category_enum: NotificationCategory = (
+        NotificationCategory(category_value)
+        if isinstance(category_value, str)
+        else NotificationCategory.POD
+    )
+    created_at_value = getattr(notification, "created_at", None)
+    if created_at_value is None:
+        from datetime import datetime, timezone
+
+        created_at_value = datetime.now(timezone.utc).replace(tzinfo=None)
+
     notification_dto = NotificationResponse(
-        id=notification.id,
-        title=notification.title,
-        body=notification.body,
-        type=get_notification_main_type(notification.notification_type),
-        value=notification.notification_value,
+        id=getattr(notification, "id", 0),
+        title=getattr(notification, "title", ""),
+        body=getattr(notification, "body", ""),
+        type=get_notification_main_type(notification_type_str),
+        value=notification_value,
         related_id=related_id_int,
-        category=notification.category,
-        is_read=notification.is_read,
-        read_at=notification.read_at,
-        created_at=notification.created_at,
+        category=category_enum,
+        is_read=getattr(notification, "is_read", False),  # 필드명 사용
+        read_at=getattr(
+            notification, "read_at", None
+        ),  # 필드명 사용 (serialization_alias는 출력 시에만 사용)
+        created_at=created_at_value,  # 필드명 사용
         related_user=related_user_dto,
         related_pod=related_pod_dto,
     )

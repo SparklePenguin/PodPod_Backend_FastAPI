@@ -14,15 +14,17 @@ PodPod FastAPI 서버 실행 스크립트
 주의: 이 스크립트는 run 스크립트를 통해 실행되어야 합니다.
 Infisical을 통해서만 환경변수를 로드합니다.
 """
-import subprocess
-import sys
-import yaml
-from pathlib import Path
+
 import argparse
 import os
+import subprocess
+import sys
+from pathlib import Path
+
+import yaml
 
 
-def load_config(config_file_path: str = None):
+def load_config(config_file_path: str | None = None):
     """설정 파일에서 서버 설정을 로드합니다."""
     # 기본 설정
     default_config = {
@@ -60,7 +62,9 @@ def load_config(config_file_path: str = None):
             print(f"설정 파일 로드 중 오류 발생: {e}")
             print("기본 설정을 사용합니다.")
     else:
-        print(f"경고: 설정 파일 {config_file_path}을 찾을 수 없습니다. 기본 설정을 사용합니다.")
+        print(
+            f"경고: 설정 파일 {config_file_path}을 찾을 수 없습니다. 기본 설정을 사용합니다."
+        )
 
     return default_config, config_file_path
 
@@ -191,9 +195,9 @@ def main():
     else:
         config_file = f"config.{args.env}.yaml"
 
-    print(f"========================================")
-    print(f"PodPod FastAPI 서버 시작")
-    print(f"========================================")
+    print("========================================")
+    print("PodPod FastAPI 서버 시작")
+    print("========================================")
 
     # 설정 로드
     config, config_file_path = load_config(config_file)

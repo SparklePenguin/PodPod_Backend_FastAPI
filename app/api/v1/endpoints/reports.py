@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user_id
-from app.services.report_service import ReportService
-from app.schemas.report import (
-    CreateReportRequest,
-    ReportResponse,
-    ReportReasonDto,
-    ReportReasonsResponse,
-)
-from app.schemas.common.base_response import BaseResponse
-from app.core.http_status import HttpStatus
+
+from app.api.deps import get_current_user_id, get_db
+from app.common.schemas import BaseResponse
 from app.core.error_codes import get_error_info
-from typing import List
+from app.core.http_status import HttpStatus
+from app.features.reports.schemas import (
+    CreateReportRequest,
+    ReportReasonsResponse,
+    ReportResponse,
+)
+from app.features.reports.services.report_service import ReportService
 
 router = APIRouter()
 
@@ -20,8 +19,8 @@ router = APIRouter()
 async def get_report_reasons():
     """신고 사유 목록 조회"""
     try:
-        report_service = ReportService(None)  # DB 불필요
-        reasons = report_service.get_report_reasons()
+        # get_report_reasons는 staticmethod이므로 인스턴스 없이 호출 가능
+        reasons = ReportService.get_report_reasons()
 
         return BaseResponse.ok(
             data=ReportReasonsResponse(reasons=reasons),
@@ -40,7 +39,7 @@ async def get_report_reasons():
             http_status=error_info.http_status,
             message_ko="신고 사유 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving report reasons.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -61,7 +60,7 @@ async def create_report(
                 http_status=400,
                 message_ko="자기 자신을 신고할 수 없습니다.",
                 message_en="Cannot report yourself.",
-                error="CANNOT_REPORT_SELF",
+                error_key="CANNOT_REPORT_SELF",
                 error_code=4010,
                 dev_note=None,
             )
@@ -81,7 +80,7 @@ async def create_report(
                 http_status=404,
                 message_ko="신고할 사용자를 찾을 수 없습니다.",
                 message_en="User to report not found.",
-                error="USER_NOT_FOUND",
+                error_key="USER_NOT_FOUND",
                 error_code=4004,
                 dev_note=None,
             )
@@ -105,7 +104,7 @@ async def create_report(
             http_status=400,
             message_ko=str(e),
             message_en="Invalid report request.",
-            error="INVALID_REPORT_REQUEST",
+            error_key="INVALID_REPORT_REQUEST",
             error_code=4011,
             dev_note=None,
         )
@@ -120,7 +119,7 @@ async def create_report(
             http_status=error_info.http_status,
             message_ko="신고 접수 중 오류가 발생했습니다.",
             message_en="An error occurred while submitting the report.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )

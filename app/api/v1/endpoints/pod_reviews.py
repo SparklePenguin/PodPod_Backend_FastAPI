@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Depends, Query, Path
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from app.core.database import get_db
+from fastapi import APIRouter, Body, Depends, Path, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user_id
-from app.services.pod_review_service import PodReviewService
-from app.schemas.pod_review import (
-    PodReviewCreateRequest,
-    PodReviewUpdateRequest,
-    PodReviewDto,
-)
-from app.schemas.common import PageDto, BaseResponse
-from app.core.http_status import HttpStatus
+from app.common.schemas import BaseResponse, PageDto
+from app.core.database import get_db
 from app.core.error_codes import get_error_info
+from app.core.http_status import HttpStatus
+from app.features.pods.schemas import (
+    PodReviewCreateRequest,
+    PodReviewDto,
+    PodReviewUpdateRequest,
+)
+from app.features.pods.services.review_service import PodReviewService
 
 router = APIRouter()
 
@@ -48,7 +49,7 @@ async def create_review(
                 http_status=error_info.http_status,
                 message_ko="후기 생성에 실패했습니다.",
                 message_en="Failed to create review.",
-                error=error_info.error_key,
+                error_key=error_info.error_key,
                 error_code=error_info.code,
                 dev_note=None,
             )
@@ -65,18 +66,18 @@ async def create_review(
             http_status=400,
             message_ko=str(e),
             message_en="Bad request.",
-            error="BAD_REQUEST",
+            error_key="BAD_REQUEST",
             error_code=4000,
             dev_note=None,
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 생성 중 오류가 발생했습니다.",
             message_en="An error occurred while creating review.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -112,7 +113,7 @@ async def get_review(
                 http_status=error_info.http_status,
                 message_ko="후기를 찾을 수 없습니다.",
                 message_en="Review not found.",
-                error=error_info.error_key,
+                error_key=error_info.error_key,
                 error_code=error_info.code,
                 dev_note=None,
             )
@@ -123,14 +124,14 @@ async def get_review(
             message_ko="후기를 조회했습니다.",
             message_en="Review retrieved successfully.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving review.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -149,9 +150,11 @@ async def get_review(
 )
 async def get_reviews_by_pod(
     pod_id: int = Path(..., description="파티 ID"),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -166,14 +169,14 @@ async def get_reviews_by_pod(
             message_ko="파티 후기 목록을 조회했습니다.",
             message_en="Pod reviews retrieved successfully.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving reviews.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -198,7 +201,7 @@ async def get_reviews_by_pod(
 )
 async def update_review(
     review_id: int = Path(..., description="후기 ID"),
-    request: PodReviewUpdateRequest = ...,
+    request: PodReviewUpdateRequest = Body(..., description="후기 수정 요청"),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -214,7 +217,7 @@ async def update_review(
                 http_status=error_info.http_status,
                 message_ko="후기 수정에 실패했습니다.",
                 message_en="Failed to update review.",
-                error=error_info.error_key,
+                error_key=error_info.error_key,
                 error_code=error_info.code,
                 dev_note=None,
             )
@@ -231,18 +234,18 @@ async def update_review(
             http_status=400,
             message_ko=str(e),
             message_en="Bad request.",
-            error="BAD_REQUEST",
+            error_key="BAD_REQUEST",
             error_code=4000,
             dev_note=None,
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 수정 중 오류가 발생했습니다.",
             message_en="An error occurred while updating review.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -282,7 +285,7 @@ async def delete_review(
                 http_status=error_info.http_status,
                 message_ko="후기 삭제에 실패했습니다.",
                 message_en="Failed to delete review.",
-                error=error_info.error_key,
+                error_key=error_info.error_key,
                 error_code=error_info.code,
                 dev_note=None,
             )
@@ -299,18 +302,18 @@ async def delete_review(
             http_status=400,
             message_ko=str(e),
             message_en="Bad request.",
-            error="BAD_REQUEST",
+            error_key="BAD_REQUEST",
             error_code=4000,
             dev_note=None,
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 삭제 중 오류가 발생했습니다.",
             message_en="An error occurred while deleting review.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -329,11 +332,15 @@ async def delete_review(
 )
 async def get_user_written_reviews(
     user_id: Optional[int] = Query(
-        None, alias="userId", description="조회할 사용자 ID (없으면 현재 사용자)"
+        None,
+        serialization_alias="userId",
+        description="조회할 사용자 ID (없으면 현재 사용자)",
     ),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -352,14 +359,14 @@ async def get_user_written_reviews(
             message_ko="사용자가 작성한 후기 목록을 조회했습니다.",
             message_en="User written reviews retrieved successfully.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving reviews.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -378,11 +385,15 @@ async def get_user_written_reviews(
 )
 async def get_user_received_reviews(
     user_id: Optional[int] = Query(
-        None, alias="userId", description="조회할 사용자 ID (없으면 현재 사용자)"
+        None,
+        serialization_alias="userId",
+        description="조회할 사용자 ID (없으면 현재 사용자)",
     ),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -403,14 +414,14 @@ async def get_user_received_reviews(
             message_ko="사용자가 받은 후기 목록을 조회했습니다.",
             message_en="User received reviews retrieved successfully.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving reviews.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )

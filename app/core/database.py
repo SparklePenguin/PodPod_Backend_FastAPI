@@ -1,7 +1,9 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
-from .config import settings
 import logging
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
+
+from .config import settings
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -9,8 +11,8 @@ logger = logging.getLogger(__name__)
 # 비동기 엔진 생성 (개발 환경에서만 SQL 로그 출력)
 engine = create_async_engine(settings.DATABASE_URL, echo=False)  # SQL 로그 비활성화
 
-# 세션 팩토리 생성
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# 세션 팩토리 생성 (비동기용)
+AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # Base 클래스 생성
 Base = declarative_base()

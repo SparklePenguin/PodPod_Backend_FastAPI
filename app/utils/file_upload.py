@@ -1,8 +1,8 @@
-import os
 import uuid
 from pathlib import Path
-from fastapi import UploadFile
 from typing import Optional
+
+from fastapi import UploadFile
 
 
 async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
@@ -163,7 +163,8 @@ async def upload_artist_image(image: UploadFile) -> dict:
     file_id = str(uuid.uuid4())
 
     # 메타데이터 분석
-    is_animatable = is_animatable_image(image.filename)
+    image_filename = image.filename or ''
+    is_animatable = is_animatable_image(image_filename)
     size_string = get_file_size_string(file_size)
 
     return {

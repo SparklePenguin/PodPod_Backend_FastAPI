@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -127,15 +128,17 @@ security = HTTPBearer()
 
 # 예외 핸들러 등록
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from typing import cast
 
-app.add_exception_handler(HTTPException, http_exception_handler)
+# 타입 체커를 위한 타입 캐스팅
+app.add_exception_handler(HTTPException, cast(Any, http_exception_handler))  # type: ignore
 app.add_exception_handler(
-    StarletteHTTPException, http_exception_handler
+    StarletteHTTPException, cast(Any, http_exception_handler)  # type: ignore
 )  # Starlette의 405 등 처리
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(ValueError, value_error_handler)
-app.add_exception_handler(BusinessException, business_exception_handler)
-app.add_exception_handler(Exception, general_exception_handler)
+app.add_exception_handler(RequestValidationError, cast(Any, validation_exception_handler))  # type: ignore
+app.add_exception_handler(ValueError, cast(Any, value_error_handler))  # type: ignore
+app.add_exception_handler(BusinessException, cast(Any, business_exception_handler))  # type: ignore
+app.add_exception_handler(Exception, cast(Any, general_exception_handler))  # type: ignore
 
 
 # 헬스체크 엔드포인트

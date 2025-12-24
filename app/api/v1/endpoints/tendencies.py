@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_db
-from app.services.tendency_service import TendencyService
-from app.schemas.common import BaseResponse
+from app.features.tendencies.services.tendency_service import TendencyService
+from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
 
 router = APIRouter()
@@ -53,8 +53,11 @@ async def get_tendency_result(
     result = await tendency_service.get_tendency_result(tendency_type)
     if not result:
         return BaseResponse.error(
-            code=HttpStatus.NOT_FOUND,
-            message="성향 테스트 결과를 찾을 수 없습니다.",
+            error_key="TENDENCY_RESULT_NOT_FOUND",
+            error_code=4001,
+            http_status=HttpStatus.NOT_FOUND,
+            message_ko="성향 테스트 결과를 찾을 수 없습니다.",
+            message_en="Tendency test result not found.",
         )
     return BaseResponse.ok(data=result)
 

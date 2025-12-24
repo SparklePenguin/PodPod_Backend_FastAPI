@@ -1,11 +1,11 @@
-import logging
-import sys
 import json
+import logging
 import os
-from pathlib import Path
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+import sys
 from datetime import datetime
-from typing import Dict, Any
+from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
+from typing import Any, Dict
 
 # 로그 디렉토리 생성
 log_dir = Path("logs")
@@ -30,29 +30,50 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno,
         }
 
-        # 추가 컨텍스트 정보가 있으면 포함
-        if hasattr(record, "user_id"):
-            log_entry["user_id"] = record.user_id
-        if hasattr(record, "request_id"):
-            log_entry["request_id"] = record.request_id
-        if hasattr(record, "endpoint"):
-            log_entry["endpoint"] = record.endpoint
-        if hasattr(record, "method"):
-            log_entry["method"] = record.method
-        if hasattr(record, "status_code"):
-            log_entry["status_code"] = record.status_code
-        if hasattr(record, "duration"):
-            log_entry["duration"] = record.duration
-        if hasattr(record, "headers"):
-            log_entry["headers"] = record.headers
-        if hasattr(record, "request_body"):
-            log_entry["request_body"] = record.request_body
-        if hasattr(record, "query_params"):
-            log_entry["query_params"] = record.query_params
-        if hasattr(record, "client_ip"):
-            log_entry["client_ip"] = record.client_ip
-        if hasattr(record, "user_agent"):
-            log_entry["user_agent"] = record.user_agent
+        # 추가 컨텍스트 정보가 있으면 포함 (getattr로 안전하게 접근)
+        user_id = getattr(record, "user_id", None)
+        if user_id is not None:
+            log_entry["user_id"] = user_id
+
+        request_id = getattr(record, "request_id", None)
+        if request_id is not None:
+            log_entry["request_id"] = request_id
+
+        endpoint = getattr(record, "endpoint", None)
+        if endpoint is not None:
+            log_entry["endpoint"] = endpoint
+
+        method = getattr(record, "method", None)
+        if method is not None:
+            log_entry["method"] = method
+
+        status_code = getattr(record, "status_code", None)
+        if status_code is not None:
+            log_entry["status_code"] = status_code
+
+        duration = getattr(record, "duration", None)
+        if duration is not None:
+            log_entry["duration"] = duration
+
+        headers = getattr(record, "headers", None)
+        if headers is not None:
+            log_entry["headers"] = headers
+
+        request_body = getattr(record, "request_body", None)
+        if request_body is not None:
+            log_entry["request_body"] = request_body
+
+        query_params = getattr(record, "query_params", None)
+        if query_params is not None:
+            log_entry["query_params"] = query_params
+
+        client_ip = getattr(record, "client_ip", None)
+        if client_ip is not None:
+            log_entry["client_ip"] = client_ip
+
+        user_agent = getattr(record, "user_agent", None)
+        if user_agent is not None:
+            log_entry["user_agent"] = user_agent
 
         # 예외 정보가 있으면 포함
         if record.exc_info:
@@ -154,8 +175,8 @@ def log_api_request(
     endpoint: str,
     status_code: int,
     duration: float,
-    user_id: str = None,
-    request_id: str = None,
+    user_id: str | None = None,
+    request_id: str | None = None,
 ):
     """API 요청 로그를 기록"""
     logger.info(
@@ -172,7 +193,10 @@ def log_api_request(
 
 
 def log_user_action(
-    logger: logging.Logger, action: str, user_id: str, details: Dict[str, Any] = None
+    logger: logging.Logger,
+    action: str,
+    user_id: str,
+    details: Dict[str, Any] | None = None,
 ):
     """사용자 액션 로그를 기록"""
     extra = {"user_id": user_id, "action": action}
@@ -183,11 +207,11 @@ def log_user_action(
 
 
 def log_database_operation(
-    logger: logging.Logger, operation: str, table: str, duration: float = None
+    logger: logging.Logger, operation: str, table: str, duration: float | None = None
 ):
     """데이터베이스 작업 로그를 기록"""
-    extra = {"operation": operation, "table": table}
-    if duration:
+    extra: Dict[str, Any] = {"operation": operation, "table": table}
+    if duration is not None:
         extra["duration"] = duration
 
     logger.info(f"DB 작업: {operation} on {table}", extra=extra)

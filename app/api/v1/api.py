@@ -1,77 +1,52 @@
 from fastapi import APIRouter
+
+from app.features.artists.router import router as artists_router
+from app.features.auth.router import router as auth_router
+from app.features.follow.router import router as follow_router
+from app.features.locations.router import router as locations_router
+from app.features.notifications.router import router as notifications_router
+from app.features.pods.router import router as pods_router
+from app.features.reports.router import router as reports_router
+from app.features.tendencies.router import router as tendencies_router
+from app.features.users.router import router as users_router
+
 from .endpoints import (
-    users,
-    sessions,
-    oauths,
-    artists,
-    tendencies,
-    surveys,
-    artist_schedules,
-    follow,
-    artist_suggestions,
-    pod_reviews,
-    locations,
-    reports,
     health,
-    notifications,
-    user_notification_settings,
     random_profile_images,
+    webhooks,
 )
-from .endpoints.pod import pods, recruitments, pod_likes
 from .endpoints.admin import router as admin_router
-from .endpoints import webhooks
 
 api_router = APIRouter()
 
-# 사용자 관련 라우터
-api_router.include_router(users.router, prefix="/users", tags=["users"])
+# 사용자 관련 라우터 (features/users)
+api_router.include_router(users_router, prefix="/users", tags=["users"])
 
-# 세션 관련 라우터
-api_router.include_router(sessions.router, prefix="/sessions", tags=["sessions"])
+# 인증 관련 라우터 (features/auth)
+api_router.include_router(auth_router)
 
-# OAuth 관련 라우터
-api_router.include_router(oauths.router, prefix="/oauths", tags=["oauths"])
+# 아티스트 관련 라우터 (features/artists)
+api_router.include_router(artists_router)
 
-# 아티스트 관련 라우터
-api_router.include_router(artists.router, prefix="/artists", tags=["artists"])
+# 성향 테스트 관련 라우터 (features/tendencies)
+api_router.include_router(tendencies_router)
+
+# 파티 관련 라우터 (features/pods) - 이미 prefix가 포함되어 있음
+api_router.include_router(pods_router)
+
+# 팔로우 관련 라우터 (features/follow)
+api_router.include_router(follow_router, prefix="/follow", tags=["follow"])
+
+# 알림 관련 라우터 (features/notifications)
 api_router.include_router(
-    artist_schedules.router, prefix="/artist/schedules", tags=["artist-schedules"]
-)
-api_router.include_router(artist_suggestions.router, prefix="/artist-suggestions")
-
-# 성향 테스트 관련 라우터
-api_router.include_router(tendencies.router, prefix="/tendencies", tags=["tendencies"])
-
-# 설문 관련 라우터
-api_router.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
-
-
-# 파티 관련 라우터
-api_router.include_router(pods.router, prefix="/pods", tags=["pods"])
-api_router.include_router(recruitments, prefix="/recruitments", tags=["recruitments"])
-api_router.include_router(pod_likes, prefix="/pod-likes", tags=["podLikes"])
-
-# 팔로우 관련 라우터
-api_router.include_router(follow.router, prefix="/follow", tags=["follow"])
-
-# 알림 관련 라우터
-api_router.include_router(
-    notifications.router, prefix="/notifications", tags=["notifications"]
-)
-api_router.include_router(
-    user_notification_settings.router,
-    prefix="/user-notification-settings",
-    tags=["user-notification-settings"],
+    notifications_router, prefix="/notifications", tags=["notifications"]
 )
 
-# 후기 관련 라우터
-api_router.include_router(pod_reviews.router, prefix="/reviews", tags=["reviews"])
+# 지역 관련 라우터 (features/locations)
+api_router.include_router(locations_router, prefix="/regions", tags=["regions"])
 
-# 지역 관련 라우터
-api_router.include_router(locations.router, prefix="/regions", tags=["regions"])
-
-# 신고 관련 라우터
-api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+# 신고 관련 라우터 (features/reports)
+api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 
 # 관리자 관련 라우터
 api_router.include_router(admin_router)

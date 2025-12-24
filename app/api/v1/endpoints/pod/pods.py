@@ -1,34 +1,32 @@
-from typing import Optional, List
+from typing import Optional
+
 from fastapi import (
     APIRouter,
-    Depends,
-    Request,
-    Form,
-    File,
-    UploadFile,
-    Query,
     Body,
+    Depends,
+    File,
+    Form,
     Path,
+    Query,
+    UploadFile,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
 from app.api.deps import get_current_user_id
-from app.services.pod.pod_service import PodService
-from app.schemas.pod import (
-    PodCreateRequest,
-    PodDto,
-)
-from app.schemas.pod.pod_dto import PodSearchRequest
-from app.schemas.pod.image_order import ImageOrder
-from app.schemas.common import (
+from app.common.schemas import (
     BaseResponse,
     PageDto,
 )
-from app.core.http_status import HttpStatus
+from app.core.database import get_db
 from app.core.error_codes import get_error_info
-from app.services.scheduler_service import scheduler
-
+from app.core.http_status import HttpStatus
+from app.core.services.scheduler_service import scheduler
+from app.features.pods.schemas import (
+    PodCreateRequest,
+    PodDto,
+)
+from app.features.pods.schemas.pod_dto import PodSearchRequest
+from app.features.pods.services.pod_service import PodService
 
 router = APIRouter(dependencies=[])
 
@@ -54,38 +52,44 @@ def get_pod_service(
     tags=["pods"],
 )
 async def create_pod(
-    title: str = Form(..., alias="title", description="파티 제목"),
+    title: str = Form(..., serialization_alias="title", description="파티 제목"),
     description: Optional[str] = Form(
         ...,
-        alias="description",
+        serialization_alias="description",
         description="파티 설명",
     ),
     sub_categories: list[str] = Form(
         [],
-        alias="subCategories",
+        serialization_alias="subCategories",
         description="서브 카테고리 (예: ['EXCHANGE', 'SALE', 'GROUP_PURCHASE'] 등)",
     ),
-    capacity: int = Form(..., alias="capacity", description="최대 인원수"),
-    place: str = Form(..., alias="place", description="장소명"),
-    address: str = Form(..., alias="address", description="주소"),
-    sub_address: Optional[str] = Form(
-        None, alias="subAddress", description="상세 주소"
+    capacity: int = Form(
+        ..., serialization_alias="capacity", description="최대 인원수"
     ),
-    x: Optional[float] = Form(None, alias="x", description="경도 (longitude)"),
-    y: Optional[float] = Form(None, alias="y", description="위도 (latitude)"),
+    place: str = Form(..., serialization_alias="place", description="장소명"),
+    address: str = Form(..., serialization_alias="address", description="주소"),
+    sub_address: Optional[str] = Form(
+        None, serialization_alias="subAddress", description="상세 주소"
+    ),
+    x: Optional[float] = Form(
+        None, serialization_alias="x", description="경도 (longitude)"
+    ),
+    y: Optional[float] = Form(
+        None, serialization_alias="y", description="위도 (latitude)"
+    ),
     # 이제 meetingDate 하나로 UTC datetime을 받음
     meeting_date: str = Form(
         ...,
-        alias="meetingDate",
+        serialization_alias="meetingDate",
         description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     ),
     selected_artist_id: int = Form(
         ...,
-        alias="selectedArtistId",
+        serialization_alias="selectedArtistId",
         description="선택된 아티스트 ID",
     ),
     images: list[UploadFile] = File(
-        ..., alias="images", description="파티 이미지 리스트"
+        ..., serialization_alias="images", description="파티 이미지 리스트"
     ),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
@@ -94,8 +98,8 @@ async def create_pod(
     sub_category_list = sub_categories
 
     # meetingDate(UTC datetime) 파싱 → date/time 분리
-    from datetime import date, time, datetime, timezone
     import logging
+    from datetime import date, datetime, time, timezone
 
     logger = logging.getLogger(__name__)
 
@@ -163,10 +167,12 @@ async def create_pod(
     description="현재 선택된 아티스트 기준으로 마감되지 않은 인기 파티를 조회합니다.",
 )
 async def get_trending_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    selected_artist_id: int = Query(..., serialization_alias="selectedArtistId"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
@@ -206,11 +212,13 @@ async def get_trending_pods(
     description="현재 선택된 아티스트 기준으로 마감되지 않은 마감 직전 파티를 조회합니다.",
 )
 async def get_closing_soon_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
+    selected_artist_id: int = Query(..., serialization_alias="selectedArtistId"),
     location: Optional[str] = None,
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
@@ -250,10 +258,12 @@ async def get_closing_soon_pods(
     description="이전 매칭 사용자와 유사한 모임을 기반으로 파티를 추천합니다.",
 )
 async def get_history_based_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    selected_artist_id: int = Query(..., serialization_alias="selectedArtistId"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
@@ -297,11 +307,13 @@ async def get_history_based_pods(
     description="최근 일주일 기준 인기 카테고리 기반으로 파티를 추천합니다.",
 )
 async def get_popular_categories_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
+    selected_artist_id: int = Query(..., serialization_alias="selectedArtistId"),
     location: Optional[str] = None,
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Query(1, description="사용자 ID (테스트용)"),
     pod_service: PodService = Depends(get_pod_service),
@@ -341,9 +353,11 @@ async def get_popular_categories_pods(
     tags=["pods"],
 )
 async def get_my_joined_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
@@ -360,7 +374,7 @@ async def get_my_joined_pods(
             message_ko="내가 참여한 파티 목록을 조회했습니다.",
             message_en="Successfully retrieved my joined pods.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,
@@ -384,9 +398,11 @@ async def get_my_joined_pods(
     tags=["pods"],
 )
 async def get_my_liked_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
@@ -401,7 +417,7 @@ async def get_my_liked_pods(
             message_ko="내가 저장한 파티 목록을 조회했습니다.",
             message_en="Successfully retrieved my liked pods.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse.error(
             error_key=error_info.error_key,
@@ -425,13 +441,15 @@ async def get_my_liked_pods(
     tags=["pods"],
 )
 async def get_user_pods(
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     userId: Optional[int] = Query(
         None,
-        alias="userId",
+        serialization_alias="userId",
         description="조회할 사용자 ID (없으면 현재 로그인한 사용자)",
     ),
     current_user_id: int = Depends(get_current_user_id),
@@ -443,8 +461,8 @@ async def get_user_pods(
         target_user_id = userId if userId is not None else current_user_id
 
         # 먼저 해당 사용자가 존재하는지 확인
-        from app.services.user_service import UserService
         from app.core.error_codes import get_error_info
+        from app.features.users.services import UserService
 
         user_service = UserService(pod_service.db)
         try:
@@ -468,14 +486,14 @@ async def get_user_pods(
             message_ko="사용자가 개설한 파티 목록을 조회했습니다.",
             message_en="Successfully retrieved user's pods.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="유저의 파티 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving user's pods.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -524,7 +542,7 @@ async def get_pods(
             http_status=error_info.http_status,
             message_ko="잘못된 날짜 형식입니다.",
             message_en="Invalid date format.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=str(e),
         )
@@ -535,7 +553,7 @@ async def get_pods(
             http_status=error_info.http_status,
             message_ko="팟 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving pods.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=str(e),
         )
@@ -557,15 +575,17 @@ async def get_pods(
 )
 async def get_pod_reviews(
     pod_id: int = Path(..., description="파티 ID"),
-    page: int = Query(1, ge=1, alias="page", description="페이지 번호 (1부터 시작)"),
+    page: int = Query(
+        1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
+    ),
     size: int = Query(
-        20, ge=1, le=100, alias="size", description="페이지 크기 (1~100)"
+        20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     db: AsyncSession = Depends(get_db),
 ):
     """파티별 후기 목록 조회"""
     try:
-        from app.services.pod_review_service import PodReviewService
+        from app.features.pods.services.review_service import PodReviewService
 
         review_service = PodReviewService(db)
         reviews = await review_service.get_reviews_by_pod(pod_id, page, size)
@@ -576,14 +596,14 @@ async def get_pod_reviews(
             message_ko="파티 후기 목록을 조회했습니다.",
             message_en="Pod reviews retrieved successfully.",
         )
-    except Exception as e:
+    except Exception:
         error_info = get_error_info("INTERNAL_SERVER_ERROR")
         return BaseResponse(
             data=None,
             http_status=error_info.http_status,
             message_ko="후기 목록 조회 중 오류가 발생했습니다.",
             message_en="An error occurred while retrieving reviews.",
-            error=error_info.error_key,
+            error_key=error_info.error_key,
             error_code=error_info.code,
             dev_note=None,
         )
@@ -638,49 +658,62 @@ async def get_pod_detail(
 )
 async def update_pod(
     pod_id: int,
-    title: Optional[str] = Form(None, alias="title", description="파티 제목"),
+    title: Optional[str] = Form(
+        None, serialization_alias="title", description="파티 제목"
+    ),
     description: Optional[str] = Form(
-        None, alias="description", description="파티 설명"
+        None, serialization_alias="description", description="파티 설명"
     ),
     sub_categories: Optional[list[str]] = Form(
-        None, alias="subCategories", description="서브 카테고리"
+        None, serialization_alias="subCategories", description="서브 카테고리"
     ),
-    capacity: Optional[int] = Form(None, alias="capacity", description="최대 인원수"),
-    place: Optional[str] = Form(None, alias="place", description="장소명"),
-    address: Optional[str] = Form(None, alias="address", description="주소"),
+    capacity: Optional[int] = Form(
+        None, serialization_alias="capacity", description="최대 인원수"
+    ),
+    place: Optional[str] = Form(
+        None, serialization_alias="place", description="장소명"
+    ),
+    address: Optional[str] = Form(
+        None, serialization_alias="address", description="주소"
+    ),
     sub_address: Optional[str] = Form(
-        None, alias="subAddress", description="상세 주소"
+        None, serialization_alias="subAddress", description="상세 주소"
     ),
-    x: Optional[float] = Form(None, alias="x", description="경도 (longitude)"),
-    y: Optional[float] = Form(None, alias="y", description="위도 (latitude)"),
+    x: Optional[float] = Form(
+        None, serialization_alias="x", description="경도 (longitude)"
+    ),
+    y: Optional[float] = Form(
+        None, serialization_alias="y", description="위도 (latitude)"
+    ),
     # 이제 meetingDate 하나로 UTC datetime을 받음
     meeting_date: Optional[str] = Form(
         None,
-        alias="meetingDate",
+        serialization_alias="meetingDate",
         description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     ),
     selected_artist_id: Optional[int] = Form(
-        None, alias="selectedArtistId", description="선택된 아티스트 ID"
+        None, serialization_alias="selectedArtistId", description="선택된 아티스트 ID"
     ),
     image_orders: Optional[str] = Form(
         None,
-        alias="imageOrders",
+        serialization_alias="imageOrders",
         description="이미지 순서 JSON 문자열 (기존: {type: 'existing', url: '...'}, 신규: {type: 'new', fileIndex: 0})",
     ),
     new_images: Optional[list[UploadFile]] = File(
-        None, alias="newImages", description="새로 업로드할 이미지 파일 리스트"
+        None,
+        serialization_alias="newImages",
+        description="새로 업로드할 이미지 파일 리스트",
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
     """파티 정보 수정 (이미지 업로드 지원)"""
-    from datetime import date, time
     import logging
 
     logger = logging.getLogger(__name__)
 
     # 모든 Form 데이터 로깅
-    logger.info(f"[API] 받은 모든 Form 데이터:")
+    logger.info("[API] 받은 모든 Form 데이터:")
     logger.info(f"[API] - title: {title}")
     logger.info(f"[API] - description: {description}")
     logger.info(f"[API] - image_orders: '{image_orders}'")
@@ -803,13 +836,13 @@ async def delete_pod(
 async def update_pod_status(
     pod_id: int,
     request: dict = Body(
-        ..., description="상태 업데이트 요청", example={"status": "COMPLETED"}
+        ..., description="상태 업데이트 요청", examples=[{"status": "COMPLETED"}]
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
     """파티 상태 업데이트 (JSON 요청 본문 방식)"""
-    from app.models.pod.pod_status import PodStatus
+    from app.features.pods.models.pod.pod_status import PodStatus
 
     # 요청 데이터 검증
     if "status" not in request:
@@ -882,7 +915,7 @@ async def delete_pod_member(
     user_id: Optional[str] = Query(
         default=None,
         description="삭제할 사용자 ID (없으면 현재 사용자)",
-        alias="userId",
+        serialization_alias="userId",
     ),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
@@ -941,7 +974,8 @@ async def debug_pods(
 ):
     """파티 디버그"""
     from sqlalchemy import select
-    from app.models.pod.pod import Pod
+
+    from app.features.pods.models.pod.pod import Pod
 
     try:
         query = select(Pod).order_by(Pod.id.desc()).limit(10)
@@ -978,9 +1012,11 @@ async def fix_pod88_date(
     db: AsyncSession = Depends(get_db),
 ):
     """파티 88번 날짜 수정"""
-    from sqlalchemy import select, update
-    from app.models.pod.pod import Pod
     from datetime import date
+
+    from sqlalchemy import select, update
+
+    from app.features.pods.models.pod.pod import Pod
 
     try:
         # 파티 88번 조회
@@ -1037,7 +1073,8 @@ async def cleanup_null_notifications(
 ):
     """null 알림 정리"""
     from sqlalchemy import delete
-    from app.models.notification import Notification
+
+    from app.features.notifications.models.notification import Notification
 
     try:
         # relatedId가 null인 알림들 삭제
@@ -1067,7 +1104,8 @@ async def cleanup_chat_notifications(
 ):
     """채팅 메시지 알림 정리"""
     from sqlalchemy import delete
-    from app.models.notification import Notification
+
+    from app.features.notifications.models.notification import Notification
 
     try:
         # CHAT_MESSAGE_RECEIVED 알림들 삭제
@@ -1099,7 +1137,8 @@ async def debug_notifications(
 ):
     """알림 디버그"""
     from sqlalchemy import select
-    from app.models.notification import Notification
+
+    from app.features.notifications.models.notification import Notification
 
     try:
         query = (

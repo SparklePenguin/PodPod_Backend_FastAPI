@@ -17,6 +17,7 @@ from typing import (
 from datetime import date, time, datetime
 from fastapi import Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from fastapi.datastructures import FormData
 from pydantic import BaseModel
 import json
 
@@ -51,7 +52,18 @@ class FormParser:
         # JSON 문자열로 된 필드가 있는지 확인
         if json_field_name in form_data:
             try:
-                json_data = json.loads(form_data[json_field_name])
+                json_value = form_data[json_field_name]
+                # UploadFile이 아닌 str인지 확인
+                if isinstance(json_value, str):
+                    json_data = json.loads(json_value)
+                elif isinstance(json_value, UploadFile):
+                    # UploadFile인 경우 읽어서 문자열로 변환
+                    content = await json_value.read()
+                    json_str = content.decode('utf-8') if isinstance(content, bytes) else content
+                    json_data = json.loads(json_str)
+                else:
+                    # 기타 타입은 문자열로 변환 후 파싱
+                    json_data = json.loads(str(json_value))
                 return model_class(**json_data)
             except (json.JSONDecodeError, ValueError) as e:
                 raise RequestValidationError(
@@ -88,7 +100,7 @@ class FormParser:
 
     @staticmethod
     def _parse_individual_fields(
-        form_data: Dict[str, Any], model_class: Type[T]
+        form_data: FormData, model_class: Type[T]
     ) -> Dict[str, Any]:
         """개별 필드들을 파싱하여 딕셔너리로 변환"""
         parsed_data = {}
@@ -108,15 +120,25 @@ class FormParser:
                 continue
 
             # 타입에 따른 파싱
-            parsed_data[field_name] = FormParser._parse_field_value(
-                field_value, field_info.annotation
-            )
+            field_type = field_info.annotation
+            if field_type is None:
+                # 타입이 없으면 문자열로 처리
+                parsed_data[field_name] = str(field_value) if isinstance(field_value, str) else field_value
+            else:
+                # UploadFile이 아닌 경우에만 파싱
+                if isinstance(field_value, str):
+                    parsed_data[field_name] = FormParser._parse_field_value(
+                        field_value, field_type
+                    )
+                else:
+                    # UploadFile인 경우 그대로 전달
+                    parsed_data[field_name] = field_value
 
-            return parsed_data
+        return parsed_data
 
     @staticmethod
     def _get_missing_fields(
-        form_data: Dict[str, Any], model_class: Type[T]
+        form_data: FormData, model_class: Type[T]
     ) -> List[str]:
         """누락된 필수 필드들을 찾아서 반환"""
         missing_fields = []
@@ -208,6 +230,7 @@ async def get_form_file(request: Request, field_name: str) -> Optional[UploadFil
     """Form에서 특정 파일을 가져오는 편의 함수"""
     form_data = await request.form()
     file_field = form_data.get(field_name)
-    if file_field and hasattr(file_field, "filename"):
+    # UploadFile 타입인지 확인
+    if isinstance(file_field, UploadFile) and hasattr(file_field, "filename"):
         return file_field
     return None
