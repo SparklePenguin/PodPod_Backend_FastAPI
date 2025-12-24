@@ -226,7 +226,7 @@ $RECYCLE.BIN/
 
 # FastAPI specific
 # API documentation
-docs/
+# docs/
 
 # Database files
 *.db
