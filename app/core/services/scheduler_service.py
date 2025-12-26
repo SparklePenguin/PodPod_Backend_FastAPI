@@ -1,14 +1,16 @@
+import asyncio
+import logging
+from datetime import date, datetime, timedelta, timezone
+
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, update
-from app.features.pods.models.pod import Pod, PodMember, PodLike
+
+from app.core.database import get_session
+from app.core.services.fcm_service import FCMService
+from app.features.pods.models.pod import Pod, PodLike, PodMember
 from app.features.pods.models.pod.pod_rating import PodRating
 from app.features.pods.models.pod.pod_status import PodStatus
 from app.features.users.models import User
-from app.core.services.fcm_service import FCMService
-from app.core.database import get_db
-from datetime import datetime, date, timedelta, timezone
-import asyncio
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,7 @@ class SchedulerService:
         """모임 종료 후 리뷰 유도 알림 체크 (1시간마다)"""
         try:
             # 데이터베이스 세션 생성
-            async for db in get_db():
+            async for db in get_session():
                 try:
                     # 파티 상태 자동 변경 (미팅일이 된 확정 파티를 종료로)
                     await self._update_completed_pods_to_closed(db)
@@ -50,7 +52,7 @@ class SchedulerService:
         """파티 시작 1시간 전 알림 체크 (5분마다)"""
         try:
             # 데이터베이스 세션 생성
-            async for db in get_db():
+            async for db in get_session():
                 try:
                     # 파티 상태 자동 변경 (미팅일이 지난 확정 파티를 종료로)
                     await self._update_completed_pods_to_closed(db)
@@ -74,7 +76,7 @@ class SchedulerService:
         """마감 임박 알림 체크 (1시간마다)"""
         try:
             # 데이터베이스 세션 생성
-            async for db in get_db():
+            async for db in get_session():
                 try:
                     # 파티 마감 임박 알림 (24시간 전 + 인원 부족)
                     await self._send_low_attendance_reminders(db)
@@ -304,12 +306,12 @@ class SchedulerService:
             pod_owner_id = getattr(pod, "owner_id", None)
             pod_id = getattr(pod, "id", None)
             pod_title = getattr(pod, "title", "") or ""
-            
+
             for participant in participants:
                 participant_id = getattr(participant, "id", None)
                 if participant_id is None or pod_owner_id is None:
                     continue
-                
+
                 # 파티장 제외
                 if participant_id == pod_owner_id:
                     continue
@@ -317,7 +319,7 @@ class SchedulerService:
                     try:
                         if pod_id is None:
                             continue
-                            
+
                         # 이미 오늘 같은 알림을 보냈는지 확인
                         if await self._has_sent_review_reminder(
                             db, participant_id, pod_id, reminder_type
@@ -493,7 +495,9 @@ class SchedulerService:
                         )
 
                 except Exception as e:
-                    participant_id = getattr(participant, "id", None) if participant else None
+                    participant_id = (
+                        getattr(participant, "id", None) if participant else None
+                    )
                     logger.error(
                         f"파티 시작 임박 알림 전송 실패: user_id={participant_id}, error={e}"
                     )
@@ -566,8 +570,9 @@ class SchedulerService:
         """파티장에게 파티 마감 임박 알림 전송 (최근 24시간 내 이미 보낸 경우 제외)"""
         try:
             # 최근 24시간 내 같은 알림이 이미 있는지 확인
-            from app.features.notifications.models import Notification
             from datetime import datetime, timedelta, timezone
+
+            from app.features.notifications.models import Notification
 
             twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
@@ -602,7 +607,7 @@ class SchedulerService:
                 owner_id = getattr(owner, "id", None)
                 pod_id = getattr(pod, "id", None)
                 pod_title = getattr(pod, "title", "") or ""
-                
+
                 if owner_fcm_token and pod_id is not None and owner_id is not None:
                     await self.fcm_service.send_pod_low_attendance(
                         token=owner_fcm_token,
@@ -625,8 +630,9 @@ class SchedulerService:
         self, db: AsyncSession, user_id: int, pod_id: int
     ) -> bool:
         """파티 취소 임박 알림을 이미 보냈는지 확인 (최근 24시간 내)"""
-        from app.features.notifications.models import Notification
         from datetime import datetime, timedelta, timezone
+
+        from app.features.notifications.models import Notification
 
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
@@ -712,7 +718,7 @@ class SchedulerService:
             pod_id = getattr(pod, "id", None)
             if pod_owner_id is None or pod_id is None:
                 return
-            
+
             # 이미 오늘 같은 알림을 보냈는지 확인
             if await self._has_sent_canceled_soon_reminder(db, pod_owner_id, pod_id):
                 logger.info(
@@ -729,7 +735,7 @@ class SchedulerService:
                 owner_fcm_token = getattr(owner, "fcm_token", None)
                 owner_id = getattr(owner, "id", None)
                 pod_title = getattr(pod, "title", "") or ""
-                
+
                 if owner_fcm_token and pod_id is not None and owner_id is not None:
                     await self.fcm_service.send_pod_canceled_soon(
                         token=owner_fcm_token,
@@ -844,8 +850,9 @@ class SchedulerService:
         self, db: AsyncSession, user_id: int, pod_id: int
     ) -> bool:
         """좋아요한 파티 마감 임박 알림을 이미 보냈는지 확인 (최근 24시간 내)"""
-        from app.features.notifications.models import Notification
         from datetime import datetime, timedelta, timezone
+
+        from app.features.notifications.models import Notification
 
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
 
@@ -896,13 +903,13 @@ class SchedulerService:
             pod_id = getattr(pod, "id", None)
             pod_title = getattr(pod, "title", "") or ""
             pod_owner_id = getattr(pod, "owner_id", None)
-            
+
             for user in liked_users:
                 try:
                     user_id = getattr(user, "id", None)
                     if user_id is None or pod_id is None:
                         continue
-                    
+
                     # 이미 오늘 같은 알림을 보냈는지 확인
                     if await self._has_sent_saved_pod_deadline(db, user_id, pod_id):
                         logger.info(
@@ -959,10 +966,10 @@ class SchedulerService:
                     pod_title = getattr(pod, "title", "") or ""
                     pod_meeting_date = getattr(pod, "meeting_date", None)
                     chat_channel_url = getattr(pod, "chat_channel_url", None)
-                    
+
                     if pod_id is None:
                         continue
-                    
+
                     # 파티 상태를 CLOSED로 변경
                     stmt = (
                         update(Pod)
@@ -971,7 +978,7 @@ class SchedulerService:
                     )
                     await db.execute(stmt)
                     await db.commit()
-                    
+
                     logger.info(
                         f"파티 상태 변경: pod_id={pod_id}, title={pod_title}, meeting_date={pod_meeting_date}, COMPLETED → CLOSED"
                     )
@@ -979,7 +986,9 @@ class SchedulerService:
                     # 채팅방이 있으면 Sendbird에서만 삭제 (DB는 유지)
                     if chat_channel_url:
                         try:
-                            from app.core.services.sendbird_service import SendbirdService
+                            from app.core.services.sendbird_service import (
+                                SendbirdService,
+                            )
 
                             channel_url = chat_channel_url  # 삭제 전 URL 저장
                             sendbird_service = SendbirdService()
@@ -1083,7 +1092,7 @@ async def wait_until_10am():
         # 아직 오늘 10시가 안 지났다면 오늘 10시까지 대기
         wait_seconds = (today_10am - now).total_seconds()
 
-    logger.info(f"다음 스케줄러 실행까지 {wait_seconds/3600:.1f}시간 대기")
+    logger.info(f"다음 스케줄러 실행까지 {wait_seconds / 3600:.1f}시간 대기")
     await asyncio.sleep(wait_seconds)
 
 

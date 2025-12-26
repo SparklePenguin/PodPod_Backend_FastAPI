@@ -1,17 +1,17 @@
-from fastapi import APIRouter, Request, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any, Dict, List, Optional
-import logging
 import json
-
-from app.core.database import get_db
-from app.common.schemas import BaseResponse
-from app.features.pods.schemas import SimplePodDto
-from app.core.services.fcm_service import FCMService
-from app.features.users.repositories import UserRepository
-from app.features.pods.repositories.pod_repository import PodCRUD
+import logging
 from datetime import datetime, time, timezone
+from typing import Any, Dict, List, Optional
 
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.common.schemas import BaseResponse
+from app.core.database import get_session
+from app.core.services.fcm_service import FCMService
+from app.features.pods.repositories.pod_repository import PodCRUD
+from app.features.pods.schemas import SimplePodDto
+from app.features.users.repositories import UserRepository
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 )
 async def handle_sendbird_webhook(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> BaseResponse[dict]:
     """Sendbird 그룹 채널 메시지 전송 웹훅 처리 엔드포인트.
 

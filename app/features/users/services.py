@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.schemas import PageDto
 from app.core.error_codes import raise_error
 from app.core.security import get_password_hash
-from app.features.artists.repositories.artist_repository import ArtistCRUD
+from app.features.artists.repositories.artist_repository import ArtistRepository
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas import SignUpRequest
 from app.features.follow.repositories.follow_repository import FollowCRUD
@@ -25,7 +25,7 @@ from app.features.users.schemas import (
 class UserService:
     def __init__(self, db: AsyncSession):
         self.user_crud = UserRepository(db)
-        self.artist_crud = ArtistCRUD(db)
+        self.artist_crud = ArtistRepository(db)
         self.follow_service = FollowService(db)
         self.block_crud = UserBlockRepository(db)
         self.follow_crud = FollowCRUD(db)
@@ -39,15 +39,15 @@ class UserService:
         user_email = user_data.email
         if user_email is None:
             raise_error("EMAIL_REQUIRED")
-        
+
         # 타입 체커를 위해 명시적으로 str임을 보장
         assert user_email is not None, "user_email should not be None after check"
         existing_user = await self.user_crud.get_by_email(user_email)
         if existing_user:
             # 같은 provider인지 확인
-            existing_auth_provider = getattr(existing_user, 'auth_provider', None)
-            existing_auth_provider_id = getattr(existing_user, 'auth_provider_id', None)
-            
+            existing_auth_provider = getattr(existing_user, "auth_provider", None)
+            existing_auth_provider_id = getattr(existing_user, "auth_provider_id", None)
+
             if (
                 user_data.auth_provider
                 and existing_auth_provider == user_data.auth_provider
@@ -83,9 +83,9 @@ class UserService:
             logger = logging.getLogger(__name__)
             sendbird_service = SendbirdService()
 
-            user_id_val = getattr(user, 'id', None) or 0
-            user_nickname = getattr(user, 'nickname', None) or "사용자"
-            user_profile_image = getattr(user, 'profile_image', None) or ""
+            user_id_val = getattr(user, "id", None) or 0
+            user_nickname = getattr(user, "nickname", None) or "사용자"
+            user_profile_image = getattr(user, "profile_image", None) or ""
 
             sendbird_success = await sendbird_service.create_user(
                 user_id=str(user_id_val),
@@ -102,12 +102,12 @@ class UserService:
             import logging
 
             logger = logging.getLogger(__name__)
-            user_id_val = getattr(user, 'id', None) or 0
+            user_id_val = getattr(user, "id", None) or 0
             logger.error(f"사용자 {user_id_val} Sendbird 유저 생성 중 오류: {e}")
             # Sendbird 생성 실패는 무시하고 계속 진행
 
         # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, 'id', None)
+        user_id_val = getattr(user, "id", None)
         user_data_dto = await self._prepare_user_dto_data(user, user_id_val)
         return UserDto.model_validate(user_data_dto, from_attributes=False)
 
@@ -121,13 +121,13 @@ class UserService:
         )
         if not user:
             return None
-        
-        user_is_del = getattr(user, 'is_del', False)
+
+        user_is_del = getattr(user, "is_del", False)
         if user_is_del:
             return None
 
         # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, 'id', None)
+        user_id_val = getattr(user, "id", None)
         user_data = await self._prepare_user_dto_data(user, user_id_val)
         return UserDto.model_validate(user_data, from_attributes=False)
 
@@ -143,13 +143,13 @@ class UserService:
         user = await self.user_crud.get_by_id(user_id)
         if not user:
             raise_error("USER_NOT_FOUND")
-        
-        user_is_del = getattr(user, 'is_del', False)
+
+        user_is_del = getattr(user, "is_del", False)
         if user_is_del:
             raise_error("USER_NOT_FOUND")
 
         # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, 'id', None)
+        user_id_val = getattr(user, "id", None)
         user_data = await self._prepare_user_dto_data(user, user_id_val)
         return UserDto.model_validate(user_data, from_attributes=False)
 
@@ -161,8 +161,8 @@ class UserService:
         user = await self.user_crud.get_by_id(user_id)
         if not user:
             raise_error("USER_NOT_FOUND")
-        
-        user_is_del = getattr(user, 'is_del', False)
+
+        user_is_del = getattr(user, "is_del", False)
         if user_is_del:
             raise_error("USER_NOT_FOUND")
 
@@ -214,7 +214,7 @@ class UserService:
             )
 
         # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, 'id', None)
+        user_id_val = getattr(user, "id", None)
         user_dto_data = await self._prepare_user_dto_data(user, user_id_val)
         return UserDto.model_validate(user_dto_data, from_attributes=False)
 
@@ -314,7 +314,7 @@ class UserService:
             )
             user_tendency = result.scalar_one_or_none()
             if user_tendency:
-                tendency_type_raw = getattr(user_tendency, 'tendency_type', None)
+                tendency_type_raw = getattr(user_tendency, "tendency_type", None)
                 return str(tendency_type_raw) if tendency_type_raw is not None else None
             return None
         except Exception as e:
@@ -380,7 +380,7 @@ class UserService:
             raise_error("USER_NOT_FOUND")
 
         # 약관 동의 업데이트 (setattr 사용)
-        setattr(user, 'terms_accepted', terms_accepted)
+        setattr(user, "terms_accepted", terms_accepted)
         await self.db.commit()
         await self.db.refresh(user)  # 세션 갱신
 
@@ -410,17 +410,18 @@ class UserService:
         # 2. 차단한 사람이 나를 팔로우하고 있었다면 팔로우 해제
         await self.follow_crud.delete_follow(blocked_id, blocker_id)
 
-        blocker_id_val = getattr(block, 'blocker_id', None) or 0
-        blocked_id_val = getattr(block, 'blocked_id', None) or 0
-        created_at_raw = getattr(block, 'created_at', None)
-        
+        blocker_id_val = getattr(block, "blocker_id", None) or 0
+        blocked_id_val = getattr(block, "blocked_id", None) or 0
+        created_at_raw = getattr(block, "created_at", None)
+
         # datetime 기본값 제공
         from datetime import datetime, timezone
+
         if created_at_raw is None:
             created_at_val = datetime.now(timezone.utc).replace(tzinfo=None)
         else:
             created_at_val = created_at_raw
-        
+
         return BlockUserResponse(
             blocker_id=blocker_id_val,
             blocked_id=blocked_id_val,
@@ -442,21 +443,21 @@ class UserService:
         users = []
         for user, blocked_at in blocked_data:
             # 성향 타입 조회
-            user_id_val = getattr(user, 'id', None)
+            user_id_val = getattr(user, "id", None)
             if user_id_val is None:
                 continue
             tendency_type = await self._get_user_tendency_type(user_id_val)
 
             user_id = user_id_val
-            user_nickname = getattr(user, 'nickname', '') or ''
-            user_profile_image = getattr(user, 'profile_image', '') or ''
-            user_intro = getattr(user, 'intro', '') or ''
+            user_nickname = getattr(user, "nickname", "") or ""
+            user_profile_image = getattr(user, "profile_image", "") or ""
+            user_intro = getattr(user, "intro", "") or ""
             user_dto = SimpleUserDto(
                 id=user_id,
                 nickname=user_nickname,
                 profile_image=user_profile_image,
                 intro=user_intro,
-                tendency_type=tendency_type or '',
+                tendency_type=tendency_type or "",
                 is_following=False,  # 차단한 사용자는 팔로우할 수 없음
             )
             users.append(user_dto)
@@ -502,7 +503,7 @@ class UserService:
             raise_error("USER_NOT_FOUND")
 
         # 이미 삭제된 사용자인지 확인
-        user_is_del = getattr(user, 'is_del', False) if user else False
+        user_is_del = getattr(user, "is_del", False) if user else False
         if bool(user_is_del):
             return
 
@@ -552,9 +553,13 @@ class UserService:
 
         for pod in owner_pods:
             if pod:
-                status_value = PodStatus.CANCELED.value if hasattr(PodStatus.CANCELED, 'value') else str(PodStatus.CANCELED)
-                setattr(pod, 'status', status_value)
-                setattr(pod, 'is_active', False)
+                status_value = (
+                    PodStatus.CANCELED.value
+                    if hasattr(PodStatus.CANCELED, "value")
+                    else str(PodStatus.CANCELED)
+                )
+                setattr(pod, "status", status_value)
+                setattr(pod, "is_active", False)
         await self.db.commit()
 
         # 9. 팔로우/차단/신고 관계는 유지 (상대방이 볼 수 있으므로)

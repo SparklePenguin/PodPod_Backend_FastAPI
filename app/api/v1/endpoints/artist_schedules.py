@@ -13,18 +13,18 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import BaseResponse, PageDto
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.http_status import HttpStatus
 from app.features.artists.schemas.artist_schedule_schemas import (
     ArtistScheduleDto,
 )
-from app.features.artists.services.schedule_service import ArtistScheduleService
+from app.features.artists.services.artist_schedule_service import ArtistScheduleService
 
 router = APIRouter()
 
 
 def get_artist_schedule_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> ArtistScheduleService:
     return ArtistScheduleService(db)
 

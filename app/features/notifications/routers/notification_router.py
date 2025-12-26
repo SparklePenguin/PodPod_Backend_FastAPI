@@ -9,9 +9,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id, get_db
 from app.common.schemas import BaseResponse, PageDto
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
+from app.deps.database import get_session
 from app.features.follow.schemas import SimpleUserDto
 from app.features.notifications.repositories.notification import (
     notification_crud,
@@ -45,7 +46,7 @@ async def get_notifications(
         None, description="카테고리 필터 (pod, community, notice)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """알림 목록 조회"""
     skip = (page - 1) * size
@@ -201,7 +202,7 @@ async def get_notifications(
 )
 async def get_unread_count(
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """읽지 않은 알림 개수 조회"""
     unread_count = await notification_crud.get_unread_count(
@@ -223,7 +224,7 @@ async def get_unread_count(
 async def mark_notification_as_read(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """알림 읽음 처리"""
     notification = await notification_crud.mark_as_read(
@@ -341,7 +342,7 @@ async def mark_notification_as_read(
 )
 async def mark_all_notifications_as_read(
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """모든 알림 읽음 처리"""
     updated_count = await notification_crud.mark_all_as_read(
@@ -365,7 +366,7 @@ async def mark_all_notifications_as_read(
 async def delete_notification(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """알림 삭제"""
     success = await notification_crud.delete_notification(
@@ -395,7 +396,7 @@ async def delete_notification(
 )
 async def delete_all_read_notifications(
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """읽은 알림 전체 삭제"""
     deleted_count = await notification_crud.delete_all_read_notifications(

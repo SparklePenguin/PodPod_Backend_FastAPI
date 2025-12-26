@@ -1,22 +1,24 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id
 from app.common.schemas import BaseResponse, PageDto
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
 from app.features.artists.schemas.artist_suggestion_schemas import (
     ArtistSuggestionCreateRequest,
     ArtistSuggestionDto,
     ArtistSuggestionRankingDto,
 )
-from app.features.artists.services.suggestion_service import ArtistSuggestionService
+from app.features.artists.services.artist_suggestion_service import (
+    ArtistSuggestionService,
+)
 
 router = APIRouter(tags=["artist-suggestions"])
 
 
 def get_artist_suggestion_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> ArtistSuggestionService:
     return ArtistSuggestionService(db)
 

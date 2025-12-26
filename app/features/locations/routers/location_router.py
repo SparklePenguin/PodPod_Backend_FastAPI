@@ -1,21 +1,21 @@
 from typing import List
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
 
-from app.core.database import get_db
-from app.features.locations.services.location_service import LocationService
+from app.common.schemas import BaseResponse
+from app.core.database import get_session
+from app.core.http_status import HttpStatus
 from app.features.locations.schemas import (
     LocationDto,
     LocationResponse,
 )
-from app.common.schemas import BaseResponse, PageDto
-from app.core.http_status import HttpStatus
+from app.features.locations.services.location_service import LocationService
 
 router = APIRouter()
 
 
-def get_location_service(db: AsyncSession = Depends(get_db)) -> LocationService:
+def get_location_service(db: AsyncSession = Depends(get_session)) -> LocationService:
     return LocationService(db)
 
 

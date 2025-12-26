@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id
 from app.common.schemas import BaseResponse
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.error_codes import raise_error
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
 from app.features.follow.schemas import SimpleUserDto
 from app.features.pods.schemas.pod_application_dto import PodApplicationDto
 from app.features.pods.services.pod_service import PodService
@@ -37,13 +37,13 @@ class ReviewApplicationRequest(BaseModel):
 
 
 def get_pod_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> PodService:
     return PodService(db)
 
 
 def get_recruitment_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> RecruitmentService:
     return RecruitmentService(db)
 
@@ -133,7 +133,7 @@ async def handle_application(
 
     if result is None:
         raise_error("APPLICATION_HANDLE_FAILED")
-    
+
     # 타입 체커를 위해 명시적으로 dict임을 보장
     assert result is not None, "result should not be None after check"
     result_dict: dict = result
@@ -175,9 +175,9 @@ async def get_apply_to_pod_list(
 
     application_dtos = []
     for application in applications:
-        user_id_value = getattr(application, 'user_id')
+        user_id_value = getattr(application, "user_id")
         user = await recruitment_service.db.get(User, user_id_value)
-        reviewed_by_value = getattr(application, 'reviewed_by', None)
+        reviewed_by_value = getattr(application, "reviewed_by", None)
         reviewer = (
             await recruitment_service.db.get(User, reviewed_by_value)
             if reviewed_by_value
@@ -191,7 +191,9 @@ async def get_apply_to_pod_list(
             )
         )
         user_tendency = result.scalar_one_or_none()
-        user_tendency_type = getattr(user_tendency, 'tendency_type', None) if user_tendency else None
+        user_tendency_type = (
+            getattr(user_tendency, "tendency_type", None) if user_tendency else None
+        )
 
         # 검토자 성향 타입 조회
         reviewer_tendency_type = None
@@ -203,15 +205,17 @@ async def get_apply_to_pod_list(
             )
             reviewer_tendency = result.scalar_one_or_none()
             reviewer_tendency_type = (
-                getattr(reviewer_tendency, 'tendency_type', None) if reviewer_tendency else None
+                getattr(reviewer_tendency, "tendency_type", None)
+                if reviewer_tendency
+                else None
             )
 
         # SimpleUserDto 생성
         user_dto = SimpleUserDto(
-            id=getattr(user, 'id'),
-            nickname=getattr(user, 'nickname'),
-            profile_image=getattr(user, 'profile_image'),
-            intro=getattr(user, 'intro'),
+            id=getattr(user, "id"),
+            nickname=getattr(user, "nickname"),
+            profile_image=getattr(user, "profile_image"),
+            intro=getattr(user, "intro"),
             tendency_type=user_tendency_type or "",
             is_following=False,
         )
@@ -219,22 +223,22 @@ async def get_apply_to_pod_list(
         reviewer_dto = None
         if reviewer:
             reviewer_dto = SimpleUserDto(
-                id=getattr(reviewer, 'id'),
-                nickname=getattr(reviewer, 'nickname'),
-                profile_image=getattr(reviewer, 'profile_image'),
-                intro=getattr(reviewer, 'intro'),
+                id=getattr(reviewer, "id"),
+                nickname=getattr(reviewer, "nickname"),
+                profile_image=getattr(reviewer, "profile_image"),
+                intro=getattr(reviewer, "intro"),
                 tendency_type=reviewer_tendency_type or "",
                 is_following=False,
             )
 
         application_dto = PodApplicationDto(
-            id=getattr(application, 'id'),
-            podId=getattr(application, 'pod_id'),
+            id=getattr(application, "id"),
+            podId=getattr(application, "pod_id"),
             user=user_dto,
-            message=getattr(application, 'message'),
-            status=getattr(application, 'status'),
-            appliedAt=getattr(application, 'applied_at'),
-            reviewedAt=getattr(application, 'reviewed_at'),
+            message=getattr(application, "message"),
+            status=getattr(application, "status"),
+            appliedAt=getattr(application, "applied_at"),
+            reviewedAt=getattr(application, "reviewed_at"),
             reviewedBy=reviewer_dto,
         )
         application_dtos.append(application_dto)

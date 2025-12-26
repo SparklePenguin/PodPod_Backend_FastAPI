@@ -3,11 +3,11 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id
 from app.common.schemas import BaseResponse, PageDto
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.error_codes import get_error_info
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
 from app.features.pods.schemas import (
     PodReviewCreateRequest,
     PodReviewDto,
@@ -35,7 +35,7 @@ router = APIRouter()
 async def create_review(
     request: PodReviewCreateRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """후기 생성"""
     try:
@@ -99,7 +99,7 @@ async def create_review(
 )
 async def get_review(
     review_id: int = Path(..., description="후기 ID"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """후기 조회"""
     try:
@@ -156,7 +156,7 @@ async def get_reviews_by_pod(
     size: int = Query(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """파티별 후기 목록 조회"""
     try:
@@ -203,7 +203,7 @@ async def update_review(
     review_id: int = Path(..., description="후기 ID"),
     request: PodReviewUpdateRequest = Body(...),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """후기 수정"""
     try:
@@ -271,7 +271,7 @@ async def update_review(
 async def delete_review(
     review_id: int = Path(..., description="후기 ID"),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """후기 삭제"""
     try:
@@ -343,7 +343,7 @@ async def get_user_written_reviews(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """사용자가 작성한 후기 목록 조회"""
     try:
@@ -396,7 +396,7 @@ async def get_user_received_reviews(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """사용자가 받은 후기 목록 조회"""
     try:

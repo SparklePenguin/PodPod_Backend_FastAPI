@@ -10,7 +10,7 @@ from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.api import api_router
+from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import init_db
 from app.core.exceptions import (
@@ -128,14 +128,16 @@ security = HTTPBearer()
 
 # 예외 핸들러 등록
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from typing import cast
 
 # 타입 체커를 위한 타입 캐스팅
 app.add_exception_handler(HTTPException, cast(Any, http_exception_handler))  # type: ignore
 app.add_exception_handler(
-    StarletteHTTPException, cast(Any, http_exception_handler)  # type: ignore
+    StarletteHTTPException,
+    cast(Any, http_exception_handler),  # type: ignore
 )  # Starlette의 405 등 처리
-app.add_exception_handler(RequestValidationError, cast(Any, validation_exception_handler))  # type: ignore
+app.add_exception_handler(
+    RequestValidationError, cast(Any, validation_exception_handler)
+)  # type: ignore
 app.add_exception_handler(ValueError, cast(Any, value_error_handler))  # type: ignore
 app.add_exception_handler(BusinessException, cast(Any, business_exception_handler))  # type: ignore
 app.add_exception_handler(Exception, cast(Any, general_exception_handler))  # type: ignore

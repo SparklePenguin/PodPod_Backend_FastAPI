@@ -102,7 +102,7 @@ def create_access_token(
     )
     return jwt.encode(
         payload.model_dump(),
-        settings.SECRET_KEY,
+        settings.secret_key,
         algorithm=settings.ALGORITHM,
     )
 
@@ -124,7 +124,7 @@ def create_refresh_token(
     )
     return jwt.encode(
         payload.model_dump(),
-        settings.SECRET_KEY,
+        settings.secret_key,
         algorithm=settings.ALGORITHM,
     )
 
@@ -139,7 +139,7 @@ def verify_token(token: str, token_type: str | None = None) -> int:
     try:
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            settings.secret_key,
             algorithms=[settings.ALGORITHM],
         )
         user_id: str | None = payload.get("sub")

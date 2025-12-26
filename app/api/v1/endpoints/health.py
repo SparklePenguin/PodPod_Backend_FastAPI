@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import BaseResponse
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.http_status import HttpStatus
 
 router = APIRouter()
@@ -48,7 +48,7 @@ class HealthCheckResponse(BaseModel):
     description="서버와 데이터베이스 연결 상태를 확인합니다.",
     tags=["health"],
 )
-async def health_check(db: AsyncSession = Depends(get_db)):
+async def health_check(db: AsyncSession = Depends(get_session)):
     """서버 상태 확인 (Health Check)"""
 
     # 데이터베이스 연결 확인

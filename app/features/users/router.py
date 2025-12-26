@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from app.utils.file_upload import upload_profile_image
 from fastapi import (
     APIRouter,
     Depends,
@@ -12,13 +13,10 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import (
-    get_current_user_id,
-    get_user_service,
-)
 from app.common.schemas import BaseResponse, PageDto
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas import SignUpRequest
 from app.features.follow.schemas import SimpleUserDto
@@ -33,7 +31,6 @@ from app.features.users.schemas import (
     UserNotificationSettingsDto,
 )
 from app.features.users.services import UserService
-from app.utils.file_upload import upload_profile_image
 
 router = APIRouter()
 
@@ -59,10 +56,11 @@ router = APIRouter()
 async def accept_terms(
     request: AcceptTermsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """약관 동의"""
-    user = await user_service.accept_terms(current_user_id, request.terms_accepted)
+    service = UserService(session)
+    user = await service.accept_terms(current_user_id, request.terms_accepted)
     return BaseResponse.ok(
         data=user,
         message_ko="약관 동의가 완료되었습니다.",
@@ -87,10 +85,11 @@ async def accept_terms(
 )
 async def create_user(
     user_data: SignUpRequest,
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 생성 (회원가입)"""
-    user = await user_service.create_user(user_data)
+    service = UserService(session)
+    user = await service.create_user(user_data)
     return BaseResponse.ok(data=user, http_status=HttpStatus.CREATED)
 
 
@@ -112,20 +111,19 @@ async def get_user_info(
         None, serialization_alias="userId", description="조회할 사용자 ID (없으면 본인)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 정보 조회 (토큰 필요)"""
+    service = UserService(session)
     # user_id가 제공되지 않으면 현재 사용자 정보 반환
     target_user_id = user_id if user_id is not None else current_user_id
 
     if target_user_id == current_user_id:
         # 본인 정보 조회
-        user = await user_service.get_user(target_user_id)
+        user = await service.get_user(target_user_id)
     else:
         # 다른 사용자 정보 조회 (팔로우 통계 포함)
-        user = await user_service.get_user_with_follow_stats(
-            target_user_id, current_user_id
-        )
+        user = await service.get_user_with_follow_stats(target_user_id, current_user_id)
 
     return BaseResponse.ok(data=user)
 
@@ -148,7 +146,7 @@ async def update_user_profile(
     ),
     image: Optional[UploadFile] = File(None),
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 정보 업데이트 (토큰 필요, 파일 업로드 또는 경로 지정 가능)"""
     # 이미지 처리: 파일 업로드 또는 경로 지정
@@ -182,8 +180,8 @@ async def update_user_profile(
     profile_data = UpdateProfileRequest(
         nickname=nickname, intro=intro, profile_image=profile_image_url
     )
-
-    user = await user_service.update_profile(current_user_id, profile_data)
+    service = UserService(session)
+    user = await service.update_profile(current_user_id, profile_data)
     return BaseResponse.ok(data=user)
 
 
@@ -196,36 +194,21 @@ async def update_user_profile(
             "description": "선호 아티스트 조회 성공",
         },
     },
-    summary="선호 아티스트 조회",
-    description="현재 사용자의 선호 아티스트 목록을 조회합니다.",
     tags=["users"],
 )
 async def get_user_preferred_artists(
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 선호 아티스트 조회 (토큰 필요)"""
-    artists = await user_service.get_preferred_artists(current_user_id)
+    service = UserService(session)
+    artists = await service.get_preferred_artists(current_user_id)
     return BaseResponse.ok(data=artists)
 
 
 @router.put(
     "/preferred-artists",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "선호 아티스트 업데이트 성공",
-        },
-        HttpStatus.UNAUTHORIZED: {
-            "model": BaseResponse[None],
-            "description": "인증 실패",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
     summary="선호 아티스트 업데이트",
     description="현재 사용자의 선호 아티스트 목록을 업데이트합니다.",
     tags=["users"],
@@ -233,10 +216,11 @@ async def get_user_preferred_artists(
 async def update_user_preferred_artists(
     artists_data: UpdatePreferredArtistsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 선호 아티스트 업데이트 (토큰 필요)"""
-    artists = await user_service.update_preferred_artists(
+    service = UserService(session)
+    artists = await service.update_preferred_artists(
         current_user_id, artists_data.artist_ids
     )
     return BaseResponse.ok(data={"artists": artists})
@@ -264,7 +248,7 @@ async def update_user_preferred_artists(
 async def block_user(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 차단 (토큰 필요) - 팔로우 관계도 함께 삭제됨"""
     try:
@@ -279,8 +263,8 @@ async def block_user(
                 error_code=4003,
                 dev_note=None,
             )
-
-        block_response = await user_service.block_user(current_user_id, user_id)
+        service = UserService(session)
+        block_response = await service.block_user(current_user_id, user_id)
 
         if not block_response:
             return BaseResponse(
@@ -318,22 +302,6 @@ async def block_user(
 @router.get(
     "/blocks",
     response_model=BaseResponse[PageDto[SimpleUserDto]],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[PageDto[SimpleUserDto]],
-            "description": "차단된 사용자 목록 조회 성공",
-        },
-        HttpStatus.UNAUTHORIZED: {
-            "model": BaseResponse[None],
-            "description": "인증 실패",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
-    summary="차단된 사용자 목록 조회",
-    description="현재 사용자가 차단한 사용자 목록을 조회합니다.",
     tags=["users"],
 )
 async def get_blocked_users(
@@ -344,11 +312,12 @@ async def get_blocked_users(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """차단된 사용자 목록 조회 (토큰 필요)"""
     try:
-        blocked_users_page = await user_service.get_blocked_users(
+        service = UserService(session)
+        blocked_users_page = await service.get_blocked_users(
             current_user_id, page, size
         )
 
@@ -377,33 +346,16 @@ async def get_blocked_users(
 @router.delete(
     "/blocks/{user_id}",
     response_model=BaseResponse[bool],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[bool],
-            "description": "사용자 차단 해제 성공",
-        },
-        HttpStatus.UNAUTHORIZED: {
-            "model": BaseResponse[None],
-            "description": "인증 실패",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "차단 관계를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
 )
 async def unblock_user(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 차단 해제 (토큰 필요)"""
     try:
-        success = await user_service.unblock_user(current_user_id, user_id)
+        service = UserService(session)
+        success = await service.unblock_user(current_user_id, user_id)
 
         if not success:
             return BaseResponse(
@@ -442,25 +394,17 @@ async def unblock_user(
 @router.put(
     "/fcm-token",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "FCM 토큰 업데이트 성공",
-        },
-    },
-    summary="FCM 토큰 업데이트",
-    description="사용자의 FCM 토큰을 업데이트합니다 (푸시 알림용).",
     tags=["users"],
 )
 async def update_fcm_token(
     fcm_token: str = Query(..., serialization_alias="fcmToken", description="FCM 토큰"),
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """FCM 토큰 업데이트 (토큰 필요)"""
     from app.features.users.repositories import UserRepository
 
-    user_crud = UserRepository(user_service.db)
+    user_crud = UserRepository(session)
     await user_crud.update_profile(current_user_id, {"fcm_token": fcm_token})
 
     return BaseResponse.ok(
@@ -473,53 +417,21 @@ async def update_fcm_token(
 @router.get(
     "/{user_id}",
     response_model=BaseResponse[UserDto],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[UserDto],
-            "description": "사용자 조회 성공",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "사용자를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
 )
 async def get_user_by_id(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """특정 사용자 조회"""
-    user = await user_service.get_user_with_follow_stats(user_id, current_user_id)
+    service = UserService(session)
+    user = await service.get_user_with_follow_stats(user_id, current_user_id)
     return BaseResponse.ok(data=user)
 
 
 @router.delete(
     "",
     status_code=HttpStatus.NO_CONTENT,
-    responses={
-        HttpStatus.NO_CONTENT: {
-            "description": "사용자 삭제 성공 (No Content)",
-        },
-        HttpStatus.BAD_REQUEST: {
-            "model": BaseResponse[None],
-            "description": "userId 또는 토큰이 필요합니다",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "사용자를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
-    summary="사용자 삭제",
-    description="사용자 계정을 삭제합니다. userId가 제공되면 해당 사용자를 삭제하고, 없으면 토큰에서 사용자를 확인하여 삭제합니다.",
     tags=["users"],
 )
 async def delete_user(
@@ -527,7 +439,7 @@ async def delete_user(
         None, serialization_alias="userId", description="삭제할 사용자 ID"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """사용자 삭제 (userId 또는 토큰 필요)"""
     # userId가 있으면 해당 유저 삭제
@@ -538,7 +450,8 @@ async def delete_user(
         target_user_id = current_user_id
 
     try:
-        await user_service.delete_user(target_user_id)
+        service = UserService(session)
+        await service.delete_user(target_user_id)
         return Response(status_code=HttpStatus.NO_CONTENT)
     except Exception as e:
         # 사용자가 존재하지 않는 경우에도 204 No Content 반환
@@ -553,55 +466,29 @@ async def delete_user(
 @router.get(
     "/internal/all",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "사용자 목록 조회 성공",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
     tags=["internal"],
-    summary="모든 사용자 조회 (내부용)",
-    description="⚠️ 내부용 API - 모든 사용자 목록을 조회합니다. 개발/테스트 목적으로만 사용됩니다.",
 )
 async def get_all_users(
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """모든 사용자 조회 (내부용)"""
-    users = await user_service.get_users()
+    service = UserService(session)
+    users = await service.get_users()
     return BaseResponse.ok(data={"users": users})
 
 
 @router.get(
     "/internal/{user_id}",
     response_model=BaseResponse[UserDtoInternal],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[UserDtoInternal],
-            "description": "사용자 조회 성공",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "사용자를 찾을 수 없음",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR: {
-            "model": BaseResponse[None],
-            "description": "서버 내부 오류",
-        },
-    },
     tags=["internal"],
-    summary="특정 사용자 조회 (내부용)",
-    description="⚠️ 내부용 API - 특정 사용자의 정보를 조회합니다. 개발/테스트 목적으로만 사용됩니다.",
 )
 async def get_user_by_id_internal(
     user_id: int,
-    user_service: UserService = Depends(get_user_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """특정 사용자 조회 (내부용)"""
-    user = await user_service.get_user_internal(user_id)
+    service = UserService(session)
+    user = await service.get_user_internal(user_id)
     return BaseResponse.ok(data=user)
 
 
@@ -628,7 +515,7 @@ async def get_user_by_id_internal(
 )
 async def get_notification_settings(
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """알림 설정 조회"""
     from app.features.users.repositories import (
@@ -645,18 +532,18 @@ async def get_notification_settings(
         settings = await crud.create_default_settings(current_user_id)
 
     # DTO 변환
-    do_not_disturb_start_value = getattr(settings, 'do_not_disturb_start', None)
-    do_not_disturb_end_value = getattr(settings, 'do_not_disturb_end', None)
-    
+    do_not_disturb_start_value = getattr(settings, "do_not_disturb_start", None)
+    do_not_disturb_end_value = getattr(settings, "do_not_disturb_end", None)
+
     settings_dto = UserNotificationSettingsDto(
-        id=getattr(settings, 'id'),
-        user_id=getattr(settings, 'user_id'),
-        wake_up_alarm=bool(getattr(settings, 'notice_enabled', False)),
-        bus_alert=bool(getattr(settings, 'chat_enabled', False)),
-        party_alert=bool(getattr(settings, 'pod_enabled', False)),
-        community_alert=bool(getattr(settings, 'community_enabled', False)),
-        product_alarm=bool(getattr(settings, 'marketing_enabled', False)),
-        do_not_disturb_enabled=bool(getattr(settings, 'do_not_disturb_enabled', False)),
+        id=getattr(settings, "id"),
+        user_id=getattr(settings, "user_id"),
+        wake_up_alarm=bool(getattr(settings, "notice_enabled", False)),
+        bus_alert=bool(getattr(settings, "chat_enabled", False)),
+        party_alert=bool(getattr(settings, "pod_enabled", False)),
+        community_alert=bool(getattr(settings, "community_enabled", False)),
+        product_alarm=bool(getattr(settings, "marketing_enabled", False)),
+        do_not_disturb_enabled=bool(getattr(settings, "do_not_disturb_enabled", False)),
         start_time=(
             int(
                 do_not_disturb_start_value.hour * 3600
@@ -675,7 +562,7 @@ async def get_notification_settings(
             if do_not_disturb_end_value is not None
             else None
         ),
-        marketing_enabled=bool(getattr(settings, 'marketing_enabled', False)),
+        marketing_enabled=bool(getattr(settings, "marketing_enabled", False)),
     )
 
     return BaseResponse.ok(
@@ -694,7 +581,7 @@ async def get_notification_settings(
 async def update_notification_settings(
     update_data: UpdateUserNotificationSettingsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """알림 설정 수정"""
     from app.features.users.repositories import (
@@ -715,18 +602,20 @@ async def update_notification_settings(
         raise HTTPException(status_code=404, detail="알림 설정을 찾을 수 없습니다.")
 
     # DTO 변환
-    do_not_disturb_start_value = getattr(updated_settings, 'do_not_disturb_start', None)
-    do_not_disturb_end_value = getattr(updated_settings, 'do_not_disturb_end', None)
-    
+    do_not_disturb_start_value = getattr(updated_settings, "do_not_disturb_start", None)
+    do_not_disturb_end_value = getattr(updated_settings, "do_not_disturb_end", None)
+
     settings_dto = UserNotificationSettingsDto(
-        id=getattr(updated_settings, 'id'),
-        user_id=getattr(updated_settings, 'user_id'),
-        wake_up_alarm=bool(getattr(updated_settings, 'notice_enabled', False)),
-        bus_alert=bool(getattr(updated_settings, 'chat_enabled', False)),
-        party_alert=bool(getattr(updated_settings, 'pod_enabled', False)),
-        community_alert=bool(getattr(updated_settings, 'community_enabled', False)),
-        product_alarm=bool(getattr(updated_settings, 'marketing_enabled', False)),
-        do_not_disturb_enabled=bool(getattr(updated_settings, 'do_not_disturb_enabled', False)),
+        id=getattr(updated_settings, "id"),
+        user_id=getattr(updated_settings, "user_id"),
+        wake_up_alarm=bool(getattr(updated_settings, "notice_enabled", False)),
+        bus_alert=bool(getattr(updated_settings, "chat_enabled", False)),
+        party_alert=bool(getattr(updated_settings, "pod_enabled", False)),
+        community_alert=bool(getattr(updated_settings, "community_enabled", False)),
+        product_alarm=bool(getattr(updated_settings, "marketing_enabled", False)),
+        do_not_disturb_enabled=bool(
+            getattr(updated_settings, "do_not_disturb_enabled", False)
+        ),
         start_time=(
             int(
                 do_not_disturb_start_value.hour * 3600
@@ -745,7 +634,7 @@ async def update_notification_settings(
             if do_not_disturb_end_value is not None
             else None
         ),
-        marketing_enabled=bool(getattr(updated_settings, 'marketing_enabled', False)),
+        marketing_enabled=bool(getattr(updated_settings, "marketing_enabled", False)),
     )
 
     return BaseResponse.ok(

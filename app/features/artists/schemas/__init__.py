@@ -29,10 +29,10 @@ __all__ = [
     "ArtistDto",
     "ArtistSimpleDto",
     "ArtistImageDto",
-    "UpdateArtistImageRequest",
     "ArtistNameDto",
     "ArtistUnitDto",
     "ArtistsSyncDto",
+    "UpdateArtistImageRequest",
     # 아티스트 스케줄
     "ArtistScheduleDto",
     "ArtistScheduleCreateRequest",

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id, get_db
 from app.common.schemas import BaseResponse
 from app.core.error_codes import get_error_info
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
+from app.deps.database import get_session
 from app.features.reports.schemas import (
     CreateReportRequest,
     ReportReasonsResponse,
@@ -16,7 +17,7 @@ router = APIRouter()
 
 
 @router.get("/reasons", response_model=BaseResponse[ReportReasonsResponse])
-async def get_report_reasons(db: AsyncSession = Depends(get_db)):
+async def get_report_reasons(db: AsyncSession = Depends(get_session)):
     """신고 사유 목록 조회"""
     try:
         report_service = ReportService(db)
@@ -49,7 +50,7 @@ async def get_report_reasons(db: AsyncSession = Depends(get_db)):
 async def create_report(
     request: CreateReportRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """사용자 신고 생성 (차단 옵션 포함)"""
     try:
@@ -104,7 +105,7 @@ async def create_report(
             http_status=400,
             message_ko=str(e),
             message_en="Invalid report request.",
-                error_key="INVALID_REPORT_REQUEST",
+            error_key="INVALID_REPORT_REQUEST",
             error_code=4011,
             dev_note=None,
         )

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_db
+from app.deps.database import get_session
 from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
 from app.features.tendencies.services.tendency_service import TendencyService
@@ -8,7 +8,7 @@ from app.features.tendencies.services.tendency_service import TendencyService
 router = APIRouter()
 
 
-def get_tendency_service(db=Depends(get_db)) -> TendencyService:
+def get_tendency_service(db=Depends(get_session)) -> TendencyService:
     return TendencyService(db)
 
 

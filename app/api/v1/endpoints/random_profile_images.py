@@ -2,13 +2,14 @@
 랜덤 프로필 이미지 API 엔드포인트
 """
 
-from fastapi import APIRouter, Depends
 from typing import List
 
-from app.core.services.random_profile_image_service import RandomProfileImageService
-from app.features.users.schemas.random_profile_image import RandomProfileImageResponse
+from fastapi import APIRouter, Depends
+
 from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
+from app.core.services.random_profile_image_service import RandomProfileImageService
+from app.features.users.schemas.random_profile_image import RandomProfileImageResponse
 
 router = APIRouter()
 

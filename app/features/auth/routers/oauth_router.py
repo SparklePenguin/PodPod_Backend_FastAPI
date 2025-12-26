@@ -1,12 +1,21 @@
-from fastapi import APIRouter, Query, Depends
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer
-from typing import Optional
-from app.features.auth.services.kakao_oauth_service import KakaoOauthService, KakaoCallBackParam
-from app.features.auth.services.apple_oauth_service import AppleOauthService, AppleCallbackParam
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
-from app.api.deps import get_kakao_oauth_service, get_apple_oauth_service
+from app.deps.database import get_session
+from app.features.auth.services.apple_oauth_service import (
+    AppleCallbackParam,
+    AppleOauthService,
+)
+from app.features.auth.services.kakao_oauth_service import (
+    KakaoCallBackParam,
+    KakaoOauthService,
+)
 
 router = APIRouter()
 security = HTTPBearer()
@@ -28,7 +37,7 @@ async def kakao_callback(
     error: Optional[str] = Query(None, description="에러 코드"),
     error_description: Optional[str] = Query(None, description="에러 설명"),
     state: Optional[str] = Query(None, description="상태값"),
-    kakao_oauth_service: KakaoOauthService = Depends(get_kakao_oauth_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """카카오 OAuth 콜백 처리
 
@@ -41,9 +50,10 @@ async def kakao_callback(
         error_description=error_description,
         state=state,
     )
-    result = await kakao_oauth_service.handle_kakao_callback(params)
+    service = KakaoOauthService(session)
+    result = await service.handle_kakao_callback(params)
     # result는 SignInResponse이므로 model_dump 사용 가능
-    if hasattr(result, 'model_dump'):
+    if hasattr(result, "model_dump"):
         return BaseResponse.ok(data=result.model_dump(by_alias=True))
     else:
         return BaseResponse.ok(data=result)
@@ -67,7 +77,7 @@ async def apple_callback(
     error_description: Optional[str] = None,
     id_token: Optional[str] = None,
     user: Optional[str] = None,  # JSON 문자열로 전달됨
-    apple_oauth_service: AppleOauthService = Depends(get_apple_oauth_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """Apple 콜백 처리 (안드로이드 웹뷰 콜백)"""
     # user 파라미터를 dict로 변환
@@ -89,13 +99,14 @@ async def apple_callback(
         user=user_dict,
     )
 
-    result = await apple_oauth_service.handle_apple_callback(callback_params)
+    service = AppleOauthService(session)
+    result = await service.handle_apple_callback(callback_params)
     # result는 RedirectResponse이므로 그대로 반환
     if isinstance(result, RedirectResponse):
         return result
     else:
         # SignInResponse인 경우
-        if hasattr(result, 'model_dump'):
+        if hasattr(result, "model_dump"):
             return BaseResponse.ok(data=result.model_dump(by_alias=True))
         else:
             return BaseResponse.ok(data=result)

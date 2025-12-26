@@ -1,15 +1,19 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Optional
 import math
-from app.features.artists.repositories.suggestion_repository import ArtistSuggestionCRUD
-from app.features.artists.schemas.artist_suggestion_schemas import (
+from typing import Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.common.schemas import PageDto
+from app.core.exceptions import BusinessException
+from app.core.logging_config import get_logger
+from app.features.artists.repositories.artist_suggestion_repository import (
+    ArtistSuggestionRepository,
+)
+from app.features.artists.schemas import (
     ArtistSuggestionCreateRequest,
     ArtistSuggestionDto,
     ArtistSuggestionRankingDto,
 )
-from app.common.schemas import PageDto
-from app.core.logging_config import get_logger
-from app.core.exceptions import BusinessException
 
 logger = get_logger("artist_suggestion_service")
 
@@ -17,7 +21,7 @@ logger = get_logger("artist_suggestion_service")
 class ArtistSuggestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.crud = ArtistSuggestionCRUD(db)
+        self.crud = ArtistSuggestionRepository(db)
 
     async def create_suggestion(
         self, request: ArtistSuggestionCreateRequest, user_id: int

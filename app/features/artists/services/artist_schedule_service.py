@@ -1,19 +1,22 @@
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.artists.repositories.schedule_repository import ArtistScheduleCRUD
-from app.features.artists.schemas.artist_schedule_schemas import (
+from app.features.artists.repositories.artist_schedule_repository import (
+    ArtistScheduleRepository,
+)
+from app.features.artists.schemas import (
     ArtistScheduleCreateRequest,
     ArtistScheduleDto,
-    ScheduleMemberDto,
     ScheduleContentDto,
+    ScheduleMemberDto,
 )
 
 
 class ArtistScheduleService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.crud = ArtistScheduleCRUD(db)
+        self.crud = ArtistScheduleRepository(db)
 
     async def create_schedule(
         self, request: ArtistScheduleCreateRequest
@@ -66,40 +69,20 @@ class ArtistScheduleService:
 
     def _convert_to_dto(self, schedule) -> ArtistScheduleDto:
         """엔터티를 DTO로 변환"""
-        from app.features.artists.schemas.artist_schedule_schemas import ScheduleTypeEnum
-        from datetime import datetime, timezone
-        
-        schedule_type_value = getattr(schedule, "type", None)
-        if schedule_type_value is None:
-            schedule_type = ScheduleTypeEnum.GENERAL_CONTENT  # 기본값
-        else:
-            try:
-                schedule_type = ScheduleTypeEnum(schedule_type_value)
-            except (ValueError, TypeError):
-                schedule_type = ScheduleTypeEnum.GENERAL_CONTENT  # 기본값
-        
-        created_at_value = getattr(schedule, "created_at", None)
-        if created_at_value is None:
-            created_at_value = datetime.now(timezone.utc).replace(tzinfo=None)
-        
-        updated_at_value = getattr(schedule, "updated_at", None)
-        if updated_at_value is None:
-            updated_at_value = datetime.now(timezone.utc).replace(tzinfo=None)
-        
         return ArtistScheduleDto(
-            id=getattr(schedule, "id", 0),
-            artist_id=getattr(schedule, "artist_id", None),
-            unit_id=getattr(schedule, "unit_id", None),
-            artist_ko_name=getattr(schedule, "artist_ko_name", ""),  # 필드명 사용
-            type=schedule_type,
-            start_time=getattr(schedule, "start_time", 0),
-            end_time=getattr(schedule, "end_time", 0),
-            text=getattr(schedule, "text", None),
-            title=getattr(schedule, "title", ""),
-            channel=getattr(schedule, "channel", None),
-            location=getattr(schedule, "location", None),
-            created_at=created_at_value,  # 필드명 사용
-            updated_at=updated_at_value,  # 필드명 사용
+            id=schedule.id,
+            artist_id=schedule.artist_id,
+            unit_id=schedule.unit_id,
+            artist_ko_name=schedule.artist_ko_name,
+            type=schedule.type,
+            start_time=schedule.start_time,
+            end_time=schedule.end_time,
+            text=schedule.text,
+            title=schedule.title,
+            channel=schedule.channel,
+            location=schedule.location,
+            created_at=schedule.created_at,
+            updated_at=schedule.updated_at,
             members=[
                 ScheduleMemberDto(
                     id=member.id,

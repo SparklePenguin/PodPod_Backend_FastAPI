@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id
 from app.common.schemas import BaseResponse
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.http_status import HttpStatus
 from app.core.services.fcm_service import FCMService
+from app.deps.auth import get_current_user_id
 from app.features.users.repositories import UserRepository
 
 router = APIRouter()
@@ -79,7 +79,7 @@ class SendNotificationRequest(BaseModel):
 )
 async def send_test_notification(
     request: SendNotificationRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """테스트용 FCM 알림 전송"""
     try:
@@ -178,7 +178,7 @@ async def send_test_notification_to_self(
         description="알림 내용",
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """자신에게 테스트 알림 전송 (간편 테스트용)"""
     try:
@@ -289,7 +289,7 @@ async def send_notification_by_type(
     review_id: Optional[int] = Query(
         default=1, serialization_alias="reviewId", description="리뷰 ID (선택)"
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """특정 알림 타입으로 테스트 알림 전송"""
     try:

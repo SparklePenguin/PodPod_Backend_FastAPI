@@ -1,19 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
-from datetime import datetime
 import json
-from app.core.database import get_db
-from app.features.pods.repositories.pod_repository import PodCRUD
-from app.core.services.sendbird_service import SendbirdService
-from app.common.schemas import BaseResponse
-from app.core.http_status import HttpStatus
+from datetime import datetime
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.common.schemas import BaseResponse
+from app.core.database import get_session
+from app.core.http_status import HttpStatus
+from app.core.services.sendbird_service import SendbirdService
+from app.features.pods.repositories.pod_repository import PodCRUD
 
 router = APIRouter()
 
 
 @router.post("/create-channels")
-async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
+async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
     """모든 파티에 Sendbird 채팅방 생성"""
     try:
         pod_crud = PodCRUD(db)
@@ -21,7 +22,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
         # Sendbird 서비스 초기화
         try:
             sendbird_service = SendbirdService()
-        except ValueError as e:
+        except ValueError:
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
@@ -63,7 +64,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
                 pod_owner_id: int = getattr(pod, "owner_id", 0)
                 pod_thumbnail_url: str | None = getattr(pod, "thumbnail_url", None)
                 pod_place: str | None = getattr(pod, "place", None)
-                
+
                 # 채널 URL 생성 (pod_{pod_id}_chat 형식)
                 channel_url = f"pod_{pod_id}_chat"
 
@@ -170,7 +171,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/delete-channels")
-async def delete_sendbird_channels(db: AsyncSession = Depends(get_db)):
+async def delete_sendbird_channels(db: AsyncSession = Depends(get_session)):
     """모든 Sendbird 채팅방 삭제"""
     try:
         pod_crud = PodCRUD(db)
@@ -178,7 +179,7 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_db)):
         # Sendbird 서비스 초기화
         try:
             sendbird_service = SendbirdService()
-        except ValueError as e:
+        except ValueError:
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
@@ -277,7 +278,7 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/check-channels")
-async def check_sendbird_channels(db: AsyncSession = Depends(get_db)):
+async def check_sendbird_channels(db: AsyncSession = Depends(get_session)):
     """채팅방 상태 확인"""
     try:
         pod_crud = PodCRUD(db)
@@ -339,14 +340,14 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_db)):
 @router.get("/channel-metadata/{channel_url}")
 async def get_channel_metadata(
     channel_url: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """채널 메타데이터 확인"""
     try:
         # Sendbird 서비스 초기화
         try:
             sendbird_service = SendbirdService()
-        except ValueError as e:
+        except ValueError:
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
@@ -379,7 +380,7 @@ async def get_channel_metadata(
                 message_en="Channel not found",
             )
 
-    except Exception as e:
+    except Exception:
         return BaseResponse.error(
             error_key="METADATA_FETCH_FAILED",
             error_code=500,
@@ -391,7 +392,7 @@ async def get_channel_metadata(
 
 @router.put("/update-metadata")
 async def update_channel_metadata(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """기존 채팅방들의 메타데이터 업데이트"""
     try:
@@ -400,7 +401,7 @@ async def update_channel_metadata(
         # Sendbird 서비스 초기화
         try:
             sendbird_service = SendbirdService()
-        except ValueError as e:
+        except ValueError:
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
@@ -438,7 +439,7 @@ async def update_channel_metadata(
                 pod_owner_id: int = getattr(pod, "owner_id", 0)
                 pod_thumbnail_url: str | None = getattr(pod, "thumbnail_url", None)
                 pod_place: str | None = getattr(pod, "place", None)
-                
+
                 # 새로운 메타데이터 생성
                 new_metadata = {
                     "id": pod_id,

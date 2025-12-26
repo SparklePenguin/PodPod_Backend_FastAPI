@@ -1,8 +1,9 @@
-from pydantic_settings import BaseSettings
-from typing import Optional
 import os
-import yaml
 from pathlib import Path
+from typing import Optional
+
+import yaml
+from pydantic_settings import BaseSettings
 
 
 def load_config_file(config_path: Optional[str] = None) -> dict:
@@ -41,12 +42,15 @@ class Settings(BaseSettings):
     MYSQL_PORT: int = 3306
     MYSQL_DATABASE: str = "podpod"
 
+    # Redis 설정
+    redis_url: str = "redis://localhost:6379/0"
+
     # Sendbird 설정 (Infisical에서)
     SENDBIRD_APP_ID: Optional[str] = None
     SENDBIRD_API_TOKEN: Optional[str] = None
 
     # JWT 설정
-    SECRET_KEY: str  # Infisical에서 주입
+    secret_key: str  # Infisical에서 주입
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -108,22 +112,64 @@ class Settings(BaseSettings):
             # JWT 설정
             jwt_config = config.get("jwt", {})
             kwargs.setdefault("ALGORITHM", jwt_config.get("algorithm", "HS256"))
-            kwargs.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", jwt_config.get("access_token_expire_minutes", 30))
+            kwargs.setdefault(
+                "ACCESS_TOKEN_EXPIRE_MINUTES",
+                jwt_config.get("access_token_expire_minutes", 30),
+            )
 
             # OAuth 설정
             oauth_config = config.get("oauth", {})
-            kwargs.setdefault("KAKAO_REDIRECT_URI", oauth_config.get("kakao_redirect_uri", "http://localhost:3000/auth/kakao/callback"))
-            kwargs.setdefault("APPLE_REDIRECT_URI", oauth_config.get("apple_redirect_uri", "http://localhost:3000/auth/apple/callback"))
-            kwargs.setdefault("KAKAO_TOKEN_URL", oauth_config.get("kakao_token_url", "https://kauth.kakao.com/oauth/token"))
-            kwargs.setdefault("KAKAO_USER_INFO_URL", oauth_config.get("kakao_user_info_url", "https://kapi.kakao.com/v2/user/me"))
-            kwargs.setdefault("APPLE_PUBLIC_KEYS_URL", oauth_config.get("apple_public_keys_url", "https://appleid.apple.com/auth/keys"))
-            kwargs.setdefault("APPLE_TOKEN_URL", oauth_config.get("apple_token_url", "https://appleid.apple.com/auth/token"))
-            kwargs.setdefault("APPLE_ISSUER", oauth_config.get("apple_issuer", "https://appleid.apple.com"))
+            kwargs.setdefault(
+                "KAKAO_REDIRECT_URI",
+                oauth_config.get(
+                    "kakao_redirect_uri", "http://localhost:3000/auth/kakao/callback"
+                ),
+            )
+            kwargs.setdefault(
+                "APPLE_REDIRECT_URI",
+                oauth_config.get(
+                    "apple_redirect_uri", "http://localhost:3000/auth/apple/callback"
+                ),
+            )
+            kwargs.setdefault(
+                "KAKAO_TOKEN_URL",
+                oauth_config.get(
+                    "kakao_token_url", "https://kauth.kakao.com/oauth/token"
+                ),
+            )
+            kwargs.setdefault(
+                "KAKAO_USER_INFO_URL",
+                oauth_config.get(
+                    "kakao_user_info_url", "https://kapi.kakao.com/v2/user/me"
+                ),
+            )
+            kwargs.setdefault(
+                "APPLE_PUBLIC_KEYS_URL",
+                oauth_config.get(
+                    "apple_public_keys_url", "https://appleid.apple.com/auth/keys"
+                ),
+            )
+            kwargs.setdefault(
+                "APPLE_TOKEN_URL",
+                oauth_config.get(
+                    "apple_token_url", "https://appleid.apple.com/auth/token"
+                ),
+            )
+            kwargs.setdefault(
+                "APPLE_ISSUER",
+                oauth_config.get("apple_issuer", "https://appleid.apple.com"),
+            )
 
             # Google Sheets 설정
             sheets_config = config.get("google_sheets", {})
-            kwargs.setdefault("GOOGLE_CREDENTIALS_PATH", sheets_config.get("credentials_path", "credentials.json"))
-            kwargs.setdefault("GOOGLE_SHEETS_RANGE", sheets_config.get("range", "1xxx: 인증/로그인 관련 오류!A:F"))
+            kwargs.setdefault(
+                "GOOGLE_CREDENTIALS_PATH",
+                sheets_config.get("credentials_path", "credentials.json"),
+            )
+            kwargs.setdefault(
+                "GOOGLE_SHEETS_RANGE",
+                sheets_config.get("range", "1xxx: 인증/로그인 관련 오류!A:F"),
+            )
 
             # 앱 설정
             app_config = config.get("app", {})
@@ -152,8 +198,12 @@ class Settings(BaseSettings):
         kwargs.setdefault("APPLE_PRIVATE_KEY", os.getenv("APPLE_PRIVATE_KEY"))
         kwargs.setdefault("APPLE_SCHEME", os.getenv("APPLE_SCHEME"))
         kwargs.setdefault("GOOGLE_SHEETS_ID", os.getenv("GOOGLE_SHEETS_ID"))
-        kwargs.setdefault("GOOGLE_SHEETS_CREDENTIALS", os.getenv("GOOGLE_SHEETS_CREDENTIALS"))
-        kwargs.setdefault("FIREBASE_SERVICE_ACCOUNT_KEY", os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY"))
+        kwargs.setdefault(
+            "GOOGLE_SHEETS_CREDENTIALS", os.getenv("GOOGLE_SHEETS_CREDENTIALS")
+        )
+        kwargs.setdefault(
+            "FIREBASE_SERVICE_ACCOUNT_KEY", os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
+        )
 
         super().__init__(**kwargs)
 
@@ -165,7 +215,9 @@ class Settings(BaseSettings):
             )
 
         print(f"환경 설정 완료: {self.ENVIRONMENT}")
-        print(f"데이터베이스: {self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}")
+        print(
+            f"데이터베이스: {self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+        )
 
     @property
     def DATABASE_URL(self) -> str:

@@ -1,19 +1,20 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import PageDto
-from app.features.artists.repositories.artist_repository import ArtistCRUD
+from app.features.artists.exceptions import ArtistNotFoundException
+from app.features.artists.repositories.artist_repository import ArtistRepository
 from app.features.artists.schemas import ArtistDto, ArtistSimpleDto
 
 
 class ArtistService:
     def __init__(self, db: AsyncSession):
-        self.artist_crud = ArtistCRUD(db)
+        self.artist_crud = ArtistRepository(db)
 
     # - MARK: 아티스트 조회
-    async def get_artist(self, artist_id: int) -> ArtistDto | None:
+    async def get_artist(self, artist_id: int) -> ArtistDto:
         artist = await self.artist_crud.get_by_id(artist_id)
         if not artist:
-            return None
+            raise ArtistNotFoundException(artist_id)
         return ArtistDto.model_validate(
             artist,
             from_attributes=True,
@@ -39,7 +40,7 @@ class ArtistService:
                     unit_id = getattr(unit, "id", None)
                     artist_id = getattr(artist, "id", None)
                     artist_name = getattr(artist, "name", "") or ""
-                    
+
                     if unit_id is not None and artist_id is not None:
                         simple_artists.append(
                             ArtistSimpleDto(
@@ -93,10 +94,3 @@ class ArtistService:
             has_next=has_next,
             has_prev=has_prev,
         )
-
-    # 사용하지 않는 내부 생성/업데이트 메서드 제거됨
-
-    # - MARK: (내부용) BLIP+MVP 병합 동기화
-    async def sync_blip_and_mvp(self) -> dict:
-        """BLIP 전체 데이터와 MVP 이름 목록을 병합하여 DB에 동기화"""
-        return await self.artist_crud.sync_from_blip_and_mvp()

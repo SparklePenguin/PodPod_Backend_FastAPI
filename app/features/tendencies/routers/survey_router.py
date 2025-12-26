@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id, get_db
 from app.common.schemas import BaseResponse
 from app.core.error_codes import get_error_info
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
+from app.deps.database import get_session
 from app.features.tendencies.schemas import (
     SubmitTendencyTestRequest,
     Tendency,
@@ -15,7 +16,7 @@ from app.features.tendencies.services.tendency_service import TendencyService
 router = APIRouter()
 
 
-def get_tendency_service(db: AsyncSession = Depends(get_db)) -> TendencyService:
+def get_tendency_service(db: AsyncSession = Depends(get_session)) -> TendencyService:
     return TendencyService(db)
 
 

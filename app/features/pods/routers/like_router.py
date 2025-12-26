@@ -1,19 +1,18 @@
-from app.core.http_status import HttpStatus
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
-from app.api.deps import get_current_user_id
-from app.features.pods.services.pod_service import PodService
 from app.common.schemas import BaseResponse
+from app.core.database import get_session
+from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
 from app.features.pods.schemas import PodLikeDto
-
+from app.features.pods.services.pod_service import PodService
 
 router = APIRouter()
 
 
 def get_pod_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> PodService:
     return PodService(db)
 

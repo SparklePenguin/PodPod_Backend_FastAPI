@@ -3,10 +3,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id, get_db
 from app.common.schemas import BaseResponse, PageDto
 from app.core.error_codes import get_error_info
 from app.core.http_status import HttpStatus
+from app.deps.auth import get_current_user_id
+from app.deps.database import get_session
 from app.features.follow.schemas import (
     FollowNotificationStatusResponse,
     FollowNotificationUpdateRequest,
@@ -25,7 +26,7 @@ router = APIRouter()
 async def follow_user(
     request: FollowRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """사용자 팔로우"""
     try:
@@ -67,7 +68,7 @@ async def follow_user(
 async def unfollow_user(
     following_id: int = Path(..., description="팔로우 취소할 사용자 ID"),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """사용자 팔로우 취소"""
     try:
@@ -113,7 +114,7 @@ async def get_following_list(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """팔로우하는 사용자 목록 조회"""
     try:
@@ -154,7 +155,7 @@ async def get_followers_list(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """팔로워 목록 조회"""
     try:
@@ -187,7 +188,7 @@ async def get_followers_list(
 async def get_follow_stats(
     user_id: int = Path(..., description="사용자 ID"),
     current_user_id: Optional[int] = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """팔로우 통계 조회"""
     try:
@@ -222,7 +223,7 @@ async def get_following_users_pods(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """팔로우하는 사용자들이 만든 파티 목록 조회"""
     try:
@@ -263,7 +264,7 @@ async def get_recommended_users(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """추천 유저 목록 조회"""
     try:
@@ -302,7 +303,7 @@ async def get_recommended_users(
 async def get_notification_status(
     following_id: int = Path(..., description="팔로우한 사용자 ID"),
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """특정 팔로우한 유저의 알림 설정 상태 조회"""
     try:
@@ -345,7 +346,7 @@ async def get_notification_status(
 async def update_notification_status(
     request: FollowNotificationUpdateRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """특정 팔로우한 유저의 알림 설정 변경"""
     try:

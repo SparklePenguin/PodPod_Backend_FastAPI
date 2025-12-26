@@ -1,18 +1,17 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
+from requests import session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import (
-    get_apple_oauth_service,
-    get_current_user_id,
-    get_google_oauth_service,
-    get_kakao_oauth_service,
-    get_session_service,
-)
 from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
+from app.deps.auth import (
+    get_current_user_id,
+)
+from app.deps.database import get_session
 from app.features.auth.schemas import (
     TokenRefreshRequest,
 )
@@ -70,10 +69,11 @@ class LoginRequest(BaseModel):
 )
 async def sign_in_with_kakao(
     kakao_sign_in_request: KakaoTokenResponse,
-    kakao_oauth_service: KakaoOauthService = Depends(get_kakao_oauth_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """카카오 로그인"""
-    result = await kakao_oauth_service.sign_in_with_kakao(kakao_sign_in_request)
+    service = KakaoOauthService(session)
+    result = await service.sign_in_with_kakao(kakao_sign_in_request)
     return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
@@ -90,10 +90,11 @@ async def sign_in_with_kakao(
 )
 async def sign_in_with_google(
     google_login_request: GoogleLoginRequest,
-    google_oauth_service: GoogleOauthService = Depends(get_google_oauth_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """Google 로그인"""
-    result = await google_oauth_service.sign_in_with_google(google_login_request)
+    service = GoogleOauthService(session)
+    result = await service.sign_in_with_google(google_login_request)
     return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
@@ -110,29 +111,25 @@ async def sign_in_with_google(
 )
 async def sign_in_with_apple(
     apple_login_request: AppleLoginRequest,
-    apple_oauth_service: AppleOauthService = Depends(get_apple_oauth_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """Apple 로그인"""
-    result = await apple_oauth_service.sign_in_with_apple(apple_login_request)
+    service = AppleOauthService(session)
+    result = await service.sign_in_with_apple(apple_login_request)
     return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
 @router.post(
     "",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "세션 생성 성공",
-        },
-    },
 )
 async def create_session(
     login_data: LoginRequest,
-    auth_service: SessionService = Depends(get_session_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """세션 생성 (이메일 로그인 + 소셜 로그인 통합)"""
-    result = await auth_service.login(login_data)
+    service = SessionService(session)
+    result = await service.login(login_data)
     return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
@@ -148,11 +145,12 @@ async def create_session(
 )
 async def delete_session(
     current_user_id: int = Depends(get_current_user_id),
-    auth_service: SessionService = Depends(get_session_service),
+    session: AsyncSession = Depends(session),
     token: HTTPAuthorizationCredentials = Depends(security),
 ):
     """로그아웃 (세션 삭제 및 FCM 토큰 삭제)"""
-    await auth_service.logout(token.credentials, current_user_id)
+    service = SessionService(session)
+    await service.logout(token.credentials, current_user_id)
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
@@ -168,7 +166,7 @@ async def delete_session(
 )
 async def refresh_session(
     refresh_data: TokenRefreshRequest,
-    auth_service: SessionService = Depends(get_session_service),
+    session: AsyncSession = Depends(get_session),
 ):
     """토큰 갱신"""
     from app.core.security import (
@@ -179,7 +177,8 @@ async def refresh_session(
     )
 
     try:
-        credential = await auth_service.refresh_token(refresh_data.refresh_token)
+        service = SessionService(session)
+        credential = await service.refresh_token(refresh_data.refresh_token)
         return BaseResponse.ok(data=credential.model_dump(by_alias=True))
     except (
         TokenExpiredError,

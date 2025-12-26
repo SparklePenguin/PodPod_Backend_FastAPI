@@ -12,15 +12,15 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_id
 from app.common.schemas import (
     BaseResponse,
     PageDto,
 )
-from app.core.database import get_db
+from app.core.database import get_session
 from app.core.error_codes import get_error_info
 from app.core.http_status import HttpStatus
 from app.core.services.scheduler_service import scheduler
+from app.deps.auth import get_current_user_id
 from app.features.pods.schemas import (
     PodCreateRequest,
     PodDto,
@@ -32,7 +32,7 @@ router = APIRouter(dependencies=[])
 
 
 def get_pod_service(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ) -> PodService:
     return PodService(db)
 
@@ -516,7 +516,7 @@ async def get_user_pods(
 async def get_pods(
     search_request: PodSearchRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """팟 목록을 조회합니다."""
     try:
@@ -581,7 +581,7 @@ async def get_pod_reviews(
     size: int = Query(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """파티별 후기 목록 조회"""
     try:
@@ -951,7 +951,7 @@ async def delete_pod_member(
     tags=["pods"],
 )
 async def test_scheduler(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """스케줄러 테스트"""
     try:
@@ -970,7 +970,7 @@ async def test_scheduler(
     tags=["pods"],
 )
 async def debug_pods(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """파티 디버그"""
     from sqlalchemy import select
@@ -1009,7 +1009,7 @@ async def debug_pods(
     tags=["pods"],
 )
 async def fix_pod88_date(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """파티 88번 날짜 수정"""
     from datetime import date
@@ -1050,7 +1050,7 @@ async def fix_pod88_date(
     tags=["pods"],
 )
 async def test_review_notification(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """리뷰 알림 테스트"""
     try:
@@ -1069,7 +1069,7 @@ async def test_review_notification(
     tags=["pods"],
 )
 async def cleanup_null_notifications(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """null 알림 정리"""
     from sqlalchemy import delete
@@ -1100,7 +1100,7 @@ async def cleanup_null_notifications(
     tags=["pods"],
 )
 async def cleanup_chat_notifications(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """채팅 메시지 알림 정리"""
     from sqlalchemy import delete
@@ -1133,7 +1133,7 @@ async def cleanup_chat_notifications(
     tags=["pods"],
 )
 async def debug_notifications(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_session),
 ):
     """알림 디버그"""
     from sqlalchemy import select
