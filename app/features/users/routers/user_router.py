@@ -18,8 +18,8 @@ from app.core.database import get_session
 from app.core.http_status import HttpStatus
 from app.deps.auth import get_current_user_id
 from app.features.artists.schemas import ArtistDto
-from app.features.auth.schemas import SignUpRequest
 from app.features.follow.schemas import SimpleUserDto
+from app.features.oauth.schemas.sign_up_request import SignUpRequest
 from app.features.users.schemas import (
     AcceptTermsRequest,
     BlockUserResponse,
@@ -30,7 +30,7 @@ from app.features.users.schemas import (
     UserDtoInternal,
     UserNotificationSettingsDto,
 )
-from app.features.users.services import UserService
+from app.features.users.services.user_service import UserService
 
 router = APIRouter()
 

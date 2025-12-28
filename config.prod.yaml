@@ -54,3 +54,7 @@ logging:
 app:
   name: "PodPod API"
   version: "1.0.0"
+
+# 채팅 서비스 설정
+chat:
+  use_websocket: false  # true면 WebSocket 사용, false면 Sendbird 사용

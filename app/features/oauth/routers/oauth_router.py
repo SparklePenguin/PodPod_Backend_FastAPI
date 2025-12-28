@@ -6,13 +6,13 @@ from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import BaseResponse
-from app.core.http_status import HttpStatus
 from app.deps.database import get_session
-from app.features.auth.services.apple_oauth_service import (
+from app.features.oauth.schemas.login_info_dto import LoginInfoDto
+from app.features.oauth.services.apple_oauth_service import (
     AppleCallbackParam,
     AppleOauthService,
 )
-from app.features.auth.services.kakao_oauth_service import (
+from app.features.oauth.services.kakao_oauth_service import (
     KakaoCallBackParam,
     KakaoOauthService,
 )
@@ -22,16 +22,7 @@ security = HTTPBearer()
 
 
 # - MARK: 카카오 OAuth 콜백
-@router.get(
-    "/kakao/callback",
-    response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "카카오 로그인 성공",
-        },
-    },
-)
+@router.get("/kakao/callback", response_model=BaseResponse[LoginInfoDto])
 async def kakao_callback(
     code: Optional[str] = Query(None, description="인가 코드"),
     error: Optional[str] = Query(None, description="에러 코드"),
@@ -39,11 +30,7 @@ async def kakao_callback(
     state: Optional[str] = Query(None, description="상태값"),
     session: AsyncSession = Depends(get_session),
 ):
-    """카카오 OAuth 콜백 처리
-
-    카카오 로그인 후 리다이렉트되는 콜백 엔드포인트입니다.
-    인가 코드를 받아서 토큰을 발급하고 사용자 정보를 저장합니다.
-    """
+    """카카오 OAuth 콜백 처리"""
     params = KakaoCallBackParam(
         code=code,
         error=error,
@@ -60,16 +47,7 @@ async def kakao_callback(
 
 
 # - MARK: Apple 콜백
-@router.get(
-    "/apple/callback",
-    response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "Apple 콜백 처리 성공",
-        },
-    },
-)
+@router.get("/apple/callback", response_model=BaseResponse[LoginInfoDto])
 async def apple_callback(
     code: Optional[str] = None,
     state: Optional[str] = None,

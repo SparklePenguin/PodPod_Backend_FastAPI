@@ -1,6 +1,4 @@
-"""
-Reports feature models
-"""
+"""Reports feature models"""
 
 from .report_reason import ReportReason
 

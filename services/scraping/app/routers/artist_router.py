@@ -1,19 +1,28 @@
+import json
+import os
 import sys
 from pathlib import Path as PathLib
-from typing import Any, Dict, Optional
 
 # 프로젝트 루트를 Python path에 추가 (메인 API의 app 모듈 접근용)
 project_root = PathLib(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from shared.utils.file_upload import upload_artist_image
-
 from app.repositories.artist_repository import ArtistRepository
 from app.services.artist_service import ArtistService
+from shared.utils.file_upload import upload_artist_image
 
 router = APIRouter(prefix="/artists", tags=["artists-scraping"])
 
@@ -111,3 +120,39 @@ async def sync_mvp_artists(
     service = ArtistService(session)
     result = await service.sync_blip_and_mvp()
     return result
+
+
+@router.post(
+    "/schedules/import-from-json",
+    summary="JSON 파일에서 아티스트 스케줄 데이터 가져오기 (내부용)",
+    description="⚠️ 내부용 API - kpop_schedule_2025.json 파일에서 아티스트 스케줄 데이터를 읽어와서 데이터베이스에 저장합니다.",
+)
+async def import_artist_schedules_from_json(
+    session: AsyncSession = Depends(get_session),
+):
+    """JSON 파일에서 아티스트 스케줄 데이터를 가져와서 저장합니다."""
+    # JSON 파일 경로
+    json_file_path = os.path.join(
+        os.path.dirname(__file__), "../../../../mvp/kpop_schedule_2025.json"
+    )
+
+    if not os.path.exists(json_file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="kpop_schedule_2025.json 파일을 찾을 수 없습니다.",
+        )
+
+    # JSON 파일 읽기
+    with open(json_file_path, "r", encoding="utf-8") as file:
+        schedule_data = json.load(file)
+
+    # 데이터 가져오기 실행
+    service = ArtistService(session)
+    result = await service.import_schedules_from_json(schedule_data)
+
+    print(f"Import result: {result}")
+
+    return {
+        "message": "JSON 파일에서 아티스트 스케줄 데이터 가져오기 성공",
+        "result": result,
+    }

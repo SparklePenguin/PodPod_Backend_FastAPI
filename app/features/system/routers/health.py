@@ -1,3 +1,8 @@
+"""
+Health Check Router
+시스템 상태 확인 엔드포인트
+"""
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
@@ -61,11 +66,14 @@ async def health_check(db: AsyncSession = Depends(get_session)):
     except Exception as e:
         db_status = f"error: {str(e)}"
 
+    # 버전 정보 가져오기
+    from app.core.config import settings
+
     health_data = HealthCheckResponse(
         status="healthy" if db_status == "connected" else "unhealthy",
         timestamp=datetime.utcnow().isoformat(),
         database=db_status,
-        version="1.0.0",
+        version=settings.APP_VERSION,
     )
 
     return BaseResponse.ok(

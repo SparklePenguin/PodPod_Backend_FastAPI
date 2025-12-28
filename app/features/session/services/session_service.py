@@ -8,9 +8,7 @@ from app.core.security import (
     verify_password,
     verify_refresh_token,
 )
-from app.features.auth.schemas import (
-    CredentialDto,
-)
+from app.features.oauth.schemas.credential_dto import CredentialDto
 from app.features.users.repositories import UserRepository
 
 
@@ -35,7 +33,7 @@ class SessionService:
 
     async def login(self, login_data):
         """이메일 로그인"""
-        from app.features.auth.schemas import SignInResponse
+        from app.features.oauth.schemas.login_info_dto import LoginInfoDto
         from app.features.users.schemas import UserDto
 
         # 이메일로 사용자 찾기
@@ -62,7 +60,7 @@ class SessionService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="사용자 ID를 가져올 수 없습니다.",
             )
-            
+
         if hasattr(login_data, "fcm_token") and login_data.fcm_token:
             await self.user_crud.update_profile(
                 user_id, {"fcm_token": login_data.fcm_token}
@@ -72,7 +70,7 @@ class SessionService:
         credential = await self.create_token(user_id)
 
         # SignInResponse 생성
-        sign_in_response = SignInResponse(
+        sign_in_response = LoginInfoDto(
             credential=credential,
             user=UserDto.model_validate(user, from_attributes=True),
         )
@@ -87,3 +85,13 @@ class SessionService:
         # FCM 토큰 삭제
         if user_id:
             await self.user_crud.update_profile(user_id, {"fcm_token": None})
+
+    @staticmethod
+    def verify_refresh_token(refresh_token: str) -> int:
+        """Refresh Token 검증 및 user_id 반환 (정적 메서드)"""
+        return verify_refresh_token(refresh_token)
+
+    @staticmethod
+    def create_access_token(user_id: int) -> str:
+        """Access Token 생성 (정적 메서드)"""
+        return create_access_token(user_id)

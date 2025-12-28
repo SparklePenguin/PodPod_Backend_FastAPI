@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.features.auth.services.oauth_service import OauthService
+from app.features.oauth.services.oauth_service import OauthService
 
 
 # - MARK: 구글 로그인 요청

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.error_codes import raise_error
-from app.features.auth.services.oauth_service import OauthService
+from app.features.oauth.services.oauth_service import OauthService
 
 
 # - MARK: 콜백 쿼리

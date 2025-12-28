@@ -5,10 +5,10 @@ from typing import Any, cast
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -127,8 +127,6 @@ app.openapi_tags = [
 security = HTTPBearer()
 
 # 예외 핸들러 등록
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
 # 타입 체커를 위한 타입 캐스팅
 app.add_exception_handler(HTTPException, cast(Any, http_exception_handler))  # type: ignore
 app.add_exception_handler(
@@ -143,19 +141,7 @@ app.add_exception_handler(BusinessException, cast(Any, business_exception_handle
 app.add_exception_handler(Exception, cast(Any, general_exception_handler))  # type: ignore
 
 
-# 헬스체크 엔드포인트
-@app.get("/health")
-async def health_check():
-    """헬스체크 엔드포인트 - GCP Cloud Run에서 사용"""
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "healthy",
-            "service": "podpod-backend",
-            "version": settings.APP_VERSION,
-            "environment": settings.ENVIRONMENT,
-        },
-    )
+
 
 
 # 정적 파일 서빙 설정

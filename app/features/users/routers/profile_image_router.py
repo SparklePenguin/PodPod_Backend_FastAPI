@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends
 
 from app.common.schemas import BaseResponse
 from app.core.http_status import HttpStatus
-from app.core.services.random_profile_image_service import RandomProfileImageService
+from app.features.users.services.random_profile_image_service import (
+    RandomProfileImageService,
+)
 from app.features.users.schemas.random_profile_image import RandomProfileImageResponse
 
 router = APIRouter()

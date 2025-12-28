@@ -1,7 +1,0 @@
-"""
-Core routers module
-"""
-
-from app.core.routers.health import router as health_router
-
-__all__ = ["health_router"]

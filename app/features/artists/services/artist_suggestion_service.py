@@ -1,11 +1,9 @@
-import math
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import PageDto
 from app.core.exceptions import BusinessException
-from app.core.logging_config import get_logger
 from app.features.artists.repositories.artist_suggestion_repository import (
     ArtistSuggestionRepository,
 )
@@ -15,24 +13,18 @@ from app.features.artists.schemas import (
     ArtistSuggestionRankingDto,
 )
 
-logger = get_logger("artist_suggestion_service")
-
 
 class ArtistSuggestionService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.crud = ArtistSuggestionRepository(db)
+        self.artist_sugg_repo = ArtistSuggestionRepository(db)
 
     async def create_suggestion(
         self, request: ArtistSuggestionCreateRequest, user_id: int
     ) -> ArtistSuggestionDto:
         """아티스트 제안 생성"""
-        logger.info(
-            f"아티스트 제안 생성 요청: {request.artist_name} (user_id: {user_id})"
-        )
-
         # 중복 체크
-        is_duplicate = await self.crud.check_duplicate_suggestion(
+        is_duplicate = await self.artist_sugg_repo.check_duplicate_suggestion(
             request.artist_name, user_id
         )
         if is_duplicate:
@@ -42,7 +34,7 @@ class ArtistSuggestionService:
                 status_code=409,
             )
 
-        suggestion = await self.crud.create_suggestion(
+        suggestion = await self.artist_sugg_repo.create_suggestion(
             artist_name=request.artist_name,
             reason=request.reason,
             email=request.email,
@@ -55,7 +47,7 @@ class ArtistSuggestionService:
         self, suggestion_id: int
     ) -> Optional[ArtistSuggestionDto]:
         """ID로 제안 조회"""
-        suggestion = await self.crud.get_suggestion_by_id(suggestion_id)
+        suggestion = await self.artist_sugg_repo.get_suggestion_by_id(suggestion_id)
         if not suggestion:
             return None
 
@@ -65,78 +57,62 @@ class ArtistSuggestionService:
         self, page: int = 1, size: int = 20
     ) -> PageDto[ArtistSuggestionDto]:
         """제안 목록 조회"""
-        suggestions, total_count = await self.crud.get_suggestions(page, size)
+        suggestions, total_count = await self.artist_sugg_repo.get_suggestions(
+            page, size
+        )
 
-        suggestion_dtos = []
-        for suggestion in suggestions:
-            suggestion_dto = ArtistSuggestionDto.model_validate(suggestion)
-            suggestion_dtos.append(suggestion_dto)
+        suggestion_dtos = [
+            ArtistSuggestionDto.model_validate(suggestion) for suggestion in suggestions
+        ]
 
-        # PageDto 생성
-        total_pages = math.ceil(total_count / size) if total_count > 0 else 0
-
-        return PageDto[ArtistSuggestionDto](
+        return PageDto.create(
             items=suggestion_dtos,
-            current_page=page,
+            page=page,
             size=size,
             total_count=total_count,
-            total_pages=total_pages,
-            has_next=page < total_pages,
-            has_prev=page > 1,
         )
 
     async def get_artist_ranking(
         self, page: int = 1, limit: int = 20
     ) -> PageDto[ArtistSuggestionRankingDto]:
         """아티스트별 요청 순위 조회"""
-        logger.info(f"아티스트 순위 조회 요청 (page: {page}, limit: {limit})")
+        rankings, total_count = await self.artist_sugg_repo.get_artist_ranking(
+            page, limit
+        )
 
-        rankings, total_count = await self.crud.get_artist_ranking(page, limit)
-
-        ranking_dtos = []
-        for ranking in rankings:
-            ranking_dto = ArtistSuggestionRankingDto(
+        ranking_dtos = [
+            ArtistSuggestionRankingDto(
                 artist_name=ranking["artist_name"], count=ranking["count"]
             )
-            ranking_dtos.append(ranking_dto)
+            for ranking in rankings
+        ]
 
-        # PageDto 생성
-        total_pages = math.ceil(total_count / limit) if total_count > 0 else 0
-
-        return PageDto[ArtistSuggestionRankingDto](
+        return PageDto.create(
             items=ranking_dtos,
-            current_page=page,
+            page=page,
             size=limit,
             total_count=total_count,
-            total_pages=total_pages,
-            has_next=page < total_pages,
-            has_prev=page > 1,
         )
 
     async def get_suggestions_by_artist_name(
         self, artist_name: str, page: int = 1, size: int = 20
     ) -> PageDto[ArtistSuggestionDto]:
         """특정 아티스트명으로 제안 목록 조회"""
-        logger.info(f"특정 아티스트 제안 조회: {artist_name}")
 
-        suggestions, total_count = await self.crud.get_suggestions_by_artist_name(
+        (
+            suggestions,
+            total_count,
+        ) = await self.artist_sugg_repo.get_suggestions_by_artist_name(
             artist_name, page, size
         )
 
-        suggestion_dtos = []
-        for suggestion in suggestions:
-            suggestion_dto = ArtistSuggestionDto.model_validate(suggestion)
-            suggestion_dtos.append(suggestion_dto)
+        suggestion_dtos = [
+            ArtistSuggestionDto.model_validate(suggestion) for suggestion in suggestions
+        ]
 
-        # PageDto 생성
-        total_pages = math.ceil(total_count / size) if total_count > 0 else 0
-
-        return PageDto[ArtistSuggestionDto](
+        return PageDto.create(
             items=suggestion_dtos,
-            current_page=page,
+            page=page,
             size=size,
             total_count=total_count,
-            total_pages=total_pages,
-            has_next=page < total_pages,
-            has_prev=page > 1,
         )

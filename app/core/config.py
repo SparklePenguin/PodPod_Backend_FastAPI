@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     SENDBIRD_APP_ID: Optional[str] = None
     SENDBIRD_API_TOKEN: Optional[str] = None
 
+    # 채팅 서비스 설정
+    USE_WEBSOCKET_CHAT: bool = False  # True면 WebSocket 사용, False면 Sendbird 사용
+
     # JWT 설정
     secret_key: str  # Infisical에서 주입
     ALGORITHM: str = "HS256"
@@ -181,7 +184,15 @@ class Settings(BaseSettings):
             server_config = config.get("server", {})
             kwargs.setdefault("DEBUG", server_config.get("debug", False))
 
+            # 채팅 서비스 설정
+            chat_config = config.get("chat", {})
+            kwargs.setdefault("USE_WEBSOCKET_CHAT", chat_config.get("use_websocket", False))
+
         # 환경변수에서 민감한 정보 로드 (Infisical에서 주입)
+        # USE_WEBSOCKET_CHAT도 환경변수로 오버라이드 가능
+        use_websocket_env = os.getenv("USE_WEBSOCKET_CHAT")
+        if use_websocket_env:
+            kwargs["USE_WEBSOCKET_CHAT"] = use_websocket_env.lower() == "true"
         # MYSQL_HOST도 환경 변수로 오버라이드 가능하도록 (도커 환경 지원)
         if os.getenv("MYSQL_HOST"):
             kwargs["MYSQL_HOST"] = os.getenv("MYSQL_HOST")

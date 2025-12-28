@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.features.session.services import SessionService
+from app.features.session.services.session_service import SessionService
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt

@@ -1,16 +1,13 @@
 """Auth feature schemas"""
-from .auth import (
-    CredentialDto,
-    SignInResponse,
-    SignUpRequest,
-    EmailLoginRequest,
-    TokenRefreshRequest,
-)
+
+from .credential_dto import CredentialDto
+from .email_login_request import EmailLoginRequest
+from .login_info_dto import LoginInfoDto
+from .sign_up_request import SignUpRequest
 
 __all__ = [
     "CredentialDto",
-    "SignInResponse",
-    "SignUpRequest",
     "EmailLoginRequest",
-    "TokenRefreshRequest",
+    "LoginInfoDto",
+    "SignUpRequest",
 ]

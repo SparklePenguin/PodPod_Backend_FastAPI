@@ -462,7 +462,7 @@ async def get_user_pods(
 
         # 먼저 해당 사용자가 존재하는지 확인
         from app.core.error_codes import get_error_info
-        from app.features.users.services import UserService
+        from app.features.users.services.user_service import UserService
 
         user_service = UserService(pod_service.db)
         try:

@@ -11,8 +11,10 @@ from app.features.artists.routers.artist_schedule_router import router as schedu
 from app.features.artists.routers.artist_suggestion_router import router as suggestions_router
 
 # Auth routers
-from app.features.auth.routers.session_router import router as sessions_router
-from app.features.auth.routers.oauth_router import router as oauths_router
+from app.features.oauth.routers.oauth_router import router as oauths_router
+
+# Session router
+from app.features.session.routers.session_router import router as sessions_router
 
 # Follow router
 from app.features.follow.routers.follow_router import router as follow_router
@@ -36,12 +38,12 @@ from app.features.reports.routers.report_router import router as reports_router
 from app.features.tendencies.routers.survey_router import router as surveys_router
 from app.features.tendencies.routers.tendency_router import router as tendencies_router
 
-# Users router (routers 폴더 없음, router.py에 직접 정의)
-from app.features.users.router import router as users_router
+# Users routers
+from app.features.users.routers.user_router import router as users_router
 from app.features.users.routers.profile_image_router import router as profile_images_router
 
-# Core routers
-from app.core.routers.health import router as health_router
+# System routers
+from app.features.system.routers.health import router as health_router
 
 # Admin routers
 from app.features.admin.routers.error_codes import router as error_codes_router
@@ -50,6 +52,9 @@ from app.features.admin.routers.sendbird import router as sendbird_router
 
 # Webhooks router
 from app.features.webhooks.routers.webhook_router import router as webhooks_router
+
+# Chat router (WebSocket)
+from app.features.chat.routers.websocket_router import router as chat_websocket_router
 
 # 메인 API 라우터 생성
 api_router = APIRouter()
@@ -92,9 +97,6 @@ api_router.include_router(locations_router, prefix="/regions", tags=["regions"])
 # 신고 관련 라우터 (features/reports)
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 
-# 헬스 체크 라우터 (core)
-api_router.include_router(health_router, tags=["health"])
-
 # 랜덤 프로필 이미지 라우터 (users)
 api_router.include_router(
     profile_images_router, prefix="/profile-images", tags=["profile-images"]
@@ -103,7 +105,13 @@ api_router.include_router(
 # 웹훅 라우터 (webhooks)
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 
+# 시스템 관련 라우터 (system)
+api_router.include_router(health_router, tags=["health"])
+
 # 관리자 관련 라우터 (admin)
 api_router.include_router(error_codes_router, prefix="/admin", tags=["admin"])
 api_router.include_router(fcm_router, prefix="/admin", tags=["admin"])
 api_router.include_router(sendbird_router, prefix="/admin/sendbird", tags=["admin"])
+
+# 채팅 WebSocket 라우터 (chat)
+api_router.include_router(chat_websocket_router, prefix="/chat", tags=["chat"])

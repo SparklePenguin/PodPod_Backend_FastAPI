@@ -2,14 +2,13 @@
 Google Sheets에서 에러 코드를 가져오는 서비스
 """
 
-import os
 import json
-from typing import Dict, List, Any, Optional
+import os
+from typing import Any, Dict, List
+
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from app.core.config import settings
-from app.core.http_status import HttpStatus
 
 
 class GoogleSheetsService:

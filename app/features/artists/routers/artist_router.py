@@ -8,7 +8,6 @@ from app.features.artists.services.artist_service import ArtistService
 router = APIRouter()
 
 
-# MARK: - 아티스트 목록 조회
 @router.get(
     "/",
     response_model=BaseResponse[PageDto[ArtistDto]],
@@ -24,7 +23,6 @@ async def get_artists(
     return BaseResponse.ok(result)
 
 
-# MARK: - 아티스트 조회
 @router.get(
     "/{artist_id}",
     response_model=BaseResponse[ArtistDto],

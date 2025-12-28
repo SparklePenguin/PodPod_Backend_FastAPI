@@ -95,8 +95,7 @@ async def artist_already_exists_handler(
 ):
     """ArtistAlreadyExistsException 처리: 이미 존재하는 아티스트인 경우"""
     logger.warning(
-        f"Artist already exists: artist_name={exc.artist_name}, "
-        f"path={request.url.path}"
+        f"Artist already exists: artist_name={exc.artist_name}, path={request.url.path}"
     )
 
     response = BaseResponse(

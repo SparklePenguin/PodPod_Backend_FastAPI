@@ -3,10 +3,12 @@ from typing import Any, Dict
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.auth.schemas import CredentialDto, SignInResponse, SignUpRequest
-from app.features.auth.services.session_service import SessionService
+from app.features.oauth.schemas.credential_dto import CredentialDto
+from app.features.oauth.schemas.login_info_dto import LoginInfoDto
+from app.features.oauth.schemas.sign_up_request import SignUpRequest
+from app.features.session.services.session_service import SessionService
 from app.features.users.repositories import UserRepository
-from app.features.users.services import UserService
+from app.features.users.services.user_service import UserService
 
 
 # - MARK: OAuth 서비스
@@ -34,7 +36,7 @@ class OauthService:
 
             if existing_user_raw:
                 # 소프트 삭제된 사용자인 경우 복구
-                is_del_value = getattr(existing_user_raw, 'is_del', False)
+                is_del_value = getattr(existing_user_raw, "is_del", False)
                 if is_del_value:
                     from sqlalchemy import update
 
@@ -87,7 +89,7 @@ class OauthService:
             # 토큰 발급
             token_response = await self.session_service.create_token(user.id)
 
-            sign_in_response = SignInResponse(
+            sign_in_response = LoginInfoDto(
                 credential=CredentialDto(
                     access_token=token_response.access_token,
                     refresh_token=token_response.refresh_token,
