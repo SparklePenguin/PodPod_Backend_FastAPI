@@ -5,8 +5,6 @@
 import os
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
-
 from app.common.schemas import BaseResponse
 from app.core.config import settings
 from app.core.error_codes import (
@@ -14,16 +12,16 @@ from app.core.error_codes import (
     load_error_codes_from_file,
     load_error_codes_from_sheets,
 )
-from app.core.http_status import HttpStatus
+from fastapi import APIRouter, HTTPException, status
 
 router = APIRouter(prefix="/admin/error-codes", tags=["admin-error-codes"])
 
 
+# - MARK: 에러 코드 목록 조회
 @router.get(
     "/",
     response_model=BaseResponse[Dict[str, Any]],
-    summary="에러 코드 목록 조회",
-    description="현재 로드된 모든 에러 코드를 조회합니다.",
+    description="에러 코드 목록 조회",
 )
 async def get_error_codes():
     """현재 로드된 에러 코드 목록을 반환합니다."""
@@ -31,20 +29,20 @@ async def get_error_codes():
         error_codes = get_cached_error_codes()
         return BaseResponse.ok(
             data={"error_codes": error_codes, "total_count": len(error_codes)},
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
     except Exception as e:
         raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"에러 코드 조회 실패: {str(e)}",
         )
 
 
+# - MARK: Google Sheets에서 에러 코드 다시 로드
 @router.post(
     "/reload-from-sheets",
     response_model=BaseResponse[Dict[str, Any]],
-    summary="Google Sheets에서 에러 코드 다시 로드",
-    description="Google Sheets에서 에러 코드를 다시 로드합니다.",
+    description="에러 코드 다시 로드",
 )
 async def reload_from_sheets(
     spreadsheet_id: str | None = None, range_name: str | None = None
@@ -60,7 +58,7 @@ async def reload_from_sheets(
 
         if not spreadsheet_id:
             raise HTTPException(
-                status_code=HttpStatus.BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Google Sheets ID가 설정되지 않았습니다.",
             )
 
@@ -75,33 +73,33 @@ async def reload_from_sheets(
                     "message": "Google Sheets에서 에러 코드를 성공적으로 로드했습니다.",
                     "total_count": len(error_codes),
                 },
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
         else:
             raise HTTPException(
-                status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Google Sheets에서 에러 코드 로드에 실패했습니다.",
             )
 
     except Exception as e:
         raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"에러 코드 로드 실패: {str(e)}",
         )
 
 
+# - MARK: 로컬 파일에서 에러 코드 다시 로드
 @router.post(
     "/reload-from-file",
     response_model=BaseResponse[Dict[str, Any]],
-    summary="로컬 파일에서 에러 코드 다시 로드",
-    description="로컬 JSON 파일에서 에러 코드를 다시 로드합니다.",
+    description="로컬 파일에서 에러 코드 다시 로드",
 )
 async def reload_from_file(file_path: str = "error_codes_backup.json"):
     """로컬 파일에서 에러 코드를 다시 로드합니다."""
     try:
         if not os.path.exists(file_path):
             raise HTTPException(
-                status_code=HttpStatus.NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"파일을 찾을 수 없습니다: {file_path}",
             )
 
@@ -114,26 +112,26 @@ async def reload_from_file(file_path: str = "error_codes_backup.json"):
                     "message": f"로컬 파일에서 에러 코드를 성공적으로 로드했습니다: {file_path}",
                     "total_count": len(error_codes),
                 },
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
         else:
             raise HTTPException(
-                status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="로컬 파일에서 에러 코드 로드에 실패했습니다.",
             )
 
     except Exception as e:
         raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"에러 코드 로드 실패: {str(e)}",
         )
 
 
+# - MARK: 에러 코드 유효성 검증
 @router.get(
     "/validate",
     response_model=BaseResponse[Dict[str, Any]],
-    summary="에러 코드 유효성 검증",
-    description="현재 로드된 에러 코드들의 유효성을 검증합니다.",
+    description="에러 코드 유효성 검증",
 )
 async def validate_error_codes():
     """에러 코드의 유효성을 검증합니다."""
@@ -149,21 +147,21 @@ async def validate_error_codes():
                 "validation_errors": validation_errors,
                 "total_count": len(error_codes),
             },
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"에러 코드 검증 실패: {str(e)}",
         )
 
 
+# - MARK: Google Sheets 시트 목록 조회
 @router.get(
     "/sheets",
     response_model=BaseResponse[Dict[str, Any]],
-    summary="Google Sheets 시트 목록 조회",
-    description="Google Sheets에서 사용 가능한 시트 목록을 조회합니다.",
+    description="Google Sheets 시트 목록 조회",
 )
 async def get_sheets_list():
     """Google Sheets에서 시트 목록을 가져옵니다."""
@@ -172,7 +170,7 @@ async def get_sheets_list():
 
         if not settings.GOOGLE_SHEETS_ID:
             raise HTTPException(
-                status_code=HttpStatus.BAD_REQUEST,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Google Sheets ID가 설정되지 않았습니다.",
             )
 
@@ -182,7 +180,7 @@ async def get_sheets_list():
         # 서비스가 초기화되었는지 확인
         if not google_sheets_service.service:
             raise HTTPException(
-                status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Google Sheets 서비스 초기화에 실패했습니다.",
             )
 
@@ -206,21 +204,21 @@ async def get_sheets_list():
 
         return BaseResponse.ok(
             data={"sheets": sheets, "total_count": len(sheets)},
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"시트 목록 조회 실패: {str(e)}",
         )
 
 
+# - MARK: 에러 코드 시스템 정보 조회
 @router.get(
     "/info",
     response_model=BaseResponse[Dict[str, Any]],
-    summary="에러 코드 시스템 정보",
-    description="에러 코드 시스템의 현재 상태와 설정 정보를 조회합니다.",
+    description="에러 코드 시스템 정보",
 )
 async def get_error_codes_info():
     """에러 코드 시스템 정보를 반환합니다."""
@@ -257,11 +255,11 @@ async def get_error_codes_info():
                 "google_sheets_range": settings.GOOGLE_SHEETS_RANGE,
                 "backup_file_exists": os.path.exists("error_codes_backup.json"),
             },
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         raise HTTPException(
-            status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"에러 코드 정보 조회 실패: {str(e)}",
         )

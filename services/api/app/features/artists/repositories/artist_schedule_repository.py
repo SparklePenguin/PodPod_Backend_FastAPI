@@ -1,16 +1,16 @@
 from typing import Tuple
 
+from app.features.artists.models.artist_schedule import ArtistSchedule
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.features.artists.models.artist_schedule import ArtistSchedule
-
 
 class ArtistScheduleRepository:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
+    # - MARK: ID로 스케줄 조회
     async def get_schedule_by_id(self, schedule_id: int) -> ArtistSchedule | None:
         """ID로 스케줄 조회"""
         query = (
@@ -22,9 +22,10 @@ class ArtistScheduleRepository:
             .where(ArtistSchedule.id == schedule_id)
         )
 
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
+    # - MARK: 스케줄 목록 조회
     async def get_schedules(
         self,
         page: int = 1,
@@ -59,13 +60,13 @@ class ArtistScheduleRepository:
         if conditions:
             count_query = count_query.where(and_(*conditions))
 
-        total_count = await self.db.scalar(count_query)
+        total_count = await self._session.scalar(count_query)
 
         # 페이지네이션
         offset = (page - 1) * size
         query = query.offset(offset).limit(size)
 
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         schedules = list(result.scalars().all())
 
         return (schedules, total_count or 0)

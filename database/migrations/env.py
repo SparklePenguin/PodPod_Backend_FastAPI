@@ -12,41 +12,11 @@ services_api_path = project_root / "services" / "api"
 sys.path.insert(0, str(services_api_path))
 
 # 모델들이 메타데이터에 등록되도록 명시적으로 import
-from app.features.artists.models import (  # noqa: F401
-    Artist,
-    ArtistImage,
-    ArtistName,
-    ArtistUnit,
-)
-from app.features.follow.models import Follow  # noqa: F401
-from app.features.locations.models import Location  # noqa: F401
-from app.features.notifications.models import Notification  # noqa: F401
-from app.features.pods.models.pod import (  # noqa: F401
-    Pod,
-    PodApplication,
-    PodImage,
-    PodLike,
-    PodMember,
-    PodRating,
-    PodView,
-)
-from app.features.pods.models.pod_review import PodReview  # noqa: F401
-from app.features.tendencies.models.tendency import (  # noqa: F401
-    TendencyResult,
-    TendencySurvey,
-    UserTendencyResult,
-)
-from app.features.users.models import (  # noqa: F401
-    PreferredArtist,
-    User,
-    UserBlock,
-    UserNotificationSettings,
-    UserReport,
-)
-from sqlalchemy import engine_from_config, pool
-
-from alembic import context  # type: ignore
-from app.core.database import Base
+# 모든 모델을 한 곳에서 import (메타데이터 등록을 위해 필요)
+import app.models  # noqa: E402, F401
+from alembic import context  # type: ignore  # noqa: E402
+from app.core.database import Base  # noqa: E402
+from sqlalchemy import engine_from_config, pool  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

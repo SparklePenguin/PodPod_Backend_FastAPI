@@ -1,66 +1,31 @@
-# PodPod Scraping Service
+# Scraping Service
 
-아티스트 이미지 생성 및 MVP 동기화를 담당하는 독립 서비스입니다.
+아티스트 이미지 스크래핑, 정제를 통한 DB 업데이트 서비스
 
-## 기능
+## 주요 기능
 
-1. **아티스트 이미지 생성** (`POST /api/v1/artists/images/{artist_id}`)
-   - 이미지 파일 업로드
-   - 이미지 메타데이터 저장
+- **아티스트 이미지 스크래핑**: 외부 소스에서 이미지 수집
+- **데이터 정제**: 이미지 메타데이터 추출 및 검증
+- **DB 동기화**: 아티스트/유닛 데이터 업데이트
 
-2. **MVP 동기화** (`POST /api/v1/artists/mvp`)
-   - BLIP 데이터와 MVP 목록 병합
-   - 아티스트/유닛 데이터 동기화
-
-## 실행 방법
-
-### 로컬 실행
+## 실행
 
 ```bash
-cd services/scraping
-
-# 환경 변수 설정
-cp .env.example .env
-# .env 파일 수정
-
-# 의존성 설치
-pip install -r requirements.txt
-
-# 실행
-uvicorn app.main:app --reload --port 8001
+# 루트에서 실행
+./scripts/start-local.sh  # 로컬 환경
+./scripts/start-dev.sh    # Docker 환경
 ```
 
-### Docker 실행
+## 구조
 
-```bash
-# 빌드
-docker build -t podpod-scraping -f services/scraping/Dockerfile .
-
-# 실행
-docker run -p 8001:8001 \
-  -e DATABASE_URL=mysql+aiomysql://user:password@host:3306/podpod \
-  podpod-scraping
+```
+app/
+├── routers/         # API 라우터
+├── services/        # 비즈니스 로직
+├── repositories/    # DB 액세스
+└── main.py          # FastAPI 앱
 ```
 
 ## API 문서
 
-실행 후 http://localhost:8001/docs에서 확인
-
-## 디렉토리 구조
-
-```
-services/scraping/
-├── app/
-│   ├── routers/          # API 라우터
-│   ├── services/         # 비즈니스 로직
-│   ├── repositories/     # 데이터베이스 액세스
-│   └── main.py          # FastAPI 앱
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
-## 환경 변수
-
-- `DATABASE_URL`: MySQL 데이터베이스 URL
-- `ENVIRONMENT`: 환경 (development/production)
+http://localhost:8001/docs

@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, Query
-
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.service import get_artist_schedule_service
 from app.features.artists.schemas import ArtistScheduleDto
 from app.features.artists.services.artist_schedule_service import ArtistScheduleService
+from fastapi import APIRouter, Depends, Query
 
 router = APIRouter()
 
 
+# - MARK: 아티스트 스케줄 목록 조회
 @router.get(
     "",
     response_model=BaseResponse[PageDto[ArtistScheduleDto]],
@@ -29,6 +29,7 @@ async def get_artist_schedules(
     return BaseResponse.ok(result, message_ko="아티스트 스케줄 목록 조회 성공")
 
 
+# - MARK: 아티스트 스케줄 상세 정보 조회
 @router.get(
     "/{schedule_id}",
     response_model=BaseResponse[ArtistScheduleDto],

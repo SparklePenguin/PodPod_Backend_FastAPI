@@ -1,31 +1,54 @@
-import json
 from typing import Any, Dict, List
 
-from app.features.tendencies.models.tendency import (
-    TendencyResult,
-    TendencySurvey,
-    UserTendencyResult,
+from app.features.tendencies.exceptions import (
+    TendencyResultNotFoundException,
+    TendencySurveyNotFoundException,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.features.tendencies.exceptions import TendencyResultNotFoundException
+from app.features.tendencies.repositories import TendencyRepository
 from app.features.tendencies.schemas import (
-    Tendency,
-    TendencyInfo,
+    SubmitTendencyTestRequest,
+    TendencyDto,
+    TendencyInfoDto,
     TendencyResultDto,
     TendencySurveyDto,
     UserTendencyResultDto,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TendencyService:
-    def __init__(self, db: AsyncSession):
-        self._db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
+        self._tendency_repo = TendencyRepository(session)
+
+    # - MARK: 성향 테스트 제출 및 결과 반환
+    async def submit_tendency_test(
+        self, user_id: int, request: SubmitTendencyTestRequest
+    ) -> TendencyDto:
+        """성향 테스트 제출 및 결과 반환"""
+        # 답변을 딕셔너리 형태로 변환
+        answers_dict = {answer.question_id: answer.id for answer in request.answers}
+
+        # 점수 계산
+        calculation_result = await self.calculate_tendency_score(answers_dict)
+
+        # 결과 저장
+        await self.save_user_tendency_result(
+            user_id, calculation_result["tendency_type"], answers_dict
+        )
+
+        # Tendency 객체 생성
+        return await self.calculate_tendency_score_flutter(
+            [
+                {"questionId": answer.question_id, "answerId": answer.id}
+                for answer in request.answers
+            ]
+        )
 
     # - MARK: Flutter용 성향 테스트 점수 계산
     async def calculate_tendency_score_flutter(
         self, answers: List[Dict[str, int]]
-    ) -> Tendency:
+    ) -> TendencyDto:
         """
         Flutter용 성향 테스트 답변을 받아서 점수를 계산하고 Tendency 객체를 반환
 
@@ -55,10 +78,10 @@ class TendencyService:
         description = getattr(tendency_result, "description", "")
 
         # Tendency 객체 생성
-        return Tendency(
+        return TendencyDto(
             type=calculation_result["tendency_type"],  # 이미 대문자 스네이크 케이스
             description=description,
-            tendency_info=TendencyInfo(
+            tendency_info=TendencyInfoDto(
                 main_type=tendency_info_dict.get("mainType", ""),
                 sub_type=tendency_info_dict.get("subType", ""),
                 speech_bubbles=tendency_info_dict.get("speechBubbles", []),
@@ -154,47 +177,35 @@ class TendencyService:
             "answers": answers,
         }
 
-    # - MARK: 성향 테스트 결과 조회
+    # - MARK: 모든 성향 테스트 결과 조회
     async def get_tendency_results(self) -> List[TendencyResultDto]:
         """모든 성향 테스트 결과 조회"""
-        from sqlalchemy import select
-
-        result = await self._db.execute(select(TendencyResult))
-        tendency_results = result.scalars().all()
+        tendency_results = await self._tendency_repo.get_all_tendency_results()
 
         return [
             TendencyResultDto.model_validate(result, from_attributes=True)
             for result in tendency_results
         ]
 
-    async def get_tendency_result(self, tendency_type: str) -> TendencyResultDto | None:
+    # - MARK: 특정 성향 테스트 결과 조회
+    async def get_tendency_result(self, tendency_type: str) -> TendencyResultDto:
         """특정 성향 테스트 결과 조회"""
-        from sqlalchemy import select
-
-        # DB의 타입이 모두 대문자 언더스코어 형식으로 통일됨
-        # 매핑 없이 직접 사용 (모든 타입이 UPPER_CASE 형식)
-        mapped_type = tendency_type
-
-        result = await self._db.execute(
-            select(TendencyResult).where(TendencyResult.type == mapped_type)
+        tendency_result = await self._tendency_repo.get_tendency_result_by_type(
+            tendency_type
         )
-        tendency_result = result.scalar_one_or_none()
 
         if not tendency_result:
-            return None
+            raise TendencyResultNotFoundException(tendency_type)
 
         return TendencyResultDto.model_validate(tendency_result, from_attributes=True)
 
     # - MARK: 성향 테스트 설문 조회
-    async def get_tendency_survey(self) -> TendencySurveyDto | None:
+    async def get_tendency_survey(self) -> TendencySurveyDto:
         """성향 테스트 설문 조회"""
-        from sqlalchemy import select
-
-        result = await self._db.execute(select(TendencySurvey))
-        survey = result.scalar_one_or_none()
+        survey = await self._tendency_repo.get_tendency_survey()
 
         if not survey:
-            return None
+            raise TendencySurveyNotFoundException()
 
         return TendencySurveyDto.from_survey_data(survey)
 
@@ -203,12 +214,7 @@ class TendencyService:
         self, user_id: int
     ) -> UserTendencyResultDto | None:
         """사용자의 성향 테스트 결과 조회"""
-        from sqlalchemy import select
-
-        result = await self._db.execute(
-            select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
-        )
-        user_result = result.scalar_one_or_none()
+        user_result = await self._tendency_repo.get_user_tendency_result(user_id)
 
         if not user_result:
             return None
@@ -220,69 +226,6 @@ class TendencyService:
         self, user_id: int, tendency_type: str, answers: dict
     ) -> None:
         """사용자의 성향 테스트 결과 저장"""
-        # 기존 결과가 있으면 업데이트, 없으면 새로 생성
-        existing_result = await self.get_user_tendency_result(user_id)
-
-        if existing_result:
-            # 기존 결과 업데이트
-            from sqlalchemy import update
-
-            await self._db.execute(
-                update(UserTendencyResult)
-                .where(UserTendencyResult.user_id == user_id)
-                .values(tendency_type=tendency_type, answers=answers)
-            )
-        else:
-            # 새 결과 생성
-            new_result = UserTendencyResult(
-                user_id=user_id, tendency_type=tendency_type, answers=answers
-            )
-            self._db.add(new_result)
-
-        await self._db.commit()
-
-    # - MARK: (내부용) MVP 성향 테스트 데이터 생성
-    async def create_mvp_tendency_data(self) -> dict:
-        """MVP 성향 테스트 데이터 생성 (내부용)"""
-        try:
-            # 성향 테스트 결과 데이터 로드
-            with open("mvp/tendency_results.json", "r", encoding="utf-8") as f:
-                tendency_results = json.load(f)
-
-            # 성향 테스트 설문 데이터 로드
-            with open("mvp/tendency_test.json", "r", encoding="utf-8") as f:
-                survey_data = json.load(f)
-
-            # 기존 데이터 삭제
-            from sqlalchemy import text
-
-            await self._db.execute(text("DELETE FROM tendency_results"))
-            await self._db.execute(text("DELETE FROM tendency_surveys"))
-
-            # 성향 테스트 결과 삽입
-            for result in tendency_results:
-                new_result = TendencyResult(
-                    type=result["type"],
-                    description=result["description"],
-                    tendency_info=result["tendencyInfo"],
-                )
-                self._db.add(new_result)
-
-            # 성향 테스트 설문 삽입
-            new_survey = TendencySurvey(
-                title=survey_data["title"], survey_data=survey_data
-            )
-            self._db.add(new_survey)
-
-            await self._db.commit()
-
-            return {
-                "tendency_results_count": len(tendency_results),
-                "survey_created": True,
-            }
-
-        except Exception as e:
-            await self._db.rollback()
-            raise Exception(f"MVP 성향 테스트 데이터 생성 실패: {str(e)}")
-            # raise_error가 예외를 발생시키므로 여기 도달하지 않지만 타입 체커를 위해
-            return {}
+        await self._tendency_repo.save_user_tendency_result(
+            user_id, tendency_type, answers
+        )

@@ -2,23 +2,22 @@ import json
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Dict, List
 
-from sqlalchemy import and_, case, desc, func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
 from app.features.pods.models.pod import Pod, PodMember
 from app.features.pods.models.pod.pod_enums import get_subcategories_by_main_category
 from app.features.pods.models.pod.pod_like import PodLike
 from app.features.pods.models.pod.pod_rating import PodRating
 from app.features.pods.models.pod.pod_status import PodStatus
 from app.features.pods.models.pod.pod_view import PodView
-from app.features.pods.schemas import SimplePodDto
+from app.features.pods.schemas import PodDto
 from app.features.users.models import User
+from sqlalchemy import and_, case, desc, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
-class PodCRUD:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+class PodRepository:
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
     # - MARK: 파티 생성
     async def create_pod(
@@ -66,8 +65,8 @@ class PodCRUD:
             meeting_time=meeting_time,
             status=status,
         )
-        self.db.add(pod)
-        await self.db.flush()
+        self._session.add(pod)
+        await self._session.flush()
         return pod
 
     # - MARK: 파티 생성 (채팅방 포함)
@@ -120,7 +119,7 @@ class PodCRUD:
             sendbird_service = SendbirdService()
             channel_url = f"pod_{pod.id}_{int(datetime.now().timestamp())}"
 
-            # SimplePodDto 객체 생성 (meeting_date와 meeting_time을 하나로 합쳐서 timestamp로 변환)
+            # PodDto 객체 생성 (meeting_date와 meeting_time을 하나로 합쳐서 timestamp로 변환)
             def _convert_to_combined_timestamp(meeting_date, meeting_time):
                 """date와 time 객체를 UTC로 해석하여 하나의 timestamp로 변환"""
                 if meeting_date is None:
@@ -142,7 +141,7 @@ class PodCRUD:
             if meeting_date_timestamp is None:
                 meeting_date_timestamp = 0
 
-            simple_pod_dto = SimplePodDto(
+            simple_pod_dto = PodDto(
                 id=getattr(pod, "id"),
                 owner_id=owner_id,
                 title=title,
@@ -165,29 +164,29 @@ class PodCRUD:
             if channel_data and "channel_url" in channel_data:
                 # 생성된 채팅방 URL을 파티에 저장
                 pod.chat_channel_url = channel_data["channel_url"]
-                await self.db.commit()
+                await self._session.commit()
                 print(f"파티 {pod.id} 채팅방 생성 성공: {channel_data['channel_url']}")
             else:
                 print(f"파티 {pod.id} 채팅방 생성 실패")
-                await self.db.rollback()
+                await self._session.rollback()
 
         except Exception as e:
             print(f"Sendbird 설정 오류: {e}")
-            await self.db.rollback()
+            await self._session.rollback()
             raise e
 
         return pod
 
     async def get_pods_with_chat_channels(self) -> List[Pod]:
         """채팅방 URL이 있는 모든 파티 조회"""
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Pod).where(and_(Pod.chat_channel_url.isnot(None), Pod.is_active))
         )
         return list(result.scalars().all())
 
     async def get_all_pods(self) -> List[Pod]:
         """모든 활성 파티 조회"""
-        result = await self.db.execute(select(Pod).where(Pod.is_active))
+        result = await self._session.execute(select(Pod).where(Pod.is_active))
         return list(result.scalars().all())
 
     async def update_chat_channel_url(
@@ -199,12 +198,12 @@ class PodCRUD:
             return False
 
         setattr(pod, "chat_channel_url", channel_url)
-        await self.db.commit()
+        await self._session.commit()
         return True
 
     # - MARK: 파티 조회
     async def get_pod_by_id(self, pod_id: int) -> Pod | None:
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
         )
         return result.scalar_one_or_none()
@@ -219,8 +218,8 @@ class PodCRUD:
             if hasattr(pod, field):
                 setattr(pod, field, value)
 
-        await self.db.commit()
-        await self.db.refresh(pod)
+        await self._session.commit()
+        await self._session.refresh(pod)
         return pod
 
     # - MARK: 파티 삭제
@@ -228,7 +227,7 @@ class PodCRUD:
         pod = await self.get_pod_by_id(pod_id)
         if pod:
             setattr(pod, "is_active", False)
-            await self.db.commit()
+            await self._session.commit()
 
     # - MARK: 파티 목록 조회
     async def get_pods(
@@ -285,14 +284,14 @@ class PodCRUD:
 
         # 전체 개수 조회
         count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.db.execute(count_query)
+        total_result = await self._session.execute(count_query)
         total_count = total_result.scalar()
 
         # 페이지네이션 적용
         query = query.offset(offset).limit(size)
 
         # 실행
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         pods = result.scalars().all()
 
         return {
@@ -370,7 +369,7 @@ class PodCRUD:
             .limit(size)
         )
 
-        result = await self.db.execute(trending_query)
+        result = await self._session.execute(trending_query)
         trending_pods = result.scalars().all()
 
         return list(trending_pods)
@@ -441,7 +440,7 @@ class PodCRUD:
             .limit(size)
         )
 
-        result = await self.db.execute(closing_soon_query)
+        result = await self._session.execute(closing_soon_query)
         closing_soon_pods = result.scalars().all()
 
         return list(closing_soon_pods)
@@ -500,7 +499,7 @@ class PodCRUD:
             .limit(5)
         )
 
-        participated_result = await self.db.execute(participated_pods_query)
+        participated_result = await self._session.execute(participated_pods_query)
         participated_pods = participated_result.all()
 
         # 2순위: 유저가 개설한 팟에 참여한 유저가 개설한 모임
@@ -508,7 +507,7 @@ class PodCRUD:
         my_pods_query = select(Pod.id).where(
             and_(Pod.owner_id == user_id, Pod.created_at >= ninety_days_ago)
         )
-        my_pods_result = await self.db.execute(my_pods_query)
+        my_pods_result = await self._session.execute(my_pods_query)
         my_pod_ids = [row[0] for row in my_pods_result.all()]
 
         if my_pod_ids:
@@ -518,7 +517,7 @@ class PodCRUD:
                 .where(PodMember.pod_id.in_(my_pod_ids))
                 .distinct()
             )
-            participants_result = await self.db.execute(participants_query)
+            participants_result = await self._session.execute(participants_query)
             participant_ids = [row[0] for row in participants_result.all()]
 
             # 참여자들이 개설한 파티 조회
@@ -533,7 +532,7 @@ class PodCRUD:
                 .order_by(desc(Pod.created_at))
                 .limit(5)
             )
-            participant_result = await self.db.execute(participant_pods_query)
+            participant_result = await self._session.execute(participant_pods_query)
             participant_pods = participant_result.all()
         else:
             participant_pods = []
@@ -603,7 +602,7 @@ class PodCRUD:
             .limit(size)
         )
 
-        result = await self.db.execute(history_query)
+        result = await self._session.execute(history_query)
         history_pods = result.scalars().all()
 
         return list(history_pods)
@@ -654,7 +653,7 @@ class PodCRUD:
             .limit(3)
         )
 
-        popular_result = await self.db.execute(popular_categories_query)
+        popular_result = await self._session.execute(popular_categories_query)
         popular_categories = [row[0] for row in popular_result.all()]
 
         # 최근 일주일간 가장 조회가 많은 카테고리 조회
@@ -674,7 +673,7 @@ class PodCRUD:
             .limit(3)
         )
 
-        viewed_result = await self.db.execute(viewed_categories_query)
+        viewed_result = await self._session.execute(viewed_categories_query)
         viewed_categories = [row[0] for row in viewed_result.all()]
 
         # 인기 카테고리 통합
@@ -721,7 +720,7 @@ class PodCRUD:
             .limit(size)
         )
 
-        result = await self.db.execute(popular_query)
+        result = await self._session.execute(popular_query)
         popular_pods = result.scalars().all()
 
         return list(popular_pods)
@@ -740,7 +739,7 @@ class PodCRUD:
             return  # 파티가 없거나 본인 파티면 카운트하지 않음
 
         # 중복 조회 방지 (하루에 한 번만)
-        existing_view = await self.db.execute(
+        existing_view = await self._session.execute(
             select(PodView).where(
                 PodView.pod_id == pod_id,
                 PodView.user_id == user_id,
@@ -749,8 +748,8 @@ class PodCRUD:
         )
         if not existing_view.scalar_one_or_none():
             view = PodView(pod_id=pod_id, user_id=user_id)
-            self.db.add(view)
-            await self.db.commit()
+            self._session.add(view)
+            await self._session.commit()
 
             # 조회수 달성 알림 체크
             await self._check_views_threshold(pod_id)
@@ -762,7 +761,7 @@ class PodCRUD:
         """파티 상세 정보 조회"""
         query = select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
 
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         pod = result.scalar_one_or_none()
 
         if not pod:
@@ -781,7 +780,7 @@ class PodCRUD:
             return False
 
         setattr(pod, "status", status.value if hasattr(status, "value") else status)
-        await self.db.commit()
+        await self._session.commit()
         return True
 
     # - MARK: 파티 검색
@@ -867,14 +866,14 @@ class PodCRUD:
 
         # 전체 개수 조회
         count_query = select(func.count()).select_from(search_query.subquery())
-        total_result = await self.db.execute(count_query)
+        total_result = await self._session.execute(count_query)
         total_count = total_result.scalar() or 0
 
         # 페이지네이션 적용
         search_query = search_query.offset(offset).limit(size)
 
         # 실행
-        result = await self.db.execute(search_query)
+        result = await self._session.execute(search_query)
         pods = result.scalars().all()
 
         return {
@@ -895,7 +894,7 @@ class PodCRUD:
             .distinct()
         )
 
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         participants = result.scalars().all()
 
         # 파티장도 포함시키기 위해 추가 조회
@@ -904,12 +903,12 @@ class PodCRUD:
             .options(selectinload(Pod.images))
             .where(Pod.id == pod_id, Pod.is_active)
         )
-        pod_result = await self.db.execute(pod_query)
+        pod_result = await self._session.execute(pod_query)
         pod = pod_result.scalar_one_or_none()
 
         if pod:
             owner_query = select(User).where(User.id == pod.owner_id)
-            owner_result = await self.db.execute(owner_query)
+            owner_result = await self._session.execute(owner_query)
             owner = owner_result.scalar_one_or_none()
 
             # 파티장이 참여자 목록에 없으면 추가
@@ -931,7 +930,7 @@ class PodCRUD:
             view_count_query = select(func.count(PodView.id)).where(
                 PodView.pod_id == pod_id
             )
-            view_count_result = await self.db.execute(view_count_query)
+            view_count_result = await self._session.execute(view_count_query)
             view_count = view_count_result.scalar() or 0
 
             # 10회 달성 시에만 알림 전송
@@ -947,7 +946,7 @@ class PodCRUD:
                     return
 
                 owner_query = select(User).where(User.id == pod_owner_id)
-                owner_result = await self.db.execute(owner_query)
+                owner_result = await self._session.execute(owner_query)
                 owner = owner_result.scalar_one_or_none()
 
                 owner_fcm_token = getattr(owner, "fcm_token", None) if owner else None
@@ -962,7 +961,7 @@ class PodCRUD:
                         token=owner_fcm_token,
                         party_name=pod_title,
                         pod_id=pod_id,
-                        db=self.db,
+                        db=self._session,
                         user_id=owner_id,
                         related_user_id=pod_owner_id,
                     )
@@ -990,20 +989,20 @@ class PodCRUD:
     async def get_joined_users_count(self, pod_id: int) -> int:
         """파티 참여자 수 조회"""
         query = select(func.count(PodMember.id)).where(PodMember.pod_id == pod_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         count = result.scalar() or 0
         return count + 1  # 파티장 포함
 
     async def get_like_count(self, pod_id: int) -> int:
         """파티 좋아요 수 조회"""
         query = select(func.count(PodLike.id)).where(PodLike.pod_id == pod_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar() or 0
 
     async def get_view_count(self, pod_id: int) -> int:
         """파티 조회수 조회"""
         query = select(func.count(PodView.id)).where(PodView.pod_id == pod_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar() or 0
 
     async def is_liked_by_user(self, pod_id: int, user_id: int) -> bool:
@@ -1011,7 +1010,7 @@ class PodCRUD:
         query = select(PodLike.id).where(
             PodLike.pod_id == pod_id, PodLike.user_id == user_id
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none() is not None
 
     async def get_user_pods(
@@ -1032,14 +1031,14 @@ class PodCRUD:
 
         # 전체 개수 조회
         count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.db.execute(count_query)
+        total_result = await self._session.execute(count_query)
         total_count = total_result.scalar()
 
         # 페이지네이션 적용
         query = query.offset(offset).limit(size)
 
         # 실행
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         pods = result.scalars().all()
 
         return {
@@ -1069,14 +1068,14 @@ class PodCRUD:
 
         # 전체 개수 조회
         count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.db.execute(count_query)
+        total_result = await self._session.execute(count_query)
         total_count = total_result.scalar()
 
         # 페이지네이션 적용
         query = query.offset(offset).limit(size)
 
         # 실행
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         pods = result.scalars().all()
 
         return {
@@ -1106,14 +1105,14 @@ class PodCRUD:
 
         # 전체 개수 조회
         count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.db.execute(count_query)
+        total_result = await self._session.execute(count_query)
         total_count = total_result.scalar()
 
         # 페이지네이션 적용
         query = query.offset(offset).limit(size)
 
         # 실행
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         pods = result.scalars().all()
 
         return {
@@ -1128,7 +1127,7 @@ class PodCRUD:
     async def get_pod_members(self, pod_id: int) -> List[PodMember]:
         """파티의 모든 멤버 조회"""
         query = select(PodMember).where(PodMember.pod_id == pod_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return list(result.scalars().all())
 
     async def is_pod_member(self, pod_id: int, user_id: int) -> bool:
@@ -1136,7 +1135,7 @@ class PodCRUD:
         query = select(PodMember).where(
             and_(PodMember.pod_id == pod_id, PodMember.user_id == user_id)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none() is not None
 
     async def remove_pod_member(self, pod_id: int, user_id: int) -> bool:
@@ -1144,11 +1143,11 @@ class PodCRUD:
         query = select(PodMember).where(
             and_(PodMember.pod_id == pod_id, PodMember.user_id == user_id)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         member = result.scalar_one_or_none()
 
         if member:
-            await self.db.delete(member)
-            await self.db.commit()
+            await self._session.delete(member)
+            await self._session.commit()
             return True
         return False

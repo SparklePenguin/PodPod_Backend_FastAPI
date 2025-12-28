@@ -2,21 +2,28 @@ import logging
 from typing import List, Union
 
 import firebase_admin
-from firebase_admin import credentials, messaging
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
-from app.features.notifications.repositories.notification import notification_crud
-from app.features.notifications.schemas.notification import (
-    FollowNotiSubType,
-    PodNotiSubType,
-    PodStatusNotiSubType,
-    RecommendNotiSubType,
-    ReviewNotiSubType,
+from app.features.notifications.repositories.notification_repository import (
+    NotificationRepository,
+)
+from app.features.notifications.schemas.follow_noti_sub_type import FollowNotiSubType
+from app.features.notifications.schemas.notification_category import (
     get_notification_category,
+)
+from app.features.notifications.schemas.notification_utils import (
     get_notification_main_type,
 )
-from app.features.users.repositories import UserNotificationSettingsRepository
+from app.features.notifications.schemas.pod_noti_sub_type import PodNotiSubType
+from app.features.notifications.schemas.pod_status_noti_sub_type import (
+    PodStatusNotiSubType,
+)
+from app.features.notifications.schemas.recommend_noti_sub_type import (
+    RecommendNotiSubType,
+)
+from app.features.notifications.schemas.review_noti_sub_type import ReviewNotiSubType
+from app.features.users.repositories import UserNotificationRepository
+from firebase_admin import credentials, messaging
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +98,7 @@ class FCMService:
         try:
             # 사용자 알림 설정 확인
             if db and user_id:
-                settings_crud = UserNotificationSettingsRepository(db)
+                settings_crud = UserNotificationRepository(db)
                 category = (
                     get_notification_category(data.get("type", "UNKNOWN"))
                     if data
@@ -110,10 +117,10 @@ class FCMService:
                 # 개인 대 개인 팔로우 알림 설정 확인 (FOLLOW 타입인 경우)
                 if category == "COMMUNITY" and data and data.get("type") == "FOLLOW":
                     from app.features.follow.repositories.follow_repository import (
-                        FollowCRUD,
+                        FollowRepository,
                     )
 
-                    follow_crud = FollowCRUD(db)
+                    follow_crud = FollowRepository(db)
                     related_user_id = data.get("relatedId")
 
                     if related_user_id:
@@ -187,8 +194,8 @@ class FCMService:
                         f"현재 시간(UTC): {before_create.isoformat()}"
                     )
 
-                    notification = await notification_crud.create_notification(
-                        db=db,
+                    notification_repo = NotificationRepository(db)
+                    notification = await notification_repo.create_notification(
                         user_id=user_id,
                         related_user_id=related_user_id,
                         related_pod_id=related_pod_id,

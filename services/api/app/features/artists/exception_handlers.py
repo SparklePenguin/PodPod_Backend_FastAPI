@@ -10,9 +10,6 @@ Artists 도메인 전용 Exception Handler
 
 import logging
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
 from app.common.schemas import BaseResponse
 from app.features.artists.exceptions import (
     ArtistAlreadyExistsException,
@@ -20,6 +17,8 @@ from app.features.artists.exceptions import (
     ArtistScheduleNotFoundException,
     ArtistSuggestionNotFoundException,
 )
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 

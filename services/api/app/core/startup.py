@@ -4,10 +4,11 @@
 
 import asyncio
 import os
+
 from app.core.config import settings
 from app.core.error_codes import (
-    load_error_codes_from_sheets,
     load_error_codes_from_file,
+    load_error_codes_from_sheets,
 )
 
 
@@ -69,9 +70,17 @@ def sync_startup_events():
     """동기적으로 실행되는 시작 이벤트들"""
     print("동기 시작 이벤트 실행 중...")
 
-    # 필요한 디렉토리 생성
-    os.makedirs("uploads/pods/images", exist_ok=True)
-    os.makedirs("uploads/pods/thumbnails", exist_ok=True)
-    os.makedirs("logs", exist_ok=True)
+    # 필요한 디렉토리 생성 (settings에서 설정된 경로 사용)
+    from pathlib import Path
+
+    if settings.UPLOADS_DIR:
+        uploads_dir = Path(settings.UPLOADS_DIR)
+        (uploads_dir / "pods" / "images").mkdir(parents=True, exist_ok=True)
+        (uploads_dir / "pods" / "thumbnails").mkdir(parents=True, exist_ok=True)
+        (uploads_dir / "users" / "profiles").mkdir(parents=True, exist_ok=True)
+        (uploads_dir / "artists").mkdir(parents=True, exist_ok=True)
+
+    if settings.LOGS_DIR:
+        Path(settings.LOGS_DIR).mkdir(parents=True, exist_ok=True)
 
     print("동기 시작 이벤트 완료")

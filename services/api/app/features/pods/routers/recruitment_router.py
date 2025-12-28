@@ -1,19 +1,18 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import BaseResponse
 from app.core.database import get_session
 from app.core.error_codes import raise_error
-from app.core.http_status import HttpStatus
 from app.deps.auth import get_current_user_id
-from app.features.follow.schemas import SimpleUserDto
-from app.features.pods.schemas.pod_application_dto import PodApplicationDto
+from app.features.users.schemas import UserDto
+from app.features.pods.schemas.pod_appl_detail_dto import PodApplDetailDto
+from app.deps.service import get_pod_service, get_recruitment_service
 from app.features.pods.services.pod_service import PodService
 from app.features.pods.services.recruitment_service import RecruitmentService
 from app.features.users.models import User
+from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -21,7 +20,7 @@ router = APIRouter()
 # - MARK: 파티 참여 신청 요청 스키마
 class ApplyToPodRequest(BaseModel):
     message: str | None = Field(
-        default=None, serialization_alias="message", description="참여 신청 메시지"
+        default=None, description="참여 신청 메시지"
     )
 
     model_config = {"populate_by_name": True}
@@ -29,36 +28,18 @@ class ApplyToPodRequest(BaseModel):
 
 # - MARK: 신청서 승인/거절 요청 스키마
 class ReviewApplicationRequest(BaseModel):
-    status: str = Field(
-        serialization_alias="status", description="승인 상태 (approved, rejected)"
-    )
+    status: str = Field(description="승인 상태 (approved, rejected)")
 
     model_config = {"populate_by_name": True}
 
 
-def get_pod_service(db: AsyncSession = Depends(get_session)) -> PodService:
-    return PodService(db)
-
-
-def get_recruitment_service(
-    db: AsyncSession = Depends(get_session),
-) -> RecruitmentService:
-    return RecruitmentService(db)
 
 
 # - MARK: 파티 참여 신청
 @router.post(
     "/{pod_id}",
-    response_model=BaseResponse[PodApplicationDto],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[PodApplicationDto],
-            "description": "파티 참여 신청 성공",
-        },
-    },
-    summary="파티 참여 신청",
-    description="특정 파티에 참여를 신청합니다. 메시지를 포함할 수 있습니다.",
-    tags=["recruitments"],
+    response_model=BaseResponse[PodApplDetailDto],
+    description="파티 참여 신청",
 )
 async def apply_to_pod(
     pod_id: int,
@@ -74,16 +55,8 @@ async def apply_to_pod(
 # - MARK: 신청서 승인/거절
 @router.put(
     "/{application_id}",
-    response_model=BaseResponse[PodApplicationDto],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[PodApplicationDto],
-            "description": "신청서 승인/거절 성공",
-        },
-    },
-    summary="신청서 승인/거절",
-    description="파티 참여 신청서를 승인하거나 거절합니다.",
-    tags=["recruitments"],
+    response_model=BaseResponse[PodApplDetailDto],
+    description="신청서 승인/거절",
 )
 async def review_application(
     application_id: int,
@@ -101,23 +74,7 @@ async def review_application(
 @router.delete(
     "/{application_id}",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "신청서 처리 성공",
-        },
-        HttpStatus.NOT_FOUND: {
-            "model": BaseResponse[None],
-            "description": "신청서를 찾을 수 없음",
-        },
-        HttpStatus.FORBIDDEN: {
-            "model": BaseResponse[None],
-            "description": "권한 없음 (파티장 또는 신청자가 아님)",
-        },
-    },
-    summary="파티 참여 신청서 처리",
-    description="파티장이면 신청서를 숨김 처리하고, 신청자면 신청을 취소합니다.",
-    tags=["recruitments"],
+    description="파티 참여 신청서 처리",
 )
 async def handle_application(
     application_id: int,
@@ -142,19 +99,11 @@ async def handle_application(
 # - MARK: 파티 참여 신청 목록 조회
 @router.get(
     "/",
-    response_model=BaseResponse[List[PodApplicationDto]],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[List[PodApplicationDto]],
-            "description": "파티 참여 신청 목록 조회 성공",
-        },
-    },
-    summary="파티 참여 신청 목록 조회",
-    description="특정 파티에 대한 참여 신청서 목록을 조회합니다.",
-    tags=["recruitments"],
+    response_model=BaseResponse[List[PodApplDetailDto]],
+    description="파티 참여 신청 목록 조회",
 )
 async def get_apply_to_pod_list(
-    pod_id: int = Query(..., serialization_alias="podId", description="파티 ID"),
+    pod_id: int = Query(..., alias="podId", description="파티 ID"),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
     applications = (
@@ -163,10 +112,9 @@ async def get_apply_to_pod_list(
         )
     )
 
-    # PodApplication 모델을 PodApplicationDto로 변환
+    # PodApplication 모델을 PodApplDetailDto로 변환
+    from app.features.tendencies.models import UserTendencyResult
     from sqlalchemy import select
-
-    from app.features.tendencies.models.tendency import UserTendencyResult
 
     application_dtos = []
     for application in applications:
@@ -205,8 +153,8 @@ async def get_apply_to_pod_list(
                 else None
             )
 
-        # SimpleUserDto 생성
-        user_dto = SimpleUserDto(
+        # UserDto 생성
+        user_dto = UserDto(
             id=getattr(user, "id"),
             nickname=getattr(user, "nickname"),
             profile_image=getattr(user, "profile_image"),
@@ -217,7 +165,7 @@ async def get_apply_to_pod_list(
 
         reviewer_dto = None
         if reviewer:
-            reviewer_dto = SimpleUserDto(
+            reviewer_dto = UserDto(
                 id=getattr(reviewer, "id"),
                 nickname=getattr(reviewer, "nickname"),
                 profile_image=getattr(reviewer, "profile_image"),
@@ -226,7 +174,7 @@ async def get_apply_to_pod_list(
                 is_following=False,
             )
 
-        application_dto = PodApplicationDto(
+        application_dto = PodApplDetailDto(
             id=getattr(application, "id"),
             podId=getattr(application, "pod_id"),
             user=user_dto,

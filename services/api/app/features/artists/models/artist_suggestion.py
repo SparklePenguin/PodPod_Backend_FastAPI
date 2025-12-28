@@ -1,6 +1,5 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text, func
-
 from app.core.database import Base
+from sqlalchemy import Column, DateTime, Integer, String, Text, func
 
 
 class ArtistSuggestion(Base):

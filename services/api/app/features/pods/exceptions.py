@@ -126,3 +126,14 @@ class InvalidImageException(DomainException):
             format_params={"reason": reason or "Invalid image"},
         )
         self.reason = reason
+
+
+class InvalidPodStatusException(DomainException):
+    """파티 상태 값이 유효하지 않은 경우"""
+
+    def __init__(self, status_value: str):
+        super().__init__(
+            error_key="INVALID_POD_STATUS",
+            format_params={"status_value": status_value},
+        )
+        self.status_value = status_value

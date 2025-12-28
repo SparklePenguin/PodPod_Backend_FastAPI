@@ -1,25 +1,25 @@
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas.get_kakao_token_request import GetKakaoTokenRequest
 from app.features.oauth.schemas.kakao_token_response import KakaoTokenResponse
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class KakaoOAuthService:
     """카카오 OAuth 서비스"""
 
     def __init__(self, session: AsyncSession):
-        self.session = session
-        self.redirect_uri = settings.KAKAO_REDIRECT_URI
-        self.client_id = settings.KAKAO_CLIENT_ID
-        self.client_secret = settings.KAKAO_CLIENT_SECRET
-        self.kakao_token_url = "https://kauth.kakao.com/oauth/token"
-        self.kakao_user_info_url = "https://kapi.kakao.com/v2/user/me"
+        self._session = session
+        self._redirect_uri = settings.KAKAO_REDIRECT_URI
+        self._client_id = settings.KAKAO_CLIENT_ID
+        self._client_secret = settings.KAKAO_CLIENT_SECRET
+        self._kakao_token_url = "https://kauth.kakao.com/oauth/token"
+        self._kakao_user_info_url = "https://kapi.kakao.com/v2/user/me"
 
+    # - MARK: 카카오 액세스 토큰 조회
     async def get_kakao_token(self, code: str) -> KakaoTokenResponse:
         """카카오 인가 코드을 통해 액세스 토큰을 조회"""
 
@@ -39,7 +39,7 @@ class KakaoOAuthService:
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                self.kakao_token_url,
+                self._kakao_token_url,
                 data=token_params.model_dump(exclude_none=True),
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"
@@ -60,6 +60,7 @@ class KakaoOAuthService:
 
             return KakaoTokenResponse(**response.json())
 
+    # - MARK: 카카오 사용자 정보 조회
     async def get_kakao_user_info(self, access_token: str) -> OAuthUserInfo:
         """카카오 액세스 토큰으로 사용자 정보 조회"""
         from typing import Any, Dict
@@ -67,7 +68,7 @@ class KakaoOAuthService:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    self.kakao_user_info_url,
+                    self._kakao_user_info_url,
                     headers={
                         "Authorization": f"Bearer {access_token}",
                         "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
@@ -100,6 +101,7 @@ class KakaoOAuthService:
                     detail=f"Kakao API request failed: {str(e)}",
                 ) from e
 
+    # - MARK: 카카오 인증 URL 생성
     def get_auth_url(self) -> str:
         """카카오 인증 URL 생성"""
         return (

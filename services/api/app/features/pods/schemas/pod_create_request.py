@@ -1,35 +1,28 @@
 import datetime
 from typing import List
 
-from pydantic import BaseModel, Field, field_validator
-
 from app.features.pods.models.pod.pod_enums import (
     AccompanySubCategory,
     EtcSubCategory,
     GoodsSubCategory,
     TourSubCategory,
 )
+from pydantic import BaseModel, Field, field_validator
 
 
 class PodCreateRequest(BaseModel):
-    title: str = Field(serialization_alias="title")
-    description: str | None = Field(default=None, serialization_alias="description")
-    sub_categories: List[str] = Field(serialization_alias="subCategories")
-    capacity: int = Field(serialization_alias="capacity")
-    place: str = Field(serialization_alias="place")
-    address: str = Field(serialization_alias="address")
-    sub_address: str | None = Field(default=None, serialization_alias="subAddress")
-    x: float | None = Field(
-        default=None, serialization_alias="x", description="경도 (longitude)"
-    )
-    y: float | None = Field(
-        default=None, serialization_alias="y", description="위도 (latitude)"
-    )
-    meetingDate: datetime.date = Field(serialization_alias="meetingDate")
-    meetingTime: datetime.time = Field(serialization_alias="meetingTime")
-    selected_artist_id: int | None = Field(
-        default=None, serialization_alias="selectedArtistId"
-    )
+    title: str = Field()
+    description: str | None = Field(default=None)
+    sub_categories: List[str] = Field(alias="subCategories")
+    capacity: int = Field()
+    place: str = Field()
+    address: str = Field()
+    sub_address: str | None = Field(default=None, alias="subAddress")
+    x: float | None = Field(default=None, description="경도 (longitude)")
+    y: float | None = Field(default=None, description="위도 (latitude)")
+    meetingDate: datetime.date = Field(alias="meetingDate")
+    meetingTime: datetime.time = Field(alias="meetingTime")
+    selected_artist_id: int | None = Field(default=None, alias="selectedArtistId")
 
     @field_validator("sub_categories")
     @classmethod

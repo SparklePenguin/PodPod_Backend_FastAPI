@@ -8,12 +8,12 @@ T = TypeVar("T")
 
 class PageDto(BaseModel, Generic[T]):
     items: List[T]
-    current_page: int = Field(..., serialization_alias="currentPage")
+    current_page: int = Field(..., alias="currentPage")
     size: int = Field(...)
-    total_count: int = Field(..., serialization_alias="totalCount")
-    total_pages: int = Field(..., serialization_alias="totalPages")
-    has_next: bool = Field(..., serialization_alias="hasNext")
-    has_prev: bool = Field(..., serialization_alias="hasPrev")
+    total_count: int = Field(..., alias="totalCount")
+    total_pages: int = Field(..., alias="totalPages")
+    has_next: bool = Field(..., alias="hasNext")
+    has_prev: bool = Field(..., alias="hasPrev")
 
     model_config = {
         "from_attributes": True,

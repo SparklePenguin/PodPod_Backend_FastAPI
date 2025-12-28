@@ -1,7 +1,6 @@
+from app.core.database import Base
 from sqlalchemy import Column, ForeignKey, Integer
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 class PreferredArtist(Base):

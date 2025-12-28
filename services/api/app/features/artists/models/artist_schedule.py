@@ -1,8 +1,7 @@
+from app.core.database import Base
 from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-
-from app.core.database import Base
 
 
 class ArtistSchedule(Base):

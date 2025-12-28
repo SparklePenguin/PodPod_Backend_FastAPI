@@ -1,23 +1,22 @@
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import BaseResponse
 from app.core.database import get_session
-from app.core.http_status import HttpStatus
 from app.core.services.sendbird_service import SendbirdService
-from app.features.pods.repositories.pod_repository import PodCRUD
+from app.features.pods.repositories.pod_repository import PodRepository
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
 
+# - MARK: Sendbird 채팅방 생성
 @router.post("/create-channels")
 async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
     """모든 파티에 Sendbird 채팅방 생성"""
     try:
-        pod_crud = PodCRUD(db)
+        pod_crud = PodRepository(db)
 
         # Sendbird 서비스 초기화
         try:
@@ -26,7 +25,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="Sendbird 설정이 누락되었습니다. SENDBIRD_APP_ID와 SENDBIRD_API_TOKEN을 설정해주세요.",
                 message_en="Sendbird configuration is missing. Please set SENDBIRD_APP_ID and SENDBIRD_API_TOKEN.",
             )
@@ -34,7 +33,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
             return BaseResponse.error(
                 error_key="SENDBIRD_SERVICE_ERROR",
                 error_code=1002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
                 message_en=f"Failed to initialize Sendbird service: {str(e)}",
             )
@@ -49,7 +48,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
                     "success_count": 0,
                     "error_count": 0,
                 },
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
 
         success_count = 0
@@ -154,24 +153,25 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
                 "error_count": error_count,
                 "results": results,
             },
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5000,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"서버 오류: {str(e)}",
             message_en=f"Internal server error: {str(e)}",
         )
 
 
+# - MARK: Sendbird 채팅방 삭제
 @router.delete("/delete-channels")
 async def delete_sendbird_channels(db: AsyncSession = Depends(get_session)):
     """모든 Sendbird 채팅방 삭제"""
     try:
-        pod_crud = PodCRUD(db)
+        pod_crud = PodRepository(db)
 
         # Sendbird 서비스 초기화
         try:
@@ -180,7 +180,7 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_session)):
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="Sendbird 설정이 누락되었습니다.",
                 message_en="Sendbird configuration is missing.",
             )
@@ -188,7 +188,7 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_session)):
             return BaseResponse.error(
                 error_key="SENDBIRD_SERVICE_ERROR",
                 error_code=1002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
                 message_en=f"Failed to initialize Sendbird service: {str(e)}",
             )
@@ -203,7 +203,7 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_session)):
                     "success_count": 0,
                     "error_count": 0,
                 },
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
 
         success_count = 0
@@ -261,24 +261,25 @@ async def delete_sendbird_channels(db: AsyncSession = Depends(get_session)):
                 "error_count": error_count,
                 "results": results,
             },
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5000,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"서버 오류: {str(e)}",
             message_en=f"Internal server error: {str(e)}",
         )
 
 
+# - MARK: Sendbird 채팅방 상태 확인
 @router.get("/check-channels")
 async def check_sendbird_channels(db: AsyncSession = Depends(get_session)):
     """채팅방 상태 확인"""
     try:
-        pod_crud = PodCRUD(db)
+        pod_crud = PodRepository(db)
 
         # 모든 파티 조회
         pods = await pod_crud.get_all_pods()
@@ -286,7 +287,7 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_session)):
         if not pods:
             return BaseResponse.ok(
                 data={"message": "파티가 없습니다.", "pods": []},
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
 
         results = []
@@ -321,19 +322,20 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_session)):
                 "pods_without_channels": pods_without_channels,
                 "pods": results,
             },
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5000,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"서버 오류: {str(e)}",
             message_en=f"Internal server error: {str(e)}",
         )
 
 
+# - MARK: Sendbird 채널 메타데이터 조회
 @router.get("/channel-metadata/{channel_url}")
 async def get_channel_metadata(
     channel_url: str, db: AsyncSession = Depends(get_session)
@@ -347,7 +349,7 @@ async def get_channel_metadata(
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="Sendbird 설정이 누락되었습니다.",
                 message_en="Sendbird configuration is missing.",
             )
@@ -355,7 +357,7 @@ async def get_channel_metadata(
             return BaseResponse.error(
                 error_key="SENDBIRD_SERVICE_ERROR",
                 error_code=1002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
                 message_en=f"Failed to initialize Sendbird service: {str(e)}",
             )
@@ -365,13 +367,13 @@ async def get_channel_metadata(
         if metadata:
             return BaseResponse.ok(
                 data={"channel_url": channel_url, "metadata": metadata},
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
         else:
             return BaseResponse.error(
                 error_key="CHANNEL_NOT_FOUND",
                 error_code=404,
-                http_status=HttpStatus.NOT_FOUND,
+                http_status=status.HTTP_404_NOT_FOUND,
                 message_ko="채널을 찾을 수 없습니다",
                 message_en="Channel not found",
             )
@@ -380,17 +382,18 @@ async def get_channel_metadata(
         return BaseResponse.error(
             error_key="METADATA_FETCH_FAILED",
             error_code=500,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko="메타데이터 조회 실패",
             message_en="Failed to fetch metadata",
         )
 
 
+# - MARK: Sendbird 채널 메타데이터 업데이트
 @router.put("/update-metadata")
 async def update_channel_metadata(db: AsyncSession = Depends(get_session)):
     """기존 채팅방들의 메타데이터 업데이트"""
     try:
-        pod_crud = PodCRUD(db)
+        pod_crud = PodRepository(db)
 
         # Sendbird 서비스 초기화
         try:
@@ -399,7 +402,7 @@ async def update_channel_metadata(db: AsyncSession = Depends(get_session)):
             return BaseResponse.error(
                 error_key="SENDBIRD_CONFIG_ERROR",
                 error_code=1001,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="Sendbird 설정이 누락되었습니다.",
                 message_en="Sendbird configuration is missing.",
             )
@@ -407,7 +410,7 @@ async def update_channel_metadata(db: AsyncSession = Depends(get_session)):
             return BaseResponse.error(
                 error_key="SENDBIRD_SERVICE_ERROR",
                 error_code=1002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko=f"Sendbird 서비스 초기화 실패: {str(e)}",
                 message_en=f"Failed to initialize Sendbird service: {str(e)}",
             )
@@ -418,7 +421,7 @@ async def update_channel_metadata(db: AsyncSession = Depends(get_session)):
         if not pods_with_channels:
             return BaseResponse.ok(
                 data={"message": "업데이트할 채팅방이 없습니다."},
-                http_status=HttpStatus.OK,
+                http_status=status.HTTP_200_OK,
             )
 
         success_count = 0
@@ -507,14 +510,14 @@ async def update_channel_metadata(db: AsyncSession = Depends(get_session)):
                 "error_count": error_count,
                 "results": results,
             },
-            http_status=HttpStatus.OK,
+            http_status=status.HTTP_200_OK,
         )
 
     except Exception as e:
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5000,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"서버 오류: {str(e)}",
             message_en=f"Internal server error: {str(e)}",
         )

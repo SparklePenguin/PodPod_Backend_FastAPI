@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.common.schemas import BaseResponse
-from app.core.http_status import HttpStatus
+from fastapi import status
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class DomainException(BusinessException):
             override_status_code: HTTP 상태 코드 오버라이드 (선택)
             override_dev_note: 개발자 노트 오버라이드 (선택)
         """
-        from app.core.error_codes import ERROR_CODES, get_error_info
+        from app.core.error_codes import get_error_info
 
         self.error_key = error_key
         self.format_params = format_params or {}
@@ -183,13 +183,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         data=None,
         error_key="REQUEST_VALIDATION_ERROR",
         error_code=4220,
-        http_status=HttpStatus.UNPROCESSABLE_ENTITY,
+        http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         message_ko=message,
         message_en="Request validation failed",
         dev_note="Request validation failed",
     )
     return JSONResponse(
-        status_code=HttpStatus.UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content=response.model_dump(by_alias=True),
     )
 
@@ -201,13 +201,13 @@ async def value_error_handler(request: Request, exc: ValueError):
         data=None,
         error_key="VALIDATION_ERROR",
         error_code=4000,
-        http_status=HttpStatus.BAD_REQUEST,
+        http_status=status.HTTP_400_BAD_REQUEST,
         message_ko=str(exc),
         message_en=str(exc),
         dev_note="Request validation failed",
     )
     return JSONResponse(
-        status_code=HttpStatus.BAD_REQUEST, content=response.model_dump(by_alias=True)
+        status_code=status.HTTP_400_BAD_REQUEST, content=response.model_dump(by_alias=True)
     )
 
 
@@ -279,12 +279,12 @@ async def general_exception_handler(request: Request, exc: Exception):
         data=None,
         error_key="INTERNAL_SERVER_ERROR",
         error_code=5001,
-        http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+        http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         message_ko="서버 내부 오류가 발생했습니다.",
         message_en="Internal server error occurred.",
         dev_note=dev_note,
     )
     return JSONResponse(
-        status_code=HttpStatus.INTERNAL_SERVER_ERROR,
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=response.model_dump(by_alias=True),
     )

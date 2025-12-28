@@ -1,39 +1,58 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+import logging
+import math
 from datetime import date
 from pathlib import Path
-from app.features.pods.repositories.pod_repository import PodCRUD
-from app.features.pods.repositories.application_repository import PodApplicationCRUD
-from app.features.pods.schemas import PodCreateRequest, PodDto
-from app.features.pods.schemas.simple_application_dto import SimpleApplicationDto
-from app.features.pods.schemas.image_order import ImageOrder
+
 from app.common.schemas import PageDto
-from app.utils.file_upload import save_upload_file
-from fastapi import UploadFile
-from app.features.pods.models.pod import Pod
-from app.features.pods.models.pod.pod_status import PodStatus
-from app.core.services.fcm_service import FCMService
 from app.core.config import settings
+from app.core.services.fcm_service import FCMService
 from app.features.pods.exceptions import (
     InvalidImageException,
     NoPodAccessPermissionException,
     PodAccessDeniedException,
     PodNotFoundException,
 )
-import math
-import logging
+from app.features.pods.models.pod import Pod
+from app.features.pods.models.pod.pod_status import PodStatus
+from app.features.pods.repositories.application_repository import (
+    PodApplicationRepository,
+)
+from app.features.pods.repositories.pod_repository import PodRepository
+from app.features.pods.schemas import PodCreateRequest, PodDetailDto
+from app.features.pods.schemas.image_order import ImageOrder
+from app.features.pods.schemas.pod_appl_dto import PodApplDto
+from app.features.pods.schemas.pod_dto import PodDto
+from app.utils.file_upload import save_upload_file
+from fastapi import UploadFile
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
 class PodService:
-    def __init__(self, db: AsyncSession):
-        self._db = db
-        self._pod_repo = PodCRUD(db)
-        self._application_repo = PodApplicationCRUD(db)
-        from app.features.pods.repositories.review_repository import PodReviewCRUD
+    def __init__(
+        self,
+        session: AsyncSession,
+        review_service=None,
+        like_service=None,
+        recruitment_service=None,
+        follow_service=None,
+        fcm_service: FCMService | None = None,
+    ):
+        self._session = session
+        self._pod_repo = PodRepository(self._session)
+        self._application_repo = PodApplicationRepository(self._session)
+        from app.features.pods.repositories.review_repository import PodReviewRepository
 
-        self._review_repo = PodReviewCRUD(db)
+        self._review_repo = PodReviewRepository(self._session)
+
+        # 의존성 주입된 서비스들
+        self._review_service = review_service
+        self._like_service = like_service
+        self._recruitment_service = recruitment_service
+        self._follow_service = follow_service
+        self._fcm_service = fcm_service or FCMService()
 
     # - MARK: 파티 생성
     async def create_pod(
@@ -42,7 +61,7 @@ class PodService:
         req: PodCreateRequest,
         images: list[UploadFile | None] = None,
         status: PodStatus = PodStatus.RECRUITING,
-    ) -> PodDto | None:
+    ) -> PodDetailDto | None:
         from app.features.pods.models.pod.pod_image import PodImage
 
         image_url = None
@@ -80,8 +99,13 @@ class PodService:
             status=status,
         )
 
+        if not pod:
+            from app.features.pods.exceptions import PodNotFoundException
+
+            raise PodNotFoundException(0)  # 생성 실패는 pod_id가 없으므로 0 사용
+
         # 여러 이미지 저장
-        if pod and images:
+        if images:
             pods_images_dir = Path(settings.UPLOADS_DIR) / "pods" / "images"
             for index, image in enumerate(images):
                 image_url = await save_upload_file(image, str(pods_images_dir))
@@ -100,22 +124,30 @@ class PodService:
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
                 )
-                self._db.add(pod_image)
+                self._session.add(pod_image)
 
-            await self._db.commit()
+            await self._session.commit()
 
-        # Pod 모델을 PodDto로 변환 (다른 조회 API들과 동일한 방식)
+        # Pod 모델을 PodDetailDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
             # images 관계를 다시 로드 (MissingGreenlet 오류 방지)
-            await self._db.refresh(pod, ["images"])
+            await self._session.refresh(pod, ["images"])
             pod_dto = await self._enrich_pod_dto(pod, owner_id)
 
             # 팔로워들에게 파티 생성 알림 전송
             try:
                 from app.features.follow.services.follow_service import FollowService
 
-                follow_service = FollowService(self._db)
-                pod_id_value = getattr(pod, "id")
+                if not self._follow_service:
+                    from app.deps.service import get_fcm_service
+
+                    fcm_service = get_fcm_service()
+                    follow_service = FollowService(
+                        self._session, fcm_service=fcm_service
+                    )
+                else:
+                    follow_service = self._follow_service
+                pod_id_value = pod.id
                 await follow_service.send_followed_user_pod_created_notification(
                     owner_id, pod_id_value
                 )
@@ -129,10 +161,10 @@ class PodService:
 
     async def _create_thumbnail_from_image(self, image: UploadFile) -> str:
         """이미지에서 썸네일을 생성하여 저장"""
-        from PIL import Image
         import io
         import uuid
-        import os
+
+        from PIL import Image
 
         # 이미지 읽기
         image_content = await image.read()
@@ -200,10 +232,12 @@ class PodService:
     # - MARK: 파티 상세 조회
     async def get_pod_detail(
         self, pod_id: int, user_id: int | None = None
-    ) -> PodDto | None:
+    ) -> PodDetailDto:
         pod = await self._pod_repo.get_pod_by_id(pod_id)
         if not pod:
-            return None
+            from app.features.pods.exceptions import PodNotFoundException
+
+            raise PodNotFoundException(pod_id)
 
         return await self._enrich_pod_dto(pod, user_id)
 
@@ -219,10 +253,11 @@ class PodService:
         update_fields: dict,
         image_orders: str | None = None,
         new_images: list[UploadFile | None] = None,
-    ) -> PodDto | None:
+    ) -> PodDetailDto | None:
         """파티 수정 (이미지 관리 포함)"""
-        from app.features.pods.models.pod.pod_image import PodImage
         import json
+
+        from app.features.pods.models.pod.pod_image import PodImage
 
         # 파티 정보 조회 및 권한 확인
         pod = await self._pod_repo.get_pod_by_id(pod_id)
@@ -230,8 +265,7 @@ class PodService:
             return None
 
         # 파티 소유자 확인
-        pod_owner_id = getattr(pod, "owner_id")
-        if pod_owner_id != current_user_id:
+        if pod.owner_id != current_user_id:
             raise PodAccessDeniedException(pod_id, current_user_id)
 
         # 이미지 순서 처리
@@ -279,7 +313,7 @@ class PodService:
                                 thumbnail_url=order_item.url,
                                 display_order=index,
                             )
-                            self._db.add(pod_image)
+                            self._session.add(pod_image)
                             existing_count += 1
 
                             # 첫 번째 이미지면 썸네일로 설정
@@ -321,7 +355,7 @@ class PodService:
                                 thumbnail_url=image_thumbnail_url,
                                 display_order=index,
                             )
-                            self._db.add(pod_image)
+                            self._session.add(pod_image)
                             new_count += 1
 
                             # 첫 번째 이미지면 썸네일로 설정
@@ -387,7 +421,7 @@ class PodService:
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
                 )
-                self._db.add(pod_image)
+                self._session.add(pod_image)
 
                 # 첫 번째 이미지면 썸네일로 설정
                 if index == 0:
@@ -415,27 +449,25 @@ class PodService:
 
             await self._pod_repo.update_pod(pod_id, **update_fields)
 
-        await self._db.commit()
+        await self._session.commit()
 
         # 파티 정보 다시 조회하여 DTO로 변환
         updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
         if updated_pod:
-            await self._db.refresh(updated_pod, ["images"])
+            await self._session.refresh(updated_pod, ["images"])
 
             # thumbnail_url이 변경되었고 채팅방이 있으면 Sendbird 채널 cover_url 업데이트
-            chat_channel_url_value = getattr(updated_pod, "chat_channel_url", None)
-            thumbnail_url_value = getattr(updated_pod, "thumbnail_url", None) or ""
-            if "thumbnail_url" in update_fields and chat_channel_url_value:
+            if "thumbnail_url" in update_fields and updated_pod.chat_channel_url:
                 try:
                     from app.core.services.sendbird_service import SendbirdService
 
                     sendbird_service = SendbirdService()
                     await sendbird_service.update_channel_cover_url(
-                        channel_url=chat_channel_url_value,
-                        cover_url=thumbnail_url_value,
+                        channel_url=updated_pod.chat_channel_url,
+                        cover_url=updated_pod.thumbnail_url or "",
                     )
                     logger.info(
-                        f"Sendbird 채널 cover_url 업데이트 완료: pod_id={pod_id}, channel_url={chat_channel_url_value}"
+                        f"Sendbird 채널 cover_url 업데이트 완료: pod_id={pod_id}, channel_url={updated_pod.chat_channel_url}"
                     )
                 except Exception as e:
                     logger.error(
@@ -456,47 +488,41 @@ class PodService:
         """파티의 모든 이미지 삭제"""
         from app.features.pods.models.pod.pod_image import PodImage
 
-        result = await self._db.execute(
+        result = await self._session.execute(
             select(PodImage).where(PodImage.pod_id == pod_id)
         )
         images = result.scalars().all()
 
         for image in images:
-            await self._db.delete(image)
+            await self._session.delete(image)
 
     async def _send_pod_update_notification(self, pod_id: int, pod: Pod):
         """파티 수정 알림 전송"""
         try:
-            fcm_service = FCMService()
             participants = await self._pod_repo.get_pod_participants(pod_id)
 
             for participant in participants:
-                participant_id = getattr(participant, "id", None)
-                participant_fcm_token = getattr(participant, "fcm_token", None)
-                pod_owner_id = getattr(pod, "owner_id", None)
-                pod_title = getattr(pod, "title", "") or ""
-
                 if (
-                    participant_id is not None
-                    and pod_owner_id is not None
-                    and participant_id != pod_owner_id
-                    and participant_fcm_token
+                    participant.id is not None
+                    and pod.owner_id is not None
+                    and participant.id != pod.owner_id
+                    and participant.fcm_token
                 ):
                     try:
-                        await fcm_service.send_pod_updated(
-                            token=participant_fcm_token,
-                            party_name=pod_title,
+                        await self._fcm_service.send_pod_updated(
+                            token=participant.fcm_token,
+                            party_name=pod.title or "",
                             pod_id=pod_id,
-                            db=self.db,
-                            user_id=participant_id,
-                            related_user_id=pod_owner_id,
+                            db=self._db,
+                            user_id=participant.id,
+                            related_user_id=pod.owner_id,
                         )
                         logger.info(
-                            f"파티 수정 알림 전송 성공: user_id={participant_id}, pod_id={pod_id}"
+                            f"파티 수정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
                         )
                     except Exception as e:
                         logger.error(
-                            f"파티 수정 알림 전송 실패: user_id={participant_id}, error={e}"
+                            f"파티 수정 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
         except Exception as e:
             logger.error(f"파티 수정 알림 처리 중 오류: {e}")
@@ -516,45 +542,38 @@ class PodService:
 
         try:
             # FCM 서비스 초기화
-            fcm_service = FCMService()
 
             # 파티 참여자 목록 조회 (파티장 포함)
             participants = await self._pod_repo.get_pod_participants(pod_id)
 
             # 파티장 제외하고 알림 전송
-            pod_owner_id = getattr(pod, "owner_id", None)
-            pod_title = getattr(pod, "title", "") or ""
-
             for participant in participants:
-                participant_id = getattr(participant, "id", None)
-                participant_fcm_token = getattr(participant, "fcm_token", None)
-
                 if (
-                    participant_id is not None
-                    and pod_owner_id is not None
-                    and participant_id != pod_owner_id
+                    participant.id is not None
+                    and pod.owner_id is not None
+                    and participant.id != pod.owner_id
                 ):
                     try:
                         # 사용자 FCM 토큰 확인
-                        if participant_fcm_token:
-                            await fcm_service.send_pod_updated(
-                                token=participant_fcm_token,
-                                party_name=pod_title,
+                        if participant.fcm_token:
+                            await self._fcm_service.send_pod_updated(
+                                token=participant.fcm_token,
+                                party_name=pod.title or "",
                                 pod_id=pod_id,
-                                db=self.db,
-                                user_id=participant_id,
-                                related_user_id=pod_owner_id,
+                                db=self._db,
+                                user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
-                                f"파티 수정 알림 전송 성공: user_id={participant_id}, pod_id={pod_id}"
+                                f"파티 수정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
                             )
                         else:
                             logger.warning(
-                                f"FCM 토큰이 없는 사용자: user_id={participant_id}"
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
                             )
                     except Exception as e:
                         logger.error(
-                            f"파티 수정 알림 전송 실패: user_id={participant_id}, error={e}"
+                            f"파티 수정 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
         except Exception as e:
@@ -564,9 +583,18 @@ class PodService:
 
     # - MARK: 파티 상태 업데이트 (파티장만 가능)
     async def update_pod_status_by_owner(
-        self, pod_id: int, status: PodStatus, user_id: int
-    ) -> bool:
+        self, pod_id: int, status_value: str, user_id: int
+    ) -> PodDetailDto:
         """파티장이 파티 상태를 변경"""
+        from app.features.pods.models.pod.pod_status import PodStatus
+
+        # 상태 값 검증
+        try:
+            status = PodStatus(status_value.upper())
+        except ValueError:
+            from app.features.pods.exceptions import InvalidPodStatusException
+
+            raise InvalidPodStatusException(status_value)
         logger.info(
             f"파티 상태 업데이트 시도: pod_id={pod_id}, status={status.value}, user_id={user_id}"
         )
@@ -578,37 +606,50 @@ class PodService:
             raise PodNotFoundException(pod_id)
 
         # 파티장 권한 확인
-        pod_owner_id = getattr(pod, "owner_id", None)
-        if pod_owner_id is None or pod_owner_id != user_id:
+        if pod.owner_id is None or pod.owner_id != user_id:
             logger.error(
-                f"파티장 권한 없음: pod_owner_id={pod_owner_id}, 요청 user_id={user_id}"
+                f"파티장 권한 없음: pod_owner_id={pod.owner_id}, 요청 user_id={user_id}"
             )
             raise NoPodAccessPermissionException(pod_id, user_id)
 
         # 이미 같은 상태인지 확인
-        pod_status = getattr(pod, "status", None)
-        if pod_status == status:
+        if pod.status == status:
             logger.warning(f"이미 {status.value} 상태인 파티: pod_id={pod_id}")
-            return True
+            return await self._convert_pod_to_dto(pod, user_id)
 
-        pod_status_value = getattr(pod_status, "value", "") if pod_status else ""
+        pod_status_value = pod.status.value if pod.status else ""
         logger.info(
             f"파티 상태 업데이트 진행: pod_id={pod_id}, {pod_status_value} -> {status.value}"
         )
         # 파티 상태를 변경하고 알림 전송
-        return await self.update_pod_status_with_notification(pod_id, status)
+        await self.update_pod_status_with_notification(pod_id, status)
+        # 업데이트된 파티 정보 반환
+        updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
+        if not updated_pod:
+            raise PodNotFoundException(pod_id)
+        return await self._convert_pod_to_dto(updated_pod, user_id)
 
     # - MARK: 파티 완료 처리 (하위 호환성을 위해 유지)
-    async def complete_pod(self, pod_id: int, user_id: int) -> bool:
+    async def complete_pod(self, pod_id: int, user_id: int) -> PodDto:
         """파티장이 파티를 완료 상태로 변경 (하위 호환성)"""
-        return await self.update_pod_status_by_owner(
-            pod_id, PodStatus.COMPLETED, user_id
-        )
+        return await self.update_pod_status_by_owner(pod_id, "COMPLETED", user_id)
 
     # - MARK: 파티 나가기
-    async def leave_pod(self, pod_id: int, user_id: int) -> dict:
+    async def leave_pod(
+        self, pod_id: int, user_id: str | None, current_user_id: int
+    ) -> dict:
         """파티 나가기 (파티장이면 모든 멤버 강제 퇴장, 일반 멤버면 본인만)"""
-        logger.info(f"파티 나가기 시도: pod_id={pod_id}, user_id={user_id}")
+        # user_id가 제공되면 사용, 없으면 토큰에서 추출한 사용자 ID 사용
+        if user_id is not None and user_id.strip() != "":
+            try:
+                target_user_id = int(user_id)
+            except ValueError:
+                # 잘못된 정수 형식인 경우 현재 사용자 사용
+                target_user_id = current_user_id
+        else:
+            target_user_id = current_user_id
+
+        logger.info(f"파티 나가기 시도: pod_id={pod_id}, user_id={target_user_id}")
 
         # 파티 조회
         pod = await self._pod_repo.get_pod_by_id(pod_id)
@@ -617,40 +658,43 @@ class PodService:
             raise PodNotFoundException(pod_id)
 
         # 파티장인지 확인
-        pod_owner_id = getattr(pod, "owner_id", None)
-        is_owner = pod_owner_id is not None and pod_owner_id == user_id
+        is_owner = pod.owner_id is not None and pod.owner_id == target_user_id
 
         if is_owner:
             # 파티장이 나가는 경우 - 멤버는 유지하고 채팅방에서만 모두 제거
-            logger.info(f"파티장이 나가는 경우: pod_id={pod_id}, owner_id={user_id}")
+            logger.info(
+                f"파티장이 나가는 경우: pod_id={pod_id}, owner_id={target_user_id}"
+            )
 
             # 모든 멤버 조회
             all_members = await self._pod_repo.get_pod_members(pod_id)
             member_ids = [member.user_id for member in all_members]
 
             # Sendbird 채팅방에서 모든 멤버 제거
-            chat_channel_url_value = getattr(pod, "chat_channel_url", None)
-            if chat_channel_url_value:
+            if pod.chat_channel_url:
                 try:
                     from app.core.services.sendbird_service import SendbirdService
 
                     sendbird_service = SendbirdService()
 
                     # 모든 멤버를 채팅방에서 제거
-                    for member_id in member_ids:
-                        success = await sendbird_service.remove_member_from_channel(
-                            channel_url=chat_channel_url_value, user_id=str(member_id)
-                        )
+                    chat_channel_url_value = pod.chat_channel_url
+                    if chat_channel_url_value:
+                        for member_id in member_ids:
+                            success = await sendbird_service.remove_member_from_channel(
+                                channel_url=chat_channel_url_value,
+                                user_id=str(member_id),
+                            )
                         if success:
                             logger.info(f"멤버 {member_id}를 채팅방에서 제거 완료")
                         else:
                             logger.warning(f"멤버 {member_id} 채팅방 제거 실패")
 
                     # 파티장도 채팅방에서 제거
-                    pod_chat_channel_url = getattr(pod, "chat_channel_url", None)
-                    if pod_chat_channel_url:
+                    if pod.chat_channel_url:
                         await sendbird_service.remove_member_from_channel(
-                            channel_url=pod_chat_channel_url, user_id=str(user_id)
+                            channel_url=pod.chat_channel_url,
+                            user_id=str(target_user_id),
                         )
 
                 except Exception as e:
@@ -658,8 +702,8 @@ class PodService:
 
             # 파티장만 데이터베이스에서 제거 (멤버는 유지하여 상태 확인 가능하도록)
             # 멤버는 그대로 두고 파티장만 나가기
-            await self._pod_repo.remove_pod_member(pod_id, user_id)
-            logger.info(f"파티장 {user_id}를 파티에서 제거 완료 (멤버는 유지)")
+            await self._pod_repo.remove_pod_member(pod_id, target_user_id)
+            logger.info(f"파티장 {target_user_id}를 파티에서 제거 완료 (멤버는 유지)")
 
             # 파티 상태를 CANCELED로 변경
             await self._pod_repo.update_pod_status(pod_id, PodStatus.CANCELED)
@@ -667,8 +711,8 @@ class PodService:
 
             # 파티 비활성화 (소프트 삭제)
             stmt = update(Pod).where(Pod.id == pod_id).values(is_active=False)
-            await self._db.execute(stmt)
-            await self._db.commit()
+            await self._session.execute(stmt)
+            await self._session.commit()
             logger.info(f"파티 {pod_id} 비활성화 완료 (is_active=False)")
 
             return {
@@ -680,40 +724,42 @@ class PodService:
 
         else:
             # 일반 멤버가 나가는 경우 - 본인만 나가기
-            logger.info(f"일반 멤버가 나가는 경우: pod_id={pod_id}, user_id={user_id}")
+            logger.info(
+                f"일반 멤버가 나가는 경우: pod_id={pod_id}, user_id={target_user_id}"
+            )
 
             # 멤버인지 확인
-            is_member = await self._pod_repo.is_pod_member(pod_id, user_id)
+            is_member = await self._pod_repo.is_pod_member(pod_id, target_user_id)
             if not is_member:
-                logger.error(f"파티 멤버가 아님: pod_id={pod_id}, user_id={user_id}")
-                raise NoPodAccessPermissionException(pod_id, user_id)
+                logger.error(
+                    f"파티 멤버가 아님: pod_id={pod_id}, user_id={target_user_id}"
+                )
+                raise NoPodAccessPermissionException(pod_id, target_user_id)
 
             # Sendbird 채팅방에서 제거
-            pod_chat_channel_url = getattr(pod, "chat_channel_url", None)
-            if pod_chat_channel_url:
+            if pod.chat_channel_url:
                 try:
                     from app.core.services.sendbird_service import SendbirdService
 
                     sendbird_service = SendbirdService()
 
                     success = await sendbird_service.remove_member_from_channel(
-                        channel_url=pod_chat_channel_url, user_id=str(user_id)
+                        channel_url=pod.chat_channel_url, user_id=str(target_user_id)
                     )
 
                     if success:
-                        logger.info(f"사용자 {user_id}를 채팅방에서 제거 완료")
+                        logger.info(f"사용자 {target_user_id}를 채팅방에서 제거 완료")
                     else:
-                        logger.warning(f"사용자 {user_id} 채팅방 제거 실패")
+                        logger.warning(f"사용자 {target_user_id} 채팅방 제거 실패")
 
                 except Exception as e:
                     logger.error(f"Sendbird 채팅방 제거 실패: {e}")
 
             # 데이터베이스에서 멤버 제거
-            await self._pod_repo.remove_pod_member(pod_id, user_id)
-            logger.info(f"사용자 {user_id}를 파티에서 제거 완료")
+            await self._pod_repo.remove_pod_member(pod_id, target_user_id)
+            logger.info(f"사용자 {target_user_id}를 파티에서 제거 완료")
 
-            pod_status = getattr(pod, "status", None)
-            pod_status_value = getattr(pod_status, "value", "") if pod_status else ""
+            pod_status_value = pod.status.value if pod.status else ""
 
             return {
                 "left": True,
@@ -738,10 +784,7 @@ class PodService:
         member_ids = [member.user_id for member in all_members]
 
         # Sendbird 채팅방에서 모든 멤버 제거
-        pod_chat_channel_url = getattr(pod, "chat_channel_url", None)
-        pod_owner_id = getattr(pod, "owner_id", None)
-
-        if pod_chat_channel_url:
+        if pod.chat_channel_url:
             try:
                 from app.core.services.sendbird_service import SendbirdService
 
@@ -750,7 +793,7 @@ class PodService:
                 # 모든 멤버를 채팅방에서 제거
                 for member_id in member_ids:
                     success = await sendbird_service.remove_member_from_channel(
-                        channel_url=pod_chat_channel_url, user_id=str(member_id)
+                        channel_url=pod.chat_channel_url, user_id=str(member_id)
                     )
                     if success:
                         logger.info(f"멤버 {member_id}를 채팅방에서 제거 완료")
@@ -758,19 +801,18 @@ class PodService:
                         logger.warning(f"멤버 {member_id} 채팅방 제거 실패")
 
                 # 파티장도 채팅방에서 제거
-                if pod_owner_id is not None:
+                if pod.owner_id is not None:
                     await sendbird_service.remove_member_from_channel(
-                        channel_url=pod_chat_channel_url, user_id=str(pod_owner_id)
+                        channel_url=pod.chat_channel_url, user_id=str(pod.owner_id)
                     )
 
             except Exception as e:
                 logger.error(f"Sendbird 채팅방 멤버 제거 실패: {e}")
 
         # 파티장만 데이터베이스에서 제거 (멤버는 유지하여 상태 확인 가능하도록)
-        pod_owner_id = getattr(pod, "owner_id", None)
-        if pod_owner_id is not None:
-            await self._pod_repo.remove_pod_member(pod_id, pod_owner_id)
-            logger.info(f"파티장 {pod_owner_id}를 파티에서 제거 완료 (멤버는 유지)")
+        if pod.owner_id is not None:
+            await self._pod_repo.remove_pod_member(pod_id, pod.owner_id)
+            logger.info(f"파티장 {pod.owner_id}를 파티에서 제거 완료 (멤버는 유지)")
 
         # 파티 상태를 CANCELED로 변경
         await self._pod_repo.update_pod_status(pod_id, PodStatus.CANCELED)
@@ -779,13 +821,13 @@ class PodService:
         # 파티 비활성화 (소프트 삭제)
         if pod:
             setattr(pod, "is_active", False)
-        await self._db.commit()
+        await self._session.commit()
         logger.info(f"파티 {pod_id} 삭제 완료 (is_active=False)")
 
     # - MARK: 요즘 인기 있는 파티 조회
     async def get_trending_pods(
         self, user_id: int, selected_artist_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """
         요즘 인기 있는 파티 조회
         - 현재 선택된 아티스트 기준
@@ -807,7 +849,7 @@ class PodService:
         total_count = len(pod_dtos)  # 임시로 현재 페이지 아이템 수 사용
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0
 
-        return PageDto[PodDto](
+        return PageDto[PodDetailDto](
             items=pod_dtos,
             current_page=page,
             size=size,
@@ -825,7 +867,7 @@ class PodService:
         location: str | None = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """
         마감 직전 파티 조회
         - 현재 선택된 아티스트 기준
@@ -847,7 +889,7 @@ class PodService:
         total_count = len(pod_dtos)
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0
 
-        return PageDto[PodDto](
+        return PageDto[PodDetailDto](
             items=pod_dtos,
             current_page=page,
             size=size,
@@ -860,7 +902,7 @@ class PodService:
     # - MARK: 우리 만난적 있어요 파티 조회
     async def get_history_based_pods(
         self, user_id: int, selected_artist_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """
         우리 만난적 있어요 파티 조회
         - 현재 선택된 아티스트 기준
@@ -881,7 +923,7 @@ class PodService:
         total_count = len(pod_dtos)
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0
 
-        return PageDto[PodDto](
+        return PageDto[PodDetailDto](
             items=pod_dtos,
             current_page=page,
             size=size,
@@ -899,7 +941,7 @@ class PodService:
         location: str | None = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """
         인기 최고 카테고리 파티 조회
         - 현재 선택된 아티스트 기준
@@ -920,7 +962,7 @@ class PodService:
         total_count = len(pod_dtos)
         total_pages = math.ceil(total_count / size) if total_count > 0 else 0
 
-        return PageDto[PodDto](
+        return PageDto[PodDetailDto](
             items=pod_dtos,
             current_page=page,
             size=size,
@@ -933,7 +975,7 @@ class PodService:
     # - MARK: 특정 유저가 개설한 파티 목록 조회
     async def get_user_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """특정 유저가 개설한 파티 목록 조회"""
         try:
             result = await self._pod_repo.get_user_pods(user_id, page, size)
@@ -961,7 +1003,7 @@ class PodService:
             logger.error(f"Error in get_user_pods: {str(e)}")
             raise
 
-        return PageDto[PodDto](
+        return PageDto[PodDetailDto](
             items=pod_dtos,
             current_page=page,
             size=size,
@@ -974,23 +1016,23 @@ class PodService:
     # - MARK: 파티 좋아요 관련 메서드
     async def like_pod(self, pod_id: int, user_id: int) -> bool:
         """파티 좋아요"""
-        from app.features.pods.repositories.like_repository import PodLikeCRUD
+        from app.features.pods.repositories.like_repository import PodLikeRepository
 
-        like_crud = PodLikeCRUD(self.db)
+        like_crud = PodLikeRepository(self._db)
         return await like_crud.like_pod(pod_id, user_id)
 
     async def unlike_pod(self, pod_id: int, user_id: int) -> bool:
         """파티 좋아요 취소"""
-        from app.features.pods.repositories.like_repository import PodLikeCRUD
+        from app.features.pods.repositories.like_repository import PodLikeRepository
 
-        like_crud = PodLikeCRUD(self.db)
+        like_crud = PodLikeRepository(self._db)
         return await like_crud.unlike_pod(pod_id, user_id)
 
     async def like_status(self, pod_id: int, user_id: int) -> dict:
         """파티 좋아요 상태 조회"""
-        from app.features.pods.repositories.like_repository import PodLikeCRUD
+        from app.features.pods.repositories.like_repository import PodLikeRepository
 
-        like_crud = PodLikeCRUD(self.db)
+        like_crud = PodLikeRepository(self._db)
 
         is_liked = await like_crud.is_liked(pod_id, user_id)
         like_count = await like_crud.like_count(pod_id)
@@ -1008,7 +1050,7 @@ class PodService:
         location: list[str | None] = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """팟 검색"""
         result = await self._pod_repo.search_pods(
             query=title or "",
@@ -1030,7 +1072,7 @@ class PodService:
         # PageDto 생성
         from app.common.schemas import PageDto
 
-        return PageDto[PodDto](
+        return PageDto[PodDetailDto](
             items=pod_dtos,
             current_page=result["page"],
             size=result["page_size"],
@@ -1043,7 +1085,7 @@ class PodService:
     # - MARK: 사용자가 참여한 파티 조회
     async def get_user_joined_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """사용자가 참여한 파티 목록 조회"""
         result = await self._pod_repo.get_user_joined_pods(user_id, page, size)
 
@@ -1066,7 +1108,7 @@ class PodService:
     # - MARK: 사용자가 좋아요한 파티 조회
     async def get_user_liked_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDto]:
+    ) -> PageDto[PodDetailDto]:
         """사용자가 좋아요한 파티 목록 조회"""
         result = await self._pod_repo.get_user_liked_pods(user_id, page, size)
 
@@ -1087,8 +1129,10 @@ class PodService:
             has_prev=result["page"] > 1,
         )
 
-    async def _enrich_pod_dto(self, pod: Pod, user_id: int | None = None) -> PodDto:
-        """Pod를 PodDto로 변환하고 추가 정보를 설정"""
+    async def _enrich_pod_dto(
+        self, pod: Pod, user_id: int | None = None
+    ) -> PodDetailDto:
+        """Pod를 PodDetailDto로 변환하고 추가 정보를 설정"""
         from app.features.pods.schemas.pod_image_dto import PodImageDto
 
         # meeting_date와 meeting_time을 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
@@ -1096,7 +1140,8 @@ class PodService:
             """date와 time 객체를 UTC로 해석하여 timestamp로 변환"""
             if meeting_date is None:
                 return None
-            from datetime import datetime, time as time_module, timezone
+            from datetime import datetime, timezone
+            from datetime import time as time_module
 
             if meeting_time is None:
                 dt = datetime.combine(
@@ -1121,40 +1166,19 @@ class PodService:
             for img in sorted(pod.images, key=lambda x: x.display_order):
                 images_dto.append(PodImageDto.model_validate(img))
 
-        # Pod 속성 안전하게 추출
-        pod_id_val = getattr(pod, "id", None) or 0
-        pod_owner_id = getattr(pod, "owner_id", None) or 0
-        pod_title = getattr(pod, "title", "") or ""
-        pod_description = getattr(pod, "description", "") or ""
-        pod_image_url = getattr(pod, "image_url", None)
-        pod_thumbnail_url = getattr(pod, "thumbnail_url", None)
-        pod_sub_categories_raw = getattr(pod, "sub_categories", None)
-        pod_capacity = getattr(pod, "capacity", 0) or 0
-        pod_place = getattr(pod, "place", "") or ""
-        pod_address = getattr(pod, "address", "") or ""
-        pod_sub_address = getattr(pod, "sub_address", None)
-        pod_x = getattr(pod, "x", None)
-        pod_y = getattr(pod, "y", None)
-        pod_meeting_date = getattr(pod, "meeting_date", None)
-        pod_meeting_time = getattr(pod, "meeting_time", None)
-        pod_selected_artist_id = getattr(pod, "selected_artist_id", None)
-        pod_status_raw = getattr(pod, "status", None)
-        pod_chat_channel_url = getattr(pod, "chat_channel_url", None)
-        pod_created_at_raw = getattr(pod, "created_at", None)
-        pod_updated_at_raw = getattr(pod, "updated_at", None)
+        # Pod 속성 추출
+        pod_sub_categories_raw = pod.sub_categories
 
         # datetime 기본값 제공
         from datetime import datetime, timezone
 
-        if pod_created_at_raw is None:
+        pod_created_at = pod.created_at
+        if pod_created_at is None:
             pod_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        else:
-            pod_created_at = pod_created_at_raw
 
-        if pod_updated_at_raw is None:
+        pod_updated_at = pod.updated_at
+        if pod_updated_at is None:
             pod_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        else:
-            pod_updated_at = pod_updated_at_raw
 
         # sub_categories 파싱
         pod_sub_categories = []
@@ -1172,35 +1196,34 @@ class PodService:
         # status 변환
         from app.features.pods.models.pod.pod_status import PodStatus
 
-        pod_status = PodStatus.RECRUITING  # 기본값
-        if pod_status_raw is not None:
-            if isinstance(pod_status_raw, PodStatus):
-                pod_status = pod_status_raw
-            elif isinstance(pod_status_raw, str):
-                try:
-                    pod_status = PodStatus(pod_status_raw.upper())
-                except ValueError:
-                    pod_status = PodStatus.RECRUITING
+        # PodDetailDto를 수동으로 생성하여 applications 필드 접근 방지
+        pod_status = pod.status
+        if pod_status is None:
+            pod_status = PodStatus.RECRUITING
+        elif isinstance(pod_status, str):
+            try:
+                pod_status = PodStatus(pod_status.upper())
+            except ValueError:
+                pod_status = PodStatus.RECRUITING
 
-        # PodDto를 수동으로 생성하여 applications 필드 접근 방지
-        pod_dto = PodDto(
-            id=pod_id_val,
-            owner_id=pod_owner_id,
-            title=pod_title,
-            description=pod_description,
-            image_url=pod_image_url,
-            thumbnail_url=pod_thumbnail_url,
+        pod_dto = PodDetailDto(
+            id=pod.id or 0,
+            owner_id=pod.owner_id or 0,
+            title=pod.title or "",
+            description=pod.description or "",
+            image_url=pod.image_url,
+            thumbnail_url=pod.thumbnail_url,
             sub_categories=pod_sub_categories,
-            capacity=pod_capacity,
-            place=pod_place,
-            address=pod_address,
-            sub_address=pod_sub_address,
-            x=pod_x,
-            y=pod_y,
-            meeting_date=_convert_to_timestamp(pod_meeting_date, pod_meeting_time),
-            selected_artist_id=pod_selected_artist_id,
+            capacity=pod.capacity or 0,
+            place=pod.place or "",
+            address=pod.address or "",
+            sub_address=pod.sub_address,
+            x=pod.x,
+            y=pod.y,
+            meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),
+            selected_artist_id=pod.selected_artist_id,
             status=pod_status,
-            chat_channel_url=pod_chat_channel_url,
+            chat_channel_url=pod.chat_channel_url,
             images=images_dto,
             created_at=pod_created_at,
             updated_at=pod_updated_at,
@@ -1215,29 +1238,27 @@ class PodService:
         )
 
         # 통계 필드 설정
-        pod_id_val = getattr(pod, "id", None)
-        if pod_id_val is not None:
+        if pod.id is not None:
             pod_dto.joined_users_count = await self._pod_repo.get_joined_users_count(
-                pod_id_val
+                pod.id
             )
-            pod_dto.like_count = await self._pod_repo.get_like_count(pod_id_val)
-            pod_dto.view_count = await self._pod_repo.get_view_count(pod_id_val)
+            pod_dto.like_count = await self._pod_repo.get_like_count(pod.id)
+            pod_dto.view_count = await self._pod_repo.get_view_count(pod.id)
 
         # 참여 중인 유저 목록 조회 (파티장 + 멤버들)
         from app.features.pods.repositories.recruitment_repository import (
-            RecruitmentCRUD,
+            RecruitmentRepository,
         )
-        from app.features.follow.schemas import SimpleUserDto
+        from app.features.users.schemas import UserDto
 
-        recruitment_crud = RecruitmentCRUD(self.db)
-        pod_id_val = getattr(pod, "id", None)
-        if pod_id_val is None:
+        recruitment_repo = RecruitmentRepository(self._session)
+        if pod.id is None:
             return pod_dto
-        pod_members = await recruitment_crud.list_members(pod_id_val)
+        pod_members = await recruitment_repo.list_members(pod.id)
 
         # 차단된 유저 필터링 제거 (joined_users에서 모든 유저 표시)
 
-        # PodMember를 SimpleUserDto로 변환
+        # PodMember를 UserDto로 변환
         joined_users = []
 
         # 1. 파티장 추가
@@ -1245,36 +1266,29 @@ class PodService:
         from app.features.users.models import User
 
         # 파티장 정보 조회
-        pod_owner_id = getattr(pod, "owner_id", None)
-        if pod_owner_id is not None:
-            owner_result = await self._db.execute(
-                select(User).where(User.id == pod_owner_id)
+        if pod.owner_id is not None:
+            owner_result = await self._session.execute(
+                select(User).where(User.id == pod.owner_id)
             )
             owner = owner_result.scalar_one_or_none()
 
             if owner:
                 # 파티장 성향 타입 조회
-                owner_tendency_result = await self._db.execute(
+                owner_tendency_result = await self._session.execute(
                     select(UserTendencyResult).where(
-                        UserTendencyResult.user_id == pod_owner_id
+                        UserTendencyResult.user_id == pod.owner_id
                     )
                 )
                 owner_tendency = owner_tendency_result.scalar_one_or_none()
                 owner_tendency_type = (
-                    getattr(owner_tendency, "tendency_type", None)
-                    if owner_tendency
-                    else None
+                    owner_tendency.tendency_type if owner_tendency else None
                 )
 
-                owner_id = getattr(owner, "id", None) or 0
-                owner_nickname = getattr(owner, "nickname", "") or ""
-                owner_profile_image = getattr(owner, "profile_image", "") or ""
-                owner_intro = getattr(owner, "intro", "") or ""
-                owner_dto = SimpleUserDto(
-                    id=owner_id,
-                    nickname=owner_nickname,
-                    profile_image=owner_profile_image,
-                    intro=owner_intro,
+                owner_dto = UserDto(
+                    id=owner.id or 0,
+                    nickname=owner.nickname or "",
+                    profile_image=owner.profile_image or "",
+                    intro=owner.intro or "",
                     tendency_type=owner_tendency_type or "",
                     is_following=False,
                 )
@@ -1283,32 +1297,25 @@ class PodService:
         # 2. 멤버들 추가
         for member in pod_members:
             # 성향 타입 조회
-            result = await self._db.execute(
+            result = await self._session.execute(
                 select(UserTendencyResult).where(
                     UserTendencyResult.user_id == member.user_id
                 )
             )
             user_tendency = result.scalar_one_or_none()
-            tendency_type = (
-                getattr(user_tendency, "tendency_type", None) if user_tendency else None
-            )
+            tendency_type = user_tendency.tendency_type if user_tendency else None
 
             # User 정보 조회
-            member_user_id = getattr(member, "user_id", None)
-            if member_user_id is None:
+            if member.user_id is None:
                 continue
-            user = await self._db.get(User, member_user_id)
+            user = await self._session.get(User, member.user_id)
 
             if user:
-                user_id_val = getattr(user, "id", None) or 0
-                user_nickname = getattr(user, "nickname", "") or ""
-                user_profile_image = getattr(user, "profile_image", "") or ""
-                user_intro = getattr(user, "intro", "") or ""
-                user_dto = SimpleUserDto(
-                    id=user_id_val,
-                    nickname=user_nickname,
-                    profile_image=user_profile_image,
-                    intro=user_intro,
+                user_dto = UserDto(
+                    id=user.id or 0,
+                    nickname=user.nickname or "",
+                    profile_image=user.profile_image or "",
+                    intro=user.intro or "",
                     tendency_type=tendency_type or "",
                     is_following=False,  # 필요 시 팔로우 여부 확인 로직 추가 가능
                 )
@@ -1317,151 +1324,119 @@ class PodService:
         pod_dto.joined_users = joined_users
 
         # 사용자 정보가 있으면 개인화 필드 설정
-        pod_id_val = getattr(pod, "id", None)
-        if user_id and pod_id_val is not None:
-            pod_dto.is_liked = await self._pod_repo.is_liked_by_user(
-                pod_id_val, user_id
-            )
+        if user_id and pod.id is not None:
+            pod_dto.is_liked = await self._pod_repo.is_liked_by_user(pod.id, user_id)
 
             # 사용자의 신청서 정보 조회
             user_applications = (
                 await self._application_repo.get_applications_by_user_id(user_id)
             )
-            pod_id_val = getattr(pod, "id", None)
             user_application = (
                 next(
-                    (
-                        app
-                        for app in user_applications
-                        if getattr(app, "pod_id", None) == pod_id_val
-                    ),
+                    (app for app in user_applications if app.pod_id == pod.id),
                     None,
                 )
-                if pod_id_val is not None
+                if pod.id is not None
                 else None
             )
 
             if user_application:
                 # 신청한 사용자 정보 조회
-                from app.features.users.models import User
-                from app.features.follow.schemas import SimpleUserDto
                 from app.features.tendencies.models import UserTendencyResult
+                from app.features.users.models import User
+                from app.features.users.schemas import UserDto
 
-                app_user_id = getattr(user_application, "user_id", None)
-                if app_user_id is not None:
-                    app_user = await self._db.get(User, app_user_id)
+                if user_application.user_id is not None:
+                    app_user = await self._session.get(User, user_application.user_id)
 
-                # 성향 타입 조회
-                result = await self._db.execute(
-                    select(UserTendencyResult).where(
-                        UserTendencyResult.user_id == app_user_id
+                    # 성향 타입 조회
+                    result = await self._session.execute(
+                        select(UserTendencyResult).where(
+                            UserTendencyResult.user_id == user_application.user_id
+                        )
                     )
-                )
-                user_tendency = result.scalar_one_or_none()
-                tendency_type = (
-                    getattr(user_tendency, "tendency_type", None)
-                    if user_tendency
-                    else None
-                )
-
-                if app_user:
-                    app_user_id_val = getattr(app_user, "id", None) or 0
-                    app_user_nickname = getattr(app_user, "nickname", "") or ""
-                    app_user_profile_image = (
-                        getattr(app_user, "profile_image", "") or ""
-                    )
-                    app_user_intro = getattr(app_user, "intro", "") or ""
-                    user_dto = SimpleUserDto(
-                        id=app_user_id_val,
-                        nickname=app_user_nickname,
-                        profile_image=app_user_profile_image,
-                        intro=app_user_intro,
-                        tendency_type=tendency_type or "",
-                        is_following=False,
+                    user_tendency = result.scalar_one_or_none()
+                    tendency_type = (
+                        user_tendency.tendency_type if user_tendency else None
                     )
 
-                    application_id = getattr(user_application, "id", None) or 0
-                    application_status = getattr(user_application, "status", "") or ""
-                    application_message = getattr(user_application, "message", None)
-                    application_applied_at = (
-                        getattr(user_application, "applied_at", 0) or 0
-                    )
-                    pod_dto.my_application = SimpleApplicationDto(
-                        id=application_id,
+                    if app_user:
+                        user_dto = UserDto(
+                            id=app_user.id or 0,
+                            nickname=app_user.nickname or "",
+                            profile_image=app_user.profile_image or "",
+                            intro=app_user.intro or "",
+                            tendency_type=tendency_type or "",
+                            is_following=False,
+                        )
+
+                    pod_dto.my_application = PodApplDto(
+                        id=user_application.id or 0,
                         user=user_dto,
-                        status=application_status,
-                        message=application_message,
-                        applied_at=application_applied_at,  # int (Unix timestamp) 그대로 사용
+                        status=user_application.status or "",
+                        message=user_application.message,
+                        applied_at=user_application.applied_at
+                        or 0,  # int (Unix timestamp) 그대로 사용
                     )
 
         # 파티에 들어온 신청서 목록 조회
-        pod_id_val = getattr(pod, "id", None)
-        if pod_id_val is None:
+        if pod.id is None:
             return pod_dto
-        applications = await self._application_repo.get_applications_by_pod_id(
-            pod_id_val
-        )
+        applications = await self._application_repo.get_applications_by_pod_id(pod.id)
 
         application_dtos = []
         for app in applications:
             # 신청한 사용자 정보 조회
-            from app.features.users.models import User
-            from app.features.follow.schemas import SimpleUserDto
             from app.features.tendencies.models import UserTendencyResult
+            from app.features.users.models import User
+            from app.features.users.schemas import UserDto
 
-            app_user_id = getattr(app, "user_id", None)
-            if app_user_id is None:
+            if app.user_id is None:
                 continue
-            app_user = await self._db.get(User, app_user_id)
+            app_user = await self._session.get(User, app.user_id)
 
             # 성향 타입 조회
-            result = await self._db.execute(
+            result = await self._session.execute(
                 select(UserTendencyResult).where(
-                    UserTendencyResult.user_id == app_user_id
+                    UserTendencyResult.user_id == app.user_id
                 )
             )
             user_tendency = result.scalar_one_or_none()
-            tendency_type = (
-                getattr(user_tendency, "tendency_type", None) if user_tendency else None
-            )
+            tendency_type = user_tendency.tendency_type if user_tendency else None
 
             if app_user:
-                app_user_id_val = getattr(app_user, "id", None) or 0
-                app_user_nickname = getattr(app_user, "nickname", "") or ""
-                app_user_profile_image = getattr(app_user, "profile_image", "") or ""
-                app_user_intro = getattr(app_user, "intro", "") or ""
-                user_dto = SimpleUserDto(
-                    id=app_user_id_val,
-                    nickname=app_user_nickname,
-                    profile_image=app_user_profile_image,
-                    intro=app_user_intro,
+                user_dto = UserDto(
+                    id=app_user.id or 0,
+                    nickname=app_user.nickname or "",
+                    profile_image=app_user.profile_image or "",
+                    intro=app_user.intro or "",
                     tendency_type=tendency_type or "",
                     is_following=False,
                 )
 
-                application_id = getattr(app, "id", None) or 0
-                application_status = getattr(app, "status", "") or ""
-                application_message = getattr(app, "message", None)
-                application_applied_at = getattr(app, "applied_at", 0) or 0
-                application_dto = SimpleApplicationDto(
-                    id=application_id,
+                application_dto = PodApplDto(
+                    id=app.id or 0,
                     user=user_dto,
-                    status=application_status,
-                    message=application_message,
-                    applied_at=application_applied_at,
+                    status=app.status or "",
+                    message=app.message,
+                    applied_at=app.applied_at or 0,
                 )
                 application_dtos.append(application_dto)
 
         pod_dto.applications = application_dtos
 
         # 후기 목록 조회 및 추가
-        pod_id_val = getattr(pod, "id", None)
-        if pod_id_val is None:
+        if pod.id is None:
             return pod_dto
-        reviews = await self._review_repo.get_all_reviews_by_pod(pod_id_val)
-        from app.features.pods.services.review_service import PodReviewService
+        reviews = await self._review_repo.get_all_reviews_by_pod(pod.id)
 
-        review_service = PodReviewService(self.db)
+        if not self._review_service:
+            from app.features.pods.services.pod_review_service import PodReviewService
+
+            review_service = PodReviewService(self._session)
+        else:
+            review_service = self._review_service
+
         review_dtos = []
         for review in reviews:
             review_dto = await review_service._convert_to_dto(review)
@@ -1471,8 +1446,10 @@ class PodService:
 
         return pod_dto
 
-    async def _convert_to_dto(self, pod: Pod, user_id: int | None = None) -> PodDto:
-        """Pod 엔터티를 PodDto로 변환"""
+    async def _convert_to_dto(
+        self, pod: Pod, user_id: int | None = None
+    ) -> PodDetailDto:
+        """Pod 엔터티를 PodDetailDto로 변환"""
         return await self._enrich_pod_dto(pod, user_id)
 
     # - MARK: 파티 상태 업데이트 (알림 포함)
@@ -1484,19 +1461,16 @@ class PodService:
         if not pod:
             return False
 
-        # 파티 속성 안전하게 추출
-        pod_owner_id = getattr(pod, "owner_id", None)
-        pod_title = getattr(pod, "title", "") or ""
+        # 파티 속성 추출
 
         # 파티 상태 업데이트
         if pod:
             status_value = status.value if hasattr(status, "value") else str(status)
             setattr(pod, "status", status_value)
-        await self._db.commit()
+        await self._session.commit()
 
         try:
             # FCM 서비스 초기화
-            fcm_service = FCMService()
 
             # 파티 참여자 목록 조회
             participants = await self._pod_repo.get_pod_participants(pod_id)
@@ -1506,82 +1480,72 @@ class PodService:
                 # 파티 확정 알림 (모집 완료) - 파티장 제외 참여자에게 전송
                 for participant in participants:
                     # 파티장 제외
-                    participant_id = getattr(participant, "id", None)
-                    participant_owner_id = getattr(pod, "owner_id", None)
                     if (
-                        participant_id is not None
-                        and participant_owner_id is not None
-                        and participant_id == participant_owner_id
+                        participant.id is not None
+                        and pod.owner_id is not None
+                        and participant.id == pod.owner_id
                     ):
                         continue
                     try:
-                        participant_fcm_token = (
-                            getattr(participant, "fcm_token", None) or ""
-                        )
-                        if participant_fcm_token:
-                            await fcm_service.send_pod_confirmed(
-                                token=participant_fcm_token,
-                                party_name=pod_title,
+                        if participant.fcm_token:
+                            await self._fcm_service.send_pod_confirmed(
+                                token=participant.fcm_token,
+                                party_name=pod.title or "",
                                 pod_id=pod_id,
-                                db=self.db,
-                                user_id=participant_id,
-                                related_user_id=pod_owner_id,
+                                db=self._db,
+                                user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
-                                f"파티 확정 알림 전송 성공: user_id={participant_id}, pod_id={pod_id}"
+                                f"파티 확정 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
                             )
                         else:
                             logger.warning(
-                                f"FCM 토큰이 없는 사용자: user_id={participant_id}"
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
                             )
                     except Exception as e:
                         logger.error(
-                            f"파티 확정 알림 전송 실패: user_id={participant_id}, error={e}"
+                            f"파티 확정 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
             elif status == PodStatus.CANCELED:
                 # 파티 취소 알림 - 파티장 제외 참여자에게 전송
                 for participant in participants:
                     # 파티장 제외
-                    participant_id = getattr(participant, "id", None)
                     if (
-                        participant_id is not None
-                        and pod_owner_id is not None
-                        and participant_id == pod_owner_id
+                        participant.id is not None
+                        and pod.owner_id is not None
+                        and participant.id == pod.owner_id
                     ):
                         continue
                     try:
-                        participant_fcm_token = (
-                            getattr(participant, "fcm_token", None) or ""
-                        )
-                        if participant_fcm_token:
-                            await fcm_service.send_pod_canceled(
-                                token=participant_fcm_token,
-                                party_name=pod_title,
+                        if participant.fcm_token:
+                            await self._fcm_service.send_pod_canceled(
+                                token=participant.fcm_token,
+                                party_name=pod.title or "",
                                 pod_id=pod_id,
-                                db=self.db,
-                                user_id=participant_id,
-                                related_user_id=pod_owner_id,
+                                db=self._db,
+                                user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
-                                f"파티 취소 알림 전송 성공: user_id={participant_id}, pod_id={pod_id}"
+                                f"파티 취소 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
                             )
                         else:
                             logger.warning(
-                                f"FCM 토큰이 없는 사용자: user_id={participant_id}"
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
                             )
                     except Exception as e:
                         logger.error(
-                            f"파티 취소 알림 전송 실패: user_id={participant_id}, error={e}"
+                            f"파티 취소 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
                 # 채팅방이 있으면 Sendbird에서 삭제 (DB는 유지)
-                pod_chat_channel_url = getattr(pod, "chat_channel_url", None) or ""
-                if pod_chat_channel_url:
+                if pod.chat_channel_url:
                     try:
                         from app.core.services.sendbird_service import SendbirdService
 
-                        channel_url = pod_chat_channel_url  # 삭제 전 URL 저장
+                        channel_url = pod.chat_channel_url  # 삭제 전 URL 저장
                         sendbird_service = SendbirdService()
                         delete_success = await sendbird_service.delete_channel(
                             channel_url
@@ -1598,36 +1562,32 @@ class PodService:
                             )
                     except Exception as e:
                         logger.error(
-                            f"Sendbird 채팅방 삭제 중 오류: pod_id={pod_id}, channel_url={pod_chat_channel_url}, error={e}"
+                            f"Sendbird 채팅방 삭제 중 오류: pod_id={pod_id}, channel_url={pod.chat_channel_url}, error={e}"
                         )
 
             elif status == PodStatus.CLOSED:
                 # 파티 완료 알림
                 for participant in participants:
                     try:
-                        participant_fcm_token = (
-                            getattr(participant, "fcm_token", None) or ""
-                        )
-                        participant_id = getattr(participant, "id", None)
-                        if participant_fcm_token and participant_id is not None:
-                            await fcm_service.send_pod_completed(
-                                token=participant_fcm_token,
-                                party_name=pod_title,
+                        if participant.fcm_token and participant.id is not None:
+                            await self._fcm_service.send_pod_completed(
+                                token=participant.fcm_token,
+                                party_name=pod.title or "",
                                 pod_id=pod_id,
-                                db=self.db,
-                                user_id=participant_id,
-                                related_user_id=pod_owner_id,
+                                db=self._db,
+                                user_id=participant.id,
+                                related_user_id=pod.owner_id,
                             )
                             logger.info(
-                                f"파티 완료 알림 전송 성공: user_id={participant_id}, pod_id={pod_id}"
+                                f"파티 완료 알림 전송 성공: user_id={participant.id}, pod_id={pod_id}"
                             )
                         else:
                             logger.warning(
-                                f"FCM 토큰이 없는 사용자: user_id={participant_id}"
+                                f"FCM 토큰이 없는 사용자: user_id={participant.id}"
                             )
                     except Exception as e:
                         logger.error(
-                            f"파티 완료 알림 전송 실패: user_id={participant_id}, error={e}"
+                            f"파티 완료 알림 전송 실패: user_id={participant.id}, error={e}"
                         )
 
         except Exception as e:

@@ -1,22 +1,22 @@
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas.get_google_token_request import GetGoogleTokenRequest
 from app.features.oauth.schemas.google_token_response import GoogleTokenResponse
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class GoogleOAuthService:
     """구글 OAuth 서비스"""
 
     def __init__(self, session: AsyncSession):
-        self.session = session
-        self.google_token_url = "https://oauth2.googleapis.com/token"
-        self.google_user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+        self._session = session
+        self._google_token_url = "https://oauth2.googleapis.com/token"
+        self._google_user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
 
+    # - MARK: 구글 액세스 토큰 조회
     async def get_google_token(self, code: str) -> GoogleTokenResponse:
         """구글 인가 코드를 통해 액세스 토큰 조회"""
 
@@ -36,7 +36,7 @@ class GoogleOAuthService:
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                self.google_token_url,
+                self._google_token_url,
                 data=token_params.model_dump(exclude_none=True),
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
@@ -55,6 +55,7 @@ class GoogleOAuthService:
 
             return GoogleTokenResponse(**response.json())
 
+    # - MARK: 구글 사용자 정보 조회
     async def get_google_user_info(self, access_token: str) -> OAuthUserInfo:
         """구글 액세스 토큰으로 사용자 정보 조회"""
         from typing import Any, Dict
@@ -62,7 +63,7 @@ class GoogleOAuthService:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
-                    self.google_user_info_url,
+                    self._google_user_info_url,
                     headers={
                         "Authorization": f"Bearer {access_token}",
                     },
@@ -90,6 +91,7 @@ class GoogleOAuthService:
                     detail=f"Google API request failed: {str(e)}",
                 ) from e
 
+    # - MARK: 구글 인증 URL 생성
     def get_auth_url(self) -> str:
         """구글 인증 URL 생성"""
         from urllib.parse import urlencode

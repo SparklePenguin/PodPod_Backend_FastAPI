@@ -10,9 +10,6 @@ Users 도메인 전용 Exception Handler
 
 import logging
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
 from app.common.schemas import BaseResponse
 from app.features.users.exceptions import (
     ArtistNotFoundException,
@@ -21,6 +18,8 @@ from app.features.users.exceptions import (
     SameOAuthProviderExistsException,
     UserNotFoundException,
 )
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,3 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import PageDto
 from app.core.exceptions import BusinessException
 from app.features.artists.repositories.artist_suggestion_repository import (
@@ -10,13 +8,15 @@ from app.features.artists.schemas import (
     ArtistSuggestionDto,
     ArtistSuggestionRankingDto,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ArtistSuggestionService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.artist_sugg_repo = ArtistSuggestionRepository(db)
+    def __init__(self, session: AsyncSession):
+        self._session = session
+        self.artist_sugg_repo = ArtistSuggestionRepository(session)
 
+    # - MARK: 아티스트 제안 생성
     async def create_suggestion(
         self, request: ArtistSuggestionCreateRequest, user_id: int
     ) -> ArtistSuggestionDto:
@@ -41,6 +41,7 @@ class ArtistSuggestionService:
 
         return ArtistSuggestionDto.model_validate(suggestion)
 
+    # - MARK: ID로 제안 조회
     async def get_suggestion_by_id(
         self, suggestion_id: int
     ) -> ArtistSuggestionDto | None:
@@ -51,6 +52,7 @@ class ArtistSuggestionService:
 
         return ArtistSuggestionDto.model_validate(suggestion)
 
+    # - MARK: 제안 목록 조회
     async def get_suggestions(
         self, page: int = 1, size: int = 20
     ) -> PageDto[ArtistSuggestionDto]:
@@ -67,6 +69,7 @@ class ArtistSuggestionService:
             items=suggestion_dtos, page=page, size=size, total_count=total_count
         )
 
+    # - MARK: 아티스트별 요청 순위 조회
     async def get_artist_ranking(
         self, page: int = 1, limit: int = 20
     ) -> PageDto[ArtistSuggestionRankingDto]:
@@ -86,6 +89,7 @@ class ArtistSuggestionService:
             items=ranking_dtos, page=page, size=limit, total_count=total_count
         )
 
+    # - MARK: 특정 아티스트명으로 제안 목록 조회
     async def get_suggestions_by_artist_name(
         self, artist_name: str, page: int = 1, size: int = 20
     ) -> PageDto[ArtistSuggestionDto]:

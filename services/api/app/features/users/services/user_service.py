@@ -1,17 +1,13 @@
 from typing import List
 
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.common.schemas import PageDto
 from app.core.security import get_password_hash
-from app.features.artists.repositories.artist_repository import ArtistRepository
+from app.features.artists.models import Artist
 from app.features.artists.schemas import ArtistDto
-from app.features.follow.repositories.follow_repository import FollowCRUD
-from app.features.follow.schemas import SimpleUserDto
-from app.features.follow.services.follow_service import FollowService
+from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
-from app.features.pods.repositories.application_repository import PodApplicationCRUD
+from app.features.pods.repositories.application_repository import (
+    PodApplicationRepository,
+)
 from app.features.users.exceptions import (
     ArtistNotFoundException,
     EmailAlreadyExistsException,
@@ -20,26 +16,29 @@ from app.features.users.exceptions import (
     UserNotFoundException,
 )
 from app.features.users.models import User, UserState
-from app.features.users.repositories import UserBlockRepository, UserRepository
+from app.features.users.repositories import UserRepository
 from app.features.users.schemas import (
-    BlockUserResponse,
     UpdateProfileRequest,
-    UserDto,
-    UserDtoInternal,
+    UserDetailDto,
 )
+from app.features.users.schemas.user_dto import UserDto
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class UserService:
     def __init__(self, session: AsyncSession):
         self._user_repo = UserRepository(session)
-        self._artist_repo = ArtistRepository(session)
-        self._follow_service = FollowService(session)
-        self._block_repo = UserBlockRepository(session)
-        self._follow_repo = FollowCRUD(session)
-        self._pod_application_repo = PodApplicationCRUD(session)
+        from app.core.services.fcm_service import FCMService
+
+        from app.features.follow.services.follow_service import FollowService
+
+        self._follow_service = FollowService(session, fcm_service=FCMService())
+        self._follow_repo = FollowRepository(session)
+        self._pod_application_repo = PodApplicationRepository(session)
         self._session = session
 
-    # MARK: - 유저 복구
+    # - MARK: 유저 복구
     async def restore_user(self, user: User, oauth_user_info: OAuthUserInfo | None):
         """유저 소프트 삭제 복구(is_del 플래그)"""
         updates = {"is_del": False}
@@ -56,15 +55,12 @@ class UserService:
             # user 객체 업데이트를 위해 refresh
             await self._session.refresh(user)
 
-    # MARK: - 유저 FCM 토큰 업데이트
-    async def update_token(self, user: User, fcm_token: str):
+    # - MARK: 유저 FCM 토큰 업데이트
+    async def update_fcm_token(self, user_id: int, fcm_token: str | None):
         """유저 FCM 토큰 업데이트"""
-        user.fcm_token = fcm_token
-        await self._session.commit()
-        await self._session.refresh(user)
+        await self._user_repo.update_fcm_token(user_id, fcm_token)
 
     # - MARK: 사용자 생성
-
     async def create_user(
         self,
         email: str | None,
@@ -75,7 +71,7 @@ class UserService:
         auth_provider_id: str | None = None,
         fcm_token: str | None = None,
         password: str | None = None,
-    ) -> UserDto:
+    ) -> UserDetailDto:
         # 이메일 중복 확인 (provider도 함께 확인)
         user_email = email
         if user_email is None:
@@ -86,8 +82,8 @@ class UserService:
         existing_user = await self._user_repo.get_by_email(user_email)
         if existing_user:
             # 같은 provider인지 확인
-            existing_auth_provider = getattr(existing_user, "auth_provider", None)
-            existing_auth_provider_id = getattr(existing_user, "auth_provider_id", None)
+            existing_auth_provider = existing_user.auth_provider
+            existing_auth_provider_id = existing_user.auth_provider_id
 
             if (
                 auth_provider
@@ -127,69 +123,9 @@ class UserService:
 
         user = await self._user_repo.create(user_dict)
 
-        # Sendbird 사용자 생성
-        try:
-            import logging
-
-            from app.core.services.sendbird_service import SendbirdService
-
-            logger = logging.getLogger(__name__)
-            sendbird_service = SendbirdService()
-
-            user_id_val = getattr(user, "id", None) or 0
-            user_nickname = getattr(user, "nickname", None) or "사용자"
-            user_profile_image = getattr(user, "profile_image", None) or ""
-
-            sendbird_success = await sendbird_service.create_user(
-                user_id=str(user_id_val),
-                nickname=user_nickname,
-                profile_url=user_profile_image,
-            )
-
-            if sendbird_success:
-                logger.info(f"사용자 {user_id_val} Sendbird 유저 생성 성공")
-            else:
-                logger.warning(f"사용자 {user_id_val} Sendbird 유저 생성 실패")
-
-        except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            user_id_val = getattr(user, "id", None) or 0
-            logger.error(f"사용자 {user_id_val} Sendbird 유저 생성 중 오류: {e}")
-            # Sendbird 생성 실패는 무시하고 계속 진행
-
-        # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, "id", None)
-        user_data_dto = await self._prepare_user_dto_data(user, user_id_val)
-        return UserDto.model_validate(user_data_dto, from_attributes=False)
-
-    # - MARK: OAuth 사용자 조회
-    async def get_user_by_auth_provider_id(
-        self, auth_provider: str, auth_provider_id: str
-    ) -> UserDto | None:
-        """OAuth 프로바이더 ID로 사용자 조회"""
-        user = await self._user_repo.get_by_auth_provider_id(
-            auth_provider, auth_provider_id
-        )
-        if not user:
-            return None
-
-        user_is_del = getattr(user, "is_del", False)
-        if user_is_del:
-            return None
-
-        # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, "id", None)
-        user_data = await self._prepare_user_dto_data(user, user_id_val)
-        return UserDto.model_validate(user_data, from_attributes=False)
-
-    # - MARK: (내부용) 사용자 목록 조회
-    async def get_users(self) -> List[UserDtoInternal]:
-        users = await self._user_repo.get_all()
-        return [
-            UserDtoInternal.model_validate(user, from_attributes=True) for user in users
-        ]
+        # UserDetailDto 생성 시 상태 정보 포함
+        user_data_dto = await self._prepare_user_dto_data(user, user.id)
+        return UserDetailDto.model_validate(user_data_dto, from_attributes=False)
 
     # - MARK: 사용자 조회
     async def get_user(self, user_id: int) -> UserDto:
@@ -197,78 +133,41 @@ class UserService:
         if not user:
             raise UserNotFoundException(user_id)
 
-        user_is_del = getattr(user, "is_del", False)
-        if user_is_del:
+        if user.is_del:
             raise UserNotFoundException(user_id)
 
-        # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, "id", None)
-        user_data = await self._prepare_user_dto_data(user, user_id_val)
+        # UserDetailDto 생성 시 상태 정보 포함
+        user_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 사용자 조회 (팔로우 통계 포함)
     async def get_user_with_follow_stats(
         self, user_id: int, current_user_id: int
-    ) -> UserDto:
+    ) -> UserDetailDto:
         """다른 사용자 정보 조회 (팔로우 통계 포함)"""
         user = await self._user_repo.get_by_id(user_id)
         if not user:
             raise UserNotFoundException(user_id)
 
-        user_is_del = getattr(user, "is_del", False)
-        if user_is_del:
+        if user.is_del:
             raise UserNotFoundException(user_id)
 
         # UserDto 생성 시 상태 정보 및 팔로우 통계 포함
         user_data = await self._prepare_user_dto_data(user, current_user_id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
-    # - MARK: (내부용) 사용자 조회 (모든 정보 포함)
-    async def get_user_internal(self, user_id: int) -> UserDtoInternal:
-        user = await self._user_repo.get_by_id(user_id)
-        if not user:
-            raise UserNotFoundException(user_id)
-
-        return UserDtoInternal.model_validate(user, from_attributes=True)
-
     # - MARK: 프로필 업데이트
     async def update_profile(
         self, user_id: int, user_data: UpdateProfileRequest
-    ) -> UserDto:
+    ) -> UserDetailDto:
         update_data = user_data.model_dump(exclude_unset=True)
 
         user = await self._user_repo.update_profile(user_id, update_data)
         if not user:
             raise UserNotFoundException(user_id)
 
-        # Sendbird 사용자 프로필 업데이트
-        try:
-            from app.core.services.sendbird_service import SendbirdService
-
-            sendbird_service = SendbirdService()
-
-            # Sendbird에 업데이트할 필드만 추출
-            sendbird_nickname = update_data.get("nickname")
-            sendbird_profile_url = update_data.get("profile_image")
-
-            # Sendbird 업데이트 (비동기로 실행, 실패해도 메인 로직은 계속)
-            await sendbird_service.update_user_profile(
-                user_id=str(user_id),
-                nickname=sendbird_nickname,
-                profile_url=sendbird_profile_url,
-            )
-        except Exception as e:
-            # Sendbird 업데이트 실패는 로그만 남기고 메인 로직은 계속
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                f"Sendbird 사용자 프로필 업데이트 실패 (user_id: {user_id}): {e}"
-            )
-
-        # UserDto 생성 시 상태 정보 포함
-        user_id_val = getattr(user, "id", None)
-        user_dto_data = await self._prepare_user_dto_data(user, user_id_val)
+        # UserDetailDto 생성 시 상태 정보 포함
+        user_dto_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_dto_data, from_attributes=False)
 
     # - MARK: 선호 아티스트 조회
@@ -277,38 +176,57 @@ class UserService:
         # 아티스트 ID 목록 가져오기
         artist_ids = await self._user_repo.get_preferred_artist_ids(user_id)
 
-        # 각 아티스트 정보 가져오기
-        artists = []
-        for artist_id in artist_ids:
-            artist = await self._artist_repo.get_by_id(artist_id)
-            if artist:
-                artists.append(ArtistDto.model_validate(artist, from_attributes=True))
+        if not artist_ids:
+            return []
 
-        return artists
+        # 모든 아티스트를 한 번에 조회
+        query = select(Artist).where(Artist.id.in_(artist_ids))
+        result = await self._session.execute(query)
+        artists = result.scalars().all()
+
+        # ID 순서 유지를 위한 딕셔너리 생성
+        artist_dict = {artist.id: artist for artist in artists}
+
+        # 원래 순서대로 반환
+        return [
+            ArtistDto.model_validate(artist_dict[artist_id], from_attributes=True)
+            for artist_id in artist_ids
+            if artist_id in artist_dict
+        ]
 
     # - MARK: 선호 아티스트 업데이트 (추가/제거)
     async def update_preferred_artists(
         self, user_id: int, artist_ids: List[int]
     ) -> List[ArtistDto]:
         """선호 아티스트 목록을 완전히 교체하여 업데이트"""
-        # 아티스트 존재 확인
-        for artist_id in artist_ids:
-            artist = await self._artist_repo.get_by_id(artist_id)
-            if not artist:
-                raise ArtistNotFoundException(artist_id)
+        # 트랜잭션 시작
+        async with self._session.begin():
+            if not artist_ids:
+                # 빈 리스트면 모든 선호 아티스트 제거
+                await self._user_repo.remove_all_preferred_artists(user_id)
+                return []
 
-        # 기존 선호 아티스트 모두 제거
-        current_artist_ids = await self._user_repo.get_preferred_artist_ids(user_id)
-        for current_artist_id in current_artist_ids:
-            await self._user_repo.remove_preferred_artist(user_id, current_artist_id)
+            # 모든 아티스트를 한 번에 조회하여 존재 확인
+            query = select(Artist).where(Artist.id.in_(artist_ids))
+            result = await self._session.execute(query)
+            artists = result.scalars().all()
 
-        # 새로운 선호 아티스트 추가
-        for artist_id in artist_ids:
-            await self._user_repo.add_preferred_artist(user_id, artist_id)
+            found_ids = {artist.id for artist in artists}
+            missing_ids = set(artist_ids) - found_ids
+
+            if missing_ids:
+                raise ArtistNotFoundException(list(missing_ids)[0])
+
+            # 기존 선호 아티스트 모두 제거 (bulk 작업)
+            await self._user_repo.remove_all_preferred_artists(user_id)
+
+            # 새로운 선호 아티스트 일괄 추가 (bulk 작업)
+            await self._user_repo.add_preferred_artists(user_id, artist_ids)
 
         # 업데이트된 선호 아티스트 목록 반환
         return await self.get_preferred_artists(user_id)
 
+    # - MARK: 사용자 온보딩 상태 결정
     def _determine_user_state(
         self, user, has_preferred_artists: bool, has_tendency_result: bool
     ) -> UserState:
@@ -328,6 +246,7 @@ class UserService:
         # 4. 모든 조건을 만족하면 COMPLETED
         return UserState.COMPLETED
 
+    # - MARK: 선호 아티스트 설정 여부 확인
     async def _has_preferred_artists(self, user_id: int) -> bool:
         """사용자가 선호 아티스트를 설정했는지 확인"""
         try:
@@ -336,12 +255,12 @@ class UserService:
         except Exception:
             return False
 
+    # - MARK: 성향 테스트 완료 여부 확인
     async def _has_tendency_result(self, user_id: int) -> bool:
         """사용자가 성향 테스트를 완료했는지 확인"""
         # UserTendencyResult 테이블에서 해당 user_id의 결과가 있는지 확인
+        from app.features.tendencies.models import UserTendencyResult
         from sqlalchemy import select
-
-        from app.features.tendencies.models.tendency import UserTendencyResult
 
         try:
             result = await self._session.execute(
@@ -349,15 +268,14 @@ class UserService:
             )
             user_tendency = result.scalar_one_or_none()
             return user_tendency is not None
-        except Exception as e:
-            print(f"성향 결과 확인 오류 (user_id: {user_id}): {e}")
+        except Exception:
             return False
 
+    # - MARK: 사용자 성향 타입 조회
     async def _get_user_tendency_type(self, user_id: int) -> str | None:
         """사용자의 성향 타입 조회"""
+        from app.features.tendencies.models import UserTendencyResult
         from sqlalchemy import select
-
-        from app.features.tendencies.models.tendency import UserTendencyResult
 
         try:
             result = await self._session.execute(
@@ -365,17 +283,17 @@ class UserService:
             )
             user_tendency = result.scalar_one_or_none()
             if user_tendency:
-                tendency_type_raw = getattr(user_tendency, "tendency_type", None)
+                tendency_type_raw = user_tendency.tendency_type
                 return str(tendency_type_raw) if tendency_type_raw is not None else None
             return None
-        except Exception as e:
-            print(f"성향 타입 조회 오류 (user_id: {user_id}): {e}")
+        except Exception:
             return None
 
+    # - MARK: UserDetailDto 데이터 준비
     async def _prepare_user_dto_data(
         self, user, current_user_id: int | None = None
     ) -> dict:
-        """UserDto 생성을 위한 데이터 준비"""
+        """UserDetailDto 생성을 위한 데이터 준비"""
         # 기본 사용자 정보
         user_data = {
             "id": user.id,
@@ -384,9 +302,7 @@ class UserService:
             "nickname": user.nickname,
             "profile_image": user.profile_image,
             "intro": user.intro,
-            "terms_accepted": (
-                user.terms_accepted if hasattr(user, "terms_accepted") else False
-            ),
+            "terms_accepted": user.terms_accepted,
             "created_at": user.created_at,
             "updated_at": user.updated_at,
         }
@@ -427,121 +343,22 @@ class UserService:
     # - MARK: 약관 동의
     async def accept_terms(self, user_id: int, terms_accepted: bool = True) -> UserDto:
         """약관 동의 처리"""
-        # 사용자 존재 확인
-        user = await self._user_repo.get_by_id(user_id)
+        # 약관 동의 업데이트 (repo 메서드 사용)
+        user = await self._user_repo.update_terms_accepted(user_id, terms_accepted)
         if not user:
             raise UserNotFoundException(user_id)
-
-        # 약관 동의 업데이트 (setattr 사용)
-        setattr(user, "terms_accepted", terms_accepted)
-        await self._session.commit()
-        await self._session.refresh(user)  # 세션 갱신
 
         # 업데이트된 사용자 정보 조회
         user_data = await self._prepare_user_dto_data(user, user_id)
         return UserDto.model_validate(user_data, from_attributes=False)
 
-    # - MARK: 사용자 차단
-    async def block_user(
-        self, blocker_id: int, blocked_id: int
-    ) -> BlockUserResponse | None:
-        """사용자 차단 (팔로우 관계도 함께 삭제)"""
-        # 차단할 사용자 존재 확인
-        blocked_user = await self._user_repo.get_by_id(blocked_id)
-        if not blocked_user:
-            return None
-
-        # 차단 생성
-        block = await self._block_repo.create_block(blocker_id, blocked_id)
-        if not block:
-            return None
-
-        # 팔로우 관계 삭제 (양방향 모두)
-        # 1. 내가 차단한 사람을 팔로우하고 있었다면 팔로우 해제
-        await self._follow_repo.delete_follow(blocker_id, blocked_id)
-
-        # 2. 차단한 사람이 나를 팔로우하고 있었다면 팔로우 해제
-        await self._follow_repo.delete_follow(blocked_id, blocker_id)
-
-        blocker_id_val = getattr(block, "blocker_id", None) or 0
-        blocked_id_val = getattr(block, "blocked_id", None) or 0
-        created_at_raw = getattr(block, "created_at", None)
-
-        # datetime 기본값 제공
-        from datetime import datetime, timezone
-
-        if created_at_raw is None:
-            created_at_val = datetime.now(timezone.utc).replace(tzinfo=None)
-        else:
-            created_at_val = created_at_raw
-
-        return BlockUserResponse(
-            blocker_id=blocker_id_val,
-            blocked_id=blocked_id_val,
-            created_at=created_at_val,
-        )
-
-    async def unblock_user(self, blocker_id: int, blocked_id: int) -> bool:
-        """사용자 차단 해제"""
-        return await self._block_repo.delete_block(blocker_id, blocked_id)
-
-    async def get_blocked_users(
-        self, blocker_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[SimpleUserDto]:
-        """차단한 사용자 목록 조회"""
-        blocked_data, total_count = await self._block_repo.get_blocked_users(
-            blocker_id, page, size
-        )
-
-        users = []
-        for user, blocked_at in blocked_data:
-            # 성향 타입 조회
-            user_id_val = getattr(user, "id", None)
-            if user_id_val is None:
-                continue
-            tendency_type = await self._get_user_tendency_type(user_id_val)
-
-            user_id = user_id_val
-            user_nickname = getattr(user, "nickname", "") or ""
-            user_profile_image = getattr(user, "profile_image", "") or ""
-            user_intro = getattr(user, "intro", "") or ""
-            user_dto = SimpleUserDto(
-                id=user_id,
-                nickname=user_nickname,
-                profile_image=user_profile_image,
-                intro=user_intro,
-                tendency_type=tendency_type or "",
-                is_following=False,  # 차단한 사용자는 팔로우할 수 없음
-            )
-            users.append(user_dto)
-
-        # PageDto 생성
-        total_pages = (total_count + size - 1) // size
-        has_next = page < total_pages
-        has_prev = page > 1
-
-        return PageDto(
-            items=users,
-            current_page=page,
-            size=size,
-            total_count=total_count,
-            total_pages=total_pages,
-            has_next=has_next,
-            has_prev=has_prev,
-        )
-
-    async def check_block_exists(self, blocker_id: int, blocked_id: int) -> bool:
-        """차단 관계 존재 여부 확인"""
-        return await self._block_repo.check_block_exists(blocker_id, blocked_id)
-
+    # - MARK: 사용자 삭제
     async def delete_user(self, user_id: int) -> None:
         """
         사용자 삭제 (소프트 삭제)
         - 삭제되어도 문제없는 데이터는 삭제
         - 다른 곳에서 조회되거나 문제 생기는 데이터는 isDel로 처리
         """
-        from sqlalchemy import delete, select
-
         from app.features.notifications.models.notification import Notification
         from app.features.pods.models.pod.pod import Pod
         from app.features.pods.models.pod.pod_like import PodLike
@@ -549,6 +366,7 @@ class UserService:
         from app.features.pods.models.pod.pod_status import PodStatus
         from app.features.pods.models.pod.pod_view import PodView
         from app.features.users.models import UserNotificationSettings
+        from sqlalchemy import delete, select
 
         # 사용자 존재 확인
         user = await self._user_repo.get_by_id(user_id)
@@ -556,89 +374,96 @@ class UserService:
             raise UserNotFoundException(user_id)
 
         # 이미 삭제된 사용자인지 확인
-        user_is_del = getattr(user, "is_del", False) if user else False
-        if bool(user_is_del):
+        if user.is_del:
             return
 
-        # ========== 삭제 가능한 데이터 (개인 데이터) ==========
-        # 1. 선호 아티스트 삭제
-        preferred_artist_ids = await self._user_repo.get_preferred_artist_ids(user_id)
-        for artist_id in preferred_artist_ids:
-            await self._user_repo.remove_preferred_artist(user_id, artist_id)
-
-        # 2. 파티 신청서 삭제
-        await self._pod_application_repo.delete_all_by_user_id(user_id)
-
-        # 3. 파티 조회 기록 삭제
-        await self._session.execute(delete(PodView).where(PodView.user_id == user_id))
-        await self._session.commit()
-
-        # 4. 파티 좋아요 삭제
-        await self._session.execute(delete(PodLike).where(PodLike.user_id == user_id))
-        await self._session.commit()
-
-        # 5. 파티 멤버십 삭제
-        await self._session.execute(
-            delete(PodMember).where(PodMember.user_id == user_id)
-        )
-        await self._session.commit()
-
-        # 6. 알림 삭제 (user_id와 related_user_id 모두)
-        await self._session.execute(
-            delete(Notification).where(
-                (Notification.user_id == user_id)
-                | (Notification.related_user_id == user_id)
+        # 트랜잭션 시작 (모든 삭제 작업을 하나의 트랜잭션으로 처리)
+        try:
+            # ========== 삭제 가능한 데이터 (개인 데이터) ==========
+            # 1. 선호 아티스트 삭제
+            preferred_artist_ids = await self._user_repo.get_preferred_artist_ids(
+                user_id
             )
-        )
-        await self._session.commit()
+            for artist_id in preferred_artist_ids:
+                await self._user_repo.remove_preferred_artist(user_id, artist_id)
 
-        # 7. 알림 설정 삭제
-        await self._session.execute(
-            delete(UserNotificationSettings).where(
-                UserNotificationSettings.user_id == user_id
+            # 2. 파티 신청서 삭제
+            await self._pod_application_repo.delete_all_by_user_id(user_id)
+
+            # 3. 파티 조회 기록 삭제
+            await self._session.execute(
+                delete(PodView).where(PodView.user_id == user_id)
             )
-        )
-        await self._session.commit()
 
-        # ========== 소프트 삭제 처리 (다른 곳에서 조회 가능한 데이터) ==========
-        # 8. 파티장인 파티 처리 - 상태를 CANCELED로 변경
-        pods_query = select(Pod).where(Pod.owner_id == user_id)
-        pods_result = await self._session.execute(pods_query)
-        owner_pods = pods_result.scalars().all()
+            # 4. 파티 좋아요 삭제
+            await self._session.execute(
+                delete(PodLike).where(PodLike.user_id == user_id)
+            )
 
-        for pod in owner_pods:
-            if pod:
-                status_value = (
-                    PodStatus.CANCELED.value
-                    if hasattr(PodStatus.CANCELED, "value")
-                    else str(PodStatus.CANCELED)
+            # 5. 파티 멤버십 삭제
+            await self._session.execute(
+                delete(PodMember).where(PodMember.user_id == user_id)
+            )
+
+            # 6. 알림 삭제 (user_id와 related_user_id 모두)
+            await self._session.execute(
+                delete(Notification).where(
+                    (Notification.user_id == user_id)
+                    | (Notification.related_user_id == user_id)
                 )
-                setattr(pod, "status", status_value)
-                setattr(pod, "is_active", False)
-        await self._session.commit()
-
-        # 9. 팔로우/차단/신고 관계는 유지 (상대방이 볼 수 있으므로)
-        # - 팔로우 관계: 유지 (isDel 처리된 사용자도 조회 가능)
-        # - 차단 관계: 유지
-        # - 신고 관계: 유지 (관리자가 볼 수 있으므로)
-
-        # 10. 파티 후기/평점은 유지 (다른 사람들이 볼 수 있으므로)
-        # - PodReview: 유지
-        # - PodRating: 유지
-
-        # 11. 사용자 소프트 삭제 처리
-        await self._session.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(
-                is_del=True,
-                is_active=False,
-                nickname=None,  # 개인정보 삭제
-                email=None,
-                profile_image=None,
-                intro=None,
-                fcm_token=None,
-                terms_accepted=False,  # 약관 동의 초기화
             )
-        )
-        await self._session.commit()
+
+            # 7. 알림 설정 삭제
+            await self._session.execute(
+                delete(UserNotificationSettings).where(
+                    UserNotificationSettings.user_id == user_id
+                )
+            )
+
+            # ========== 소프트 삭제 처리 (다른 곳에서 조회 가능한 데이터) ==========
+            # 8. 파티장인 파티 처리 - 상태를 CANCELED로 변경
+            pods_query = select(Pod).where(Pod.owner_id == user_id)
+            pods_result = await self._session.execute(pods_query)
+            owner_pods = pods_result.scalars().all()
+
+            for pod in owner_pods:
+                if pod:
+                    status_value = (
+                        PodStatus.CANCELED.value
+                        if hasattr(PodStatus.CANCELED, "value")
+                        else str(PodStatus.CANCELED)
+                    )
+                    pod.status = status_value
+                    pod.is_active = False
+
+            # 9. 팔로우/차단/신고 관계는 유지 (상대방이 볼 수 있으므로)
+            # - 팔로우 관계: 유지 (isDel 처리된 사용자도 조회 가능)
+            # - 차단 관계: 유지
+            # - 신고 관계: 유지 (관리자가 볼 수 있으므로)
+
+            # 10. 파티 후기/평점은 유지 (다른 사람들이 볼 수 있으므로)
+            # - PodReview: 유지
+            # - PodRating: 유지
+
+            # 11. 사용자 소프트 삭제 처리
+            await self._session.execute(
+                update(User)
+                .where(User.id == user_id)
+                .values(
+                    is_del=True,
+                    is_active=False,
+                    nickname=None,  # 개인정보 삭제
+                    email=None,
+                    profile_image=None,
+                    intro=None,
+                    fcm_token=None,
+                    terms_accepted=False,  # 약관 동의 초기화
+                )
+            )
+
+            # 모든 작업 성공 시 커밋
+            await self._session.commit()
+        except Exception:
+            # 오류 발생 시 롤백
+            await self._session.rollback()
+            raise

@@ -1,14 +1,14 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import PageDto
 from app.features.artists.exceptions import ArtistNotFoundException
 from app.features.artists.repositories.artist_repository import ArtistRepository
 from app.features.artists.schemas import ArtistDto
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ArtistService:
-    def __init__(self, db: AsyncSession):
-        self.artist_repo = ArtistRepository(db)
+    def __init__(self, session: AsyncSession):
+        self._session = session
+        self.artist_repo = ArtistRepository(session)
 
     # - MARK: 아티스트 조회
     async def get_artist(self, artist_id: int) -> ArtistDto:

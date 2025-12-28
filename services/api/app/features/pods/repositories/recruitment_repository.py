@@ -1,15 +1,16 @@
 from datetime import datetime, timezone
 
+from app.features.pods.models.pod import Pod, PodMember
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.features.pods.models.pod import Pod, PodMember
 
+class RecruitmentRepository:
+    """파티 모집 Repository"""
 
-class RecruitmentCRUD:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
     # - MARK: 파티 참여 신청
     async def add_member(
@@ -20,7 +21,7 @@ class RecruitmentCRUD:
         message: str | None = None,
     ) -> PodMember:
         # 중복 방지
-        q = await self.db.execute(
+        q = await self._session.execute(
             select(PodMember).where(
                 PodMember.pod_id == pod_id, PodMember.user_id == user_id
             )
@@ -30,7 +31,7 @@ class RecruitmentCRUD:
             return existing_member
 
         # 파티 정보 조회 및 capacity 체크
-        pod_q = await self.db.execute(
+        pod_q = await self._session.execute(
             select(Pod).where(Pod.id == pod_id, Pod.is_active)
         )
         pod = pod_q.scalar_one_or_none()
@@ -38,7 +39,7 @@ class RecruitmentCRUD:
             raise ValueError("파티를 찾을 수 없습니다")
 
         # 현재 멤버 수 확인
-        member_count_q = await self.db.execute(
+        member_count_q = await self._session.execute(
             select(func.count(PodMember.id)).where(PodMember.pod_id == pod_id)
         )
         current_member_count = member_count_q.scalar() or 0
@@ -57,14 +58,14 @@ class RecruitmentCRUD:
             message=message,
             joined_at=current_timestamp,
         )
-        self.db.add(pod_member)
+        self._session.add(pod_member)
 
-        await self.db.commit()
-        await self.db.refresh(pod_member)
+        await self._session.commit()
+        await self._session.refresh(pod_member)
         return pod_member
 
     async def remove_member(self, pod_id: int, user_id: int) -> bool:
-        q = await self.db.execute(
+        q = await self._session.execute(
             select(PodMember).where(
                 PodMember.pod_id == pod_id, PodMember.user_id == user_id
             )
@@ -72,12 +73,12 @@ class RecruitmentCRUD:
         row = q.scalar_one_or_none()
         if row is None:
             return True
-        await self.db.delete(row)
-        await self.db.commit()
+        await self._session.delete(row)
+        await self._session.commit()
         return True
 
     async def list_members(self, pod_id: int) -> list[PodMember]:
-        q = await self.db.execute(
+        q = await self._session.execute(
             select(PodMember)
             .options(selectinload(PodMember.user))
             .where(PodMember.pod_id == pod_id)

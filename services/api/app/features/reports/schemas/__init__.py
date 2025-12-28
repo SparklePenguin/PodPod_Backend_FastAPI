@@ -1,15 +1,11 @@
 """Reports feature schemas"""
 
-from .report import (
-    CreateReportRequest,
-    ReportReasonDto,
-    ReportReasonsResponse,
-    ReportResponse,
-)
+from .create_report_request import CreateReportRequest
+from .report_info_dto import ReportInfoDto
+from .report_reason_dto import ReportReasonDto
 
 __all__ = [
     "CreateReportRequest",
+    "ReportInfoDto",
     "ReportReasonDto",
-    "ReportReasonsResponse",
-    "ReportResponse",
 ]

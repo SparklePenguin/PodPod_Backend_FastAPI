@@ -1,4 +1,5 @@
 import sys
+import traceback
 from datetime import datetime
 from pathlib import Path as PathLib
 from typing import Any, Dict, List
@@ -7,11 +8,11 @@ from typing import Any, Dict, List
 project_root = PathLib(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
-from app.features.artists.models import Artist, ArtistName
-from app.features.artists.models.artist_schedule import ArtistSchedule
-from app.features.artists.schemas import (
+from app.features.artists.models import Artist, ArtistName  # noqa: E402
+from app.features.artists.models.artist_schedule import ArtistSchedule  # noqa: E402
+from app.features.artists.schemas import (  # noqa: E402
     ArtistScheduleCreateRequest,
     ScheduleContentCreateRequest,
     ScheduleMemberCreateRequest,
@@ -21,8 +22,8 @@ from app.features.artists.schemas import (
 class ArtistScheduleRepository:
     """스크래핑 서비스 전용 아티스트 스케줄 레포지토리"""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
     async def find_artist_by_ko_name(self, ko_name: str):
         """한글명으로 아티스트 찾기"""
@@ -33,7 +34,7 @@ class ArtistScheduleRepository:
             .join(ArtistName)
             .where(and_(ArtistName.code == "ko", ArtistName.name == ko_name))
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
     async def find_artist_by_member_ko_name(self, ko_name: str):
@@ -45,12 +46,10 @@ class ArtistScheduleRepository:
             .join(ArtistName)
             .where(and_(ArtistName.code == "ko", ArtistName.name == ko_name))
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
-    async def find_existing_schedule(
-        self, artist_id: int, title: str, start_time: int
-    ):
+    async def find_existing_schedule(self, artist_id: int, title: str, start_time: int):
         """중복 스케줄 찾기"""
         from sqlalchemy import and_, select
 
@@ -61,7 +60,7 @@ class ArtistScheduleRepository:
                 ArtistSchedule.start_time == start_time,
             )
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
     async def create_schedule(self, request: ArtistScheduleCreateRequest):
@@ -82,8 +81,8 @@ class ArtistScheduleRepository:
             location=request.location,
         )
 
-        self.db.add(schedule)
-        await self.db.flush()
+        self._session.add(schedule)
+        await self._session.flush()
 
         # 멤버들 생성
         for member_req in request.members:
@@ -93,7 +92,7 @@ class ArtistScheduleRepository:
                 ko_name=member_req.ko_name,
                 en_name=member_req.en_name,
             )
-            self.db.add(member)
+            self._session.add(member)
 
         # 콘텐츠들 생성
         for content_req in request.contents:
@@ -103,10 +102,10 @@ class ArtistScheduleRepository:
                 path=content_req.path,
                 title=content_req.title,
             )
-            self.db.add(content)
+            self._session.add(content)
 
-        await self.db.commit()
-        await self.db.refresh(schedule)
+        await self._session.commit()
+        await self._session.refresh(schedule)
 
         return schedule
 
@@ -114,13 +113,14 @@ class ArtistScheduleRepository:
         self, schedule_id: int, request: ArtistScheduleCreateRequest
     ):
         """기존 스케줄 업데이트"""
+        from sqlalchemy import select
+
         from app.features.artists.models.schedule_content import ScheduleContent
         from app.features.artists.models.schedule_member import ScheduleMember
-        from sqlalchemy import select
 
         # 스케줄 조회
         query = select(ArtistSchedule).where(ArtistSchedule.id == schedule_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         schedule = result.scalar_one_or_none()
 
         if not schedule:
@@ -139,12 +139,12 @@ class ArtistScheduleRepository:
         setattr(schedule, "location", request.location)
 
         # 기존 멤버 및 콘텐츠 삭제
-        await self.db.execute(
+        await self._session.execute(
             ScheduleMember.__table__.delete().where(
                 ScheduleMember.schedule_id == schedule_id
             )
         )
-        await self.db.execute(
+        await self._session.execute(
             ScheduleContent.__table__.delete().where(
                 ScheduleContent.schedule_id == schedule_id
             )
@@ -158,7 +158,7 @@ class ArtistScheduleRepository:
                 ko_name=member_req.ko_name,
                 en_name=member_req.en_name,
             )
-            self.db.add(member)
+            self._session.add(member)
 
         # 새 콘텐츠들 생성
         for content_req in request.contents:
@@ -168,10 +168,10 @@ class ArtistScheduleRepository:
                 path=content_req.path,
                 title=content_req.title,
             )
-            self.db.add(content)
+            self._session.add(content)
 
-        await self.db.commit()
-        await self.db.refresh(schedule)
+        await self._session.commit()
+        await self._session.refresh(schedule)
 
         return schedule
 
@@ -179,8 +179,6 @@ class ArtistScheduleRepository:
         self, schedule_data: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """JSON 데이터에서 스케줄 가져오기"""
-        import traceback
-
         imported_count = 0
         updated_count = 0
         skipped_count = 0

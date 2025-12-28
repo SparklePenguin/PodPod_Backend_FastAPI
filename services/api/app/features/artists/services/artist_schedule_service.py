@@ -1,18 +1,18 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import PageDto
 from app.features.artists.exceptions import ArtistScheduleNotFoundException
 from app.features.artists.repositories.artist_schedule_repository import (
     ArtistScheduleRepository,
 )
 from app.features.artists.schemas import ArtistScheduleDto
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class ArtistScheduleService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.aritst_sche_repo = ArtistScheduleRepository(db)
+    def __init__(self, session: AsyncSession):
+        self._session = session
+        self.aritst_sche_repo = ArtistScheduleRepository(session)
 
+    # - MARK: ID로 스케줄 조회
     async def get_schedule_by_id(self, schedule_id: int) -> ArtistScheduleDto:
         """ID로 스케줄 조회"""
         schedule = await self.aritst_sche_repo.get_schedule_by_id(schedule_id)
@@ -20,6 +20,7 @@ class ArtistScheduleService:
             raise ArtistScheduleNotFoundException(schedule_id)
         return ArtistScheduleDto.model_validate(schedule, from_attributes=True)
 
+    # - MARK: 스케줄 목록 조회
     async def get_schedules(
         self,
         page: int = 1,

@@ -1,5 +1,3 @@
-from fastapi import APIRouter, Depends, Query
-
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.service import get_artist_suggestion_service
@@ -11,10 +9,12 @@ from app.features.artists.schemas import (
 from app.features.artists.services.artist_suggestion_service import (
     ArtistSuggestionService,
 )
+from fastapi import APIRouter, Depends, Query
 
 router = APIRouter(tags=["artist-suggestions"])
 
 
+# - MARK: 아티스트 제안 생성
 @router.post(
     "",
     response_model=BaseResponse[ArtistSuggestionDto],
@@ -34,6 +34,7 @@ async def create_artist_suggestion(
     )
 
 
+# - MARK: 아티스트 요청 순위 조회
 @router.get(
     "/ranking",
     response_model=BaseResponse[PageDto[ArtistSuggestionRankingDto]],

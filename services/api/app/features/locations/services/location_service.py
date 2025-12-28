@@ -1,34 +1,36 @@
 import json
-import os
 from collections import defaultdict
 from typing import List
 
+from app.features.locations.repositories.location_repository import LocationRepository
+from app.features.locations.schemas import LocationDto
+from app.features.pods.models.pod.pod import Pod
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.locations.repositories.location_repository import LocationCRUD
-from app.features.locations.schemas import LocationDto, LocationResponse
-from app.features.pods.models.pod.pod import Pod
-
 
 class LocationService:
-    def __init__(self, db: AsyncSession):
-        self._db = db
-        self._location_repo = LocationCRUD(db)
+    """지역 정보 Service"""
 
-    async def get_all_locations(self) -> List[LocationResponse]:
+    def __init__(self, session: AsyncSession):
+        self._session = session
+        self._location_repo = LocationRepository(session)
+
+    # - MARK: 모든 지역 정보 조회
+    async def get_all_locations(self) -> List[LocationDto]:
         """모든 지역 정보 조회 (인기 지역 포함)"""
         locations = await self._location_repo.get_all_locations()
 
         # 일반 지역 정보
         all_locations = []
         for location in locations:
-            location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
-            location_main_location = getattr(location, "main_location", "") or ""
-            sub_locations = json.loads(location_sub_locations)
+            sub_locations_str = location.sub_locations or "[]"
+            sub_locations = json.loads(sub_locations_str)
             all_locations.append(
-                LocationResponse(
-                    main_location=location_main_location, sub_locations=sub_locations
+                LocationDto(
+                    id=location.id,
+                    main_location=location.main_location,
+                    sub_locations=sub_locations,
                 )
             )
 
@@ -50,9 +52,10 @@ class LocationService:
 
         return combined_locations
 
+    # - MARK: 주요 지역으로 지역 정보 조회
     async def get_location_by_main_location(
         self, main_location: str
-    ) -> LocationResponse | None:
+    ) -> LocationDto | None:
         """주요 지역으로 지역 정보 조회"""
         location = await self._location_repo.get_location_by_main_location(
             main_location
@@ -61,13 +64,14 @@ class LocationService:
         if not location:
             return None
 
-        location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
-        location_main_location = getattr(location, "main_location", "") or ""
-        sub_locations = json.loads(location_sub_locations)
-        return LocationResponse(
-            main_location=location_main_location, sub_locations=sub_locations
+        sub_locations = json.loads(location.sub_locations or "[]")
+        return LocationDto(
+            id=location.id,
+            main_location=location.main_location,
+            sub_locations=sub_locations,
         )
 
+    # - MARK: 지역 정보 생성
     async def create_location(
         self, main_location: str, sub_locations: List[str]
     ) -> LocationDto:
@@ -76,16 +80,14 @@ class LocationService:
             main_location, sub_locations
         )
 
-        location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
-        location_id = getattr(location, "id", 0) or 0
-        location_main_location = getattr(location, "main_location", "") or ""
-        sub_locations_list = json.loads(location_sub_locations)
+        sub_locations_list = json.loads(location.sub_locations or "[]")
         return LocationDto(
-            id=location_id,
-            main_location=location_main_location,
+            id=location.id,
+            main_location=location.main_location,
             sub_locations=sub_locations_list,
         )
 
+    # - MARK: 지역 정보 수정
     async def update_location(
         self, location_id: int, main_location: str, sub_locations: List[str]
     ) -> LocationDto | None:
@@ -97,69 +99,23 @@ class LocationService:
         if not location:
             return None
 
-        location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
-        location_id_val = getattr(location, "id", 0) or 0
-        location_main_location = getattr(location, "main_location", "") or ""
-        sub_locations_list = json.loads(location_sub_locations)
+        sub_locations_list = json.loads(location.sub_locations or "[]")
         return LocationDto(
-            id=location_id_val,
-            main_location=location_main_location,
+            id=location.id,
+            main_location=location.main_location,
             sub_locations=sub_locations_list,
         )
 
+    # - MARK: 지역 정보 삭제
     async def delete_location(self, location_id: int) -> bool:
         """지역 정보 삭제"""
         return await self._location_repo.delete_location(location_id)
 
-    async def create_locations_from_json(self) -> List[LocationDto]:
-        """JSON 파일에서 지역 데이터를 읽어서 생성"""
-        # JSON 파일 경로 (프로젝트 루트 기준)
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.join(current_dir, "../../..")
-        json_file_path = os.path.abspath(
-            os.path.join(project_root, "mvp/locations.json")
-        )
-
-        # JSON 파일 읽기
-        with open(json_file_path, "r", encoding="utf-8") as file:
-            locations_data = json.load(file)
-
-        created_locations = []
-
-        for location_data in locations_data:
-            main_location = location_data["mainLocation"]
-            sub_locations = location_data["subLocations"]
-
-            # 이미 존재하는지 확인
-            existing_location = await self._location_repo.get_location_by_main_location(
-                main_location
-            )
-
-            if not existing_location:
-                # 새로 생성
-                location = await self._location_repo.create_location(
-                    main_location, sub_locations
-                )
-                location_sub_locations = (
-                    getattr(location, "sub_locations", "[]") or "[]"
-                )
-                location_id = getattr(location, "id", 0) or 0
-                location_main_location = getattr(location, "main_location", "") or ""
-                sub_locations_list = json.loads(location_sub_locations)
-                created_locations.append(
-                    LocationDto(
-                        id=location_id,
-                        main_location=location_main_location,
-                        sub_locations=sub_locations_list,
-                    )
-                )
-
-        return created_locations
-
-    async def get_popular_locations(self) -> List[LocationResponse]:
+    # - MARK: 인기 지역 조회
+    async def get_popular_locations(self) -> List[LocationDto]:
         """인기 지역 조회 - 팟티의 address, sub_address에서 지역 매칭하여 카운트"""
         # 모든 팟티의 address, sub_address 조회
-        result = await self._db.execute(
+        result = await self._session.execute(
             select(Pod.address, Pod.sub_address).where(Pod.is_active)
         )
         pod_addresses = result.fetchall()
@@ -177,10 +133,7 @@ class LocationService:
 
             # 각 지역의 sub_locations와 매칭
             for location in locations:
-                location_sub_locations = (
-                    getattr(location, "sub_locations", "[]") or "[]"
-                )
-                sub_locations = json.loads(location_sub_locations)
+                sub_locations = json.loads(location.sub_locations or "[]")
                 for sub_location in sub_locations:
                     # sub_location을 "·"로 분리하여 각각 확인
                     sub_parts = sub_location.split("·")
@@ -198,20 +151,18 @@ class LocationService:
             location_counts.items(), key=lambda x: x[1], reverse=True
         )[:10]
 
-        # PopularLocationResponse 형태로 변환
+        # LocationDto 형태로 변환
         popular_locations = []
         for main_location, count in sorted_locations:
             # 해당 main_location의 sub_locations 찾기
             for location in locations:
-                location_main_location = getattr(location, "main_location", "") or ""
-                if location_main_location == main_location:
-                    location_sub_locations = (
-                        getattr(location, "sub_locations", "[]") or "[]"
-                    )
-                    sub_locations = json.loads(location_sub_locations)
+                if location.main_location == main_location:
+                    sub_locations = json.loads(location.sub_locations or "[]")
                     popular_locations.append(
-                        LocationResponse(
-                            main_location=main_location, sub_locations=sub_locations
+                        LocationDto(
+                            id=location.id,
+                            main_location=main_location,
+                            sub_locations=sub_locations,
                         )
                     )
                     break

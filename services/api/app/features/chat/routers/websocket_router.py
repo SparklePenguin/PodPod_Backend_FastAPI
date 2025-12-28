@@ -1,10 +1,9 @@
 import logging
 
+from app.core.config import settings
+from app.core.services.chat_service import ChatService as CoreChatService
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 from jose import JWTError, jwt
-
-from app.core.config import settings
-from app.core.services.chat_service import ChatService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -22,6 +21,7 @@ async def get_user_id_from_token(token: str) -> int | None:
         return None
 
 
+# - MARK: WebSocket 채팅 연결
 @router.websocket("/ws/{channel_url}")
 async def websocket_endpoint(
     websocket: WebSocket, channel_url: str, token: str | None = Query(None)
@@ -39,8 +39,8 @@ async def websocket_endpoint(
     }
     """
     # WebSocket 사용 여부 확인
-    chat_service = ChatService()
-    websocket_service = chat_service.get_websocket_service()
+    core_chat_service = CoreChatService()
+    websocket_service = core_chat_service.get_websocket_service()
 
     if not websocket_service:
         await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
@@ -106,13 +106,24 @@ async def websocket_endpoint(
             if not message_text:
                 continue
 
-            # 메시지 전송
-            await websocket_service.send_message(
-                channel_url=channel_url,
-                user_id=user_id,
-                message=message_text,
-                message_type=message_type,
-            )
+            # 메시지 전송 (Chat Service를 통해 DB 저장 및 FCM 전송)
+            from app.core.database import AsyncSessionLocal
+            from app.deps.service import get_chat_service
+
+            async with AsyncSessionLocal() as session:
+                try:
+                    chat_service = get_chat_service(session=session)
+                    await chat_service.send_message(
+                        channel_url=channel_url,
+                        user_id=user_id,
+                        message=message_text,
+                        message_type=message_type,
+                    )
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.error(f"메시지 전송 실패: {e}")
+                    raise
 
     except WebSocketDisconnect:
         # 연결 해제 처리
@@ -136,6 +147,7 @@ async def websocket_endpoint(
         await websocket.close()
 
 
+# - MARK: WebSocket 테스트 연결
 @router.websocket("/ws/{channel_url}/test")
 async def websocket_test_endpoint(
     websocket: WebSocket,
@@ -146,8 +158,8 @@ async def websocket_test_endpoint(
     WebSocket 테스트 엔드포인트 (인증 없이)
     개발/테스트 목적으로만 사용
     """
-    chat_service = ChatService()
-    websocket_service = chat_service.get_websocket_service()
+    core_chat_service = CoreChatService()
+    websocket_service = core_chat_service.get_websocket_service()
 
     if not websocket_service:
         await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA)
@@ -172,12 +184,25 @@ async def websocket_test_endpoint(
             message_text = data.get("message", "")
 
             if message_text:
-                await websocket_service.send_message(
-                    channel_url=channel_url,
-                    user_id=user_id,
-                    message=message_text,
-                    message_type=message_type,
-                )
+                # 메시지 전송 (Chat Service를 통해 DB 저장 및 FCM 전송)
+                from app.core.database import AsyncSessionLocal
+                from app.deps.service import get_chat_service
+
+                async with AsyncSessionLocal() as session:
+                    try:
+                        from app.deps.service import get_chat_service
+                        chat_service = get_chat_service(session=session)
+                        await chat_service.send_message(
+                            channel_url=channel_url,
+                            user_id=user_id,
+                            message=message_text,
+                            message_type=message_type,
+                        )
+                        await session.commit()
+                    except Exception as e:
+                        await session.rollback()
+                        logger.error(f"테스트 메시지 전송 실패: {e}")
+                        raise
 
     except WebSocketDisconnect:
         connection_manager.disconnect(channel_url, user_id)

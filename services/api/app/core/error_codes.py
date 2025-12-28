@@ -16,9 +16,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict
 
-from fastapi import HTTPException
-
-from app.core.http_status import HttpStatus
+from fastapi import HTTPException, status
 
 
 @dataclass
@@ -261,7 +259,7 @@ def raise_error(
     # HTTP 상태 코드는 에러 코드에서 가져와야 하는데, 현재 구조에서는 없으므로 기본값 사용
     # TODO: 에러 코드에 http_status 필드 추가 필요
     raise HTTPException(
-        status_code=HttpStatus.BAD_REQUEST,  # 임시로 BAD_REQUEST 사용
+        status_code=status.HTTP_400_BAD_REQUEST,  # 임시로 BAD_REQUEST 사용
         detail=detail,
     )
 

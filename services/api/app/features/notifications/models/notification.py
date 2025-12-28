@@ -2,19 +2,20 @@
 알림 모델
 """
 
+from datetime import datetime, timezone
+
+from app.core.database import Base
 from sqlalchemy import (
-    Column,
     BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
     Integer,
     String,
-    DateTime,
-    Boolean,
-    ForeignKey,
     Text,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-from app.core.database import Base
 
 
 class Notification(Base):

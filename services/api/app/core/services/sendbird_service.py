@@ -2,6 +2,7 @@ import json
 from typing import Any, Dict, List
 
 import sendbird_platform_sdk
+from app.core.config import settings
 from sendbird_platform_sdk.api import group_channel_api
 from sendbird_platform_sdk.model.create_a_group_channel_request import (
     CreateAGroupChannelRequest,
@@ -9,8 +10,6 @@ from sendbird_platform_sdk.model.create_a_group_channel_request import (
 from sendbird_platform_sdk.model.join_a_channel_request import JoinAChannelRequest
 from sendbird_platform_sdk.model.leave_a_channel_request import LeaveAChannelRequest
 from sendbird_platform_sdk.model.sendbird_user import SendbirdUser
-
-from app.core.config import settings
 
 
 class SendbirdService:
@@ -437,7 +436,6 @@ class SendbirdService:
         """
         try:
             import httpx
-
             from app.core.config import settings
 
             url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/group_channels/{channel_url}/join"
@@ -484,7 +482,6 @@ class SendbirdService:
         """
         try:
             import httpx
-
             from app.core.config import settings
 
             url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/users"
@@ -540,7 +537,6 @@ class SendbirdService:
         """
         try:
             import httpx
-
             from app.core.config import settings
 
             url = f"https://api-{settings.SENDBIRD_APP_ID}.sendbird.com/v3/users/{user_id}"

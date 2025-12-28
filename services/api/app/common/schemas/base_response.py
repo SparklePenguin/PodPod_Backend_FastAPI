@@ -6,24 +6,24 @@ T = TypeVar("T")
 
 
 class BaseResponse(BaseModel, Generic[T]):
-    data: T | None = Field(default=None, serialization_alias="data")
+    data: T | None = Field(default=None)
     http_status: int | None = Field(
-        default=None, serialization_alias="httpStatus", description="HTTP 상태 코드"
+        default=None, alias="httpStatus", description="HTTP 상태 코드"
     )
     message_ko: str | None = Field(
-        default=None, serialization_alias="messageKo", description="한국어 메시지"
+        default=None, alias="messageKo", description="한국어 메시지"
     )
     message_en: str | None = Field(
-        default=None, serialization_alias="messageEn", description="영어 메시지"
+        default=None, alias="messageEn", description="영어 메시지"
     )
     error_key: str | None = Field(
-        default=None, serialization_alias="error", description="에러 코드 키"
+        default=None, alias="error", description="에러 코드 키"
     )
     error_code: int | None = Field(
-        default=None, serialization_alias="errorCode", description="숫자 에러 코드"
+        default=None, alias="errorCode", description="숫자 에러 코드"
     )
     dev_note: str | None = Field(
-        default=None, serialization_alias="devNote", description="개발자 노트"
+        default=None, alias="devNote", description="개발자 노트"
     )
 
     model_config = {

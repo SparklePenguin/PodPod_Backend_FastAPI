@@ -1,15 +1,15 @@
 from typing import List, Tuple
 
+from app.features.artists.models import ArtistSuggestion
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.artists.models import ArtistSuggestion
-
 
 class ArtistSuggestionRepository:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
+    # - MARK: 아티스트 제안 생성
     async def create_suggestion(
         self,
         artist_name: str,
@@ -21,17 +21,19 @@ class ArtistSuggestionRepository:
         suggestion = ArtistSuggestion(
             artist_name=artist_name, reason=reason, email=email, user_id=user_id
         )
-        self.db.add(suggestion)
-        await self.db.commit()
-        await self.db.refresh(suggestion)
+        self._session.add(suggestion)
+        await self._session.commit()
+        await self._session.refresh(suggestion)
         return suggestion
 
+    # - MARK: ID로 제안 조회
     async def get_suggestion_by_id(self, suggestion_id: int) -> ArtistSuggestion | None:
         """ID로 제안 조회"""
         query = select(ArtistSuggestion).where(ArtistSuggestion.id == suggestion_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
+    # - MARK: 제안 목록 조회
     async def get_suggestions(
         self, page: int = 1, size: int = 20
     ) -> Tuple[List[ArtistSuggestion], int]:
@@ -45,16 +47,17 @@ class ArtistSuggestionRepository:
             .offset(offset)
             .limit(size)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         suggestions = list(result.scalars().all())
 
         # 전체 개수 조회
         count_query = select(func.count(ArtistSuggestion.id))
-        count_result = await self.db.execute(count_query)
+        count_result = await self._session.execute(count_query)
         total_count = count_result.scalar() or 0
 
         return suggestions, total_count
 
+    # - MARK: 아티스트별 요청 순위 조회
     async def get_artist_ranking(
         self, page: int = 1, limit: int = 20
     ) -> Tuple[List[dict], int]:
@@ -72,7 +75,7 @@ class ArtistSuggestionRepository:
             .offset(offset)
             .limit(limit)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
 
         rankings = []
         for row in result:
@@ -80,11 +83,12 @@ class ArtistSuggestionRepository:
 
         # 전체 아티스트 수 조회
         count_query = select(func.count(func.distinct(ArtistSuggestion.artist_name)))
-        count_result = await self.db.execute(count_query)
+        count_result = await self._session.execute(count_query)
         total_count = count_result.scalar() or 0
 
         return rankings, total_count
 
+    # - MARK: 특정 아티스트명으로 제안 목록 조회
     async def get_suggestions_by_artist_name(
         self, artist_name: str, page: int = 1, size: int = 20
     ) -> Tuple[List[ArtistSuggestion], int]:
@@ -99,24 +103,25 @@ class ArtistSuggestionRepository:
             .offset(offset)
             .limit(size)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         suggestions = list(result.scalars().all())
 
         # 해당 아티스트의 전체 개수 조회
         count_query = select(func.count(ArtistSuggestion.id)).where(
             ArtistSuggestion.artist_name == artist_name
         )
-        count_result = await self.db.execute(count_query)
+        count_result = await self._session.execute(count_query)
         total_count = count_result.scalar() or 0
 
         return suggestions, total_count
 
+    # - MARK: 중복 제안 확인
     async def check_duplicate_suggestion(self, artist_name: str, user_id: int) -> bool:
         """사용자가 해당 아티스트에 대해 이미 제안했는지 확인"""
         query = select(ArtistSuggestion).where(
             ArtistSuggestion.artist_name == artist_name,
             ArtistSuggestion.user_id == user_id,
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         suggestion = result.first()
         return suggestion is not None

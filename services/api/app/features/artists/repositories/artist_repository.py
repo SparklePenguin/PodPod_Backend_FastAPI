@@ -1,43 +1,46 @@
 from typing import List
 
+from app.features.artists.models import Artist, ArtistUnit
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.features.artists.models import Artist, ArtistUnit
-
 
 class ArtistRepository:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
+    # - MARK: unit_id로 아티스트 조회
     async def get_by_unit_id(self, unit_id: int) -> Artist | None:
         """unit_id로 아티스트 찾기"""
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Artist)
             .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.unit_id == unit_id)
         )
         return result.scalar_one_or_none()
 
+    # - MARK: artist_id로 아티스트 조회
     async def get_by_id(self, artist_id: int) -> Artist | None:
         """artist_id로 아티스트 찾기"""
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Artist)
             .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.id == artist_id)
         )
         return result.scalar_one_or_none()
 
+    # - MARK: 이름으로 아티스트 조회
     async def get_by_name(self, name: str) -> Artist | None:
         """이름으로 아티스트 찾기"""
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Artist)
             .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.name == name)
         )
         return result.scalar_one_or_none()
 
+    # - MARK: 아티스트 목록 조회
     async def get_all(
         self, page: int = 1, size: int = 20, is_active: bool = True
     ) -> tuple[List[Artist], int]:
@@ -64,7 +67,7 @@ class ArtistRepository:
             .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.id.in_(artist_ids))
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         artists_dict = {artist.id: artist for artist in result.scalars().all()}
 
         # artist_units의 순서대로 artists 정렬
@@ -76,6 +79,7 @@ class ArtistRepository:
 
         return artists, total_count
 
+    # - MARK: ArtistUnit 목록 조회
     async def get_artist_units_with_names(
         self, page: int = 1, size: int = 20, is_active: bool = True
     ) -> tuple[List[ArtistUnit], int]:
@@ -92,7 +96,7 @@ class ArtistRepository:
         )
 
         # 총 개수 조회
-        count_result = await self.db.execute(
+        count_result = await self._session.execute(
             select(func.count(ArtistUnit.id)).where(
                 and_(
                     ArtistUnit.is_active == is_active, ArtistUnit.artist_id.isnot(None)
@@ -103,7 +107,7 @@ class ArtistRepository:
 
         # 페이지네이션 적용
         offset = (page - 1) * size
-        result = await self.db.execute(query.offset(offset).limit(size))
+        result = await self._session.execute(query.offset(offset).limit(size))
         artist_units = list(result.scalars().all())
 
         # total_count가 None일 수 있으므로 기본값 0 사용

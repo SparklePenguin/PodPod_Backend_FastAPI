@@ -17,8 +17,9 @@ from app.features.artists.routers.artist_suggestion_router import (
     router as suggestions_router,
 )
 
-# Chat router (WebSocket)
+# Chat routers
 from app.features.chat.routers.websocket_router import router as chat_websocket_router
+from app.features.chat.routers.chat_router import router as chat_router
 
 # Follow router
 from app.features.follow.routers.follow_router import router as follow_router
@@ -57,10 +58,14 @@ from app.features.users.routers.profile_image_router import (
 )
 
 # Users routers
+from app.features.users.routers.block_user_router import (
+    router as block_user_router,
+)
+from app.features.users.routers.user_notification_router import (
+    router as user_notification_router,
+)
 from app.features.users.routers.user_router import router as users_router
 
-# Webhooks router
-from app.features.webhooks.routers.webhook_router import router as webhooks_router
 from fastapi import APIRouter
 
 # 메인 API 라우터 생성
@@ -68,6 +73,14 @@ api_router = APIRouter()
 
 # 사용자 관련 라우터 (features/users)
 api_router.include_router(users_router, prefix="/users", tags=["users"])
+api_router.include_router(
+    block_user_router, prefix="/users/blocks", tags=["users"]
+)
+api_router.include_router(
+    user_notification_router,
+    prefix="/users/notification-settings",
+    tags=["users"],
+)
 
 # 인증 관련 라우터 (features/auth)
 api_router.include_router(sessions_router, prefix="/sessions", tags=["sessions"])
@@ -111,8 +124,8 @@ api_router.include_router(
     profile_images_router, prefix="/profile-images", tags=["profile-images"]
 )
 
-# 웹훅 라우터 (webhooks)
-api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
+# 채팅 라우터 (chat)
+api_router.include_router(chat_router, prefix="/chat", tags=["chat"])
 
 # 시스템 관련 라우터 (system)
 api_router.include_router(health_router, tags=["health"])

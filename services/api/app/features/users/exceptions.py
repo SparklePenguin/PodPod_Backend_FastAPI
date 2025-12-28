@@ -52,3 +52,27 @@ class ArtistNotFoundException(DomainException):
             error_key="ARTIST_NOT_FOUND", format_params={"artist_id": artist_id}
         )
         self.artist_id = artist_id
+
+
+class ImageUploadException(DomainException):
+    """이미지 업로드 실패"""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(
+            error_key="IMAGE_UPLOAD_ERROR",
+            override_message_ko=message or "이미지 업로드에 실패했습니다.",
+        )
+
+
+class CannotBlockSelfException(DomainException):
+    """자기 자신을 차단할 수 없는 경우"""
+
+    def __init__(self):
+        super().__init__(error_key="CANNOT_BLOCK_SELF")
+
+
+class BlockNotFoundException(DomainException):
+    """차단 관계를 찾을 수 없는 경우"""
+
+    def __init__(self):
+        super().__init__(error_key="BLOCK_NOT_FOUND")

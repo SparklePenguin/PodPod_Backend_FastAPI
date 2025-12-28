@@ -8,7 +8,7 @@ class ImageOrder(BaseModel):
     url: str | None = Field(None, description="기존 이미지 URL (type='existing'일 때)")
     file_index: int | None = Field(
         None,
-        serialization_alias="fileIndex",
+        alias="fileIndex",
         description="새 이미지 파일 인덱스 (type='new'일 때)",
     )
 

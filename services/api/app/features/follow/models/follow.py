@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean, UniqueConstraint
-from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+
 from app.core.database import Base
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 
 class Follow(Base):

@@ -6,7 +6,7 @@ import os
 import random
 from typing import List
 
-from app.features.users.schemas.random_profile_image import RandomProfileImageResponse
+from app.features.users.schemas.random_profile_image import RandomProfileImageDto
 
 
 class RandomProfileImageService:
@@ -16,6 +16,7 @@ class RandomProfileImageService:
         self.images_dir = "UserImages"
         self.supported_extensions = [".png", ".jpg", ".jpeg", ".gif", ".webp"]
 
+    # - MARK: 사용 가능한 이미지 목록 조회
     def get_available_images(self) -> List[str]:
         """사용 가능한 이미지 파일 목록을 반환"""
         try:
@@ -33,13 +34,14 @@ class RandomProfileImageService:
         except Exception:
             return []
 
-    def get_random_profile_image(self) -> RandomProfileImageResponse:
+    # - MARK: 랜덤 프로필 이미지 조회
+    def get_random_profile_image(self) -> RandomProfileImageDto:
         """랜덤 프로필 이미지를 반환"""
         available_images = self.get_available_images()
 
         if not available_images:
             # 기본 이미지가 없으면 빈 문자열 반환
-            return RandomProfileImageResponse(image_url="", image_name="")
+            return RandomProfileImageDto(image_url="", image_name="")
 
         # 랜덤으로 이미지 선택
         selected_image = random.choice(available_images)
@@ -47,11 +49,10 @@ class RandomProfileImageService:
         # 이미지 URL 생성 (정적 파일 서빙을 위해)
         image_url = f"/static/UserImages/{selected_image}"
 
-        return RandomProfileImageResponse(
-            image_url=image_url, image_name=selected_image
-        )
+        return RandomProfileImageDto(image_url=image_url, image_name=selected_image)
 
-    def get_all_profile_images(self) -> List[RandomProfileImageResponse]:
+    # - MARK: 모든 프로필 이미지 목록 조회
+    def get_all_profile_images(self) -> List[RandomProfileImageDto]:
         """모든 프로필 이미지 목록을 반환"""
         available_images = self.get_available_images()
 
@@ -59,7 +60,7 @@ class RandomProfileImageService:
         for image_name in available_images:
             image_url = f"/static/UserImages/{image_name}"
             images.append(
-                RandomProfileImageResponse(image_url=image_url, image_name=image_name)
+                RandomProfileImageDto(image_url=image_url, image_name=image_name)
             )
 
         return images

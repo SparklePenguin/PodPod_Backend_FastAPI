@@ -1,17 +1,18 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, desc, func
-from sqlalchemy.orm import selectinload
 from typing import List, Tuple
-from app.features.pods.models.pod_review import PodReview
+
 from app.features.pods.models.pod import Pod
 from app.features.pods.models.pod.pod_member import PodMember
+from app.features.pods.models.pod_review import PodReview
+from sqlalchemy import and_, desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
-class PodReviewCRUD:
-    """파티 후기 CRUD 클래스"""
+class PodReviewRepository:
+    """파티 후기 Repository"""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
     async def create_review(
         self, pod_id: int, user_id: int, rating: int, content: str
@@ -20,9 +21,9 @@ class PodReviewCRUD:
         review = PodReview(
             pod_id=pod_id, user_id=user_id, rating=rating, content=content
         )
-        self.db.add(review)
-        await self.db.commit()
-        await self.db.refresh(review)
+        self._session.add(review)
+        await self._session.commit()
+        await self._session.refresh(review)
 
         # 관계 로딩을 위해 다시 조회
         review_id = getattr(review, "id")
@@ -35,7 +36,7 @@ class PodReviewCRUD:
             .options(selectinload(PodReview.pod), selectinload(PodReview.user))
             .where(PodReview.id == review_id)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
     async def get_review_by_pod_and_user(
@@ -47,7 +48,7 @@ class PodReviewCRUD:
             .options(selectinload(PodReview.pod), selectinload(PodReview.user))
             .where(and_(PodReview.pod_id == pod_id, PodReview.user_id == user_id))
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return result.scalar_one_or_none()
 
     async def get_reviews_by_pod(
@@ -65,12 +66,12 @@ class PodReviewCRUD:
             .offset(offset)
             .limit(size)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         reviews = result.scalars().all()
 
         # 총 후기 수 조회
         count_query = select(func.count(PodReview.id)).where(PodReview.pod_id == pod_id)
-        count_result = await self.db.execute(count_query)
+        count_result = await self._session.execute(count_query)
         total_count = count_result.scalar() or 0
 
         return list(reviews), total_count
@@ -83,7 +84,7 @@ class PodReviewCRUD:
             .where(PodReview.pod_id == pod_id)
             .order_by(desc(PodReview.created_at))
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         return list(result.scalars().all())
 
     async def get_reviews_by_user(
@@ -101,14 +102,14 @@ class PodReviewCRUD:
             .offset(offset)
             .limit(size)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         reviews = result.scalars().all()
 
         # 총 후기 수 조회
         count_query = select(func.count(PodReview.id)).where(
             PodReview.user_id == user_id
         )
-        count_result = await self.db.execute(count_query)
+        count_result = await self._session.execute(count_query)
         total_count = count_result.scalar() or 0
 
         return list(reviews), total_count
@@ -118,26 +119,26 @@ class PodReviewCRUD:
     ) -> PodReview | None:
         """후기 수정"""
         query = select(PodReview).where(PodReview.id == review_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         review = result.scalar_one_or_none()
 
         if review:
             setattr(review, "rating", rating)
             setattr(review, "content", content)
-            await self.db.commit()
-            await self.db.refresh(review)
+            await self._session.commit()
+            await self._session.refresh(review)
             return review
         return None
 
     async def delete_review(self, review_id: int) -> bool:
         """후기 삭제"""
         query = select(PodReview).where(PodReview.id == review_id)
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         review = result.scalar_one_or_none()
 
         if review:
-            await self.db.delete(review)
-            await self.db.commit()
+            await self._session.delete(review)
+            await self._session.commit()
             return True
         return False
 
@@ -147,14 +148,14 @@ class PodReviewCRUD:
         avg_rating_query = select(func.avg(PodReview.rating)).where(
             PodReview.pod_id == pod_id
         )
-        avg_rating_result = await self.db.execute(avg_rating_query)
+        avg_rating_result = await self._session.execute(avg_rating_query)
         avg_rating = avg_rating_result.scalar() or 0
 
         # 총 후기 수
         total_reviews_query = select(func.count(PodReview.id)).where(
             PodReview.pod_id == pod_id
         )
-        total_reviews_result = await self.db.execute(total_reviews_query)
+        total_reviews_result = await self._session.execute(total_reviews_query)
         total_reviews = total_reviews_result.scalar() or 0
 
         return {
@@ -171,12 +172,12 @@ class PodReviewCRUD:
         # 내가 참여한 파티 ID 목록 조회
         # 1. PodMember로 참여한 파티
         member_pods_query = select(PodMember.pod_id).where(PodMember.user_id == user_id)
-        member_pods_result = await self.db.execute(member_pods_query)
+        member_pods_result = await self._session.execute(member_pods_query)
         member_pod_ids = [row[0] for row in member_pods_result.all()]
 
         # 2. 내가 개설한 파티 (owner_id)
         owner_pods_query = select(Pod.id).where(Pod.owner_id == user_id)
-        owner_pods_result = await self.db.execute(owner_pods_query)
+        owner_pods_result = await self._session.execute(owner_pods_query)
         owner_pod_ids = [row[0] for row in owner_pods_result.all()]
 
         # 참여한 모든 파티 ID 합치기
@@ -200,14 +201,14 @@ class PodReviewCRUD:
             .offset(offset)
             .limit(size)
         )
-        result = await self.db.execute(query)
+        result = await self._session.execute(query)
         reviews = result.scalars().all()
 
         # 총 리뷰 수 조회
         count_query = select(func.count(PodReview.id)).where(
             and_(PodReview.pod_id.in_(all_pod_ids), PodReview.user_id != user_id)
         )
-        count_result = await self.db.execute(count_query)
+        count_result = await self._session.execute(count_query)
         total_count = count_result.scalar() or 0
 
         return list(reviews), total_count

@@ -1,30 +1,34 @@
 import json
 from typing import List
 
-from sqlalchemy import select
+from app.features.locations.models import Location
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.locations.models import Location
 
+class LocationRepository:
+    """지역 정보 Repository"""
 
-class LocationCRUD:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
+    # - MARK: 모든 지역 정보 조회
     async def get_all_locations(self) -> List[Location]:
         """모든 지역 정보 조회"""
-        result = await self.db.execute(select(Location))
+        result = await self._session.execute(select(Location))
         return list(result.scalars().all())
 
+    # - MARK: 주요 지역으로 지역 정보 조회
     async def get_location_by_main_location(
         self, main_location: str
     ) -> Location | None:
         """주요 지역으로 지역 정보 조회"""
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Location).where(Location.main_location == main_location)
         )
         return result.scalar_one_or_none()
 
+    # - MARK: 지역 정보 생성
     async def create_location(
         self, main_location: str, sub_locations: List[str]
     ) -> Location:
@@ -33,40 +37,42 @@ class LocationCRUD:
             main_location=main_location,
             sub_locations=json.dumps(sub_locations, ensure_ascii=False),
         )
-        self.db.add(location)
-        await self.db.commit()
-        await self.db.refresh(location)
+        self._session.add(location)
+        await self._session.commit()
+        await self._session.refresh(location)
         return location
 
+    # - MARK: 지역 정보 수정
     async def update_location(
         self, location_id: int, main_location: str, sub_locations: List[str]
     ) -> Location | None:
         """지역 정보 수정"""
-        result = await self.db.execute(
+        await self._session.execute(
+            update(Location)
+            .where(Location.id == location_id)
+            .values(
+                main_location=main_location,
+                sub_locations=json.dumps(sub_locations, ensure_ascii=False),
+            )
+        )
+        await self._session.commit()
+        return await self.get_location_by_id(location_id)
+
+    # - MARK: 지역 정보 ID로 조회
+    async def get_location_by_id(self, location_id: int) -> Location | None:
+        """지역 정보 ID로 조회"""
+        result = await self._session.execute(
             select(Location).where(Location.id == location_id)
         )
-        location = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
 
-        if location:
-            setattr(location, "main_location", main_location)
-            setattr(
-                location, "sub_locations", json.dumps(sub_locations, ensure_ascii=False)
-            )
-            await self.db.commit()
-            await self.db.refresh(location)
-
-        return location
-
+    # - MARK: 지역 정보 삭제
     async def delete_location(self, location_id: int) -> bool:
         """지역 정보 삭제"""
-        result = await self.db.execute(
-            select(Location).where(Location.id == location_id)
-        )
-        location = result.scalar_one_or_none()
+        location = await self.get_location_by_id(location_id)
+        if not location:
+            return False
 
-        if location:
-            await self.db.delete(location)
-            await self.db.commit()
-            return True
-
-        return False
+        await self._session.delete(location)
+        await self._session.commit()
+        return True

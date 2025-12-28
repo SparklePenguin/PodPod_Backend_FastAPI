@@ -1,7 +1,6 @@
+from app.core.database import Base
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, Time
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 class UserNotificationSettings(Base):

@@ -4,26 +4,26 @@ import time
 from typing import Any, Dict
 
 import httpx
-from fastapi import HTTPException, status
-from jose import JWTError, jwt
-from jose.exceptions import JWTClaimsError
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
 from app.features.oauth.schemas.apple_login_request import AppleLoginRequest
 from app.features.oauth.schemas.apple_token_response import AppleTokenResponse
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from fastapi import HTTPException, status
+from jose import JWTError, jwt
+from jose.exceptions import JWTClaimsError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AppleOAuthService:
     """애플 OAuth 서비스"""
 
     def __init__(self, session: AsyncSession):
-        self.session = session
-        self.apple_public_keys_url = settings.APPLE_PUBLIC_KEYS_URL
-        self.apple_token_url = settings.APPLE_TOKEN_URL
-        self.apple_issuer = settings.APPLE_ISSUER
+        self._session = session
+        self._apple_public_keys_url = "https://appleid.apple.com/auth/keys"
+        self._apple_token_url = "https://appleid.apple.com/auth/token"
+        self._apple_issuer = "https://appleid.apple.com"
 
+    # - MARK: 애플 사용자 정보 조회
     async def get_apple_user_info(
         self, request: AppleLoginRequest, audience: str
     ) -> OAuthUserInfo:
@@ -59,16 +59,18 @@ class AppleOAuthService:
                 detail=f"Apple token verification failed: {str(e)}",
             ) from e
 
+    # - MARK: Apple 공개키 목록 조회
     async def _get_apple_public_keys(self) -> Dict[str, Any]:
         """Apple의 공개키 목록 가져오기"""
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(self.apple_public_keys_url)
+                response = await client.get(self._apple_public_keys_url)
                 response.raise_for_status()
                 return response.json()
         except httpx.RequestError as e:
             raise ValueError(f"Failed to fetch Apple public keys: {str(e)}") from e
 
+    # - MARK: Apple ID 토큰 검증
     async def _verify_apple_token(
         self, identity_token: str, audience: str
     ) -> Dict[str, Any]:
@@ -124,7 +126,7 @@ class AppleOAuthService:
                     public_key_pem,
                     algorithms=["RS256"],
                     audience=audience,
-                    issuer=self.apple_issuer,
+                    issuer=self._apple_issuer,
                 )
             except JWTClaimsError as e:
                 if "Invalid audience" in str(e):
@@ -154,6 +156,7 @@ class AppleOAuthService:
         except Exception as e:
             raise ValueError(f"Token verification failed: {str(e)}") from e
 
+    # - MARK: Authorization Code 토큰 교환
     async def _exchange_authorization_code(
         self, authorization_code: str, audience: str
     ) -> AppleTokenResponse:
@@ -173,7 +176,7 @@ class AppleOAuthService:
 
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    self.apple_token_url,
+                    self._apple_token_url,
                     data=token_data,
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
@@ -188,6 +191,7 @@ class AppleOAuthService:
         except Exception as e:
             raise ValueError(f"Authorization code exchange failed: {str(e)}") from e
 
+    # - MARK: Apple Client Secret 생성
     def _create_apple_client_secret(self, audience: str) -> str:
         """Apple Client Secret 생성 (JWT 형식)"""
         try:

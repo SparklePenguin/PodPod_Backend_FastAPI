@@ -1,15 +1,13 @@
 from enum import Enum
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import BaseResponse
 from app.core.database import get_session
-from app.core.http_status import HttpStatus
 from app.core.services.fcm_service import FCMService
 from app.deps.auth import get_current_user_id
 from app.features.users.repositories import UserRepository
+from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -51,30 +49,19 @@ class NotificationType(str, Enum):
 class SendNotificationRequest(BaseModel):
     """알림 전송 요청"""
 
-    user_id: int = Field(
-        serialization_alias="userId", description="알림을 받을 사용자 ID"
-    )
-    title: str = Field(serialization_alias="title", description="알림 제목")
-    body: str = Field(serialization_alias="body", description="알림 내용")
-    data: dict | None = Field(
-        default=None, serialization_alias="data", description="추가 데이터"
-    )
+    user_id: int = Field(alias="userId", description="알림을 받을 사용자 ID")
+    title: str = Field(description="알림 제목")
+    body: str = Field(description="알림 내용")
+    data: dict | None = Field(default=None, description="추가 데이터")
 
     model_config = {"populate_by_name": True}
 
 
+# - MARK: FCM 테스트 알림 전송
 @router.post(
     "/fcm/test",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "알림 전송 성공",
-        },
-    },
-    summary="FCM 테스트 알림 전송",
-    description="⚠️ 테스트용 - 특정 사용자에게 FCM 푸시 알림을 전송합니다. (인증 불필요)",
-    tags=["admin"],
+    description="FCM 테스트 알림 전송",
 )
 async def send_test_notification(
     request: SendNotificationRequest, db: AsyncSession = Depends(get_session)
@@ -92,7 +79,7 @@ async def send_test_notification(
             return BaseResponse.error(
                 error_key="USER_NOT_FOUND",
                 error_code=4004,
-                http_status=HttpStatus.NOT_FOUND,
+                http_status=status.HTTP_404_NOT_FOUND,
                 message_ko="사용자를 찾을 수 없습니다.",
                 message_en="User not found.",
             )
@@ -102,7 +89,7 @@ async def send_test_notification(
             return BaseResponse.error(
                 error_key="FCM_TOKEN_NOT_FOUND",
                 error_code=4005,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="사용자의 FCM 토큰이 없습니다. 로그인 시 fcmToken을 전송해주세요.",
                 message_en="User's FCM token not found.",
             )
@@ -126,7 +113,7 @@ async def send_test_notification(
             return BaseResponse.error(
                 error_key="FCM_SEND_FAILED",
                 error_code=5002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko="알림 전송에 실패했습니다.",
                 message_en="Failed to send notification.",
             )
@@ -136,7 +123,7 @@ async def send_test_notification(
         return BaseResponse.error(
             error_key="FIREBASE_CONFIG_ERROR",
             error_code=5003,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=str(e),
             message_en="Firebase configuration error.",
         )
@@ -144,32 +131,22 @@ async def send_test_notification(
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5001,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"알림 전송 중 오류가 발생했습니다: {str(e)}",
             message_en="An error occurred while sending notification.",
         )
 
 
+# - MARK: 내게 FCM 테스트 알림 전송
 @router.post(
     "/fcm/test-self",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "알림 전송 성공",
-        },
-    },
-    summary="내게 FCM 테스트 알림 전송",
-    description="⚠️ 테스트용 - 자신에게 FCM 푸시 알림을 전송합니다.",
-    tags=["admin"],
+    description="내게 FCM 테스트 알림 전송",
 )
 async def send_test_notification_to_self(
-    title: str = Query(
-        default="테스트 알림", serialization_alias="title", description="알림 제목"
-    ),
+    title: str = Query(default="테스트 알림", description="알림 제목"),
     body: str = Query(
         default="FCM 알림 테스트입니다.",
-        serialization_alias="body",
         description="알림 내용",
     ),
     current_user_id: int = Depends(get_current_user_id),
@@ -188,7 +165,7 @@ async def send_test_notification_to_self(
             return BaseResponse.error(
                 error_key="USER_NOT_FOUND",
                 error_code=4004,
-                http_status=HttpStatus.NOT_FOUND,
+                http_status=status.HTTP_404_NOT_FOUND,
                 message_ko="사용자를 찾을 수 없습니다.",
                 message_en="User not found.",
             )
@@ -198,7 +175,7 @@ async def send_test_notification_to_self(
             return BaseResponse.error(
                 error_key="FCM_TOKEN_NOT_FOUND",
                 error_code=4005,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="FCM 토큰이 없습니다. 로그인 시 fcmToken을 전송해주세요.",
                 message_en="FCM token not found.",
             )
@@ -225,7 +202,7 @@ async def send_test_notification_to_self(
             return BaseResponse.error(
                 error_key="FCM_SEND_FAILED",
                 error_code=5002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko="알림 전송에 실패했습니다.",
                 message_en="Failed to send notification.",
             )
@@ -234,7 +211,7 @@ async def send_test_notification_to_self(
         return BaseResponse.error(
             error_key="FIREBASE_CONFIG_ERROR",
             error_code=5003,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=str(e),
             message_en="Firebase configuration error.",
         )
@@ -242,47 +219,35 @@ async def send_test_notification_to_self(
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5001,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"알림 전송 중 오류가 발생했습니다: {str(e)}",
             message_en="An error occurred while sending notification.",
         )
 
 
+# - MARK: 특정 타입의 FCM 알림 테스트
 @router.post(
     "/fcm/test-notification-type",
     response_model=BaseResponse[dict],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[dict],
-            "description": "알림 전송 성공",
-        },
-    },
-    summary="특정 타입의 FCM 알림 테스트",
-    description="⚠️ 테스트용 - 특정 알림 타입으로 FCM 푸시 알림을 전송합니다. (인증 불필요)",
-    tags=["admin"],
+    description="FCM 알림 전송",
 )
 async def send_notification_by_type(
-    user_id: int = Query(
-        ..., serialization_alias="userId", description="알림을 받을 사용자 ID"
-    ),
+    user_id: int = Query(..., alias="userId", description="알림을 받을 사용자 ID"),
     notification_type: NotificationType = Query(
-        ..., serialization_alias="notificationType", description="알림 타입"
+        ..., alias="notificationType", description="알림 타입"
     ),
     party_name: str | None = Query(
         default="왕코가나지",
-        serialization_alias="partyName",
+        alias="partyName",
         description="파티 이름 (선택)",
     ),
     nickname: str | None = Query(
         default="테스트유저",
-        serialization_alias="nickname",
         description="닉네임 (선택)",
     ),
-    pod_id: int | None = Query(
-        default=20, serialization_alias="podId", description="파티 ID (선택)"
-    ),
+    pod_id: int | None = Query(default=20, alias="podId", description="파티 ID (선택)"),
     review_id: int | None = Query(
-        default=1, serialization_alias="reviewId", description="리뷰 ID (선택)"
+        default=1, alias="reviewId", description="리뷰 ID (선택)"
     ),
     db: AsyncSession = Depends(get_session),
 ):
@@ -299,7 +264,7 @@ async def send_notification_by_type(
             return BaseResponse.error(
                 error_key="USER_NOT_FOUND",
                 error_code=4004,
-                http_status=HttpStatus.NOT_FOUND,
+                http_status=status.HTTP_404_NOT_FOUND,
                 message_ko="사용자를 찾을 수 없습니다.",
                 message_en="User not found.",
             )
@@ -309,7 +274,7 @@ async def send_notification_by_type(
             return BaseResponse.error(
                 error_key="FCM_TOKEN_NOT_FOUND",
                 error_code=4005,
-                http_status=HttpStatus.BAD_REQUEST,
+                http_status=status.HTTP_400_BAD_REQUEST,
                 message_ko="사용자의 FCM 토큰이 없습니다.",
                 message_en="User's FCM token not found.",
             )
@@ -431,7 +396,7 @@ async def send_notification_by_type(
             return BaseResponse.error(
                 error_key="FCM_SEND_FAILED",
                 error_code=5002,
-                http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message_ko="알림 전송에 실패했습니다.",
                 message_en="Failed to send notification.",
             )
@@ -440,7 +405,7 @@ async def send_notification_by_type(
         return BaseResponse.error(
             error_key="INTERNAL_SERVER_ERROR",
             error_code=5001,
-            http_status=HttpStatus.INTERNAL_SERVER_ERROR,
+            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message_ko=f"알림 전송 중 오류가 발생했습니다: {str(e)}",
             message_en="An error occurred while sending notification.",
         )

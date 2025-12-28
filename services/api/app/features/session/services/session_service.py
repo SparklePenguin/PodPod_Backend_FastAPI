@@ -1,7 +1,3 @@
-from app.features.auth.schemas.credential_dto import CredentialDto
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.security import (
     add_token_to_blacklist,
     create_access_token,
@@ -9,13 +5,19 @@ from app.core.security import (
     verify_password,
     verify_refresh_token,
 )
-from app.features.users.repositories import UserRepository
+from app.features.auth.schemas.credential_dto import CredentialDto
+from app.features.auth.schemas.login_info_dto import LoginInfoDto
+from app.features.session.repositories import SessionRepository
+from app.features.users.schemas import UserDetailDto
+from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SessionService:
-    def __init__(self, db: AsyncSession):
-        self.user_crud = UserRepository(db)
+    def __init__(self, session: AsyncSession):
+        self._session_repo = SessionRepository(session)
 
+    # - MARK: 토큰 생성
     async def create_token(self, user_id: int) -> CredentialDto:
         """토큰 생성"""
         return CredentialDto(
@@ -23,6 +25,7 @@ class SessionService:
             refresh_token=create_refresh_token(user_id),
         )
 
+    # - MARK: 토큰 갱신
     async def refresh_token(self, refresh_token: str) -> CredentialDto:
         """토큰 갱신"""
         user_id = verify_refresh_token(refresh_token)
@@ -31,14 +34,11 @@ class SessionService:
             refresh_token=create_refresh_token(user_id),
         )
 
+    # - MARK: 이메일 로그인
     async def login(self, login_data):
         """이메일 로그인"""
-        from app.features.auth.schemas.login_info_dto import LoginInfoDto
-
-        from app.features.users.schemas import UserDto
-
         # 이메일로 사용자 찾기
-        user = await self.user_crud.get_by_email(login_data.email)
+        user = await self._session_repo.get_user_by_email(login_data.email)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,9 +63,7 @@ class SessionService:
             )
 
         if hasattr(login_data, "fcm_token") and login_data.fcm_token:
-            await self.user_crud.update_profile(
-                user_id, {"fcm_token": login_data.fcm_token}
-            )
+            await self._session_repo.update_fcm_token(user_id, login_data.fcm_token)
 
         # 토큰 생성
         credential = await self.create_token(user_id)
@@ -73,11 +71,12 @@ class SessionService:
         # SignInResponse 생성
         sign_in_response = LoginInfoDto(
             credential=credential,
-            user=UserDto.model_validate(user, from_attributes=True),
+            user=UserDetailDto.model_validate(user, from_attributes=True),
         )
 
         return sign_in_response
 
+    # - MARK: 로그아웃
     async def logout(self, access_token: str, user_id: int | None = None):
         """로그아웃 (토큰 무효화 및 FCM 토큰 삭제)"""
         # 액세스 토큰을 블랙리스트에 추가하여 무효화
@@ -85,13 +84,15 @@ class SessionService:
 
         # FCM 토큰 삭제
         if user_id:
-            await self.user_crud.update_profile(user_id, {"fcm_token": None})
+            await self._session_repo.update_fcm_token(user_id, None)
 
+    # - MARK: Refresh Token 검증
     @staticmethod
     def verify_refresh_token(refresh_token: str) -> int:
         """Refresh Token 검증 및 user_id 반환 (정적 메서드)"""
         return verify_refresh_token(refresh_token)
 
+    # - MARK: Access Token 생성
     @staticmethod
     def create_access_token(user_id: int) -> str:
         """Access Token 생성 (정적 메서드)"""

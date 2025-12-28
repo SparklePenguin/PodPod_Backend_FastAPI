@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
 
+from app.core.database import Base
+from app.features.users.models.user_state import UserState
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
-from app.features.users.models.user_state import UserState
 
 
 class User(Base):

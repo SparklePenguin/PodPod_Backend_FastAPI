@@ -10,13 +10,13 @@ from shared.models import Artist, ArtistImage, ArtistName, ArtistUnit
 
 
 class ArtistRepository:
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
     # - MARK: 아티스트 조회
     async def get_by_id(self, artist_id: int) -> Optional[Artist]:
         """artist_id로 아티스트 찾기"""
-        result = await self.db.execute(
+        result = await self._session.execute(
             select(Artist)
             .options(
                 selectinload(Artist.images),
@@ -30,7 +30,7 @@ class ArtistRepository:
         """file_id로 아티스트 이미지를 조회합니다."""
         try:
             print(f"DEBUG: get_artist_image_by_file_id 호출됨, file_id: {file_id}")
-            result = await self.db.execute(
+            result = await self._session.execute(
                 select(ArtistImage).where(ArtistImage.file_id == file_id)
             )
             image = result.scalar_one_or_none()
@@ -74,8 +74,8 @@ class ArtistRepository:
                 if "size" in image_data and image_data["size"]:
                     existing_image.size = image_data["size"]
 
-                await self.db.commit()
-                await self.db.refresh(existing_image)
+                await self._session.commit()
+                await self._session.refresh(existing_image)
 
                 return (
                     True,
@@ -95,9 +95,9 @@ class ArtistRepository:
                     blip_artist_id=artist.blip_artist_id,
                 )
 
-                self.db.add(new_image)
-                await self.db.commit()
-                await self.db.refresh(new_image)
+                self._session.add(new_image)
+                await self._session.commit()
+                await self._session.refresh(new_image)
 
                 return (
                     True,
@@ -106,7 +106,7 @@ class ArtistRepository:
                 )
 
         except Exception as e:
-            await self.db.rollback()
+            await self._session.rollback()
             return False, f"이미지 생성/업데이트 실패: {str(e)}", None
 
     # - MARK: MVP·BLIP 동기화
@@ -160,7 +160,7 @@ class ArtistRepository:
             type = "group" if (item.get("members") or []) else "solo"
 
             # 1) 유닛 업서트
-            unit_q = await self.db.execute(
+            unit_q = await self._session.execute(
                 select(ArtistUnit).where(
                     ArtistUnit.blip_unit_id == blip_unit_id,
                 )
@@ -176,9 +176,9 @@ class ArtistRepository:
                     blip_unit_id=blip_unit_id,
                     blip_artist_id=blip_artist_id,
                 )
-                self.db.add(unit)
+                self._session.add(unit)
                 unit_created_count += 1
-                await self.db.flush()
+                await self._session.flush()
             else:
                 unit.name = unit_name or unit.name  # type: ignore
                 unit.type = type  # type: ignore
@@ -189,7 +189,7 @@ class ArtistRepository:
                 unit_updated_count += 1
 
             # 2) 그룹(메인) 아티스트 업서트
-            rep_artist_q = await self.db.execute(
+            rep_artist_q = await self._session.execute(
                 select(Artist).where(
                     Artist.blip_unit_id == blip_unit_id,
                     Artist.blip_artist_id == blip_artist_id,
@@ -204,9 +204,9 @@ class ArtistRepository:
                     blip_unit_id=blip_unit_id,
                     blip_artist_id=blip_artist_id,
                 )
-                self.db.add(rep_artist)
+                self._session.add(rep_artist)
                 artist_created_count += 1
-                await self.db.flush()
+                await self._session.flush()
             else:
                 rep_artist.name = unit_name or rep_artist.name  # type: ignore
                 rep_artist.unit_id = unit.id
@@ -215,16 +215,16 @@ class ArtistRepository:
                 artist_updated_count += 1
 
             unit.artist_id = rep_artist.id
-            self.db.add(unit)
+            self._session.add(unit)
 
             # 3) 메인 아티스트 images/names 재생성
-            await self.db.execute(
+            await self._session.execute(
                 ArtistImage.__table__.delete().where(
                     (ArtistImage.blip_unit_id == blip_unit_id)
                     & (ArtistImage.blip_artist_id == blip_artist_id)
                 )
             )
-            await self.db.execute(
+            await self._session.execute(
                 ArtistName.__table__.delete().where(
                     (ArtistName.blip_unit_id == blip_unit_id)
                     & (ArtistName.blip_artist_id == blip_artist_id)
@@ -232,7 +232,7 @@ class ArtistRepository:
             )
 
             image = item.get("image") or {}
-            self.db.add(
+            self._session.add(
                 ArtistImage(
                     artist_id=rep_artist.id,
                     unit_id=unit.id,
@@ -246,7 +246,7 @@ class ArtistRepository:
             )
 
             for name in item.get("names") or []:
-                self.db.add(
+                self._session.add(
                     ArtistName(
                         artist_id=rep_artist.id,
                         unit_id=unit.id,
@@ -264,7 +264,7 @@ class ArtistRepository:
                 if not blip_member_artist_id:
                     continue
 
-                mem_q = await self.db.execute(
+                mem_q = await self._session.execute(
                     select(Artist).where(
                         Artist.blip_unit_id == blip_unit_id,
                         Artist.blip_artist_id == blip_member_artist_id,
@@ -279,9 +279,9 @@ class ArtistRepository:
                         blip_unit_id=blip_unit_id,
                         blip_artist_id=blip_member_artist_id,
                     )
-                    self.db.add(member_artist)
+                    self._session.add(member_artist)
                     artist_created_count += 1
-                    await self.db.flush()
+                    await self._session.flush()
                 else:
                     member_artist.name = member_name or member_artist.name  # type: ignore
                     member_artist.unit_id = unit.id
@@ -292,13 +292,13 @@ class ArtistRepository:
                     artist_updated_count += 1
 
                 # 멤버 images/names 재생성
-                await self.db.execute(
+                await self._session.execute(
                     ArtistImage.__table__.delete().where(
                         (ArtistImage.artist_id == blip_member_artist_id)
                         & (ArtistImage.unit_id == blip_unit_id)
                     )
                 )
-                await self.db.execute(
+                await self._session.execute(
                     ArtistName.__table__.delete().where(
                         (ArtistName.artist_id == blip_member_artist_id)
                         & (ArtistName.unit_id == blip_unit_id)
@@ -306,7 +306,7 @@ class ArtistRepository:
                 )
 
                 mem_img = (member or {}).get("image") or {}
-                self.db.add(
+                self._session.add(
                     ArtistImage(
                         artist_id=member_artist.id,
                         unit_id=unit.id,
@@ -320,7 +320,7 @@ class ArtistRepository:
                 )
 
                 for n in (member or {}).get("names") or []:
-                    self.db.add(
+                    self._session.add(
                         ArtistName(
                             artist_id=member_artist.id,
                             unit_id=unit.id,
@@ -331,7 +331,7 @@ class ArtistRepository:
                         )
                     )
 
-        await self.db.commit()
+        await self._session.commit()
 
         return {
             "artist_created": artist_created_count,

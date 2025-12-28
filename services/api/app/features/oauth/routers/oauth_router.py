@@ -1,8 +1,3 @@
-from fastapi import APIRouter, Depends, Query
-from fastapi.responses import RedirectResponse
-from fastapi.security import HTTPBearer
-from redis.asyncio import Redis
-
 from app.common.schemas import BaseResponse
 from app.core.config import settings
 from app.deps.redis import get_redis
@@ -13,12 +8,16 @@ from app.features.oauth.schemas.google_login_request import GoogleLoginRequest
 from app.features.oauth.schemas.kakao_login_request import KakaoLoginRequest
 from app.features.oauth.schemas.oauth_provider import OAuthProvider
 from app.features.oauth.services.oauth_service import OAuthService
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer
+from redis.asyncio import Redis
 
 router = APIRouter()
 security = HTTPBearer()
 
 
-# - MARK: Kakao
+# - MARK: Kakao 로그인 시작
 @router.get(
     "/kakao/login",
     response_class=RedirectResponse,
@@ -30,6 +29,7 @@ async def kakao_login_web(service: OAuthService = Depends(get_oauth_service)):
     return RedirectResponse(url=kakao_auth_url)
 
 
+# - MARK: Kakao OAuth 콜백
 @router.get(
     "/kakao/callback",
     include_in_schema=False,
@@ -49,9 +49,10 @@ async def kakao_callback(
         error=error,
         error_description=error_description,
     )
-    return BaseResponse.ok(result)
+    return BaseResponse.ok(data=result)
 
 
+# - MARK: Kakao 액세스 토큰 로그인
 @router.post(
     "/kakao",
     response_model=BaseResponse[LoginInfoDto],
@@ -61,10 +62,10 @@ async def kakao_login(
     request: KakaoLoginRequest, service: OAuthService = Depends(get_oauth_service)
 ):
     result = await service.sign_in_with_kakao(request)
-    return BaseResponse.ok(result)
+    return BaseResponse.ok(data=result)
 
 
-# - MARK: Naver
+# - MARK: Naver 로그인 시작
 @router.get(
     "/naver/login",
     response_class=RedirectResponse,
@@ -79,6 +80,7 @@ async def naver_login_web(
     return RedirectResponse(url=naver_auth_url)
 
 
+# - MARK: Naver OAuth 콜백
 @router.get(
     "/naver/callback",
     include_in_schema=False,
@@ -100,10 +102,10 @@ async def naver_callback(
         error_description=error_description,
         redis=redis,
     )
-    return BaseResponse.ok(result)
+    return BaseResponse.ok(data=result)
 
 
-# - MARK: Google
+# - MARK: Google 로그인 시작
 @router.get(
     "/google/login",
     response_class=RedirectResponse,
@@ -115,6 +117,7 @@ async def google_login_web(service: OAuthService = Depends(get_oauth_service)):
     return RedirectResponse(url=google_auth_url)
 
 
+# - MARK: Google OAuth 콜백
 @router.get(
     "/google/callback",
     include_in_schema=False,
@@ -133,9 +136,10 @@ async def google_callback(
         error=error,
         error_description=error_description,
     )
-    return BaseResponse.ok(result)
+    return BaseResponse.ok(data=result)
 
 
+# - MARK: Google ID 토큰 로그인
 @router.post(
     "/google",
     response_model=BaseResponse[LoginInfoDto],
@@ -145,10 +149,10 @@ async def google_login(
     payload: GoogleLoginRequest, service: OAuthService = Depends(get_oauth_service)
 ):
     result = await service.sign_in_with_google(payload)
-    return BaseResponse.ok(result)
+    return BaseResponse.ok(data=result)
 
 
-# - MARK: Apple
+# - MARK: Apple OAuth 콜백
 @router.get(
     "/apple/callback",
     include_in_schema=False,
@@ -174,6 +178,7 @@ async def apple_callback(
     return result
 
 
+# - MARK: Apple ID 토큰 로그인
 @router.post(
     "/apple",
     response_model=BaseResponse[LoginInfoDto],
@@ -184,4 +189,4 @@ async def apple_login(
 ):
     audience = settings.APPLE_CLIENT_ID or "com.sparkle-penguin.podpod"
     result = await service.sign_in_with_apple(payload, audience=audience)
-    return BaseResponse.ok(result)
+    return BaseResponse.ok(data=result)

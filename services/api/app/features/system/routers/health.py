@@ -5,43 +5,32 @@ Health Check Router
 
 from datetime import datetime
 
+from app.common.schemas import BaseResponse
+from app.core.database import get_session
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.schemas import BaseResponse
-from app.core.database import get_session
-from app.core.http_status import HttpStatus
-
 router = APIRouter()
 
 
-class HealthCheckResponse(BaseModel):
+class HealthCheckDto(BaseModel):
     """서버 상태 응답"""
 
-    status: str = Field(serialization_alias="status", description="서버 상태")
-    timestamp: str = Field(serialization_alias="timestamp", description="확인 시간")
-    database: str = Field(
-        serialization_alias="database", description="데이터베이스 상태"
-    )
-    version: str = Field(serialization_alias="version", description="API 버전")
+    status: str = Field(description="서버 상태")
+    timestamp: str = Field(description="확인 시간")
+    database: str = Field(description="데이터베이스 상태")
+    version: str = Field(description="API 버전")
 
     model_config = {"populate_by_name": True}
 
 
+# - MARK: 서버 상태 확인
 @router.get(
     "/health",
-    response_model=BaseResponse[HealthCheckResponse],
-    responses={
-        HttpStatus.OK: {
-            "model": BaseResponse[HealthCheckResponse],
-            "description": "서버 정상 작동",
-        },
-    },
-    summary="서버 상태 확인",
-    description="서버와 데이터베이스 연결 상태를 확인합니다.",
-    tags=["health"],
+    response_model=BaseResponse[HealthCheckDto],
+    description="서버 & 데이터베이스 연결 상태 확인",
 )
 async def health_check(db: AsyncSession = Depends(get_session)):
     """서버 상태 확인 (Health Check)"""
@@ -59,7 +48,7 @@ async def health_check(db: AsyncSession = Depends(get_session)):
     # 버전 정보 가져오기
     from app.core.config import settings
 
-    health_data = HealthCheckResponse(
+    health_data = HealthCheckDto(
         status="healthy" if db_status == "connected" else "unhealthy",
         timestamp=datetime.utcnow().isoformat(),
         database=db_status,
@@ -73,11 +62,10 @@ async def health_check(db: AsyncSession = Depends(get_session)):
     )
 
 
+# - MARK: 서버 Ping
 @router.get(
     "/ping",
-    summary="서버 Ping",
-    description="서버가 살아있는지 간단히 확인합니다 (DB 체크 없음).",
-    tags=["health"],
+    description="서버 확인 (DB 체크 없음)",
 )
 async def ping():
     """서버 Ping (DB 체크 없이 빠른 응답)"""

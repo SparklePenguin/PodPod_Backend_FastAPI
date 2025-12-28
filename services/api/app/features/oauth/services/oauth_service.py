@@ -1,8 +1,3 @@
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import settings
 from app.core.session import verify_oauth_state
 from app.features.auth.schemas.login_info_dto import LoginInfoDto
@@ -28,6 +23,10 @@ from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.session.services.session_service import SessionService
 from app.features.users.repositories import UserRepository
 from app.features.users.services.user_service import UserService
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class OAuthService:
@@ -44,7 +43,7 @@ class OAuthService:
         self._apple_service = AppleOAuthService(session)
         self._naver_service = NaverOAuthService(session)
 
-    # MARK: - 구글 토큰 로그인
+    # - MARK: 구글 토큰 로그인
     async def sign_in_with_google(self, request: GoogleLoginRequest):
         """Google 로그인 처리"""
         # Google 토큰 검증
@@ -59,7 +58,7 @@ class OAuthService:
             fcm_token=request.fcm_token,
         )
 
-    # MARK: - 애플 토큰 로그인
+    # - MARK: 애플 토큰 로그인
     async def sign_in_with_apple(
         self, request: AppleLoginRequest, audience: str = "com.sparkle-penguin.podpod"
     ) -> LoginInfoDto:
@@ -80,7 +79,7 @@ class OAuthService:
             fcm_token=request.fcm_token,
         )
 
-    # MARK: - 카카오 토큰 로그인
+    # - MARK: 카카오 토큰 로그인
     async def sign_in_with_kakao(self, request: KakaoLoginRequest) -> LoginInfoDto:
         """카카오 로그인 처리"""
         try:
@@ -101,7 +100,7 @@ class OAuthService:
             fcm_token=request.fcm_token,
         )
 
-    # MARK: - Callback을 통한 로그인
+    # - MARK: OAuth 콜백 처리
     async def handle_oauth_callback(
         self,
         provider: OAuthProvider,
@@ -226,7 +225,7 @@ class OAuthService:
             oauth_user_info=oauth_user_info,
         )
 
-    # MARK: - 통합 OAuth 로그인
+    # - MARK: 통합 OAuth 로그인
     async def handle_oauth_login(
         self,
         oauth_provider: str,
@@ -247,7 +246,7 @@ class OAuthService:
 
             # FCM 토큰 업데이트
             if fcm_token:
-                await self._user_service.update_token(user, fcm_token)
+                await self._user_service.update_fcm_token(user.id, fcm_token)
 
             # User 모델에서 user_id 가져오기
             user_id = user.id
@@ -272,7 +271,7 @@ class OAuthService:
 
         return LoginInfoDto(credential=credential, user=user_dto)
 
-    # MARK: - OAuth URL
+    # - MARK: OAuth 인증 URL 생성
     async def get_auth_url(
         self, provider: OAuthProvider, redis: Redis | None = None
     ) -> str:

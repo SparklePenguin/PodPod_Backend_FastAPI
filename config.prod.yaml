@@ -27,15 +27,8 @@ jwt:
   algorithm: "HS256"
   access_token_expire_minutes: 30
 
-# OAuth Redirect URI (프로덕션 환경)
-oauth:
-  kakao_redirect_uri: "https://api.podpod.com/auth/kakao/callback"
-  apple_redirect_uri: "https://api.podpod.com/auth/apple/callback"
-  kakao_token_url: "https://kauth.kakao.com/oauth/token"
-  kakao_user_info_url: "https://kapi.kakao.com/v2/user/me"
-  apple_public_keys_url: "https://appleid.apple.com/auth/keys"
-  apple_token_url: "https://appleid.apple.com/auth/token"
-  apple_issuer: "https://appleid.apple.com"
+# Note: OAuth Redirect URI는 base_url로부터 자동 생성됩니다
+# Note: OAuth URLs는 config.py에 상수로 정의되어 있습니다
 
 # Google Sheets 설정
 google_sheets:
@@ -54,6 +47,7 @@ logging:
 app:
   name: "PodPod API"
   version: "1.0.0"
+  base_url: "https://sp-podpod.com"  # OAuth 리다이렉트 URL 생성에 사용
 
 # 채팅 서비스 설정
 chat:

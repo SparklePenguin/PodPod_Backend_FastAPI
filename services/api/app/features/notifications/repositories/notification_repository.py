@@ -1,374 +1,176 @@
-"""
-FCM 푸시 알림 메시지 스키마
-"""
-
 from datetime import datetime, timezone
-from enum import Enum
-from typing import TYPE_CHECKING
+from typing import List
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
-
-from app.features.pods.schemas import SimplePodDto
-
-if TYPE_CHECKING:
-    pass
-from app.features.follow.schemas import SimpleUserDto
-
-# ========== 메인 알림 타입 ==========
+from app.features.notifications.models.notification import Notification
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
-class NotificationType(str, Enum):
-    """알림 메인 타입"""
+class NotificationRepository:
+    """알림 Repository"""
 
-    POD = "POD"  # 파티 알림
-    POD_STATUS = "POD_STATUS"  # 파티 상태 알림
-    RECOMMEND = "RECOMMEND"  # 추천 알림
-    REVIEW = "REVIEW"  # 리뷰 알림
-    FOLLOW = "FOLLOW"  # 팔로우 알림
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
+    # - MARK: 알림 생성
+    async def create_notification(
+        self,
+        user_id: int,
+        title: str,
+        body: str,
+        notification_type: str,
+        notification_value: str,
+        related_user_id: int | None = None,
+        related_pod_id: int | None = None,
+        related_id: str | None = None,
+        category: str = "pod",
+    ) -> Notification:
+        """알림 생성"""
+        notification = Notification(
+            user_id=user_id,
+            related_user_id=related_user_id,
+            related_pod_id=related_pod_id,
+            title=title,
+            body=body,
+            notification_type=notification_type,
+            notification_value=notification_value,
+            related_id=related_id,
+            category=category,
+        )
+        self._session.add(notification)
+        await self._session.commit()
+        await self._session.refresh(notification)
+        return notification
 
-# ========== 서브 알림 타입 ==========
+    # - MARK: ID로 알림 조회
+    async def get_by_id(self, notification_id: int) -> Notification | None:
+        """ID로 알림 조회"""
+        result = await self._session.execute(
+            select(Notification).where(Notification.id == notification_id)
+        )
+        return result.scalar_one_or_none()
 
+    # - MARK: 사용자 알림 목록 조회
+    async def get_user_notifications(
+        self,
+        user_id: int,
+        skip: int = 0,
+        limit: int = 20,
+        unread_only: bool = False,
+        category: str | None = None,
+    ) -> List[Notification]:
+        """사용자의 알림 목록 조회"""
+        query = select(Notification).where(Notification.user_id == user_id)
 
-class PodNotiSubType(Enum):
-    """파티 알림 서브 타입"""
+        if unread_only:
+            query = query.where(Notification.is_read.is_(False))
 
-    # 1. 파티 참여 요청 (대상: 파티장)
-    POD_JOIN_REQUEST = (
-        "[nickname]님이 모임에 참여를 요청했어요. 확인해 보세요!",
-        ["nickname"],
-        "pod_id",
-    )
-    # 2. 참여 요청 승인 (대상: 요청자)
-    POD_REQUEST_APPROVED = (
-        "👋 [party_name] 참여가 확정되었어요! 채팅방에서 인사 나눠보세요.",
-        ["party_name"],
-        "pod_id",
-    )
-    # 3. 참여 요청 거절 (대상: 요청자)
-    POD_REQUEST_REJECTED = (
-        "😢 아쉽게도 [party_name] 참여가 어렵게 되었어요. 다른 모임도 둘러보세요.",
-        ["party_name"],
-        "pod_id",
-    )
-    # 4. 파티에 새로운 유저 참여 (대상: 기존 파티원들)
-    POD_NEW_MEMBER = (
-        "👋 새로운 파티원 [nickname]님이 [party_name] 모임에 함께하게 되었어요!",
-        ["nickname", "party_name"],
-        "pod_id",
-    )
-    # 5. 파티 내용 수정 (대상: 파티장 & 파티원)
-    POD_UPDATED = (
-        "🛠️ [party_name] 모임 정보가 변경되었어요. 지금 확인해 보세요.",
-        ["party_name"],
-        "pod_id",
-    )
-    # 6. 파티 확정 (대상: 파티원)
-    POD_CONFIRMED = (
-        "✅ 모임이 드디어 확정! [party_name]에 함께할 준비 되셨죠?",
-        ["party_name"],
-        "pod_id",
-    )
-    # 7. 파티 취소 (대상: 파티원)
-    POD_CANCELED = ("😢 [party_name] 모임이 취소되었어요.", ["party_name"], "pod_id")
-    # 8. 신청한 파티 시작 1시간 전 (대상: 사용자)
-    POD_START_SOON = (
-        "⏰ [party_name] 모임이 한 시간 뒤 시작돼요. 준비되셨나요?",
-        ["party_name"],
-        "pod_id",
-    )
-    # 9. 파티 마감 임박 (대상: 파티장)
-    POD_LOW_ATTENDANCE = (
-        "😢 [party_name] 오늘 파티가 확정되지 않으면 취소돼요. 시간이 더 필요하다면 일정을 수정할 수 있어요!",
-        ["party_name"],
-        "pod_id",
-    )
-    # 10. 파티 취소 임박 (대상: 파티장)
-    POD_CANCELED_SOON = (
-        "😢 [party_name] 팟티가 곧 취소돼요!",
-        ["party_name"],
-        "pod_id",
-    )
+        if category:
+            query = query.where(Notification.category == category)
 
+        # related_user, related_pod 정보를 함께 로드
+        query = query.options(
+            selectinload(Notification.related_user),
+            selectinload(Notification.related_pod),
+        )
+        query = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit)
 
-class PodStatusNotiSubType(Enum):
-    """파티 상태 알림 서브 타입"""
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
 
-    # 1. 좋아요 수 10개 이상 달성 (대상: 파티장)
-    POD_LIKES_THRESHOLD = (
-        "🎉 [party_name] 모임에 좋아요가 10개 이상 쌓였어요!",
-        ["party_name"],
-        "pod_id",
-    )
-    # 2. 조회수 10회 이상 달성 (대상: 파티장)
-    POD_VIEWS_THRESHOLD = (
-        "🔥 [party_name]에 관심이 몰리고 있어요. 인기 모임이 될지도 몰라요!",
-        ["party_name"],
-        "pod_id",
-    )
-    # 3. 파티 완료 (대상: 참여자들)
-    POD_COMPLETED = (
-        "🎉 [party_name] 모임이 완료되었습니다! 즐거운 시간 보내셨나요?",
-        ["party_name"],
-        "pod_id",
-    )
-    # 4. 파티 정원 가득 참 (대상: 파티장)
-    POD_CAPACITY_FULL = (
-        "👋 [party_name] 참여 인원이 모두 모였어요!",
-        ["party_name"],
-        "pod_id",
-    )
+    # - MARK: 전체 알림 개수 조회
+    async def get_total_count(
+        self,
+        user_id: int,
+        unread_only: bool = False,
+        category: str | None = None,
+    ) -> int:
+        """사용자의 전체 알림 개수 조회"""
+        query = select(func.count(Notification.id)).where(
+            Notification.user_id == user_id
+        )
 
+        if unread_only:
+            query = query.where(Notification.is_read.is_(False))
 
-class RecommendNotiSubType(Enum):
-    """추천 알림 서브 타입"""
+        if category:
+            query = query.where(Notification.category == category)
 
-    # 1. 좋아요한 파티 마감 임박 (1일 전, 대상: 사용자)
-    SAVED_POD_DEADLINE = (
-        "🚨 [party_name] 곧 마감돼요! 신청 놓칠지도 몰라요 😥",
-        ["party_name"],
-        "pod_id",
-    )
-    # 2. 좋아요한 파티에 자리가 생겼을 때 (대상: 사용자)
-    SAVED_POD_SPOT_OPENED = (
-        "🎉 [party_name]에 자리가 생겼어요! 지금 신청해 보세요.",
-        ["party_name"],
-        "pod_id",
-    )
+        result = await self._session.execute(query)
+        return result.scalar_one()
 
+    # - MARK: 읽지 않은 알림 개수 조회
+    async def get_unread_count(self, user_id: int) -> int:
+        """읽지 않은 알림 개수 조회"""
+        return await self.get_total_count(user_id, unread_only=True)
 
-class ReviewNotiSubType(Enum):
-    """리뷰 알림 서브 타입"""
+    # - MARK: 알림 읽음 처리
+    async def mark_as_read(
+        self, notification_id: int, user_id: int
+    ) -> Notification | None:
+        """알림을 읽음 처리"""
+        # 관계를 미리 로드하여 lazy loading 에러 방지
+        query = select(Notification).where(Notification.id == notification_id)
+        query = query.options(
+            selectinload(Notification.related_user),
+            selectinload(Notification.related_pod),
+        )
+        result = await self._session.execute(query)
+        notification = result.scalar_one_or_none()
 
-    # 1. 리뷰 등록됨 (대상: 모임 참여자)
-    REVIEW_CREATED = (
-        "📝 [nickname]님이 [party_name]에 대한 리뷰를 남겼어요!",
-        ["nickname", "party_name"],
-        "review_id",
-    )
-    # 2. 모임 종료 후 1일 후 리뷰 유도 (대상: 참여자)
-    REVIEW_REMINDER_DAY = (
-        "😊 오늘 [party_name] 어떠셨나요? 소중한 리뷰를 남겨보세요!",
-        ["party_name"],
-        "pod_id",
-    )
-    # 3. 리뷰 미작성자 일주일 리마인드 (대상: 리뷰 미작성자)
-    REVIEW_REMINDER_WEEK = (
-        "💭 [party_name] 후기가 궁금해요. 어땠는지 들려주세요!",
-        ["party_name"],
-        "pod_id",
-    )
-    # 4. 내가 참여한 파티에 다른 사람이 후기 작성 (대상: 참여자)
-    REVIEW_OTHERS_CREATED = (
-        "👀 같은 모임에 참여한 [nickname]님의 후기가 도착했어요!",
-        ["nickname"],
-        "review_id",
-    )
-
-
-class FollowNotiSubType(Enum):
-    """팔로우 알림 서브 타입"""
-
-    # 1. 나를 팔로잉함 (대상: 팔로우된 유저)
-    FOLLOWED_BY_USER = (
-        "👋 [nickname]님이 당신을 팔로우했어요! 새로운 만남을 기대해 볼까요?",
-        ["nickname"],
-        "follow_user_id",
-    )
-    # 2. 내가 팔로잉한 유저가 파티 생성 (대목: 팔로워)
-    FOLLOWED_USER_CREATED_POD = (
-        "🎉 [nickname]님이 새로운 모임 [party_name]을 만들었어요!",
-        ["nickname", "party_name"],
-        "pod_id",
-    )
-
-
-# ========== 메인 타입과 서브 타입 매칭 ==========
-
-
-NOTIFICATION_TYPE_MAP = {
-    NotificationType.POD: PodNotiSubType,
-    NotificationType.POD_STATUS: PodStatusNotiSubType,
-    NotificationType.RECOMMEND: RecommendNotiSubType,
-    NotificationType.REVIEW: ReviewNotiSubType,
-    NotificationType.FOLLOW: FollowNotiSubType,
-}
-
-
-# ========== 하위 호환성: 레거시 이름 ==========
-
-
-# 기존 코드에서 사용하던 이름들 (deprecated)
-PodNotificationType = PodNotiSubType
-PodStatusNotificationType = PodStatusNotiSubType
-RecommendNotificationType = RecommendNotiSubType
-ReviewNotificationType = ReviewNotiSubType
-FollowNotificationType = FollowNotiSubType
-
-
-# ========== 알림 스키마 ==========
-
-
-class NotificationCategory(str, Enum):
-    """알림 카테고리"""
-
-    POD = "POD"  # 파티 관련 알림
-    COMMUNITY = "COMMUNITY"  # 커뮤니티 관련 알림 (팔로우, 리뷰 등)
-    NOTICE = "NOTICE"  # 공지/리마인드 알림
-
-
-# 메인 타입과 카테고리 매칭
-NOTIFICATION_MAIN_TYPE_CATEGORY_MAP = {
-    NotificationType.POD: NotificationCategory.POD,
-    NotificationType.POD_STATUS: NotificationCategory.POD,
-    NotificationType.RECOMMEND: NotificationCategory.POD,
-    NotificationType.REVIEW: NotificationCategory.COMMUNITY,
-    NotificationType.FOLLOW: NotificationCategory.COMMUNITY,
-}
-
-# 문자열 타입과 카테고리 매핑
-NOTIFICATION_TYPE_CATEGORY_MAP = {
-    # 파티 관련
-    "PodNotiSubType": NotificationCategory.POD,
-    "PodStatusNotiSubType": NotificationCategory.POD,
-    "RecommendNotiSubType": NotificationCategory.POD,
-    # 커뮤니티 관련
-    "FollowNotiSubType": NotificationCategory.COMMUNITY,
-    "ReviewNotiSubType": NotificationCategory.COMMUNITY,
-    # 레거시 이름 지원
-    "PodNotificationType": NotificationCategory.POD,
-    "PodStatusNotificationType": NotificationCategory.POD,
-    "RecommendNotificationType": NotificationCategory.POD,
-    "FollowNotificationType": NotificationCategory.COMMUNITY,
-    "ReviewNotificationType": NotificationCategory.COMMUNITY,
-}
-
-
-def get_notification_category(type: str) -> str:
-    """
-    알림 타입으로 카테고리 반환
-
-    Args:
-        type: 알림 타입 (예: PodNotificationType, FollowNotificationType) 또는 NotificationType enum 값 (예: POD, POD_STATUS)
-
-    Returns:
-        카테고리 (POD, COMMUNITY, NOTICE)
-    """
-    # 먼저 클래스명으로 찾기 시도
-    if type in NOTIFICATION_TYPE_CATEGORY_MAP:
-        return NOTIFICATION_TYPE_CATEGORY_MAP[type].value
-
-    # 클래스명이 아니면 NotificationType enum 값으로 찾기 시도
-    try:
-        notification_type_enum = NotificationType(type)
-        if notification_type_enum in NOTIFICATION_MAIN_TYPE_CATEGORY_MAP:
-            return NOTIFICATION_MAIN_TYPE_CATEGORY_MAP[notification_type_enum].value
-    except ValueError:
-        pass
-
-    # 둘 다 아니면 기본값 반환
-    return NotificationCategory.POD.value
-
-
-def get_notification_main_type(notification_type: str) -> str:
-    """
-    알림 타입 클래스명을 NotificationType enum 값으로 변환
-
-    Args:
-        notification_type: 알림 타입 클래스명 (예: PodNotificationType, FollowNotificationType)
-
-    Returns:
-        NotificationType enum 값 (예: POD, FOLLOW)
-    """
-    type_mapping = {
-        "PodNotificationType": NotificationType.POD,
-        "PodStatusNotificationType": NotificationType.POD_STATUS,
-        "RecommendNotificationType": NotificationType.RECOMMEND,
-        "ReviewNotificationType": NotificationType.REVIEW,
-        "FollowNotificationType": NotificationType.FOLLOW,
-    }
-    return type_mapping.get(notification_type, NotificationType.POD).value
-
-
-def to_upper_camel_case(snake_str: str) -> str:
-    """
-    UPPER_SNAKE_CASE를 UpperCamelCase로 변환
-
-    Args:
-        snake_str: UPPER_SNAKE_CASE 문자열 (예: POD_JOIN_REQUEST)
-
-    Returns:
-        UpperCamelCase 문자열 (예: PodJoinRequest)
-    """
-    components = snake_str.lower().split("_")
-    return "".join(x.title() for x in components)
-
-
-class NotificationBase(BaseModel):
-    """알림 기본 스키마"""
-
-    title: str = Field(serialization_alias="title")
-    body: str = Field(serialization_alias="body")
-    type: str = Field(serialization_alias="type")
-    value: str = Field(serialization_alias="value")
-    related_id: int | None = Field(default=None, serialization_alias="relatedId")
-
-
-class NotificationResponse(NotificationBase):
-    """알림 응답 스키마"""
-
-    id: int = Field(serialization_alias="id")
-    related_user: SimpleUserDto | None = Field(
-        default=None,
-        serialization_alias="relatedUser",
-        description="관련 유저 (Optional)",
-    )
-    related_pod: SimplePodDto | None = Field(
-        default=None,
-        serialization_alias="relatedPod",
-        description="관련 파티 (Optional)",
-    )
-    category: NotificationCategory = Field(
-        serialization_alias="category",
-        description="알림 카테고리 (POD, COMMUNITY, NOTICE)",
-    )
-    is_read: bool = Field(serialization_alias="isRead")
-    read_at: datetime | None = Field(
-        default=None, serialization_alias="readAt", description="읽은 시간 (Optional)"
-    )
-    created_at: datetime = Field(
-        serialization_alias="createdAt", description="생성 시간"
-    )
-
-    @field_serializer("read_at", "created_at")
-    def serialize_datetime(self, dt: datetime | None, _info) -> int | None:
-        """datetime을 timestamp(밀리초)로 변환"""
-        if dt is None:
+        if not notification or notification.user_id != user_id:
             return None
-        # naive datetime을 UTC로 인식 (DB에서 읽은 값은 UTC로 저장된 naive datetime)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp() * 1000)  # JavaScript/Flutter는 밀리초 단위 사용
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+        if not notification.is_read:
+            notification.is_read = True
+            notification.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            await self._session.commit()
+            # refresh는 관계를 무효화할 수 있으므로, 관계를 다시 로드하기 위해 다시 쿼리
+            query = select(Notification).where(Notification.id == notification_id)
+            query = query.options(
+                selectinload(Notification.related_user),
+                selectinload(Notification.related_pod),
+            )
+            result = await self._session.execute(query)
+            notification = result.scalar_one()
 
+        return notification
 
-class NotificationListResponse(BaseModel):
-    """알림 목록 응답 스키마 (deprecated - PageDto 사용 권장)"""
+    # - MARK: 모든 알림 읽음 처리
+    async def mark_all_as_read(self, user_id: int) -> int:
+        """사용자의 모든 알림을 읽음 처리"""
+        stmt = (
+            update(Notification)
+            .where(Notification.user_id == user_id, Notification.is_read.is_(False))
+            .values(
+                is_read=True, read_at=datetime.now(timezone.utc).replace(tzinfo=None)
+            )
+        )
 
-    total: int
-    unread_count: int
-    notifications: list[NotificationResponse]
+        result = await self._session.execute(stmt)
+        await self._session.commit()
+        return result.rowcount
 
+    # - MARK: 알림 삭제
+    async def delete_notification(self, notification_id: int, user_id: int) -> bool:
+        """알림 삭제"""
+        notification = await self.get_by_id(notification_id)
 
-class NotificationUnreadCountResponse(BaseModel):
-    """읽지 않은 알림 개수 응답"""
+        if not notification or notification.user_id != user_id:
+            return False
 
-    unread_count: int = Field(serialization_alias="unreadCount")
+        await self._session.delete(notification)
+        await self._session.commit()
+        return True
 
-    model_config = {"populate_by_name": True}
+    # - MARK: 읽은 알림 전체 삭제
+    async def delete_all_read_notifications(self, user_id: int) -> int:
+        """읽은 알림 전체 삭제"""
+        stmt = delete(Notification).where(
+            Notification.user_id == user_id, Notification.is_read.is_(True)
+        )
 
-
-# Forward reference 해결을 위해 PodDto import 후 모델 재빌드
-
-NotificationResponse.model_rebuild()
+        result = await self._session.execute(stmt)
+        await self._session.commit()
+        return result.rowcount
