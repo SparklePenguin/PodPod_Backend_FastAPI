@@ -24,9 +24,9 @@ services:
       start_period: 30s
 
   # FastAPI 애플리케이션
-  app:
+  api:
     build:
-      context: .
+      context: ./services/api
       dockerfile: Dockerfile
     container_name: podpod-api-dev
     restart: unless-stopped
@@ -68,9 +68,10 @@ services:
       - "8000:8000"
     volumes:
       # 개발 환경에서는 코드 변경 시 자동 반영을 위한 볼륨 마운트
-      - .:/app
-      - /app/venv  # 가상환경은 제외
-      - ./uploads:/app/uploads  # 업로드 파일 영속성
+      - ./services/api:/app
+      - /app/.venv  # 가상환경은 제외
+      - ./services/api/uploads:/app/uploads  # 업로드 파일 영속성
+      - ./shared:/app/shared  # 공유 모델
     networks:
       - podpod-network
     depends_on:

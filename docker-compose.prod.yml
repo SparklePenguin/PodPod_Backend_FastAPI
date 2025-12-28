@@ -1,6 +1,6 @@
 services:
   # FastAPI 애플리케이션 (프로덕션 환경)
-  app:
+  api:
     image: ${DOCKER_USERNAME}/podpod-backend:prod-latest
     container_name: podpod-api-prod
     restart: always

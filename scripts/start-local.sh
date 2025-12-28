@@ -78,7 +78,7 @@ if [ -f ".python-version" ]; then
 
     # 해당 버전이 설치되어 있는지 확인
     if ! pyenv versions --bare | grep -q "^${PYTHON_VERSION}$"; then
-        echo "⚠️  Python ${PYTHON_VERSION}이(가) 설치되지 않았습니다."
+        echo "⚠️  Python ${PYTHON_VERSION} 설치되지 않았습니다."
         echo ""
         read -p "Python ${PYTHON_VERSION}을(를) 자동으로 설치하시겠습니까? (y/n): " -r
         echo
@@ -98,7 +98,7 @@ if [ -f ".python-version" ]; then
             exit 1
         fi
     else
-        echo "✅ Python ${PYTHON_VERSION}이(가) 이미 설치되어 있습니다."
+        echo "✅ Python ${PYTHON_VERSION} 이미 설치되어 있습니다."
     fi
 else
     echo "⚠️  .python-version 파일이 없습니다."
@@ -345,7 +345,7 @@ echo ""
 # 포트 사용 확인 (추가 안전장치)
 echo "🔌 Checking port $PORT availability..."
 if lsof -ti:$PORT > /dev/null 2>&1; then
-    echo "⚠️  포트 $PORT이(가) 사용 중입니다."
+    echo "⚠️  포트 $PORT 사용 중입니다."
     echo "📝 포트를 사용 중인 프로세스를 중지합니다."
 
     # 포트를 사용 중인 프로세스 종료
@@ -354,7 +354,7 @@ if lsof -ti:$PORT > /dev/null 2>&1; then
 
     echo "✅ 포트가 해제되었습니다."
 else
-    echo "✅ 포트 $PORT이(가) 사용 가능합니다."
+    echo "✅ 포트 $PORT 사용 가능합니다."
 fi
 echo ""
 
@@ -444,124 +444,67 @@ fi
 
 echo ""
 
-# Alembic 마이그레이션
-echo "🗄️  데이터베이스 마이그레이션"
-read -p "Alembic 마이그레이션을 실행하시겠습니까? (y/n): " -r
-echo
+# 데이터베이스 마이그레이션
+# ========================================
+
+echo "🗄️  데이터베이스 마이그레이션 상태 확인 중..."
+
+# CONFIG_FILE 환경변수 설정 (Alembic이 config.dev.yaml을 찾을 수 있도록)
+export CONFIG_FILE="$PROJECT_ROOT/config.dev.yaml"
+
+# 현재 DB 리비전 확인 (프로젝트 루트에서 실행)
+CURRENT_REV=$(MYSQL_HOST="$MYSQL_HOST" \
+    MYSQL_USER="$MYSQL_USER" \
+    MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+    MYSQL_DATABASE="${MYSQL_DATABASE:-podpod_local}" \
+    CONFIG_FILE="$CONFIG_FILE" \
+    infisical run --env=dev --path=/backend -- alembic current 2>&1 | grep -oE '[a-f0-9]{12}' | head -1)
+
+# 최신 리비전 확인 (로컬 파일에서)
+HEAD_REV=$(alembic heads 2>&1 | grep -oE '[a-f0-9]{12}' | head -1)
+
+# 리비전 비교
+NEED_MIGRATION="n"
+if [ -z "$CURRENT_REV" ]; then
+    echo "⚠️  데이터베이스에 마이그레이션이 적용되지 않았습니다."
+    echo "   최신 리비전: ${HEAD_REV}"
+    echo ""
+    read -p "Alembic 마이그레이션을 실행하시겠습니까? (y/n): " -r
+    echo
+    NEED_MIGRATION="$REPLY"
+elif [ "$CURRENT_REV" != "$HEAD_REV" ]; then
+    echo "⚠️  데이터베이스 마이그레이션이 필요합니다."
+    echo "   현재 리비전: ${CURRENT_REV}"
+    echo "   최신 리비전: ${HEAD_REV}"
+    echo ""
+    read -p "Alembic 마이그레이션을 실행하시겠습니까? (y/n): " -r
+    echo
+    NEED_MIGRATION="$REPLY"
+else
+    echo "✅ 데이터베이스가 최신 상태입니다 (리비전: ${CURRENT_REV})"
+    NEED_MIGRATION="n"
+fi
+
+# 마이그레이션 실행
 MIGRATION_SUCCESS=true
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+if [[ $NEED_MIGRATION =~ ^[Yy]$ ]]; then
     echo "🔄 Running Alembic migrations with Infisical..."
+
+    MYSQL_HOST="$MYSQL_HOST" \
+    MYSQL_USER="$MYSQL_USER" \
+    MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+    MYSQL_DATABASE="${MYSQL_DATABASE:-podpod_local}" \
+    CONFIG_FILE="$CONFIG_FILE" \
     infisical run --env=dev --path=/backend -- alembic upgrade head
 
     if [ $? -eq 0 ]; then
         echo "✅ 마이그레이션 완료"
     else
         echo "❌ 마이그레이션 실패"
-        MIGRATION_SUCCESS=false
-    fi
-fi
-
-# 마스터 데이터 import 확인
-echo ""
-if [ "$MIGRATION_SUCCESS" = false ]; then
-    echo "⚠️  마이그레이션이 실패하여 마스터 데이터 import를 건너뜁니다."
-fi
-
-if [ "$MIGRATION_SUCCESS" = true ] && [ -f "seeds/master_data.sql" ]; then
-    read -p "마스터 데이터를 import하시겠습니까? (seeds/master_data.sql) (y/n): " -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "📥 Importing master data..."
-
-        # 기존 마스터 데이터 삭제
-        echo "🗑️  기존 마스터 데이터 삭제 중..."
-        mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "
-            SET FOREIGN_KEY_CHECKS=0;
-            TRUNCATE TABLE schedule_contents;
-            TRUNCATE TABLE schedule_members;
-            TRUNCATE TABLE artist_schedules;
-            TRUNCATE TABLE artist_images;
-            TRUNCATE TABLE artist_names;
-            TRUNCATE TABLE artist_units;
-            TRUNCATE TABLE artists;
-            TRUNCATE TABLE locations;
-            TRUNCATE TABLE tendency_results;
-            TRUNCATE TABLE tendency_surveys;
-            SET FOREIGN_KEY_CHECKS=1;
-        " 2>&1 | grep -v "Warning"
-
-        # 마스터 데이터 import
-        mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < seeds/master_data.sql 2>&1 | grep -v "Warning"
-
-        if [ $? -eq 0 ]; then
-            echo "✅ 마스터 데이터 import 완료"
-        else
-            echo "❌ 마스터 데이터 import 실패"
-        fi
-    fi
-else
-    if [ ! -f "seeds/master_data.sql" ]; then
-        echo "ℹ️  마스터 데이터 파일이 없습니다 (seeds/master_data.sql)"
-        echo "   ./scripts/export-master-data.sh 를 실행하여 데이터를 추출하세요."
-    fi
-fi
-
-echo ""
-
-# Prometheus 실행 여부 확인
-echo "📊 Prometheus 모니터링"
-read -p "Prometheus를 함께 실행하시겠습니까? (y/n): " -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # Prometheus 설치 확인
-    if ! command -v prometheus &> /dev/null; then
-        echo "⚠️  Prometheus가 설치되지 않았습니다."
         echo ""
-
-        if command -v brew &> /dev/null; then
-            read -p "Prometheus를 자동으로 설치하시겠습니까? (y/n): " -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                echo "📥 Prometheus 설치 중..."
-                brew install prometheus
-
-                if [ $? -eq 0 ]; then
-                    echo "✅ Prometheus 설치 완료"
-                else
-                    echo "❌ Prometheus 설치 실패"
-                    echo "📝 수동으로 설치하세요: brew install prometheus"
-                fi
-            fi
-        else
-            echo "📝 Prometheus 설치 방법:"
-            echo "  - macOS: brew install prometheus"
-            echo "  - Ubuntu/Debian: sudo apt-get install prometheus"
-        fi
-    fi
-
-    # Prometheus 실행
-    if command -v prometheus &> /dev/null; then
-        # 기존 Prometheus 프로세스 확인
-        if pgrep -f "prometheus.*prometheus.dev.yml" > /dev/null; then
-            echo "⚠️  Prometheus가 이미 실행 중입니다."
-            echo "🛑 기존 Prometheus 프로세스 중지 중..."
-            pkill -f "prometheus.*prometheus.dev.yml"
-            sleep 2
-        fi
-
-        echo "🚀 Prometheus 시작 중..."
-        echo "📊 Prometheus URL: http://localhost:9090"
-
-        # Prometheus를 백그라운드로 실행
-        prometheus --config.file=prometheus.dev.yml > prometheus.log 2>&1 &
-        PROMETHEUS_PID=$!
-
-        echo "✅ Prometheus가 백그라운드로 실행되었습니다. (PID: $PROMETHEUS_PID)"
-        echo "📝 로그: tail -f prometheus.log"
-        echo ""
-
-        # 종료 시 Prometheus도 함께 종료하도록 trap 설정
-        trap "echo '🛑 Prometheus 중지 중...'; kill $PROMETHEUS_PID 2>/dev/null; exit" INT TERM
+        echo "⚠️  마이그레이션이 실패했습니다."
+        echo "📝 에러를 수정한 후 다시 실행하세요."
+        exit 1
     fi
 fi
 
@@ -573,9 +516,10 @@ echo ""
 echo "🌐 API URL: http://localhost:${PORT}"
 echo "📚 API Docs: http://localhost:${PORT}/docs"
 echo "📊 Metrics: http://localhost:${PORT}/metrics"
-if command -v prometheus &> /dev/null && pgrep -f "prometheus.*prometheus.dev.yml" > /dev/null; then
-    echo "📈 Prometheus: http://localhost:9090"
-fi
+echo ""
+echo "💡 추가 명령어:"
+echo "   - Prometheus 모니터링: ./scripts/start-monitoring.sh"
+echo "   - 마스터 데이터 import: ./scripts/import-master-data-local.sh"
 echo ""
 echo "💡 종료하려면 Ctrl+C를 누르세요."
 echo ""

@@ -13,12 +13,20 @@ echo ""
 # 프로젝트 루트로 이동
 cd "$(dirname "$0")/.." || exit 1
 PROJECT_ROOT=$(pwd)
+SCRIPT_DIR="$PROJECT_ROOT/scripts"
 
-echo "📁 프로젝트 경로: $PROJECT_ROOT"
+# API 서비스 디렉토리 확인 (마이크로서비스 구조)
+if [ -d "services/api" ]; then
+    echo "🔍 마이크로서비스 구조 감지"
+    cd services/api || exit 1
+    API_SERVICE_DIR=$(pwd)
+    echo "📁 API 서비스 경로: $API_SERVICE_DIR"
+else
+    echo "📁 프로젝트 경로: $PROJECT_ROOT"
+fi
 echo ""
 
 # .setup 파일 확인
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ ! -f "$SCRIPT_DIR/.setup" ]; then
     echo "⚠️  시스템 의존성이 설치되지 않았습니다."
     echo "📝 먼저 다음 명령을 실행하세요:"
@@ -35,12 +43,12 @@ export PYENV_ROOT="$HOME/.pyenv"
 command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)" 2>/dev/null || true
 
-# Python 버전 확인
-if [ -f ".python-version" ]; then
-    PYTHON_VERSION=$(cat .python-version)
-    echo "📌 Python 버전: $PYTHON_VERSION"
+# Python 버전 확인 (루트 디렉토리에서 찾기)
+if [ -f "$PROJECT_ROOT/.python-version" ]; then
+    PYTHON_VERSION=$(cat "$PROJECT_ROOT/.python-version")
+    echo "📌 Python 버전: $PYTHON_VERSION (루트 디렉토리에서 로드)"
 else
-    echo "❌ .python-version 파일이 없습니다."
+    echo "❌ .python-version 파일이 없습니다. ($PROJECT_ROOT/.python-version)"
     exit 1
 fi
 
@@ -77,13 +85,16 @@ else
 fi
 echo ""
 
+# 가상환경 경로 (루트에 있음)
+VENV_PATH="$PROJECT_ROOT/.venv"
+
 # 가상환경 확인 및 생성
-if [ ! -d ".venv" ]; then
+if [ ! -d "$VENV_PATH" ]; then
     echo "📦 가상환경 생성 중..."
     if [ "$USE_UV" = true ]; then
-        uv venv .venv --python "$PYTHON_BIN"
+        uv venv "$VENV_PATH" --python "$PYTHON_BIN"
     else
-        $PYTHON_BIN -m venv .venv
+        $PYTHON_BIN -m venv "$VENV_PATH"
     fi
 
     if [ $? -eq 0 ]; then
@@ -97,7 +108,7 @@ else
 
     if [ "$FORCE_REINSTALL" = true ]; then
         echo "🗑️  기존 패키지 설치 마커 삭제..."
-        rm -f .venv/.installed
+        rm -f "$VENV_PATH/.installed"
     fi
 fi
 
@@ -105,7 +116,7 @@ echo ""
 
 # 가상환경 활성화
 echo "🔧 가상환경 활성화 중..."
-source .venv/bin/activate
+source "$VENV_PATH/bin/activate"
 
 if [ $? -ne 0 ]; then
     echo "❌ 가상환경 활성화 실패"
@@ -116,7 +127,7 @@ echo "✅ 가상환경 활성화 완료"
 echo ""
 
 # 패키지 설치
-if [ ! -f ".venv/.installed" ] || [ "$FORCE_REINSTALL" = true ]; then
+if [ ! -f "$VENV_PATH/.installed" ] || [ "$FORCE_REINSTALL" = true ]; then
     echo "=========================================="
     echo "📥 패키지 설치 시작"
     echo "=========================================="
@@ -186,29 +197,23 @@ if [ ! -f ".venv/.installed" ] || [ "$FORCE_REINSTALL" = true ]; then
     echo ""
 
     # 설치 완료 마커 파일 생성
-    cat > ".venv/.installed" <<EOF
+    cat > "$VENV_PATH/.installed" <<EOF
 # PodPod Backend - Python 패키지 설치 완료
 # 생성일시: $(date)
 #
 # 이 파일은 Python 패키지가 설치되었음을 표시합니다.
-# 재설치가 필요한 경우:
-#   1. 이 파일을 삭제: rm .venv/.installed
-#   2. 재설치 실행: bash scripts/install-packages.sh
-# 또는
-#   강제 재설치: bash scripts/install-packages.sh --force
+# 재설치가 필요한 경우: bash scripts/install-packages.sh --force
 
 INSTALL_DATE=$(date +%s)
 PYTHON_VERSION=$($PYTHON_BIN --version)
 PACKAGE_MANAGER=$(if [ "$USE_UV" = true ]; then echo "uv"; else echo "pip"; fi)
 EOF
 
-    echo "📄 .venv/.installed 파일 생성 완료"
+    echo "📄 $VENV_PATH/.installed 파일 생성 완료"
 
 else
     echo "✅ 패키지가 이미 설치되어 있습니다."
-    echo "💡 재설치하려면 다음 중 하나를 실행하세요:"
-    echo "  - rm .venv/.installed && bash scripts/install-packages.sh"
-    echo "  - bash scripts/install-packages.sh --force"
+    echo "💡 재설치하려면: bash scripts/install-packages.sh --force"
 fi
 
 echo ""

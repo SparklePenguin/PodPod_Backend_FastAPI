@@ -1,6 +1,6 @@
 services:
   # FastAPI 애플리케이션 (스테이징 환경)
-  app:
+  api:
     image: ${DOCKER_USERNAME}/podpod-backend:stg-latest
     container_name: podpod-api-stg
     restart: unless-stopped
