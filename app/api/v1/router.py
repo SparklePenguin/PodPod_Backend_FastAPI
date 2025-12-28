@@ -38,13 +38,18 @@ from app.features.tendencies.routers.tendency_router import router as tendencies
 
 # Users router (routers 폴더 없음, router.py에 직접 정의)
 from app.features.users.router import router as users_router
+from app.features.users.routers.profile_image_router import router as profile_images_router
 
-from .endpoints import (
-    health,
-    random_profile_images,
-    webhooks,
-)
-from .endpoints.admin import router as admin_router
+# Core routers
+from app.core.routers.health import router as health_router
+
+# Admin routers
+from app.features.admin.routers.error_codes import router as error_codes_router
+from app.features.admin.routers.fcm import router as fcm_router
+from app.features.admin.routers.sendbird import router as sendbird_router
+
+# Webhooks router
+from app.features.webhooks.routers.webhook_router import router as webhooks_router
 
 # 메인 API 라우터 생성
 api_router = APIRouter()
@@ -87,16 +92,18 @@ api_router.include_router(locations_router, prefix="/regions", tags=["regions"])
 # 신고 관련 라우터 (features/reports)
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 
-# 관리자 관련 라우터
-api_router.include_router(admin_router)
+# 헬스 체크 라우터 (core)
+api_router.include_router(health_router, tags=["health"])
 
-# 헬스 체크 라우터
-api_router.include_router(health.router, tags=["health"])
-
-# 랜덤 프로필 이미지 라우터
+# 랜덤 프로필 이미지 라우터 (users)
 api_router.include_router(
-    random_profile_images.router, prefix="/profile-images", tags=["profile-images"]
+    profile_images_router, prefix="/profile-images", tags=["profile-images"]
 )
 
-# 웹훅 라우터
-api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+# 웹훅 라우터 (webhooks)
+api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
+
+# 관리자 관련 라우터 (admin)
+api_router.include_router(error_codes_router, prefix="/admin", tags=["admin"])
+api_router.include_router(fcm_router, prefix="/admin", tags=["admin"])
+api_router.include_router(sendbird_router, prefix="/admin/sendbird", tags=["admin"])
