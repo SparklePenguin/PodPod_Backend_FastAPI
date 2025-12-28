@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,9 +27,9 @@ class ReportService:
         reporter_id: int,
         reported_user_id: int,
         report_types: List[int],
-        reason: Optional[str],
+        reason: str | None,
         should_block: bool,
-    ) -> Optional[ReportResponse]:
+    ) -> ReportResponse | None:
         """사용자 신고 생성 (차단 옵션 포함)"""
         # 신고당한 사용자 존재 확인
         reported_user = await self._user_repo.get_by_id(reported_user_id)
@@ -57,21 +57,22 @@ class ReportService:
             await self._follow_repo.delete_follow(reporter_id, reported_user_id)
             await self._follow_repo.delete_follow(reported_user_id, reporter_id)
 
-        report_id = getattr(report, 'id', None) or 0
-        report_reporter_id = getattr(report, 'reporter_id', None) or 0
-        report_reported_user_id = getattr(report, 'reported_user_id', None) or 0
-        report_report_types = getattr(report, 'report_types', []) or []
-        report_reason = getattr(report, 'reason', None)
-        report_blocked = bool(getattr(report, 'blocked', False))
-        report_created_at_raw = getattr(report, 'created_at', None)
-        
+        report_id = getattr(report, "id", None) or 0
+        report_reporter_id = getattr(report, "reporter_id", None) or 0
+        report_reported_user_id = getattr(report, "reported_user_id", None) or 0
+        report_report_types = getattr(report, "report_types", []) or []
+        report_reason = getattr(report, "reason", None)
+        report_blocked = bool(getattr(report, "blocked", False))
+        report_created_at_raw = getattr(report, "created_at", None)
+
         # datetime 기본값 제공
         from datetime import datetime, timezone
+
         if report_created_at_raw is None:
             report_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
         else:
             report_created_at = report_created_at_raw
-        
+
         return ReportResponse(
             id=report_id,
             reporter_id=report_reporter_id,

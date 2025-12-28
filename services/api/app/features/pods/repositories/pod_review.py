@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from sqlalchemy import and_, desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,13 +17,10 @@ class PodReviewCRUD:
 
     async def create_review(
         self, pod_id: int, user_id: int, rating: int, content: str
-    ) -> Optional[PodReview]:
+    ) -> PodReview | None:
         """후기 생성"""
         review = PodReview(
-            pod_id=pod_id,
-            user_id=user_id,
-            rating=rating,
-            content=content,
+            pod_id=pod_id, user_id=user_id, rating=rating, content=content
         )
         self.db.add(review)
         await self.db.commit()
@@ -35,7 +32,7 @@ class PodReviewCRUD:
             return None
         return await self.get_review_by_id(review_id)
 
-    async def get_review_by_id(self, review_id: int) -> Optional[PodReview]:
+    async def get_review_by_id(self, review_id: int) -> PodReview | None:
         """ID로 후기 조회"""
         query = (
             select(PodReview)
@@ -47,7 +44,7 @@ class PodReviewCRUD:
 
     async def get_review_by_pod_and_user(
         self, pod_id: int, user_id: int
-    ) -> Optional[PodReview]:
+    ) -> PodReview | None:
         """파티와 사용자로 후기 조회"""
         query = (
             select(PodReview)
@@ -122,7 +119,7 @@ class PodReviewCRUD:
 
     async def update_review(
         self, review_id: int, rating: int, content: str
-    ) -> Optional[PodReview]:
+    ) -> PodReview | None:
         """후기 수정"""
         query = select(PodReview).where(PodReview.id == review_id)
         result = await self.db.execute(query)
@@ -216,10 +213,7 @@ class PodReviewCRUD:
 
         # 총 리뷰 수 조회
         count_query = select(func.count(PodReview.id)).where(
-            and_(
-                PodReview.pod_id.in_(all_pod_ids),
-                PodReview.user_id != user_id,
-            )
+            and_(PodReview.pod_id.in_(all_pod_ids), PodReview.user_id != user_id)
         )
         count_result = await self.db.execute(count_query)
         total_count = count_result.scalar() or 0

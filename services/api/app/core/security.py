@@ -2,7 +2,6 @@ import time
 import uuid
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
 
 from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
@@ -85,10 +84,7 @@ class _TokenPayload(BaseModel):
 
 
 # - MARK: 액세스 토큰 생성 함수
-def create_access_token(
-    user_id: int,
-    expires_delta: Optional[timedelta] = None,
-) -> str:
+def create_access_token(user_id: int, expires_delta: timedelta | None = None) -> str:
     """액세스 토큰 생성"""
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -101,16 +97,12 @@ def create_access_token(
         type=_TokenType.ACCESS,
     )
     return jwt.encode(
-        payload.model_dump(),
-        settings.secret_key,
-        algorithm=settings.ALGORITHM,
+        payload.model_dump(), settings.secret_key, algorithm=settings.ALGORITHM
     )
 
 
 # - MARK: 리프레시 토큰 생성 함수
-def create_refresh_token(
-    user_id: int, expires_delta: Optional[timedelta] = None
-) -> str:
+def create_refresh_token(user_id: int, expires_delta: timedelta | None = None) -> str:
     """리프레시 토큰 생성"""
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=_DEFAULT_REFRESH_TOKEN_EXPIRE_MINUTES)
@@ -123,9 +115,7 @@ def create_refresh_token(
         type=_TokenType.REFRESH,
     )
     return jwt.encode(
-        payload.model_dump(),
-        settings.secret_key,
-        algorithm=settings.ALGORITHM,
+        payload.model_dump(), settings.secret_key, algorithm=settings.ALGORITHM
     )
 
 
@@ -138,9 +128,7 @@ def verify_token(token: str, token_type: str | None = None) -> int:
 
     try:
         payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.ALGORITHM],
+            token, settings.secret_key, algorithms=[settings.ALGORITHM]
         )
         user_id: str | None = payload.get("sub")
         if not user_id:

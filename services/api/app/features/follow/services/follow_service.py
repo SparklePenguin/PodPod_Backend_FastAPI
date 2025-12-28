@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+
 from app.features.follow.repositories.follow_repository import FollowCRUD
 from app.features.follow.schemas import (
     FollowNotificationStatusResponse,
@@ -7,10 +7,7 @@ from app.features.follow.schemas import (
     FollowStatsResponse,
     SimpleUserDto,
 )
-from app.features.follow.exceptions import (
-    FollowFailedException,
-    FollowInvalidException,
-)
+from app.features.follow.exceptions import FollowFailedException, FollowInvalidException
 from app.features.pods.repositories.pod_repository import PodCRUD
 from app.features.pods.schemas import PodDto
 from app.features.users.repositories import UserRepository
@@ -48,14 +45,15 @@ class FollowService:
         follower_id_value = getattr(follow, "follower_id", None)
         following_id_value = getattr(follow, "following_id", None)
         created_at_value = getattr(follow, "created_at", None)
-        
+
         if follower_id_value is None or following_id_value is None:
             raise FollowInvalidException("팔로우 정보가 올바르지 않습니다.")
-        
+
         if created_at_value is None:
             from datetime import datetime, timezone
+
             created_at_value = datetime.now(timezone.utc).replace(tzinfo=None)
-        
+
         return FollowResponse(
             follower_id=follower_id_value,
             following_id=following_id_value,
@@ -84,10 +82,10 @@ class FollowService:
             user_profile_image = getattr(user, "profile_image", None) or ""
             user_intro = getattr(user, "intro", None) or ""
             tendency_type_str = tendency_type or "" if tendency_type is not None else ""
-            
+
             if user_id is None:
                 continue
-                
+
             user_dto = SimpleUserDto(
                 id=user_id,
                 nickname=user_nickname,
@@ -118,7 +116,7 @@ class FollowService:
     async def get_followers_list(
         self,
         user_id: int,
-        current_user_id: Optional[int] = None,
+        current_user_id: int | None = None,
         page: int = 1,
         size: int = 20,
     ) -> PageDto[SimpleUserDto]:
@@ -133,7 +131,7 @@ class FollowService:
             if user_id_val is None or not isinstance(user_id_val, int):
                 continue
             user_id = user_id_val
-                
+
             # 현재 사용자가 해당 팔로워를 팔로우하고 있는지 확인
             is_following = False
             if current_user_id:
@@ -172,7 +170,7 @@ class FollowService:
         )
 
     async def get_follow_stats(
-        self, user_id: int, current_user_id: Optional[int] = None
+        self, user_id: int, current_user_id: int | None = None
     ) -> FollowStatsResponse:
         """팔로우 통계 조회"""
         stats = await self._follow_repo.get_follow_stats(user_id, current_user_id)
@@ -187,14 +185,16 @@ class FollowService:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> PageDto[PodDto]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
-        pods, total_count = await self._follow_repo.get_following_pods(user_id, page, size)
+        pods, total_count = await self._follow_repo.get_following_pods(
+            user_id, page, size
+        )
 
         pod_dtos = []
         for pod in pods:
             pod_id = getattr(pod, "id", None)
             if pod_id is None:
                 continue
-                
+
             # 각 파티의 참여자 수와 좋아요 수 계산
             joined_users_count = await self._pod_repo.get_joined_users_count(pod_id)
             like_count = await self._pod_repo.get_like_count(pod_id)
@@ -251,18 +251,22 @@ class FollowService:
             pod_chat_channel_url = getattr(pod, "chat_channel_url", None)
             pod_created_at = getattr(pod, "created_at", None)
             pod_updated_at = getattr(pod, "updated_at", None)
-            
+
             # sub_categories가 문자열인 경우 파싱 필요할 수 있음
             if pod_sub_categories is None:
                 pod_sub_categories = []
             elif isinstance(pod_sub_categories, str):
                 import json
+
                 try:
-                    pod_sub_categories = json.loads(pod_sub_categories) if pod_sub_categories else []
+                    pod_sub_categories = (
+                        json.loads(pod_sub_categories) if pod_sub_categories else []
+                    )
                 except (ValueError, TypeError, json.JSONDecodeError):
                     pod_sub_categories = []
-            
+
             from datetime import datetime, timezone
+
             if pod_created_at is None:
                 pod_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
             if pod_updated_at is None:
@@ -270,11 +274,11 @@ class FollowService:
 
             # 타입 체크 및 변환
             from app.features.pods.models.pod.pod_status import PodStatus
-            
+
             pod_owner_id_int = pod_owner_id if isinstance(pod_owner_id, int) else None
             if pod_owner_id_int is None:
                 continue  # owner_id가 없으면 건너뛰기
-            
+
             pod_status_enum = None
             if pod_status is not None:
                 if isinstance(pod_status, PodStatus):
@@ -288,7 +292,7 @@ class FollowService:
                     pod_status_enum = PodStatus.RECRUITING  # 기본값
             else:
                 pod_status_enum = PodStatus.RECRUITING  # 기본값
-            
+
             pod_dto = PodDto(
                 id=pod_id,
                 owner_id=pod_owner_id_int,
@@ -341,7 +345,9 @@ class FollowService:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> PageDto[SimpleUserDto]:
         """추천 유저 목록 조회 (현재는 랜덤 유저 반환)"""
-        recommended_users = await self._follow_repo.get_recommended_users(user_id, page, size)
+        recommended_users = await self._follow_repo.get_recommended_users(
+            user_id, page, size
+        )
 
         users = []
         for user, tendency_type in recommended_users:
@@ -349,7 +355,7 @@ class FollowService:
             if user_id_val is None or not isinstance(user_id_val, int):
                 continue
             user_id = user_id_val
-                
+
             user_nickname = getattr(user, "nickname", "") or ""
             user_profile_image = getattr(user, "profile_image", None) or ""
             user_intro = getattr(user, "intro", None) or ""
@@ -383,7 +389,7 @@ class FollowService:
 
     async def get_notification_status(
         self, follower_id: int, following_id: int
-    ) -> Optional[FollowNotificationStatusResponse]:
+    ) -> FollowNotificationStatusResponse | None:
         """특정 팔로우 관계의 알림 설정 상태 조회"""
         notification_enabled = await self._follow_repo.get_notification_status(
             follower_id, following_id
@@ -393,13 +399,12 @@ class FollowService:
             return None
 
         return FollowNotificationStatusResponse(
-            following_id=following_id,
-            notification_enabled=notification_enabled,
+            following_id=following_id, notification_enabled=notification_enabled
         )
 
     async def update_notification_status(
         self, follower_id: int, following_id: int, notification_enabled: bool
-    ) -> Optional[FollowNotificationStatusResponse]:
+    ) -> FollowNotificationStatusResponse | None:
         """특정 팔로우 관계의 알림 설정 상태 변경"""
         success = await self._follow_repo.update_notification_status(
             follower_id, following_id, notification_enabled
@@ -409,8 +414,7 @@ class FollowService:
             return None
 
         return FollowNotificationStatusResponse(
-            following_id=following_id,
-            notification_enabled=notification_enabled,
+            following_id=following_id, notification_enabled=notification_enabled
         )
 
     # - MARK: 팔로우 알림 전송
@@ -440,7 +444,7 @@ class FollowService:
             # 팔로우받은 사용자의 FCM 토큰 확인
             following_fcm_token = getattr(following, "fcm_token", None)
             follower_nickname = getattr(follower, "nickname", "") or ""
-            
+
             if following_fcm_token:
                 # FCM 서비스 초기화
                 fcm_service = FCMService()
@@ -505,15 +509,15 @@ class FollowService:
             # 각 팔로워에게 알림 전송
             pod_owner_nickname = getattr(pod_owner, "nickname", "") or ""
             pod_title = getattr(pod, "title", "") or ""
-            
+
             for follower_user, _, _ in followers_data:
                 try:
                     follower_user_id = getattr(follower_user, "id", None)
                     follower_fcm_token = getattr(follower_user, "fcm_token", None)
-                    
+
                     if follower_user_id is None:
                         continue
-                        
+
                     if follower_fcm_token:
                         await fcm_service.send_followed_user_created_pod(
                             token=follower_fcm_token,
@@ -532,7 +536,9 @@ class FollowService:
                             f"팔로워의 FCM 토큰이 없음: follower_id={follower_user_id}"
                         )
                 except Exception as e:
-                    follower_user_id = getattr(follower_user, "id", None) if follower_user else None
+                    follower_user_id = (
+                        getattr(follower_user, "id", None) if follower_user else None
+                    )
                     logger.error(
                         f"팔로워 알림 전송 실패: follower_id={follower_user_id}, error={e}"
                     )

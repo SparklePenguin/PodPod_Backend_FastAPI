@@ -23,23 +23,10 @@ from .pod_status import PodStatus
 class Pod(Base):
     __tablename__ = "pods"
 
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True,
-        autoincrement=True,
-    )
-    owner_id = Column(
-        Integer,
-        ForeignKey("users.id"),
-        nullable=False,
-        index=True,
-    )
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     selected_artist_id = Column(
-        Integer,
-        ForeignKey("artists.id"),
-        nullable=True,
-        index=True,
+        Integer, ForeignKey("artists.id"), nullable=True, index=True
     )
     title = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
@@ -57,10 +44,7 @@ class Pod(Base):
     status = Column(Enum(PodStatus), default=PodStatus.RECRUITING, nullable=False)
     chat_channel_url = Column(String(255), nullable=True, comment="Sendbird 채팅방 URL")
     is_active = Column(Boolean, default=True)
-    created_at = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -69,32 +53,18 @@ class Pod(Base):
 
     owner = relationship("User")
     members = relationship(
-        "PodMember",
-        back_populates="pod",
-        cascade="all, delete-orphan",
+        "PodMember", back_populates="pod", cascade="all, delete-orphan"
     )
     ratings = relationship(
-        "PodRating",
-        back_populates="pod",
-        cascade="all, delete-orphan",
+        "PodRating", back_populates="pod", cascade="all, delete-orphan"
     )
-    views = relationship(
-        "PodView",
-        back_populates="pod",
-        cascade="all, delete-orphan",
-    )
+    views = relationship("PodView", back_populates="pod", cascade="all, delete-orphan")
     applications = relationship(
-        "PodApplication",
-        back_populates="pod",
-        cascade="all, delete-orphan",
+        "PodApplication", back_populates="pod", cascade="all, delete-orphan"
     )
     reviews = relationship(
-        "PodReview",
-        back_populates="pod",
-        cascade="all, delete-orphan",
+        "PodReview", back_populates="pod", cascade="all, delete-orphan"
     )
     images = relationship(
-        "PodImage",
-        back_populates="pod",
-        cascade="all, delete-orphan",
+        "PodImage", back_populates="pod", cascade="all, delete-orphan"
     )

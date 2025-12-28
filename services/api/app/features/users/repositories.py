@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from sqlalchemy import and_, delete, desc, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
@@ -21,19 +21,19 @@ class UserRepository:
         self.db = db
 
     # 사용자 조회
-    async def get_by_id(self, user_id: int) -> Optional[User]:
+    async def get_by_id(self, user_id: int) -> User | None:
         result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
     # (내부 사용) 이메일로 사용자 조회
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
     # (내부 사용) 이메일과 프로바이더로 사용자 조회
     async def get_by_email_and_provider(
         self, email: str, auth_provider: str
-    ) -> Optional[User]:
+    ) -> User | None:
         result = await self.db.execute(
             select(User).where(User.email == email, User.auth_provider == auth_provider)
         )
@@ -42,7 +42,7 @@ class UserRepository:
     # (내부 사용) auth_provider와 auth_provider_id로 사용자 조회
     async def get_by_auth_provider_id(
         self, auth_provider: str, auth_provider_id: str
-    ) -> Optional[User]:
+    ) -> User | None:
         result = await self.db.execute(
             select(User).where(
                 User.auth_provider == auth_provider,
@@ -67,7 +67,7 @@ class UserRepository:
     # 사용자 프로필 업데이트
     async def update_profile(
         self, user_id: int, update_data: Dict[str, Any]
-    ) -> Optional[User]:
+    ) -> User | None:
         if not update_data:
             return await self.get_by_id(user_id)
 
@@ -127,7 +127,7 @@ class UserRepository:
         await self.db.commit()
 
     # FCM 토큰 업데이트
-    async def update_fcm_token(self, user_id: int, fcm_token: Optional[str]) -> None:
+    async def update_fcm_token(self, user_id: int, fcm_token: str | None) -> None:
         """사용자의 FCM 토큰 업데이트"""
         from datetime import datetime, timezone
 
@@ -139,11 +139,7 @@ class UserRepository:
         await self.db.commit()
 
     # 사용자 소프트 삭제 복구
-    async def update_user(
-        self,
-        user_id: int,
-        updates: Dict[str, Any],
-    ) -> Optional[User]:
+    async def update_user(self, user_id: int, updates: Dict[str, Any]) -> User | None:
         """사용자 소프트 삭제 복구 (is_del 플래그 및 정보 업데이트)"""
         from datetime import datetime, timezone
 
@@ -175,7 +171,7 @@ class UserNotificationSettingsRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_user_id(self, user_id: int) -> Optional[UserNotificationSettings]:
+    async def get_by_user_id(self, user_id: int) -> UserNotificationSettings | None:
         """사용자 ID로 알림 설정 조회"""
         result = await self.db.execute(
             select(UserNotificationSettings).where(
@@ -202,7 +198,7 @@ class UserNotificationSettingsRepository:
 
     async def update_settings(
         self, user_id: int, update_data: UpdateUserNotificationSettingsRequest
-    ) -> Optional[UserNotificationSettings]:
+    ) -> UserNotificationSettings | None:
         """알림 설정 업데이트"""
         settings = await self.get_by_user_id(user_id)
         if not settings:
@@ -275,9 +271,7 @@ class UserBlockRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_block(
-        self, blocker_id: int, blocked_id: int
-    ) -> Optional[UserBlock]:
+    async def create_block(self, blocker_id: int, blocked_id: int) -> UserBlock | None:
         """사용자 차단 생성"""
         try:
             # 자기 자신을 차단하는지 확인
@@ -312,13 +306,10 @@ class UserBlockRepository:
             await self.db.rollback()
             return False
 
-    async def get_block(self, blocker_id: int, blocked_id: int) -> Optional[UserBlock]:
+    async def get_block(self, blocker_id: int, blocked_id: int) -> UserBlock | None:
         """특정 차단 관계 조회"""
         query = select(UserBlock).where(
-            and_(
-                UserBlock.blocker_id == blocker_id,
-                UserBlock.blocked_id == blocked_id,
-            )
+            and_(UserBlock.blocker_id == blocker_id, UserBlock.blocked_id == blocked_id)
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
@@ -326,10 +317,7 @@ class UserBlockRepository:
     async def check_block_exists(self, blocker_id: int, blocked_id: int) -> bool:
         """차단 관계 존재 여부 확인"""
         query = select(UserBlock).where(
-            and_(
-                UserBlock.blocker_id == blocker_id,
-                UserBlock.blocked_id == blocked_id,
-            )
+            and_(UserBlock.blocker_id == blocker_id, UserBlock.blocked_id == blocked_id)
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none() is not None
@@ -388,9 +376,9 @@ class UserReportRepository:
         reporter_id: int,
         reported_user_id: int,
         report_types: List[int],
-        reason: Optional[str],
+        reason: str | None,
         blocked: bool,
-    ) -> Optional[UserReport]:
+    ) -> UserReport | None:
         """사용자 신고 생성"""
         try:
             # 자기 자신을 신고하는지 확인
@@ -412,7 +400,7 @@ class UserReportRepository:
             await self.db.rollback()
             return None
 
-    async def get_report_by_id(self, report_id: int) -> Optional[UserReport]:
+    async def get_report_by_id(self, report_id: int) -> UserReport | None:
         """신고 ID로 조회"""
         query = select(UserReport).where(UserReport.id == report_id)
         result = await self.db.execute(query)

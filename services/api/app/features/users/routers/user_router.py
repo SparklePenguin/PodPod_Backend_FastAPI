@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from app.utils.file_upload import upload_profile_image
 from fastapi import (
@@ -65,8 +65,7 @@ async def accept_terms(
     tags=["users"],
 )
 async def create_user(
-    user_data: SignUpRequest,
-    session: AsyncSession = Depends(get_session),
+    user_data: SignUpRequest, session: AsyncSession = Depends(get_session)
 ):
     service = UserService(session)
     user = await service.create_user(
@@ -89,7 +88,7 @@ async def create_user(
     tags=["users"],
 )
 async def get_user_info(
-    user_id: Optional[int] = Query(
+    user_id: int | None = Query(
         None, serialization_alias="userId", description="조회할 사용자 ID (없으면 본인)"
     ),
     current_user_id: int = Depends(get_current_user_id),
@@ -115,12 +114,10 @@ async def get_user_info(
     description="사용자 정보 업데이트 (토큰 필요, 파일 업로드 또는 경로 지정 가능)",
 )
 async def update_user_profile(
-    nickname: Optional[str] = Form(None),
-    intro: Optional[str] = Form(None),
-    profile_image_path: Optional[str] = Form(
-        None, serialization_alias="profileImagePath"
-    ),
-    image: Optional[UploadFile] = File(None),
+    nickname: str | None = Form(None),
+    intro: str | None = Form(None),
+    profile_image_path: str | None = Form(None, serialization_alias="profileImagePath"),
+    image: UploadFile | None = File(None),
     current_user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
@@ -368,9 +365,7 @@ async def update_fcm_token(
 
 
 @router.get(
-    "/{user_id}",
-    response_model=BaseResponse[UserDto],
-    description="특정 사용자 조회",
+    "/{user_id}", response_model=BaseResponse[UserDto], description="특정 사용자 조회"
 )
 async def get_user_by_id(
     user_id: int,
@@ -389,7 +384,7 @@ async def get_user_by_id(
     tags=["users"],
 )
 async def delete_user(
-    user_id: Optional[int] = Query(
+    user_id: int | None = Query(
         None, serialization_alias="userId", description="삭제할 사용자 ID"
     ),
     current_user_id: int = Depends(get_current_user_id),
@@ -422,9 +417,7 @@ async def delete_user(
     description="모든 사용자 조회 (내부용)",
     tags=["internal"],
 )
-async def get_all_users(
-    session: AsyncSession = Depends(get_session),
-):
+async def get_all_users(session: AsyncSession = Depends(get_session)):
     service = UserService(session)
     users = await service.get_users()
     return BaseResponse.ok(data={"users": users})
@@ -437,8 +430,7 @@ async def get_all_users(
     tags=["internal"],
 )
 async def get_user_by_id_internal(
-    user_id: int,
-    session: AsyncSession = Depends(get_session),
+    user_id: int, session: AsyncSession = Depends(get_session)
 ):
     service = UserService(session)
     user = await service.get_user_internal(user_id)

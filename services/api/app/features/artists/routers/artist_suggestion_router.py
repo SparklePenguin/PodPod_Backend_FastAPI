@@ -27,8 +27,10 @@ async def create_artist_suggestion(
 ):
     """아티스트 제안 생성"""
     result = await service.create_suggestion(request, user_id)
-    return BaseResponse.created(
-        data=result, message_ko="아티스트 제안이 성공적으로 생성되었습니다."
+    return BaseResponse.ok(
+        data=result,
+        http_status=201,
+        message_ko="아티스트 제안이 성공적으로 생성되었습니다.",
     )
 
 

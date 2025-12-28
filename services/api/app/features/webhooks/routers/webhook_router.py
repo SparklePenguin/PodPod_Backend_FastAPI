@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, time, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
     description="Sendbird 그룹 채널 메시지 전송 웹훅을 처리합니다.",
 )
 async def handle_sendbird_webhook(
-    request: Request,
-    db: AsyncSession = Depends(get_session),
+    request: Request, db: AsyncSession = Depends(get_session)
 ) -> BaseResponse[dict]:
     """Sendbird 그룹 채널 메시지 전송 웹훅 처리 엔드포인트.
 
@@ -46,7 +45,7 @@ async def handle_sendbird_webhook(
     # 필수 정보 추출 (최대한 방어적으로 처리)
     payload_body: Dict[str, Any] = payload.get("payload", {})
     sender: Dict[str, Any] = payload.get("sender", {}) or payload_body.get("sender", {})
-    sender_user_id_raw: Optional[str] = sender.get("user_id") or sender.get("userId")
+    sender_user_id_raw: str | None = sender.get("user_id") or sender.get("userId")
 
     # 채널 정보에서 파티 이름 추출
     channel: Dict[str, Any] = payload_body.get("channel", {}) or payload.get(
@@ -55,10 +54,10 @@ async def handle_sendbird_webhook(
     party_name: str = channel.get("name") or channel.get("channel_url") or "파티"
 
     # 채널 정보에서 pod_id 추출
-    pod_id: Optional[int] = None
+    pod_id: int | None = None
 
     # 1. 채널 URL에서 추출 (pod_{pod_id}_chat 형식)
-    channel_url: Optional[str] = channel.get("channel_url")
+    channel_url: str | None = channel.get("channel_url")
     if channel_url:
         try:
             # pod_123_chat 또는 pod_123_123456789 형식에서 pod_id 추출
@@ -114,7 +113,7 @@ async def handle_sendbird_webhook(
             continue
 
     # Pod 정보 조회 (pod_id가 있을 경우)
-    simple_pod_dict: Optional[Dict[str, Any]] = None
+    simple_pod_dict: Dict[str, Any | None] = None
     if pod_id:
         try:
             pod_crud = PodCRUD(db)

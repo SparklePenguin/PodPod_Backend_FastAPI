@@ -4,7 +4,7 @@ Sendbird와 WebSocket을 통합하여 Feature Flag로 전환 가능하도록 구
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.core.config import settings
 from app.core.services.sendbird_service import SendbirdService
@@ -20,8 +20,8 @@ class ChatService:
         self.use_websocket = settings.USE_WEBSOCKET_CHAT
 
         # 두 서비스 모두 초기화 (Feature Flag로 선택)
-        self.sendbird_service: Optional[SendbirdService] = None
-        self.websocket_service: Optional[WebSocketService] = None
+        self.sendbird_service: SendbirdService | None = None
+        self.websocket_service: WebSocketService | None = None
 
         try:
             if not self.use_websocket:
@@ -49,10 +49,10 @@ class ChatService:
         channel_url: str,
         name: str,
         user_ids: List[str],
-        cover_url: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-        user_profiles: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        cover_url: str | None = None,
+        data: Dict[str, Any | None] = None,
+        user_profiles: Dict[str, Dict[str, str | None]] = None,
+    ) -> Dict[str, Any | None]:
         """그룹 채널 생성"""
         if self.use_websocket:
             service = self._get_service()
@@ -81,10 +81,10 @@ class ChatService:
         channel_url: str,
         name: str,
         user_ids: List[str],
-        cover_url: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-        user_profiles: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        cover_url: str | None = None,
+        data: Dict[str, Any | None] = None,
+        user_profiles: Dict[str, Dict[str, str | None]] = None,
+    ) -> Dict[str, Any | None]:
         """그룹 채널 생성 (자동 참여)"""
         if self.use_websocket:
             # WebSocket은 create_channel에서 자동으로 멤버 추가
@@ -109,21 +109,21 @@ class ChatService:
                 user_profiles=user_profiles,
             )
 
-    async def get_channel_metadata(self, channel_url: str) -> Optional[Dict[str, Any]]:
+    async def get_channel_metadata(self, channel_url: str) -> Dict[str, Any | None]:
         """채널 메타데이터 조회"""
         service = self._get_service()
         return await service.get_channel_metadata(channel_url)
 
     async def update_channel_metadata(
         self, channel_url: str, data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any | None]:
         """채널 메타데이터 업데이트"""
         service = self._get_service()
         return await service.update_channel_metadata(channel_url, data)
 
     async def update_channel_cover_url(
         self, channel_url: str, cover_url: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any | None]:
         """채널 커버 이미지 URL 업데이트"""
         service = self._get_service()
         return await service.update_channel_cover_url(channel_url, cover_url)
@@ -164,7 +164,7 @@ class ChatService:
         service = self._get_service()
         return await service.update_user_profile(user_id, nickname, profile_url)
 
-    def get_websocket_service(self) -> Optional[WebSocketService]:
+    def get_websocket_service(self) -> WebSocketService | None:
         """WebSocket 서비스 인스턴스 반환 (WebSocket 엔드포인트에서 사용)"""
         if self.use_websocket:
             if not self.websocket_service:

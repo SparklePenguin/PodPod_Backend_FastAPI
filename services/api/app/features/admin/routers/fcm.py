@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -57,7 +56,7 @@ class SendNotificationRequest(BaseModel):
     )
     title: str = Field(serialization_alias="title", description="알림 제목")
     body: str = Field(serialization_alias="body", description="알림 내용")
-    data: Optional[dict] = Field(
+    data: dict | None = Field(
         default=None, serialization_alias="data", description="추가 데이터"
     )
 
@@ -78,8 +77,7 @@ class SendNotificationRequest(BaseModel):
     tags=["admin"],
 )
 async def send_test_notification(
-    request: SendNotificationRequest,
-    db: AsyncSession = Depends(get_session),
+    request: SendNotificationRequest, db: AsyncSession = Depends(get_session)
 ):
     """테스트용 FCM 알림 전송"""
     try:
@@ -111,10 +109,7 @@ async def send_test_notification(
 
         # 알림 전송
         success = await fcm_service.send_notification(
-            token=fcm_token,
-            title=request.title,
-            body=request.body,
-            data=request.data,
+            token=fcm_token, title=request.title, body=request.body, data=request.data
         )
 
         if success:
@@ -273,20 +268,20 @@ async def send_notification_by_type(
     notification_type: NotificationType = Query(
         ..., serialization_alias="notificationType", description="알림 타입"
     ),
-    party_name: Optional[str] = Query(
+    party_name: str | None = Query(
         default="왕코가나지",
         serialization_alias="partyName",
         description="파티 이름 (선택)",
     ),
-    nickname: Optional[str] = Query(
+    nickname: str | None = Query(
         default="테스트유저",
         serialization_alias="nickname",
         description="닉네임 (선택)",
     ),
-    pod_id: Optional[int] = Query(
+    pod_id: int | None = Query(
         default=20, serialization_alias="podId", description="파티 ID (선택)"
     ),
-    review_id: Optional[int] = Query(
+    review_id: int | None = Query(
         default=1, serialization_alias="reviewId", description="리뷰 ID (선택)"
     ),
     db: AsyncSession = Depends(get_session),

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,7 +95,9 @@ class UserService:
                 and existing_auth_provider_id == auth_provider_id
             ):
                 # 같은 provider의 같은 계정이면 중복 에러
-                raise SameOAuthProviderExistsException(provider=auth_provider or "unknown")
+                raise SameOAuthProviderExistsException(
+                    provider=auth_provider or "unknown"
+                )
             elif not auth_provider:
                 # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
                 raise EmailAlreadyExistsException(email=user_email)
@@ -165,7 +167,7 @@ class UserService:
     # - MARK: OAuth 사용자 조회
     async def get_user_by_auth_provider_id(
         self, auth_provider: str, auth_provider_id: str
-    ) -> Optional[UserDto]:
+    ) -> UserDto | None:
         """OAuth 프로바이더 ID로 사용자 조회"""
         user = await self._user_repo.get_by_auth_provider_id(
             auth_provider, auth_provider_id
@@ -351,7 +353,7 @@ class UserService:
             print(f"성향 결과 확인 오류 (user_id: {user_id}): {e}")
             return False
 
-    async def _get_user_tendency_type(self, user_id: int) -> Optional[str]:
+    async def _get_user_tendency_type(self, user_id: int) -> str | None:
         """사용자의 성향 타입 조회"""
         from sqlalchemy import select
 
@@ -410,7 +412,9 @@ class UserService:
                 )
             else:
                 # 본인 정보 조회 시: 팔로우 여부 없이 통계만
-                follow_stats = await self._follow_service.get_follow_stats(user.id, None)
+                follow_stats = await self._follow_service.get_follow_stats(
+                    user.id, None
+                )
             user_data["follow_stats"] = follow_stats
             user_data["is_following"] = follow_stats.is_following
         except Exception:
@@ -440,7 +444,7 @@ class UserService:
     # - MARK: 사용자 차단
     async def block_user(
         self, blocker_id: int, blocked_id: int
-    ) -> Optional[BlockUserResponse]:
+    ) -> BlockUserResponse | None:
         """사용자 차단 (팔로우 관계도 함께 삭제)"""
         # 차단할 사용자 존재 확인
         blocked_user = await self._user_repo.get_by_id(blocked_id)

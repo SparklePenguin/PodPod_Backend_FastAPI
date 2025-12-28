@@ -75,7 +75,9 @@ class TendencyInfo(BaseModel):
     main_type: str = Field(..., serialization_alias="mainType")
     sub_type: str = Field(..., serialization_alias="subType")
     speech_bubbles: List[str] = Field(..., serialization_alias="speechBubbles")
-    one_line_descriptions: List[str] = Field(..., serialization_alias="oneLineDescriptions")
+    one_line_descriptions: List[str] = Field(
+        ..., serialization_alias="oneLineDescriptions"
+    )
     detailed_description: str = Field(..., serialization_alias="detailedDescription")
     keywords: List[str] = Field(..., serialization_alias="keywords")
 

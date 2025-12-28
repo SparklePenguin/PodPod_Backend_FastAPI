@@ -8,10 +8,7 @@ class FollowRequest(BaseModel):
     """팔로우 요청 스키마"""
 
     following_id: int = Field(
-        ...,
-        serialization_alias="followingId",
-        description="팔로우할 사용자 ID",
-        examples=[1],
+        ..., serialization_alias="followingId", description="팔로우할 사용자 ID"
     )
 
 
@@ -19,16 +16,10 @@ class FollowResponse(BaseModel):
     """팔로우 응답 스키마"""
 
     follower_id: int = Field(
-        ...,
-        serialization_alias="followerId",
-        description="팔로우하는 사용자 ID",
-        examples=[1],
+        ..., serialization_alias="followerId", description="팔로우하는 사용자 ID"
     )
     following_id: int = Field(
-        ...,
-        serialization_alias="followingId",
-        description="팔로우받는 사용자 ID",
-        examples=[2],
+        ..., serialization_alias="followingId", description="팔로우받는 사용자 ID"
     )
     created_at: datetime = Field(
         ..., serialization_alias="createdAt", description="팔로우 생성 시간"
@@ -43,23 +34,17 @@ class FollowResponse(BaseModel):
 class SimpleUserDto(BaseModel):
     """간단한 사용자 정보 DTO"""
 
-    id: int = Field(..., description="사용자 ID", examples=[1])
-    nickname: str = Field(..., description="닉네임", examples=["홍길동"])
+    id: int = Field(..., description="사용자 ID")
+    nickname: str = Field(..., description="닉네임")
     profile_image: str = Field(
         ..., serialization_alias="profileImage", description="프로필 이미지 URL"
     )
-    intro: str = Field(..., description="자기소개", examples=["안녕하세요!"])
+    intro: str = Field(..., description="자기소개")
     tendency_type: str = Field(
-        ...,
-        serialization_alias="tendencyType",
-        description="덕메 성향 타입",
-        examples=["ACTIVE"],
+        ..., serialization_alias="tendencyType", description="덕메 성향 타입"
     )
     is_following: bool = Field(
-        default=False,
-        serialization_alias="isFollowing",
-        description="팔로우 여부",
-        examples=[False],
+        default=False, serialization_alias="isFollowing", description="팔로우 여부"
     )
 
     model_config = {
@@ -73,15 +58,12 @@ class FollowListResponse(BaseModel):
 
     users: List[SimpleUserDto] = Field(..., description="팔로우 사용자 목록")
     total_count: int = Field(
-        ..., serialization_alias="totalCount", description="총 팔로우 수", examples=[10]
+        ..., serialization_alias="totalCount", description="총 팔로우 수"
     )
-    page: int = Field(..., description="현재 페이지", examples=[1])
-    size: int = Field(..., description="페이지 크기", examples=[20])
+    page: int = Field(..., description="현재 페이지")
+    size: int = Field(..., description="페이지 크기")
     has_next: bool = Field(
-        ...,
-        serialization_alias="hasNext",
-        description="다음 페이지 존재 여부",
-        examples=[True],
+        ..., serialization_alias="hasNext", description="다음 페이지 존재 여부"
     )
 
     model_config = {
@@ -94,19 +76,13 @@ class FollowStatsResponse(BaseModel):
     """팔로우 통계 응답 스키마"""
 
     following_count: int = Field(
-        ...,
-        serialization_alias="followingCount",
-        description="팔로우하는 수",
-        examples=[10],
+        ..., serialization_alias="followingCount", description="팔로우하는 수"
     )
     followers_count: int = Field(
-        ..., serialization_alias="followersCount", description="팔로워 수", examples=[5]
+        ..., serialization_alias="followersCount", description="팔로워 수"
     )
     is_following: bool = Field(
-        ...,
-        serialization_alias="isFollowing",
-        description="팔로우 여부",
-        examples=[True],
+        ..., serialization_alias="isFollowing", description="팔로우 여부"
     )
 
     model_config = {
@@ -119,16 +95,10 @@ class FollowNotificationStatusResponse(BaseModel):
     """팔로우 알림 설정 상태 응답 스키마"""
 
     following_id: int = Field(
-        ...,
-        serialization_alias="followingId",
-        description="팔로우한 사용자 ID",
-        examples=[2],
+        ..., serialization_alias="followingId", description="팔로우한 사용자 ID"
     )
     notification_enabled: bool = Field(
-        ...,
-        serialization_alias="notificationEnabled",
-        description="알림 활성화 여부",
-        examples=[True],
+        ..., serialization_alias="notificationEnabled", description="알림 활성화 여부"
     )
 
     model_config = {
@@ -141,16 +111,10 @@ class FollowNotificationUpdateRequest(BaseModel):
     """팔로우 알림 설정 변경 요청 스키마"""
 
     following_id: int = Field(
-        ...,
-        serialization_alias="followingId",
-        description="팔로우한 사용자 ID",
-        examples=[2],
+        ..., serialization_alias="followingId", description="팔로우한 사용자 ID"
     )
     notification_enabled: bool = Field(
-        ...,
-        serialization_alias="notificationEnabled",
-        description="알림 활성화 여부",
-        examples=[True],
+        ..., serialization_alias="notificationEnabled", description="알림 활성화 여부"
     )
 
     model_config = {

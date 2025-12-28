@@ -3,7 +3,7 @@
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
 
@@ -47,7 +47,7 @@ async def get_error_codes():
     description="Google Sheets에서 에러 코드를 다시 로드합니다.",
 )
 async def reload_from_sheets(
-    spreadsheet_id: Optional[str] = None, range_name: Optional[str] = None
+    spreadsheet_id: str | None = None, range_name: str | None = None
 ):
     """Google Sheets에서 에러 코드를 다시 로드합니다."""
     try:
@@ -65,9 +65,7 @@ async def reload_from_sheets(
             )
 
         success = await load_error_codes_from_sheets(
-            spreadsheet_id=spreadsheet_id,
-            range_name=range_name,
-            force_reload=True,
+            spreadsheet_id=spreadsheet_id, range_name=range_name, force_reload=True
         )
 
         if success:

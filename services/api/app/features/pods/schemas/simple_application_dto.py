@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 from app.features.follow.schemas import SimpleUserDto
@@ -14,7 +12,7 @@ class SimpleApplicationDto(BaseModel):
         serialization_alias="status",
         description="신청 상태 (PENDING, APPROVED, REJECTED)",
     )
-    message: Optional[str] = Field(
+    message: str | None = Field(
         default=None, serialization_alias="message", description="신청 메시지"
     )
     applied_at: int = Field(

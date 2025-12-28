@@ -24,13 +24,10 @@ async def get_artists(
 
 
 @router.get(
-    "/{artist_id}",
-    response_model=BaseResponse[ArtistDto],
-    description="아티스트 조회",
+    "/{artist_id}", response_model=BaseResponse[ArtistDto], description="아티스트 조회"
 )
 async def get_artist(
-    artist_id: int,
-    service: ArtistService = Depends(get_artist_service),
+    artist_id: int, service: ArtistService = Depends(get_artist_service)
 ):
     result = await service.get_artist(artist_id)
     return BaseResponse.ok(result)

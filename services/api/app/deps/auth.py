@@ -1,5 +1,3 @@
-from typing import Optional
-
 from app.features.session.services.session_service import SessionService
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
@@ -16,7 +14,7 @@ refresh_token_header = APIKeyHeader(
 async def get_current_user_id(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    refresh_token: Optional[str] = Depends(refresh_token_header),
+    refresh_token: str | None = Depends(refresh_token_header),
 ) -> int:
     """
     Access Token으로 사용자 ID 조회

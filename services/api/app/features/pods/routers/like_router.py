@@ -11,9 +11,7 @@ from app.features.pods.services.pod_service import PodService
 router = APIRouter()
 
 
-def get_pod_service(
-    db: AsyncSession = Depends(get_session),
-) -> PodService:
+def get_pod_service(db: AsyncSession = Depends(get_session)) -> PodService:
     return PodService(db)
 
 

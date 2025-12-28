@@ -92,7 +92,9 @@ async def oauth_user_info_failed_handler(
     )
 
 
-async def oauth_state_invalid_handler(request: Request, exc: OAuthStateInvalidException):
+async def oauth_state_invalid_handler(
+    request: Request, exc: OAuthStateInvalidException
+):
     """OAuthStateInvalidException 처리: OAuth state가 유효하지 않은 경우"""
     logger.warning(f"OAuth state invalid: path={request.url.path}")
 

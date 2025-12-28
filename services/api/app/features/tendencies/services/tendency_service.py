@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.features.tendencies.models.tendency import (
     TendencyResult,
@@ -46,11 +46,13 @@ class TendencyService:
             calculation_result["tendency_type"]
         )
         if not tendency_result:
-            raise TendencyResultNotFoundException(calculation_result.get("tendency_type"))
+            raise TendencyResultNotFoundException(
+                calculation_result.get("tendency_type")
+            )
 
         # tendency_result가 None이 아님을 확인했으므로 안전하게 접근
-        tendency_info_dict = getattr(tendency_result, 'tendency_info', {})
-        description = getattr(tendency_result, 'description', '')
+        tendency_info_dict = getattr(tendency_result, "tendency_info", {})
+        description = getattr(tendency_result, "description", "")
 
         # Tendency 객체 생성
         return Tendency(
@@ -60,12 +62,8 @@ class TendencyService:
                 main_type=tendency_info_dict.get("mainType", ""),
                 sub_type=tendency_info_dict.get("subType", ""),
                 speech_bubbles=tendency_info_dict.get("speechBubbles", []),
-                one_line_descriptions=tendency_info_dict.get(
-                    "oneLineDescriptions", []
-                ),
-                detailed_description=tendency_info_dict.get(
-                    "detailedDescription", ""
-                ),
+                one_line_descriptions=tendency_info_dict.get("oneLineDescriptions", []),
+                detailed_description=tendency_info_dict.get("detailedDescription", ""),
                 keywords=tendency_info_dict.get("keywords", []),
             ),
         )
@@ -111,8 +109,7 @@ class TendencyService:
         # 각 답변에 대해 점수 계산
         for question_id, answer_id in answers.items():
             question = next(
-                (q for q in survey_data.questions if q["id"] == question_id),
-                None,
+                (q for q in survey_data.questions if q["id"] == question_id), None
             )
             if not question:
                 continue
@@ -170,9 +167,7 @@ class TendencyService:
             for result in tendency_results
         ]
 
-    async def get_tendency_result(
-        self, tendency_type: str
-    ) -> Optional[TendencyResultDto]:
+    async def get_tendency_result(self, tendency_type: str) -> TendencyResultDto | None:
         """특정 성향 테스트 결과 조회"""
         from sqlalchemy import select
 
@@ -191,7 +186,7 @@ class TendencyService:
         return TendencyResultDto.model_validate(tendency_result, from_attributes=True)
 
     # - MARK: 성향 테스트 설문 조회
-    async def get_tendency_survey(self) -> Optional[TendencySurveyDto]:
+    async def get_tendency_survey(self) -> TendencySurveyDto | None:
         """성향 테스트 설문 조회"""
         from sqlalchemy import select
 
@@ -206,7 +201,7 @@ class TendencyService:
     # - MARK: 사용자 성향 테스트 결과 조회
     async def get_user_tendency_result(
         self, user_id: int
-    ) -> Optional[UserTendencyResultDto]:
+    ) -> UserTendencyResultDto | None:
         """사용자의 성향 테스트 결과 조회"""
         from sqlalchemy import select
 

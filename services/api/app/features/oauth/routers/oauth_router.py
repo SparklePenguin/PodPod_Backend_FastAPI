@@ -25,9 +25,7 @@ security = HTTPBearer()
     status_code=307,
     description="카카오 로그인 시작 - 카카오 인증 페이지로 리다이렉트",
 )
-async def kakao_login_web(
-    service: OAuthService = Depends(get_oauth_service),
-):
+async def kakao_login_web(service: OAuthService = Depends(get_oauth_service)):
     kakao_auth_url = await service.get_auth_url(OAuthProvider.KAKAO)
     return RedirectResponse(url=kakao_auth_url)
 
@@ -60,8 +58,7 @@ async def kakao_callback(
     description="카카오 액세스 토큰을 통한 카카오 로그인",
 )
 async def kakao_login(
-    request: KakaoLoginRequest,
-    service: OAuthService = Depends(get_oauth_service),
+    request: KakaoLoginRequest, service: OAuthService = Depends(get_oauth_service)
 ):
     result = await service.sign_in_with_kakao(request)
     return BaseResponse.ok(result)
@@ -113,9 +110,7 @@ async def naver_callback(
     status_code=307,
     description="구글 로그인 시작 - 구글 인증 페이지로 리다이렉트",
 )
-async def google_login_web(
-    service: OAuthService = Depends(get_oauth_service),
-):
+async def google_login_web(service: OAuthService = Depends(get_oauth_service)):
     google_auth_url = await service.get_auth_url(OAuthProvider.GOOGLE)
     return RedirectResponse(url=google_auth_url)
 
@@ -147,8 +142,7 @@ async def google_callback(
     description="구글 ID 토큰을 통한 구글 로그인",
 )
 async def google_login(
-    payload: GoogleLoginRequest,
-    service: OAuthService = Depends(get_oauth_service),
+    payload: GoogleLoginRequest, service: OAuthService = Depends(get_oauth_service)
 ):
     result = await service.sign_in_with_google(payload)
     return BaseResponse.ok(result)
@@ -186,8 +180,7 @@ async def apple_callback(
     description="Apple ID 토큰을 통한 Apple 로그인",
 )
 async def apple_login(
-    payload: AppleLoginRequest,
-    service: OAuthService = Depends(get_oauth_service),
+    payload: AppleLoginRequest, service: OAuthService = Depends(get_oauth_service)
 ):
     audience = settings.APPLE_CLIENT_ID or "com.sparkle-penguin.podpod"
     result = await service.sign_in_with_apple(payload, audience=audience)

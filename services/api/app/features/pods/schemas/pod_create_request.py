@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,52 +12,23 @@ from app.features.pods.models.pod.pod_enums import (
 
 
 class PodCreateRequest(BaseModel):
-    title: str = Field(serialization_alias="title", examples=["string"])
-    description: Optional[str] = Field(
-        default=None,
-        serialization_alias="description",
-        examples=["string?"],
-    )
-    sub_categories: List[str] = Field(
-        serialization_alias="subCategories",
-        examples=[["string"]],
-    )
-    capacity: int = Field(
-        serialization_alias="capacity",
-        examples=[4],
-    )
-    place: str = Field(
-        serialization_alias="place",
-        examples=["string"],
-    )
+    title: str = Field(serialization_alias="title")
+    description: str | None = Field(default=None, serialization_alias="description")
+    sub_categories: List[str] = Field(serialization_alias="subCategories")
+    capacity: int = Field(serialization_alias="capacity")
+    place: str = Field(serialization_alias="place")
     address: str = Field(serialization_alias="address")
-    sub_address: Optional[str] = Field(
-        default=None, serialization_alias="subAddress", examples=["string?"]
+    sub_address: str | None = Field(default=None, serialization_alias="subAddress")
+    x: float | None = Field(
+        default=None, serialization_alias="x", description="경도 (longitude)"
     )
-    x: Optional[float] = Field(
-        default=None,
-        serialization_alias="x",
-        examples=[127.123456],
-        description="경도 (longitude)",
+    y: float | None = Field(
+        default=None, serialization_alias="y", description="위도 (latitude)"
     )
-    y: Optional[float] = Field(
-        default=None,
-        serialization_alias="y",
-        examples=[37.123456],
-        description="위도 (latitude)",
-    )
-    meetingDate: datetime.date = Field(
-        serialization_alias="meetingDate",
-        examples=["2025-01-01"],
-    )
-    meetingTime: datetime.time = Field(
-        serialization_alias="meetingTime",
-        examples=["24:00"],
-    )
-    selected_artist_id: Optional[int] = Field(
-        default=None,
-        serialization_alias="selectedArtistId",
-        examples=[1],
+    meetingDate: datetime.date = Field(serialization_alias="meetingDate")
+    meetingTime: datetime.time = Field(serialization_alias="meetingTime")
+    selected_artist_id: int | None = Field(
+        default=None, serialization_alias="selectedArtistId"
     )
 
     @field_validator("sub_categories")

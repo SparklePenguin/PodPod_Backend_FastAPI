@@ -13,10 +13,7 @@ class UserNotFoundException(DomainException):
     """사용자를 찾을 수 없는 경우"""
 
     def __init__(self, user_id: int):
-        super().__init__(
-            error_key="USER_NOT_FOUND",
-            format_params={"user_id": user_id},
-        )
+        super().__init__(error_key="USER_NOT_FOUND", format_params={"user_id": user_id})
         self.user_id = user_id
 
 
@@ -32,8 +29,7 @@ class EmailAlreadyExistsException(DomainException):
 
     def __init__(self, email: str):
         super().__init__(
-            error_key="EMAIL_ALREADY_EXISTS",
-            format_params={"email": email},
+            error_key="EMAIL_ALREADY_EXISTS", format_params={"email": email}
         )
         self.email = email
 
@@ -43,8 +39,7 @@ class SameOAuthProviderExistsException(DomainException):
 
     def __init__(self, provider: str):
         super().__init__(
-            error_key="SAME_OAUTH_PROVIDER_EXISTS",
-            format_params={"provider": provider},
+            error_key="SAME_OAUTH_PROVIDER_EXISTS", format_params={"provider": provider}
         )
         self.provider = provider
 
@@ -54,7 +49,6 @@ class ArtistNotFoundException(DomainException):
 
     def __init__(self, artist_id: int):
         super().__init__(
-            error_key="ARTIST_NOT_FOUND",
-            format_params={"artist_id": artist_id},
+            error_key="ARTIST_NOT_FOUND", format_params={"artist_id": artist_id}
         )
         self.artist_id = artist_id

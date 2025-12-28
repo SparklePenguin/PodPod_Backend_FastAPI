@@ -6,10 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.schemas import BaseResponse
 from app.core.database import get_session
 from app.core.http_status import HttpStatus
-from app.features.locations.schemas import (
-    LocationDto,
-    LocationResponse,
-)
+from app.features.locations.schemas import LocationDto, LocationResponse
 from app.features.locations.services.location_service import LocationService
 
 router = APIRouter()
@@ -26,9 +23,7 @@ def get_location_service(db: AsyncSession = Depends(get_session)) -> LocationSer
     description="전체 지역 정보와 인기 지역 정보를 조회합니다. (인기 지역이 맨 앞에 표시됩니다)",
     tags=["regions"],
 )
-async def get_all_locations(
-    service: LocationService = Depends(get_location_service),
-):
+async def get_all_locations(service: LocationService = Depends(get_location_service)):
     locations = await service.get_all_locations()
     return BaseResponse.ok(locations, message_ko="지역 정보 조회 성공", http_status=200)
 

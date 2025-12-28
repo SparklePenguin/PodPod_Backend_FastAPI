@@ -26,21 +26,9 @@ class UserReport(Base):
         index=True,
         comment="신고당한 사용자 ID",
     )
-    report_types = Column(
-        JSON,
-        nullable=False,
-        comment="신고 유형 ID 목록 (최대 3개)",
-    )
-    reason = Column(
-        String(500),
-        nullable=True,
-        comment="신고 이유 (추가 설명)",
-    )
-    blocked = Column(
-        Boolean,
-        nullable=False,
-        comment="신고와 함께 차단 여부",
-    )
+    report_types = Column(JSON, nullable=False, comment="신고 유형 ID 목록 (최대 3개)")
+    reason = Column(String(500), nullable=True, comment="신고 이유 (추가 설명)")
+    blocked = Column(Boolean, nullable=False, comment="신고와 함께 차단 여부")
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

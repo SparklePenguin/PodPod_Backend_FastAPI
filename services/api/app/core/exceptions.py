@@ -217,7 +217,7 @@ async def business_exception_handler(request: Request, exc: Exception):
     if not isinstance(exc, BusinessException):
         # BusinessException이 아닌 경우 일반 예외 핸들러로 위임
         return await general_exception_handler(request, exc)
-    
+
     logger.warning(f"Business Exception: {exc.error_code} - {exc.message_ko}")
 
     response = BaseResponse(

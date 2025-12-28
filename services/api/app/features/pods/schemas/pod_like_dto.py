@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 
 
 class PodLikeDto(BaseModel):
-    liked: bool = Field(serialization_alias="liked", examples=[True])
-    count: int = Field(serialization_alias="count", examples=[0])
+    liked: bool = Field(serialization_alias="liked")
+    count: int = Field(serialization_alias="count")
 
     model_config = {
         "from_attributes": True,

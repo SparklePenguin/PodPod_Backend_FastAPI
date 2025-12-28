@@ -19,8 +19,7 @@ security = HTTPBearer()
     description="세션 생성 (이메일 로그인 + 소셜 로그인 통합)",
 )
 async def create_session(
-    login_data: LoginRequest,
-    session: AsyncSession = Depends(get_session),
+    login_data: LoginRequest, session: AsyncSession = Depends(get_session)
 ):
     service = SessionService(session)
     result = await service.login(login_data)
@@ -43,14 +42,9 @@ async def delete_session(
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
 
-@router.put(
-    "",
-    response_model=BaseResponse[dict],
-    description="토큰 갱신",
-)
+@router.put("", response_model=BaseResponse[dict], description="토큰 갱신")
 async def refresh_session(
-    refresh_data: TokenRefreshRequest,
-    session: AsyncSession = Depends(get_session),
+    refresh_data: TokenRefreshRequest, session: AsyncSession = Depends(get_session)
 ):
     from app.core.security import (
         TokenBlacklistedError,

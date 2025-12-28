@@ -1,39 +1,20 @@
-from typing import Optional
-
-from fastapi import (
-    APIRouter,
-    Body,
-    Depends,
-    File,
-    Form,
-    Path,
-    Query,
-    UploadFile,
-)
+from fastapi import APIRouter, Body, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.schemas import (
-    BaseResponse,
-    PageDto,
-)
+from app.common.schemas import BaseResponse, PageDto
 from app.core.database import get_session
 from app.core.error_codes import get_error_info
 from app.core.http_status import HttpStatus
 from app.core.services.scheduler_service import scheduler
 from app.deps.auth import get_current_user_id
-from app.features.pods.schemas import (
-    PodCreateRequest,
-    PodDto,
-)
+from app.features.pods.schemas import PodCreateRequest, PodDto
 from app.features.pods.schemas.pod_dto import PodSearchRequest
 from app.features.pods.services.pod_service import PodService
 
 router = APIRouter(dependencies=[])
 
 
-def get_pod_service(
-    db: AsyncSession = Depends(get_session),
-) -> PodService:
+def get_pod_service(db: AsyncSession = Depends(get_session)) -> PodService:
     return PodService(db)
 
 
@@ -46,10 +27,8 @@ def get_pod_service(
 )
 async def create_pod(
     title: str = Form(..., serialization_alias="title", description="파티 제목"),
-    description: Optional[str] = Form(
-        ...,
-        serialization_alias="description",
-        description="파티 설명",
+    description: str | None = Form(
+        ..., serialization_alias="description", description="파티 설명"
     ),
     sub_categories: list[str] = Form(
         [],
@@ -61,13 +40,13 @@ async def create_pod(
     ),
     place: str = Form(..., serialization_alias="place", description="장소명"),
     address: str = Form(..., serialization_alias="address", description="주소"),
-    sub_address: Optional[str] = Form(
+    sub_address: str | None = Form(
         None, serialization_alias="subAddress", description="상세 주소"
     ),
-    x: Optional[float] = Form(
+    x: float | None = Form(
         None, serialization_alias="x", description="경도 (longitude)"
     ),
-    y: Optional[float] = Form(
+    y: float | None = Form(
         None, serialization_alias="y", description="위도 (latitude)"
     ),
     # 이제 meetingDate 하나로 UTC datetime을 받음
@@ -77,9 +56,7 @@ async def create_pod(
         description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     ),
     selected_artist_id: int = Form(
-        ...,
-        serialization_alias="selectedArtistId",
-        description="선택된 아티스트 ID",
+        ..., serialization_alias="selectedArtistId", description="선택된 아티스트 ID"
     ),
     images: list[UploadFile] = File(
         ..., serialization_alias="images", description="파티 이미지 리스트"
@@ -126,11 +103,7 @@ async def create_pod(
         selected_artist_id=selected_artist_id,
     )
 
-    pod = await service.create_pod(
-        owner_id=user_id,
-        req=req,
-        images=images,
-    )
+    pod = await service.create_pod(owner_id=user_id, req=req, images=images)
     if pod is None:
         error_info = get_error_info("POD_CREATION_FAILED")
         return BaseResponse.error(
@@ -140,10 +113,7 @@ async def create_pod(
             message_ko=error_info.message_ko,
             message_en=error_info.message_en,
         )
-    return BaseResponse.ok(
-        data=pod,
-        http_status=HttpStatus.CREATED,
-    )
+    return BaseResponse.ok(data=pod, http_status=HttpStatus.CREATED)
 
 
 # - MARK: 인기 파티 조회
@@ -184,7 +154,7 @@ async def get_trending_pods(
 )
 async def get_closing_soon_pods(
     selected_artist_id: int = Query(..., serialization_alias="selectedArtistId"),
-    location: Optional[str] = None,
+    location: str | None = None,
     page: int = Query(
         1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
     ),
@@ -279,7 +249,7 @@ async def get_history_based_pods(
 )
 async def get_popular_categories_pods(
     selected_artist_id: int = Query(..., serialization_alias="selectedArtistId"),
-    location: Optional[str] = None,
+    location: str | None = None,
     page: int = Query(
         1, ge=1, serialization_alias="page", description="페이지 번호 (1부터 시작)"
     ),
@@ -418,7 +388,7 @@ async def get_user_pods(
     size: int = Query(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
-    userId: Optional[int] = Query(
+    userId: int | None = Query(
         None,
         serialization_alias="userId",
         description="조회할 사용자 ID (없으면 현재 로그인한 사용자)",
@@ -597,7 +567,7 @@ async def get_pod_reviews(
 async def get_pod_detail(
     pod_id: int,
     pod_service: PodService = Depends(get_pod_service),
-    user_id: Optional[int] = Depends(get_current_user_id),
+    user_id: int | None = Depends(get_current_user_id),
 ):
     pod = await pod_service.get_pod_detail(pod_id, user_id)
     if pod is None:
@@ -629,48 +599,44 @@ async def get_pod_detail(
 )
 async def update_pod(
     pod_id: int,
-    title: Optional[str] = Form(
+    title: str | None = Form(
         None, serialization_alias="title", description="파티 제목"
     ),
-    description: Optional[str] = Form(
+    description: str | None = Form(
         None, serialization_alias="description", description="파티 설명"
     ),
-    sub_categories: Optional[list[str]] = Form(
+    sub_categories: list[str | None] = Form(
         None, serialization_alias="subCategories", description="서브 카테고리"
     ),
-    capacity: Optional[int] = Form(
+    capacity: int | None = Form(
         None, serialization_alias="capacity", description="최대 인원수"
     ),
-    place: Optional[str] = Form(
-        None, serialization_alias="place", description="장소명"
-    ),
-    address: Optional[str] = Form(
-        None, serialization_alias="address", description="주소"
-    ),
-    sub_address: Optional[str] = Form(
+    place: str | None = Form(None, serialization_alias="place", description="장소명"),
+    address: str | None = Form(None, serialization_alias="address", description="주소"),
+    sub_address: str | None = Form(
         None, serialization_alias="subAddress", description="상세 주소"
     ),
-    x: Optional[float] = Form(
+    x: float | None = Form(
         None, serialization_alias="x", description="경도 (longitude)"
     ),
-    y: Optional[float] = Form(
+    y: float | None = Form(
         None, serialization_alias="y", description="위도 (latitude)"
     ),
     # 이제 meetingDate 하나로 UTC datetime을 받음
-    meeting_date: Optional[str] = Form(
+    meeting_date: str | None = Form(
         None,
         serialization_alias="meetingDate",
         description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     ),
-    selected_artist_id: Optional[int] = Form(
+    selected_artist_id: int | None = Form(
         None, serialization_alias="selectedArtistId", description="선택된 아티스트 ID"
     ),
-    image_orders: Optional[str] = Form(
+    image_orders: str | None = Form(
         None,
         serialization_alias="imageOrders",
         description="이미지 순서 JSON 문자열 (기존: {type: 'existing', url: '...'}, 신규: {type: 'new', fileIndex: 0})",
     ),
-    new_images: Optional[list[UploadFile]] = File(
+    new_images: list[UploadFile | None] = File(
         None,
         serialization_alias="newImages",
         description="새로 업로드할 이미지 파일 리스트",
@@ -770,10 +736,7 @@ async def update_pod(
     description="특정 파티를 삭제합니다.",
     tags=["pods"],
 )
-async def delete_pod(
-    pod_id: int,
-    pod_service: PodService = Depends(get_pod_service),
-):
+async def delete_pod(pod_id: int, pod_service: PodService = Depends(get_pod_service)):
     await pod_service.delete_pod(pod_id)
     return BaseResponse.ok(http_status=HttpStatus.NO_CONTENT)
 
@@ -806,9 +769,7 @@ async def delete_pod(
 )
 async def update_pod_status(
     pod_id: int,
-    request: dict = Body(
-        ..., description="상태 업데이트 요청", examples=[{"status": "COMPLETED"}]
-    ),
+    request: dict = Body(..., description="상태 업데이트 요청"),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
@@ -883,7 +844,7 @@ async def update_pod_status(
 )
 async def delete_pod_member(
     pod_id: int,
-    user_id: Optional[str] = Query(
+    user_id: str | None = Query(
         default=None,
         description="삭제할 사용자 ID (없으면 현재 사용자)",
         serialization_alias="userId",
@@ -909,10 +870,7 @@ async def delete_pod_member(
     else:
         message = "파티에서 성공적으로 나갔습니다."
 
-    return BaseResponse.ok(
-        data=result,
-        message_ko=message,
-    )
+    return BaseResponse.ok(data=result, message_ko=message)
 
 
 @router.post(
@@ -921,9 +879,7 @@ async def delete_pod_member(
     description="파티 시작 임박 알림 스케줄러를 수동으로 실행합니다.",
     tags=["pods"],
 )
-async def test_scheduler(
-    db: AsyncSession = Depends(get_session),
-):
+async def test_scheduler(db: AsyncSession = Depends(get_session)):
     """스케줄러 테스트"""
     try:
         await scheduler._send_start_soon_reminders(db)
@@ -940,9 +896,7 @@ async def test_scheduler(
     description="모든 파티 정보를 조회합니다.",
     tags=["pods"],
 )
-async def debug_pods(
-    db: AsyncSession = Depends(get_session),
-):
+async def debug_pods(db: AsyncSession = Depends(get_session)):
     """파티 디버그"""
     from sqlalchemy import select
 
@@ -979,9 +933,7 @@ async def debug_pods(
     description="파티 88번의 날짜를 오늘로 수정합니다.",
     tags=["pods"],
 )
-async def fix_pod88_date(
-    db: AsyncSession = Depends(get_session),
-):
+async def fix_pod88_date(db: AsyncSession = Depends(get_session)):
     """파티 88번 날짜 수정"""
     from datetime import date
 
@@ -1020,9 +972,7 @@ async def fix_pod88_date(
     description="리뷰 유도 알림을 수동으로 전송합니다.",
     tags=["pods"],
 )
-async def test_review_notification(
-    db: AsyncSession = Depends(get_session),
-):
+async def test_review_notification(db: AsyncSession = Depends(get_session)):
     """리뷰 알림 테스트"""
     try:
         await scheduler._send_day_reminders(db)
@@ -1039,9 +989,7 @@ async def test_review_notification(
     description="relatedId가 null인 알림들을 삭제합니다.",
     tags=["pods"],
 )
-async def cleanup_null_notifications(
-    db: AsyncSession = Depends(get_session),
-):
+async def cleanup_null_notifications(db: AsyncSession = Depends(get_session)):
     """null 알림 정리"""
     from sqlalchemy import delete
 
@@ -1070,9 +1018,7 @@ async def cleanup_null_notifications(
     description="CHAT_MESSAGE_RECEIVED 알림들을 삭제합니다.",
     tags=["pods"],
 )
-async def cleanup_chat_notifications(
-    db: AsyncSession = Depends(get_session),
-):
+async def cleanup_chat_notifications(db: AsyncSession = Depends(get_session)):
     """채팅 메시지 알림 정리"""
     from sqlalchemy import delete
 
@@ -1103,9 +1049,7 @@ async def cleanup_chat_notifications(
     description="POD_START_SOON 알림들을 조회합니다.",
     tags=["pods"],
 )
-async def debug_notifications(
-    db: AsyncSession = Depends(get_session),
-):
+async def debug_notifications(db: AsyncSession = Depends(get_session)):
     """알림 디버그"""
     from sqlalchemy import select
 

@@ -16,10 +16,7 @@ class PodRating(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     rating = Column(Integer, nullable=False)  # 1-5점 평점
     review = Column(String(500), nullable=True)  # 리뷰 내용
-    created_at = Column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

@@ -1,7 +1,13 @@
 import logging
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
+
+# 프로젝트 루트를 Python 경로에 추가 (shared 모듈 import를 위해)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -12,8 +18,7 @@ from app.core.exceptions import (
     general_exception_handler,
     http_exception_handler,
     validation_exception_handler,
-    value_error_handler,
-)
+    value_error_handler)
 from app.core.exception_loader import register_exception_handlers
 from app.core.logging_config import setup_logging
 from app.core.startup import startup_events, sync_startup_events
@@ -60,8 +65,7 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="소셜 로그인을 지원하는 FastAPI 백엔드",
     lifespan=lifespan,
-    root_path=settings.ROOT_PATH if hasattr(settings, "ROOT_PATH") else "",
-)
+    root_path=settings.ROOT_PATH if hasattr(settings, "ROOT_PATH") else "")
 
 # Prometheus 메트릭 수집 설정
 Instrumentator().instrument(app).expose(app)
@@ -90,8 +94,7 @@ app.add_middleware(
         "Origin",
         "Access-Control-Request-Method",
         "Access-Control-Request-Headers",
-    ],
-)
+    ])
 
 # 로깅 미들웨어 추가
 app.add_middleware(LoggingMiddleware)
@@ -145,14 +148,11 @@ app.add_exception_handler(Exception, cast(Any, general_exception_handler))  # ty
 register_exception_handlers(app)
 
 # 정적 파일 서빙 설정
-# main.py 기준 절대 경로 사용 (프로젝트 루트에서 uvicorn 실행 시에도 동작)
+# 환경별 uploads 디렉토리 사용 (config.py에서 설정됨)
+UPLOADS_DIR = settings.UPLOADS_DIR
 BASE_DIR = Path(__file__).resolve().parent
 
-# uploads 디렉토리가 없으면 생성
-UPLOADS_DIR = BASE_DIR / "uploads"
-UPLOADS_DIR.mkdir(exist_ok=True)
-
-app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR)), name="static")
 
 # API 라우터 포함

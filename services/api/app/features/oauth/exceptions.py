@@ -26,8 +26,7 @@ class OAuthTokenInvalidException(DomainException):
 
     def __init__(self, provider: str):
         super().__init__(
-            error_key="OAUTH_TOKEN_INVALID",
-            format_params={"provider": provider},
+            error_key="OAUTH_TOKEN_INVALID", format_params={"provider": provider}
         )
         self.provider = provider
 
@@ -37,8 +36,7 @@ class OAuthUserInfoFailedException(DomainException):
 
     def __init__(self, provider: str):
         super().__init__(
-            error_key="OAUTH_USER_INFO_FAILED",
-            format_params={"provider": provider},
+            error_key="OAUTH_USER_INFO_FAILED", format_params={"provider": provider}
         )
         self.provider = provider
 

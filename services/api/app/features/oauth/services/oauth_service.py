@@ -21,13 +21,9 @@ from app.features.oauth.schemas.google_login_request import GoogleLoginRequest
 from app.features.oauth.schemas.kakao_login_request import KakaoLoginRequest
 from app.features.oauth.schemas.oauth_provider import OAuthProvider
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
-from app.features.oauth.services.apple_oauth_service import (
-    AppleOAuthService,
-)
+from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
-from app.features.oauth.services.kakao_oauth_service import (
-    KakaoOAuthService,
-)
+from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
 from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.session.services.session_service import SessionService
 from app.features.users.repositories import UserRepository
@@ -53,7 +49,7 @@ class OAuthService:
         """Google 로그인 처리"""
         # Google 토큰 검증
         oauth_user_info = await self._google_service.get_google_user_info(
-            request.id_token,
+            request.id_token
         )
 
         return await self.handle_oauth_login(
@@ -65,9 +61,7 @@ class OAuthService:
 
     # MARK: - 애플 토큰 로그인
     async def sign_in_with_apple(
-        self,
-        request: AppleLoginRequest,
-        audience: str = "com.sparkle-penguin.podpod",
+        self, request: AppleLoginRequest, audience: str = "com.sparkle-penguin.podpod"
     ) -> LoginInfoDto:
         """Apple 로그인 처리"""
         try:
@@ -159,9 +153,7 @@ class OAuthService:
 
             sign_in_response = await self.sign_in_with_apple(
                 AppleLoginRequest(
-                    identity_token=id_token,
-                    authorization_code=code,
-                    user=user_dict,
+                    identity_token=id_token, authorization_code=code, user=user_dict
                 ),
                 audience=apple_client_id,
             )
@@ -245,8 +237,7 @@ class OAuthService:
         """OAuth 로그인 통합 처리"""
         # 1. 기존 사용자 확인
         user = await self._user_repo.get_by_auth_provider_id(
-            auth_provider=oauth_provider,
-            auth_provider_id=oauth_provider_id,
+            auth_provider=oauth_provider, auth_provider_id=oauth_provider_id
         )
 
         if user:

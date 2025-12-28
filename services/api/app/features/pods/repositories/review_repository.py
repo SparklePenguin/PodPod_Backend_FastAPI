@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, desc, func
 from sqlalchemy.orm import selectinload
-from typing import Optional, List, Tuple
+from typing import List, Tuple
 from app.features.pods.models.pod_review import PodReview
 from app.features.pods.models.pod import Pod
 from app.features.pods.models.pod.pod_member import PodMember
@@ -15,23 +15,20 @@ class PodReviewCRUD:
 
     async def create_review(
         self, pod_id: int, user_id: int, rating: int, content: str
-    ) -> Optional[PodReview]:
+    ) -> PodReview | None:
         """후기 생성"""
         review = PodReview(
-            pod_id=pod_id,
-            user_id=user_id,
-            rating=rating,
-            content=content,
+            pod_id=pod_id, user_id=user_id, rating=rating, content=content
         )
         self.db.add(review)
         await self.db.commit()
         await self.db.refresh(review)
 
         # 관계 로딩을 위해 다시 조회
-        review_id = getattr(review, 'id')
+        review_id = getattr(review, "id")
         return await self.get_review_by_id(review_id)
 
-    async def get_review_by_id(self, review_id: int) -> Optional[PodReview]:
+    async def get_review_by_id(self, review_id: int) -> PodReview | None:
         """ID로 후기 조회"""
         query = (
             select(PodReview)
@@ -43,7 +40,7 @@ class PodReviewCRUD:
 
     async def get_review_by_pod_and_user(
         self, pod_id: int, user_id: int
-    ) -> Optional[PodReview]:
+    ) -> PodReview | None:
         """파티와 사용자로 후기 조회"""
         query = (
             select(PodReview)
@@ -118,15 +115,15 @@ class PodReviewCRUD:
 
     async def update_review(
         self, review_id: int, rating: int, content: str
-    ) -> Optional[PodReview]:
+    ) -> PodReview | None:
         """후기 수정"""
         query = select(PodReview).where(PodReview.id == review_id)
         result = await self.db.execute(query)
         review = result.scalar_one_or_none()
 
         if review:
-            setattr(review, 'rating', rating)
-            setattr(review, 'content', content)
+            setattr(review, "rating", rating)
+            setattr(review, "content", content)
             await self.db.commit()
             await self.db.refresh(review)
             return review
@@ -208,10 +205,7 @@ class PodReviewCRUD:
 
         # 총 리뷰 수 조회
         count_query = select(func.count(PodReview.id)).where(
-            and_(
-                PodReview.pod_id.in_(all_pod_ids),
-                PodReview.user_id != user_id,
-            )
+            and_(PodReview.pod_id.in_(all_pod_ids), PodReview.user_id != user_id)
         )
         count_result = await self.db.execute(count_query)
         total_count = count_result.scalar() or 0

@@ -3,18 +3,22 @@ API v1 Router
 모든 feature router를 통합하는 메인 라우터
 """
 
-from fastapi import APIRouter
+# Admin routers
+from app.features.admin.routers.error_codes import router as error_codes_router
+from app.features.admin.routers.fcm import router as fcm_router
+from app.features.admin.routers.sendbird import router as sendbird_router
 
 # Artists routers
 from app.features.artists.routers.artist_router import router as artists_router
-from app.features.artists.routers.artist_schedule_router import router as schedules_router
-from app.features.artists.routers.artist_suggestion_router import router as suggestions_router
+from app.features.artists.routers.artist_schedule_router import (
+    router as schedules_router,
+)
+from app.features.artists.routers.artist_suggestion_router import (
+    router as suggestions_router,
+)
 
-# Auth routers
-from app.features.oauth.routers.oauth_router import router as oauths_router
-
-# Session router
-from app.features.session.routers.session_router import router as sessions_router
+# Chat router (WebSocket)
+from app.features.chat.routers.websocket_router import router as chat_websocket_router
 
 # Follow router
 from app.features.follow.routers.follow_router import router as follow_router
@@ -23,7 +27,12 @@ from app.features.follow.routers.follow_router import router as follow_router
 from app.features.locations.routers.location_router import router as locations_router
 
 # Notifications router
-from app.features.notifications.routers.notification_router import router as notifications_router
+from app.features.notifications.routers.notification_router import (
+    router as notifications_router,
+)
+
+# Auth routers
+from app.features.oauth.routers.oauth_router import router as oauths_router
 
 # Pods routers
 from app.features.pods.routers.like_router import router as pod_likes_router
@@ -34,27 +43,25 @@ from app.features.pods.routers.review_router import router as pod_reviews_router
 # Reports router
 from app.features.reports.routers.report_router import router as reports_router
 
-# Tendencies routers
-from app.features.tendencies.routers.survey_router import router as surveys_router
-from app.features.tendencies.routers.tendency_router import router as tendencies_router
-
-# Users routers
-from app.features.users.routers.user_router import router as users_router
-from app.features.users.routers.profile_image_router import router as profile_images_router
+# Session router
+from app.features.session.routers.session_router import router as sessions_router
 
 # System routers
 from app.features.system.routers.health import router as health_router
 
-# Admin routers
-from app.features.admin.routers.error_codes import router as error_codes_router
-from app.features.admin.routers.fcm import router as fcm_router
-from app.features.admin.routers.sendbird import router as sendbird_router
+# Tendencies routers
+from app.features.tendencies.routers.survey_router import router as surveys_router
+from app.features.tendencies.routers.tendency_router import router as tendencies_router
+from app.features.users.routers.profile_image_router import (
+    router as profile_images_router,
+)
+
+# Users routers
+from app.features.users.routers.user_router import router as users_router
 
 # Webhooks router
 from app.features.webhooks.routers.webhook_router import router as webhooks_router
-
-# Chat router (WebSocket)
-from app.features.chat.routers.websocket_router import router as chat_websocket_router
+from fastapi import APIRouter
 
 # 메인 API 라우터 생성
 api_router = APIRouter()
@@ -81,7 +88,9 @@ api_router.include_router(surveys_router, prefix="/surveys", tags=["surveys"])
 api_router.include_router(pods_router, prefix="/pods", tags=["pods"])
 api_router.include_router(pod_likes_router, prefix="/pods", tags=["pods"])
 api_router.include_router(recruitments_router, prefix="/pods", tags=["pods"])
-api_router.include_router(pod_reviews_router, prefix="/pod-reviews", tags=["pod-reviews"])
+api_router.include_router(
+    pod_reviews_router, prefix="/pod-reviews", tags=["pod-reviews"]
+)
 
 # 팔로우 관련 라우터 (features/follow)
 api_router.include_router(follow_router, prefix="/follow", tags=["follow"])

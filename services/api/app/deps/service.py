@@ -26,7 +26,5 @@ def get_artist_suggestion_service(
     return ArtistSuggestionService(session)
 
 
-def get_oauth_service(
-    session: AsyncSession = Depends(get_session),
-) -> OAuthService:
+def get_oauth_service(session: AsyncSession = Depends(get_session)) -> OAuthService:
     return OAuthService(session)

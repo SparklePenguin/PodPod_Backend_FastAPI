@@ -19,8 +19,7 @@ class ArtistNotFoundException(DomainException):
 
     def __init__(self, artist_id: int):
         super().__init__(
-            error_key="ARTIST_NOT_FOUND",
-            format_params={"artist_id": artist_id},
+            error_key="ARTIST_NOT_FOUND", format_params={"artist_id": artist_id}
         )
         self.artist_id = artist_id
 

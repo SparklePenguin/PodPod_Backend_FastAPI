@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +13,9 @@ class ArtistSuggestionRepository:
     async def create_suggestion(
         self,
         artist_name: str,
-        reason: Optional[str] = None,
-        email: Optional[str] = None,
-        user_id: Optional[int] = None,
+        reason: str | None = None,
+        email: str | None = None,
+        user_id: int | None = None,
     ) -> ArtistSuggestion:
         """아티스트 제안 생성"""
         suggestion = ArtistSuggestion(
@@ -26,9 +26,7 @@ class ArtistSuggestionRepository:
         await self.db.refresh(suggestion)
         return suggestion
 
-    async def get_suggestion_by_id(
-        self, suggestion_id: int
-    ) -> Optional[ArtistSuggestion]:
+    async def get_suggestion_by_id(self, suggestion_id: int) -> ArtistSuggestion | None:
         """ID로 제안 조회"""
         query = select(ArtistSuggestion).where(ArtistSuggestion.id == suggestion_id)
         result = await self.db.execute(query)

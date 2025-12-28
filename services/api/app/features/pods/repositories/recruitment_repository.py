@@ -44,7 +44,7 @@ class RecruitmentCRUD:
         current_member_count = member_count_q.scalar() or 0
 
         # capacity 체크 (owner는 이미 포함되어 있으므로 role이 member인 경우만 체크)
-        pod_capacity = getattr(pod, 'capacity', 0) or 0
+        pod_capacity = getattr(pod, "capacity", 0) or 0
         if role == "member" and current_member_count >= pod_capacity:
             raise ValueError("파티 정원이 가득 찼습니다")
 

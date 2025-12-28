@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
@@ -12,21 +11,13 @@ class ArtistSuggestionCreateRequest(BaseModel):
         min_length=1,
         max_length=100,
         description="아티스트명",
-        examples=["아이유"],
         serialization_alias="artistName",
     )
-    reason: Optional[str] = Field(
-        None,
-        max_length=1000,
-        description="추천 이유",
-        examples=["음악이 정말 좋아요!"],
-        serialization_alias="reason",
+    reason: str | None = Field(
+        None, max_length=1000, description="추천 이유", serialization_alias="reason"
     )
-    email: Optional[EmailStr] = Field(
-        None,
-        description="이메일 주소",
-        examples=["user@example.com"],
-        serialization_alias="email",
+    email: EmailStr | None = Field(
+        None, description="이메일 주소", serialization_alias="email"
     )
 
     @model_validator(mode="before")
@@ -53,33 +44,21 @@ class ArtistSuggestionCreateRequest(BaseModel):
 class ArtistSuggestionDto(BaseModel):
     """아티스트 제안 응답 DTO"""
 
-    id: int = Field(..., serialization_alias="id", description="제안 ID", examples=[1])
+    id: int = Field(..., serialization_alias="id", description="제안 ID")
     artist_name: str = Field(
-        ...,
-        serialization_alias="artistName",
-        description="아티스트명",
-        examples=["아이유"],
+        ..., serialization_alias="artistName", description="아티스트명"
     )
-    reason: Optional[str] = Field(
-        None,
-        serialization_alias="reason",
-        description="추천 이유",
-        examples=["음악이 정말 좋아요!"],
+    reason: str | None = Field(
+        None, serialization_alias="reason", description="추천 이유"
     )
-    email: Optional[str] = Field(
-        None,
-        serialization_alias="email",
-        description="이메일 주소",
-        examples=["user@example.com"],
+    email: str | None = Field(
+        None, serialization_alias="email", description="이메일 주소"
     )
-    user_id: Optional[int] = Field(
-        None, serialization_alias="userId", description="제안한 사용자 ID", examples=[7]
+    user_id: int | None = Field(
+        None, serialization_alias="userId", description="제안한 사용자 ID"
     )
     created_at: datetime = Field(
-        ...,
-        serialization_alias="createdAt",
-        description="생성일시",
-        examples=["2025-09-30T10:00:00Z"],
+        ..., serialization_alias="createdAt", description="생성일시"
     )
 
     class Config:
@@ -91,14 +70,9 @@ class ArtistSuggestionRankingDto(BaseModel):
     """아티스트 제안 순위 DTO"""
 
     artist_name: str = Field(
-        ...,
-        serialization_alias="artistName",
-        description="아티스트명",
-        examples=["아이유"],
+        ..., serialization_alias="artistName", description="아티스트명"
     )
-    count: int = Field(
-        ..., serialization_alias="count", description="요청 횟수", examples=[15]
-    )
+    count: int = Field(..., serialization_alias="count", description="요청 횟수")
 
     class Config:
         from_attributes = True

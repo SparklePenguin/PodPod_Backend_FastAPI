@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,7 +114,7 @@ class UserService:
     # - MARK: OAuth 사용자 조회
     async def get_user_by_auth_provider_id(
         self, auth_provider: str, auth_provider_id: str
-    ) -> Optional[UserDto]:
+    ) -> UserDto | None:
         """OAuth 프로바이더 ID로 사용자 조회"""
         user = await self.user_crud.get_by_auth_provider_id(
             auth_provider, auth_provider_id
@@ -302,7 +302,7 @@ class UserService:
             print(f"성향 결과 확인 오류 (user_id: {user_id}): {e}")
             return False
 
-    async def _get_user_tendency_type(self, user_id: int) -> Optional[str]:
+    async def _get_user_tendency_type(self, user_id: int) -> str | None:
         """사용자의 성향 타입 조회"""
         from sqlalchemy import select
 
@@ -391,7 +391,7 @@ class UserService:
     # - MARK: 사용자 차단
     async def block_user(
         self, blocker_id: int, blocked_id: int
-    ) -> Optional[BlockUserResponse]:
+    ) -> BlockUserResponse | None:
         """사용자 차단 (팔로우 관계도 함께 삭제)"""
         # 차단할 사용자 존재 확인
         blocked_user = await self.user_crud.get_by_id(blocked_id)

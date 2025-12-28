@@ -4,7 +4,7 @@ FCM 푸시 알림 메시지 스키마
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
@@ -70,11 +70,7 @@ class PodNotiSubType(Enum):
         "pod_id",
     )
     # 7. 파티 취소 (대상: 파티원)
-    POD_CANCELED = (
-        "😢 [party_name] 모임이 취소되었어요.",
-        ["party_name"],
-        "pod_id",
-    )
+    POD_CANCELED = ("😢 [party_name] 모임이 취소되었어요.", ["party_name"], "pod_id")
     # 8. 신청한 파티 시작 1시간 전 (대상: 사용자)
     POD_START_SOON = (
         "⏰ [party_name] 모임이 한 시간 뒤 시작돼요. 준비되셨나요?",
@@ -315,19 +311,19 @@ class NotificationBase(BaseModel):
     body: str = Field(serialization_alias="body")
     type: str = Field(serialization_alias="type")
     value: str = Field(serialization_alias="value")
-    related_id: Optional[int] = Field(default=None, serialization_alias="relatedId")
+    related_id: int | None = Field(default=None, serialization_alias="relatedId")
 
 
 class NotificationResponse(NotificationBase):
     """알림 응답 스키마"""
 
     id: int = Field(serialization_alias="id")
-    related_user: Optional[SimpleUserDto] = Field(
+    related_user: SimpleUserDto | None = Field(
         default=None,
         serialization_alias="relatedUser",
         description="관련 유저 (Optional)",
     )
-    related_pod: Optional[SimplePodDto] = Field(
+    related_pod: SimplePodDto | None = Field(
         default=None,
         serialization_alias="relatedPod",
         description="관련 파티 (Optional)",
@@ -337,7 +333,7 @@ class NotificationResponse(NotificationBase):
         description="알림 카테고리 (POD, COMMUNITY, NOTICE)",
     )
     is_read: bool = Field(serialization_alias="isRead")
-    read_at: Optional[datetime] = Field(
+    read_at: datetime | None = Field(
         default=None, serialization_alias="readAt", description="읽은 시간 (Optional)"
     )
     created_at: datetime = Field(
@@ -345,7 +341,7 @@ class NotificationResponse(NotificationBase):
     )
 
     @field_serializer("read_at", "created_at")
-    def serialize_datetime(self, dt: Optional[datetime], _info) -> Optional[int]:
+    def serialize_datetime(self, dt: datetime | None, _info) -> int | None:
         """datetime을 timestamp(밀리초)로 변환"""
         if dt is None:
             return None

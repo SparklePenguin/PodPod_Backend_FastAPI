@@ -28,11 +28,7 @@ class ArtistSchedule(Base):
     artist_ko_name = Column(
         String(100), nullable=False, index=True, comment="아티스트 한글명"
     )
-    type = Column(
-        Integer,
-        nullable=False,
-        comment="일정 유형",
-    )
+    type = Column(Integer, nullable=False, comment="일정 유형")
     start_time = Column(
         BigInteger, nullable=False, index=True, comment="일정 시작 시간 (밀리초)"
     )

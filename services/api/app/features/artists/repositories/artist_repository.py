@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,38 +11,29 @@ class ArtistRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_unit_id(self, unit_id: int) -> Optional[Artist]:
+    async def get_by_unit_id(self, unit_id: int) -> Artist | None:
         """unit_id로 아티스트 찾기"""
         result = await self.db.execute(
             select(Artist)
-            .options(
-                selectinload(Artist.images),
-                selectinload(Artist.names),
-            )
+            .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.unit_id == unit_id)
         )
         return result.scalar_one_or_none()
 
-    async def get_by_id(self, artist_id: int) -> Optional[Artist]:
+    async def get_by_id(self, artist_id: int) -> Artist | None:
         """artist_id로 아티스트 찾기"""
         result = await self.db.execute(
             select(Artist)
-            .options(
-                selectinload(Artist.images),
-                selectinload(Artist.names),
-            )
+            .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.id == artist_id)
         )
         return result.scalar_one_or_none()
 
-    async def get_by_name(self, name: str) -> Optional[Artist]:
+    async def get_by_name(self, name: str) -> Artist | None:
         """이름으로 아티스트 찾기"""
         result = await self.db.execute(
             select(Artist)
-            .options(
-                selectinload(Artist.images),
-                selectinload(Artist.names),
-            )
+            .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.name == name)
         )
         return result.scalar_one_or_none()
@@ -70,10 +61,7 @@ class ArtistRepository:
 
         query = (
             select(Artist)
-            .options(
-                selectinload(Artist.images),
-                selectinload(Artist.names),
-            )
+            .options(selectinload(Artist.images), selectinload(Artist.names))
             .where(Artist.id.in_(artist_ids))
         )
         result = await self.db.execute(query)

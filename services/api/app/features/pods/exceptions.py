@@ -13,10 +13,7 @@ class PodNotFoundException(DomainException):
     """파티를 찾을 수 없는 경우"""
 
     def __init__(self, pod_id: int):
-        super().__init__(
-            error_key="POD_NOT_FOUND",
-            format_params={"pod_id": pod_id},
-        )
+        super().__init__(error_key="POD_NOT_FOUND", format_params={"pod_id": pod_id})
         self.pod_id = pod_id
 
 
@@ -37,8 +34,7 @@ class PodAlreadyClosedException(DomainException):
 
     def __init__(self, pod_id: int):
         super().__init__(
-            error_key="POD_ALREADY_CLOSED",
-            format_params={"pod_id": pod_id},
+            error_key="POD_ALREADY_CLOSED", format_params={"pod_id": pod_id}
         )
         self.pod_id = pod_id
 
@@ -47,10 +43,7 @@ class PodIsFullException(DomainException):
     """파티가 가득 찬 경우"""
 
     def __init__(self, pod_id: int):
-        super().__init__(
-            error_key="POD_IS_FULL",
-            format_params={"pod_id": pod_id},
-        )
+        super().__init__(error_key="POD_IS_FULL", format_params={"pod_id": pod_id})
         self.pod_id = pod_id
 
 
@@ -107,8 +100,7 @@ class ReviewNotFoundException(DomainException):
 
     def __init__(self, review_id: int):
         super().__init__(
-            error_key="REVIEW_NOT_FOUND",
-            format_params={"review_id": review_id},
+            error_key="REVIEW_NOT_FOUND", format_params={"review_id": review_id}
         )
         self.review_id = review_id
 

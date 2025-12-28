@@ -1,13 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -40,11 +33,7 @@ class PodApplication(Base):
         default=lambda: int(datetime.now(timezone.utc).timestamp()),
         comment="신청 시간 (Unix timestamp)",
     )
-    reviewed_at = Column(
-        Integer,
-        nullable=True,
-        comment="검토 시간 (Unix timestamp)",
-    )
+    reviewed_at = Column(Integer, nullable=True, comment="검토 시간 (Unix timestamp)")
     reviewed_by = Column(
         Integer,
         ForeignKey("users.id"),
@@ -52,10 +41,7 @@ class PodApplication(Base):
         comment="검토한 사용자 ID (파티 개설자)",
     )
     is_hidden = Column(
-        Boolean,
-        nullable=False,
-        default=False,
-        comment="파티장이 숨김 처리했는지 여부",
+        Boolean, nullable=False, default=False, comment="파티장이 숨김 처리했는지 여부"
     )
 
     # 관계 설정

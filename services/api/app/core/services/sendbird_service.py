@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import sendbird_platform_sdk
 from sendbird_platform_sdk.api import group_channel_api
@@ -33,10 +33,10 @@ class SendbirdService:
         channel_url: str,
         name: str,
         user_ids: List[str],
-        cover_url: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-        user_profiles: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        cover_url: str | None = None,
+        data: Dict[str, Any | None] = None,
+        user_profiles: Dict[str, Dict[str, str | None]] = None,
+    ) -> Dict[str, Any | None]:
         """
         그룹 채팅방 생성 (join_by_user_id: true 옵션 포함)
 
@@ -107,10 +107,10 @@ class SendbirdService:
         channel_url: str,
         name: str,
         user_ids: List[str],
-        cover_url: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-        user_profiles: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        cover_url: str | None = None,
+        data: Dict[str, Any | None] = None,
+        user_profiles: Dict[str, Dict[str, str | None]] = None,
+    ) -> Dict[str, Any | None]:
         """
         그룹 채팅방 생성
 
@@ -193,7 +193,7 @@ class SendbirdService:
             logger.error(f"상세 오류: {traceback.format_exc()}")
             return None
 
-    async def get_channel_metadata(self, channel_url: str) -> Optional[Dict[str, Any]]:
+    async def get_channel_metadata(self, channel_url: str) -> Dict[str, Any | None]:
         """
         채널 메타데이터 조회
 
@@ -234,7 +234,7 @@ class SendbirdService:
 
     async def update_channel_metadata(
         self, channel_url: str, data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any | None]:
         """
         채널 메타데이터 업데이트
 
@@ -279,7 +279,7 @@ class SendbirdService:
 
     async def update_channel_cover_url(
         self, channel_url: str, cover_url: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any | None]:
         """
         채널 커버 이미지 URL 업데이트
 

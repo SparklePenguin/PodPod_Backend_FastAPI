@@ -24,16 +24,8 @@ class PodReview(Base):
         index=True,
         comment="작성자 ID",
     )
-    rating = Column(
-        Integer,
-        nullable=False,
-        comment="별점 (1-5)",
-    )
-    content = Column(
-        Text,
-        nullable=False,
-        comment="후기 내용",
-    )
+    rating = Column(Integer, nullable=False, comment="별점 (1-5)")
+    content = Column(Text, nullable=False, comment="후기 내용")
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),

@@ -1,6 +1,5 @@
 import math
 from datetime import datetime, time, timezone
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,7 +45,7 @@ class PodReviewService:
 
     async def create_review(
         self, user_id: int, request: PodReviewCreateRequest
-    ) -> Optional[PodReviewDto]:
+    ) -> PodReviewDto | None:
         """후기 생성"""
         try:
             # 이미 작성한 후기가 있는지 확인
@@ -73,7 +72,7 @@ class PodReviewService:
             review_id = getattr(review, "id", None)
             if review_id is None:
                 raise ValueError("후기 생성 후 ID를 가져올 수 없습니다.")
-                
+
             logger.info(f"후기 생성 성공: review_id={review_id}")
 
             # 리뷰 생성 알림 전송
@@ -89,7 +88,7 @@ class PodReviewService:
             )
             raise
 
-    async def get_review_by_id(self, review_id: int) -> Optional[PodReviewDto]:
+    async def get_review_by_id(self, review_id: int) -> PodReviewDto | None:
         """ID로 후기 조회"""
         review = await self.crud.get_review_by_id(review_id)
         if not review:
@@ -173,7 +172,7 @@ class PodReviewService:
 
     async def update_review(
         self, review_id: int, user_id: int, request: PodReviewUpdateRequest
-    ) -> Optional[PodReviewDto]:
+    ) -> PodReviewDto | None:
         """후기 수정"""
         # 후기 존재 및 작성자 확인
         review = await self.crud.get_review_by_id(review_id)
@@ -186,9 +185,7 @@ class PodReviewService:
 
         # 후기 수정
         updated_review = await self.crud.update_review(
-            review_id=review_id,
-            rating=request.rating,
-            content=request.content,
+            review_id=review_id, rating=request.rating, content=request.content
         )
 
         if not updated_review:
@@ -260,13 +257,15 @@ class PodReviewService:
                         or getattr(review.pod, "image_url", None)
                         if hasattr(review, "pod") and review.pod
                         else None
-                    ) or "",
+                    )
+                    or "",
                     sub_categories=sub_categories,
                     meeting_place=(
                         getattr(review.pod, "place", None)
                         if hasattr(review, "pod") and review.pod
                         else None
-                    ) or "",
+                    )
+                    or "",
                     meeting_date=_convert_to_combined_timestamp(
                         (
                             getattr(review.pod, "meeting_date", None)
@@ -278,7 +277,8 @@ class PodReviewService:
                             if hasattr(review, "pod") and review.pod
                             else None
                         ),
-                    ) or 0,
+                    )
+                    or 0,
                 )
             except Exception as e:
                 logger.error(f"SimplePodDto 생성 중 오류: {e}")
@@ -313,7 +313,9 @@ class PodReviewService:
                         )
                         user_tendency = result.scalar_one_or_none()
                         if user_tendency:
-                            user_tendency_type = getattr(user_tendency, "tendency_type", None) or ""
+                            user_tendency_type = (
+                                getattr(user_tendency, "tendency_type", None) or ""
+                            )
                         else:
                             user_tendency_type = ""
 
@@ -360,18 +362,20 @@ class PodReviewService:
             review_content = getattr(review, "content", "") or ""
             review_created_at = getattr(review, "created_at", None)
             review_updated_at = getattr(review, "updated_at", None)
-            
+
             if review_id is None or review_rating is None:
                 raise ValueError("후기 정보가 올바르지 않습니다.")
-            
+
             if review_created_at is None:
                 from datetime import datetime, timezone
+
                 review_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
-            
+
             if review_updated_at is None:
                 from datetime import datetime, timezone
+
                 review_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-            
+
             result = PodReviewDto(
                 id=review_id,
                 pod=simple_pod,
@@ -430,12 +434,12 @@ class PodReviewService:
             fcm_service = FCMService()
 
             # 파티장에게만 알림 전송 (리뷰 작성자가 파티장이 아닌 경우)
-            owner_id = getattr(owner, 'id', None)
+            owner_id = getattr(owner, "id", None)
             if owner_id is not None and owner_id != reviewer_id:
                 try:
-                    owner_fcm_token = getattr(owner, 'fcm_token', None) or ''
-                    reviewer_nickname = getattr(reviewer, 'nickname', '') or ''
-                    pod_title = getattr(pod, 'title', '') or ''
+                    owner_fcm_token = getattr(owner, "fcm_token", None) or ""
+                    reviewer_nickname = getattr(reviewer, "nickname", "") or ""
+                    pod_title = getattr(pod, "title", "") or ""
                     if owner_fcm_token:
                         await fcm_service.send_review_created(
                             token=owner_fcm_token,
@@ -459,19 +463,25 @@ class PodReviewService:
 
             # 리뷰 작성자 제외 참여자들에게 REVIEW_OTHERS_CREATED 알림 전송
             participants = await self.pod_crud.get_pod_participants(pod_id)
-            pod_owner_id = getattr(pod, 'owner_id', None)
-            reviewer_nickname = getattr(reviewer, 'nickname', '') or ''
+            pod_owner_id = getattr(pod, "owner_id", None)
+            reviewer_nickname = getattr(reviewer, "nickname", "") or ""
             for participant in participants:
                 # 리뷰 작성자 제외
-                participant_id = getattr(participant, 'id', None)
+                participant_id = getattr(participant, "id", None)
                 if participant_id is not None and participant_id == reviewer_id:
                     continue
                 # 파티장은 이미 REVIEW_CREATED를 받았으므로 제외
-                if participant_id is not None and pod_owner_id is not None and participant_id == pod_owner_id:
+                if (
+                    participant_id is not None
+                    and pod_owner_id is not None
+                    and participant_id == pod_owner_id
+                ):
                     continue
 
                 try:
-                    participant_fcm_token = getattr(participant, 'fcm_token', None) or ''
+                    participant_fcm_token = (
+                        getattr(participant, "fcm_token", None) or ""
+                    )
                     if participant_fcm_token:
                         await fcm_service.send_review_others_created(
                             token=participant_fcm_token,

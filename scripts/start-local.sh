@@ -529,4 +529,4 @@ export CONFIG_FILE="config.dev.yaml"
 
 # uvicorn으로 서버 실행 (가상환경 + Infisical)
 # Infisical에서 민감한 환경변수를 로드합니다
-infisical run --env=dev --path=/backend -- python -m uvicorn main:app --host 0.0.0.0 --port "$PORT" --reload
+cd services/api && infisical run --env=dev --path=/backend -- python -m uvicorn main:app --host 0.0.0.0 --port "$PORT" --reload

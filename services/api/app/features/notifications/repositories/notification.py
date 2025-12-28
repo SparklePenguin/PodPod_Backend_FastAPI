@@ -5,7 +5,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.orm import selectinload
-from typing import Optional, List
+from typing import List
 from datetime import datetime, timezone
 
 from app.features.notifications.models.notification import Notification
@@ -22,9 +22,9 @@ class NotificationCRUD:
         body: str,
         notification_type: str,
         notification_value: str,
-        related_user_id: Optional[int] = None,
-        related_pod_id: Optional[int] = None,
-        related_id: Optional[str] = None,
+        related_user_id: int | None = None,
+        related_pod_id: int | None = None,
+        related_id: str | None = None,
         category: str = "pod",
     ) -> Notification:
         """알림 생성"""
@@ -46,7 +46,7 @@ class NotificationCRUD:
 
     async def get_by_id(
         self, db: AsyncSession, notification_id: int
-    ) -> Optional[Notification]:
+    ) -> Notification | None:
         """ID로 알림 조회"""
         result = await db.execute(
             select(Notification).where(Notification.id == notification_id)
@@ -60,7 +60,7 @@ class NotificationCRUD:
         skip: int = 0,
         limit: int = 20,
         unread_only: bool = False,
-        category: Optional[str] = None,
+        category: str | None = None,
     ) -> List[Notification]:
         """
         사용자의 알림 목록 조회
@@ -96,7 +96,7 @@ class NotificationCRUD:
         db: AsyncSession,
         user_id: int,
         unread_only: bool = False,
-        category: Optional[str] = None,
+        category: str | None = None,
     ) -> int:
         """
         사용자의 전체 알림 개수 조회
@@ -126,7 +126,7 @@ class NotificationCRUD:
 
     async def mark_as_read(
         self, db: AsyncSession, notification_id: int, user_id: int
-    ) -> Optional[Notification]:
+    ) -> Notification | None:
         """
         알림을 읽음 처리
 
@@ -144,14 +144,20 @@ class NotificationCRUD:
         result = await db.execute(query)
         notification = result.scalar_one_or_none()
 
-        notification_user_id = getattr(notification, 'user_id', None) if notification else None
+        notification_user_id = (
+            getattr(notification, "user_id", None) if notification else None
+        )
         if not notification or notification_user_id != user_id:
             return None
 
-        notification_is_read = getattr(notification, 'is_read', False) if notification else False
+        notification_is_read = (
+            getattr(notification, "is_read", False) if notification else False
+        )
         if not bool(notification_is_read):
-            setattr(notification, 'is_read', True)
-            setattr(notification, 'read_at', datetime.now(timezone.utc).replace(tzinfo=None))
+            setattr(notification, "is_read", True)
+            setattr(
+                notification, "read_at", datetime.now(timezone.utc).replace(tzinfo=None)
+            )
             await db.commit()
             # refresh는 관계를 무효화할 수 있으므로, 관계를 다시 로드하기 위해 다시 쿼리
             query = select(Notification).where(Notification.id == notification_id)
@@ -199,7 +205,9 @@ class NotificationCRUD:
         """
         notification = await self.get_by_id(db, notification_id)
 
-        notification_user_id = getattr(notification, 'user_id', None) if notification else None
+        notification_user_id = (
+            getattr(notification, "user_id", None) if notification else None
+        )
         if not notification or notification_user_id != user_id:
             return False
 

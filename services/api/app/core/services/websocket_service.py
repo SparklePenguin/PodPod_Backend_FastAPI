@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -69,7 +69,10 @@ class ConnectionManager:
         return False
 
     async def broadcast_to_channel(
-        self, message: Dict[str, Any], channel_url: str, exclude_user_id: Optional[int] = None
+        self,
+        message: Dict[str, Any],
+        channel_url: str,
+        exclude_user_id: int | None = None,
     ):
         """채널의 모든 사용자에게 메시지 브로드캐스트"""
         if channel_url not in self.active_connections:
@@ -115,9 +118,9 @@ class WebSocketService:
         channel_url: str,
         name: str,
         user_ids: List[str],
-        cover_url: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        cover_url: str | None = None,
+        data: Dict[str, Any | None] = None,
+    ) -> Dict[str, Any | None]:
         """
         채널 생성 (메타데이터만 저장, 실제 연결은 WebSocket 연결 시)
 
@@ -149,13 +152,13 @@ class WebSocketService:
             logger.error(f"WebSocket 채널 생성 실패: {e}")
             return None
 
-    async def get_channel_metadata(self, channel_url: str) -> Optional[Dict[str, Any]]:
+    async def get_channel_metadata(self, channel_url: str) -> Dict[str, Any | None]:
         """채널 메타데이터 조회"""
         return self.connection_manager.channel_metadata.get(channel_url)
 
     async def update_channel_metadata(
         self, channel_url: str, data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any | None]:
         """채널 메타데이터 업데이트"""
         if channel_url in self.connection_manager.channel_metadata:
             self.connection_manager.channel_metadata[channel_url].update(data)
@@ -164,7 +167,7 @@ class WebSocketService:
 
     async def update_channel_cover_url(
         self, channel_url: str, cover_url: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any | None]:
         """채널 커버 이미지 URL 업데이트"""
         return await self.update_channel_metadata(channel_url, {"cover_url": cover_url})
 
@@ -267,11 +270,7 @@ class WebSocketService:
         return True
 
     async def send_message(
-        self,
-        channel_url: str,
-        user_id: int,
-        message: str,
-        message_type: str = "MESG",
+        self, channel_url: str, user_id: int, message: str, message_type: str = "MESG"
     ) -> bool:
         """메시지 전송"""
         try:

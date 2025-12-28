@@ -3,23 +3,14 @@ Form 데이터 파싱 유틸리티 함수들
 multipart/form-data에서 Pydantic 모델로 변환하는 헬퍼 함수들
 """
 
-from typing import (
-    Type,
-    TypeVar,
-    Optional,
-    Any,
-    Dict,
-    Union,
-    List,
-    get_origin,
-    get_args,
-)
-from datetime import date, time, datetime
-from fastapi import Request, UploadFile
-from fastapi.exceptions import RequestValidationError
-from fastapi.datastructures import FormData
-from pydantic import BaseModel
 import json
+from datetime import date, datetime, time
+from typing import Any, Dict, List, Type, TypeVar, Union, get_args, get_origin
+
+from fastapi import Request, UploadFile
+from fastapi.datastructures import FormData
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -29,9 +20,7 @@ class FormParser:
 
     @staticmethod
     async def parse_model_from_form(
-        request: Request,
-        model_class: Type[T],
-        json_field_name: str = "data",
+        request: Request, model_class: Type[T], json_field_name: str = "data"
     ) -> T:
         """
         multipart/form-data에서 Pydantic 모델로 파싱
@@ -59,7 +48,11 @@ class FormParser:
                 elif isinstance(json_value, UploadFile):
                     # UploadFile인 경우 읽어서 문자열로 변환
                     content = await json_value.read()
-                    json_str = content.decode('utf-8') if isinstance(content, bytes) else content
+                    json_str = (
+                        content.decode("utf-8")
+                        if isinstance(content, bytes)
+                        else content
+                    )
                     json_data = json.loads(json_str)
                 else:
                     # 기타 타입은 문자열로 변환 후 파싱
@@ -92,7 +85,7 @@ class FormParser:
                 [
                     {
                         "type": "value_error",
-                        "loc": ("body",),
+                        "loc": ("body"),
                         "msg": error_msg,
                     }
                 ]
@@ -123,7 +116,9 @@ class FormParser:
             field_type = field_info.annotation
             if field_type is None:
                 # 타입이 없으면 문자열로 처리
-                parsed_data[field_name] = str(field_value) if isinstance(field_value, str) else field_value
+                parsed_data[field_name] = (
+                    str(field_value) if isinstance(field_value, str) else field_value
+                )
             else:
                 # UploadFile이 아닌 경우에만 파싱
                 if isinstance(field_value, str):
@@ -137,9 +132,7 @@ class FormParser:
         return parsed_data
 
     @staticmethod
-    def _get_missing_fields(
-        form_data: FormData, model_class: Type[T]
-    ) -> List[str]:
+    def _get_missing_fields(form_data: FormData, model_class: Type[T]) -> List[str]:
         """누락된 필수 필드들을 찾아서 반환"""
         missing_fields = []
         model_fields = model_class.model_fields
@@ -167,7 +160,7 @@ class FormParser:
         origin = get_origin(field_type)
         if origin is Union:
             args = get_args(field_type)
-            # Optional[str] 같은 경우 None을 제외한 타입을 찾음
+            # str | None 같은 경우 None을 제외한 타입을 찾음
             non_none_types = [arg for arg in args if arg is not type(None)]
             if non_none_types:
                 return FormParser._parse_field_value(value, non_none_types[0])
@@ -212,7 +205,7 @@ async def parse_form_to_model(
         @app.post("/create-pod/")
         async def create_pod(
             request: Request,
-            image: Optional[UploadFile] = File(None)
+            image: UploadFile | None = File(None)
         ):
             req = await parse_form_to_model(request, PodCreateRequest)
             # ... 나머지 로직
@@ -226,7 +219,7 @@ async def get_form_field(request: Request, field_name: str, default: Any = None)
     return form_data.get(field_name, default)
 
 
-async def get_form_file(request: Request, field_name: str) -> Optional[UploadFile]:
+async def get_form_file(request: Request, field_name: str) -> UploadFile | None:
     """Form에서 특정 파일을 가져오는 편의 함수"""
     form_data = await request.form()
     file_field = form_data.get(field_name)

@@ -1,8 +1,9 @@
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from fastapi import UploadFile
+
+from app.core.config import settings
 
 
 async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
@@ -31,8 +32,18 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
         # 파일 포인터를 다시 처음으로 되돌리기
         await upload_file.seek(0)
 
-        # 파일 URL 반환 (상대 경로)
-        return f"/{destination}/{unique_filename}"
+        # 파일 URL 반환 (uploads 경로 기준)
+        # destination에서 uploads 이후 경로 추출
+        upload_dir_path = Path(destination)
+        uploads_dir_path = Path(settings.UPLOADS_DIR)
+
+        # 상대 경로 계산 (uploads 디렉토리 기준)
+        try:
+            relative_path = upload_dir_path.relative_to(uploads_dir_path)
+            return f"/uploads/{relative_path}/{unique_filename}"
+        except ValueError:
+            # 상대 경로 계산 실패 시 기본 경로 사용
+            return f"/uploads/{unique_filename}"
 
     except Exception as e:
         raise Exception(f"파일 업로드 실패: {str(e)}")
@@ -119,8 +130,9 @@ async def upload_artist_image(image: UploadFile) -> dict:
     # 파일 포인터를 다시 처음으로
     await image.seek(0)
 
-    # 파일 저장
-    file_path = await save_upload_file(image, "uploads/artists")
+    # 파일 저장 (환경별 uploads 디렉토리 사용)
+    artists_dir = Path(settings.UPLOADS_DIR) / "artists"
+    file_path = await save_upload_file(image, str(artists_dir))
 
     # 파일 ID 생성 (UUID)
     file_id = str(uuid.uuid4())
@@ -156,7 +168,8 @@ async def upload_profile_image(image: UploadFile) -> str:
     # 파일 포인터를 다시 처음으로
     await image.seek(0)
 
-    # 파일 저장
-    file_path = await save_upload_file(image, "uploads/profiles")
+    # 파일 저장 (환경별 uploads 디렉토리 사용)
+    profiles_dir = Path(settings.UPLOADS_DIR) / "profiles"
+    file_path = await save_upload_file(image, str(profiles_dir))
 
     return file_path

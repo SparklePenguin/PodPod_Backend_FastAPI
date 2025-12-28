@@ -1,19 +1,17 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.features.artists.models.artist_schedule import (
-    ArtistSchedule,
-)
+from app.features.artists.models.artist_schedule import ArtistSchedule
 
 
 class ArtistScheduleRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_schedule_by_id(self, schedule_id: int) -> Optional[ArtistSchedule]:
+    async def get_schedule_by_id(self, schedule_id: int) -> ArtistSchedule | None:
         """ID로 스케줄 조회"""
         query = (
             select(ArtistSchedule)
@@ -31,15 +29,14 @@ class ArtistScheduleRepository:
         self,
         page: int = 1,
         size: int = 20,
-        artist_id: Optional[int] = None,
-        unit_id: Optional[int] = None,
-        schedule_type: Optional[int] = None,
+        artist_id: int | None = None,
+        unit_id: int | None = None,
+        schedule_type: int | None = None,
     ) -> Tuple[list[ArtistSchedule], int]:
         """스케줄 목록 조회 (페이지네이션)"""
         # 기본 쿼리
         query = select(ArtistSchedule).options(
-            selectinload(ArtistSchedule.members),
-            selectinload(ArtistSchedule.contents),
+            selectinload(ArtistSchedule.members), selectinload(ArtistSchedule.contents)
         )
 
         # 필터 조건 추가

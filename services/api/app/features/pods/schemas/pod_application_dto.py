@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
 
 from app.features.follow.schemas import SimpleUserDto
@@ -9,7 +7,7 @@ class PodApplicationDto(BaseModel):
     id: int = Field(serialization_alias="id", description="신청서 ID")
     podId: int = Field(serialization_alias="podId", description="파티 ID")
     user: SimpleUserDto = Field(serialization_alias="user", description="신청자 정보")
-    message: Optional[str] = Field(
+    message: str | None = Field(
         default=None, serialization_alias="message", description="참여 신청 메시지"
     )
     status: str = Field(
@@ -19,12 +17,12 @@ class PodApplicationDto(BaseModel):
     appliedAt: int = Field(
         serialization_alias="appliedAt", description="신청 시간 (Unix timestamp)"
     )
-    reviewedAt: Optional[int] = Field(
+    reviewedAt: int | None = Field(
         default=None,
         serialization_alias="reviewedAt",
         description="검토 시간 (Unix timestamp)",
     )
-    reviewedBy: Optional[SimpleUserDto] = Field(
+    reviewedBy: SimpleUserDto | None = Field(
         default=None, serialization_alias="reviewedBy", description="검토자 정보"
     )
 

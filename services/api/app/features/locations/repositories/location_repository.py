@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ class LocationCRUD:
 
     async def get_location_by_main_location(
         self, main_location: str
-    ) -> Optional[Location]:
+    ) -> Location | None:
         """주요 지역으로 지역 정보 조회"""
         result = await self.db.execute(
             select(Location).where(Location.main_location == main_location)
@@ -40,7 +40,7 @@ class LocationCRUD:
 
     async def update_location(
         self, location_id: int, main_location: str, sub_locations: List[str]
-    ) -> Optional[Location]:
+    ) -> Location | None:
         """지역 정보 수정"""
         result = await self.db.execute(
             select(Location).where(Location.id == location_id)
@@ -48,8 +48,10 @@ class LocationCRUD:
         location = result.scalar_one_or_none()
 
         if location:
-            setattr(location, 'main_location', main_location)
-            setattr(location, 'sub_locations', json.dumps(sub_locations, ensure_ascii=False))
+            setattr(location, "main_location", main_location)
+            setattr(
+                location, "sub_locations", json.dumps(sub_locations, ensure_ascii=False)
+            )
             await self.db.commit()
             await self.db.refresh(location)
 

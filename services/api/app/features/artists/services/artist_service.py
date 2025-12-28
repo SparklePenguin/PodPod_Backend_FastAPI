@@ -15,10 +15,7 @@ class ArtistService:
         artist = await self.artist_repo.get_by_id(artist_id)
         if not artist:
             raise ArtistNotFoundException(artist_id)
-        return ArtistDto.model_validate(
-            artist,
-            from_attributes=True,
-        )
+        return ArtistDto.model_validate(artist, from_attributes=True)
 
     # - MARK: 아티스트 목록 조회
     async def get_artists(
@@ -30,16 +27,9 @@ class ArtistService:
         )
 
         artist_dtos = [
-            ArtistDto.model_validate(
-                artist,
-                from_attributes=True,
-            )
-            for artist in artists
+            ArtistDto.model_validate(artist, from_attributes=True) for artist in artists
         ]
 
         return PageDto.create(
-            items=artist_dtos,
-            page=page,
-            size=size,
-            total_count=total_count,
+            items=artist_dtos, page=page, size=size, total_count=total_count
         )

@@ -4,7 +4,6 @@
 
 import logging
 import math
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,9 +13,7 @@ from app.core.http_status import HttpStatus
 from app.deps.auth import get_current_user_id
 from app.deps.database import get_session
 from app.features.follow.schemas import SimpleUserDto
-from app.features.notifications.repositories.notification import (
-    notification_crud,
-)
+from app.features.notifications.repositories.notification import notification_crud
 from app.features.notifications.repositories.notification_repository import (
     NotificationResponse,
     NotificationUnreadCountResponse,
@@ -41,7 +38,7 @@ async def get_notifications(
         20, ge=1, le=100, serialization_alias="size", description="페이지 크기 (1~100)"
     ),
     unread_only: bool = Query(False, description="읽지 않은 알림만 조회할지 여부"),
-    category: Optional[str] = Query(
+    category: str | None = Query(
         None, description="카테고리 필터 (pod, community, notice)"
     ),
     current_user_id: int = Depends(get_current_user_id),
@@ -222,9 +219,7 @@ async def mark_notification_as_read(
     db: AsyncSession = Depends(get_session),
 ):
     notification = await notification_crud.mark_as_read(
-        db=db,
-        notification_id=notification_id,
-        user_id=current_user_id,
+        db=db, notification_id=notification_id, user_id=current_user_id
     )
 
     if not notification:
@@ -338,8 +333,7 @@ async def mark_all_notifications_as_read(
     db: AsyncSession = Depends(get_session),
 ):
     updated_count = await notification_crud.mark_all_as_read(
-        db=db,
-        user_id=current_user_id,
+        db=db, user_id=current_user_id
     )
 
     return BaseResponse.ok(
@@ -360,9 +354,7 @@ async def delete_notification(
     db: AsyncSession = Depends(get_session),
 ):
     success = await notification_crud.delete_notification(
-        db=db,
-        notification_id=notification_id,
-        user_id=current_user_id,
+        db=db, notification_id=notification_id, user_id=current_user_id
     )
 
     if not success:
@@ -388,8 +380,7 @@ async def delete_all_read_notifications(
     db: AsyncSession = Depends(get_session),
 ):
     deleted_count = await notification_crud.delete_all_read_notifications(
-        db=db,
-        user_id=current_user_id,
+        db=db, user_id=current_user_id
     )
 
     return BaseResponse.ok(

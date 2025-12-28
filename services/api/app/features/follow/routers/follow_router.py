@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,9 +21,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/",
-    response_model=BaseResponse[FollowResponse],
-    description="사용자 팔로우",
+    "/", response_model=BaseResponse[FollowResponse], description="사용자 팔로우"
 )
 async def follow_user(
     request: FollowRequest,
@@ -116,10 +112,7 @@ async def get_followers_list(
 ):
     follow_service = FollowService(db)
     followers_list = await follow_service.get_followers_list(
-        user_id=current_user_id,
-        current_user_id=current_user_id,
-        page=page,
-        size=size,
+        user_id=current_user_id, current_user_id=current_user_id, page=page, size=size
     )
 
     return BaseResponse.ok(
@@ -137,7 +130,7 @@ async def get_followers_list(
 )
 async def get_follow_stats(
     user_id: int = Path(..., description="사용자 ID"),
-    current_user_id: Optional[int] = Depends(get_current_user_id),
+    current_user_id: int | None = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_session),
 ):
     follow_service = FollowService(db)

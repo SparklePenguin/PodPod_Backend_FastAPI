@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -6,11 +6,9 @@ from pydantic import BaseModel, Field
 class UpdateProfileRequest(BaseModel):
     """프로필 업데이트 요청"""
 
-    nickname: Optional[str] = Field(default=None, serialization_alias="nickname")
-    profile_image: Optional[str] = Field(
-        default=None, serialization_alias="profileImage"
-    )
-    intro: Optional[str] = Field(default=None, serialization_alias="intro")
+    nickname: str | None = Field(default=None, serialization_alias="nickname")
+    profile_image: str | None = Field(default=None, serialization_alias="profileImage")
+    intro: str | None = Field(default=None, serialization_alias="intro")
 
     model_config = {
         "populate_by_name": True,
@@ -20,8 +18,8 @@ class UpdateProfileRequest(BaseModel):
 class UpdateUserRequest(BaseModel):
     """멀티파트 프로필 업데이트 요청"""
 
-    nickname: Optional[str] = Field(default=None, serialization_alias="nickname")
-    intro: Optional[str] = Field(default=None, serialization_alias="intro")
+    nickname: str | None = Field(default=None, serialization_alias="nickname")
+    intro: str | None = Field(default=None, serialization_alias="intro")
 
     model_config = {"populate_by_name": True}
 

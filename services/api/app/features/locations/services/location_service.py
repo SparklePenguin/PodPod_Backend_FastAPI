@@ -23,8 +23,8 @@ class LocationService:
         # 일반 지역 정보
         all_locations = []
         for location in locations:
-            location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
-            location_main_location = getattr(location, 'main_location', '') or ''
+            location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
+            location_main_location = getattr(location, "main_location", "") or ""
             sub_locations = json.loads(location_sub_locations)
             all_locations.append(
                 LocationResponse(
@@ -54,13 +54,15 @@ class LocationService:
         self, main_location: str
     ) -> LocationResponse | None:
         """주요 지역으로 지역 정보 조회"""
-        location = await self._location_repo.get_location_by_main_location(main_location)
+        location = await self._location_repo.get_location_by_main_location(
+            main_location
+        )
 
         if not location:
             return None
 
-        location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
-        location_main_location = getattr(location, 'main_location', '') or ''
+        location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
+        location_main_location = getattr(location, "main_location", "") or ""
         sub_locations = json.loads(location_sub_locations)
         return LocationResponse(
             main_location=location_main_location, sub_locations=sub_locations
@@ -70,11 +72,13 @@ class LocationService:
         self, main_location: str, sub_locations: List[str]
     ) -> LocationDto:
         """지역 정보 생성"""
-        location = await self._location_repo.create_location(main_location, sub_locations)
+        location = await self._location_repo.create_location(
+            main_location, sub_locations
+        )
 
-        location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
-        location_id = getattr(location, 'id', 0) or 0
-        location_main_location = getattr(location, 'main_location', '') or ''
+        location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
+        location_id = getattr(location, "id", 0) or 0
+        location_main_location = getattr(location, "main_location", "") or ""
         sub_locations_list = json.loads(location_sub_locations)
         return LocationDto(
             id=location_id,
@@ -93,9 +97,9 @@ class LocationService:
         if not location:
             return None
 
-        location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
-        location_id_val = getattr(location, 'id', 0) or 0
-        location_main_location = getattr(location, 'main_location', '') or ''
+        location_sub_locations = getattr(location, "sub_locations", "[]") or "[]"
+        location_id_val = getattr(location, "id", 0) or 0
+        location_main_location = getattr(location, "main_location", "") or ""
         sub_locations_list = json.loads(location_sub_locations)
         return LocationDto(
             id=location_id_val,
@@ -133,10 +137,14 @@ class LocationService:
 
             if not existing_location:
                 # 새로 생성
-                location = await self._location_repo.create_location(main_location, sub_locations)
-                location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
-                location_id = getattr(location, 'id', 0) or 0
-                location_main_location = getattr(location, 'main_location', '') or ''
+                location = await self._location_repo.create_location(
+                    main_location, sub_locations
+                )
+                location_sub_locations = (
+                    getattr(location, "sub_locations", "[]") or "[]"
+                )
+                location_id = getattr(location, "id", 0) or 0
+                location_main_location = getattr(location, "main_location", "") or ""
                 sub_locations_list = json.loads(location_sub_locations)
                 created_locations.append(
                     LocationDto(
@@ -169,7 +177,9 @@ class LocationService:
 
             # 각 지역의 sub_locations와 매칭
             for location in locations:
-                location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
+                location_sub_locations = (
+                    getattr(location, "sub_locations", "[]") or "[]"
+                )
                 sub_locations = json.loads(location_sub_locations)
                 for sub_location in sub_locations:
                     # sub_location을 "·"로 분리하여 각각 확인
@@ -193,9 +203,11 @@ class LocationService:
         for main_location, count in sorted_locations:
             # 해당 main_location의 sub_locations 찾기
             for location in locations:
-                location_main_location = getattr(location, 'main_location', '') or ''
+                location_main_location = getattr(location, "main_location", "") or ""
                 if location_main_location == main_location:
-                    location_sub_locations = getattr(location, 'sub_locations', '[]') or '[]'
+                    location_sub_locations = (
+                        getattr(location, "sub_locations", "[]") or "[]"
+                    )
                     sub_locations = json.loads(location_sub_locations)
                     popular_locations.append(
                         LocationResponse(

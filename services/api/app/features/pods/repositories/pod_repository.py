@@ -1,6 +1,6 @@
 import json
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,19 +25,19 @@ class PodCRUD:
         self,
         owner_id: int,
         title: str,
-        description: Optional[str],
-        image_url: Optional[str],
-        thumbnail_url: Optional[str],
+        description: str | None,
+        image_url: str | None,
+        thumbnail_url: str | None,
         sub_categories: List[str],
         capacity: int,
         place: str,
         address: str,
-        sub_address: Optional[str],
+        sub_address: str | None,
         meeting_date: date,
         meeting_time: time,
-        selected_artist_id: Optional[int] = None,
-        x: Optional[float] = None,
-        y: Optional[float] = None,
+        selected_artist_id: int | None = None,
+        x: float | None = None,
+        y: float | None = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         # description이 없으면 빈 문자열로 설정
@@ -75,19 +75,19 @@ class PodCRUD:
         self,
         owner_id: int,
         title: str,
-        description: Optional[str],
-        image_url: Optional[str],
-        thumbnail_url: Optional[str],
+        description: str | None,
+        image_url: str | None,
+        thumbnail_url: str | None,
         sub_categories: List[str],
         capacity: int,
         place: str,
         address: str,
-        sub_address: Optional[str],
+        sub_address: str | None,
         meeting_date: date,
         meeting_time: time,
-        selected_artist_id: Optional[int] = None,
-        x: Optional[float] = None,
-        y: Optional[float] = None,
+        selected_artist_id: int | None = None,
+        x: float | None = None,
+        y: float | None = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         """파티 생성 후 Sendbird 채팅방도 함께 생성"""
@@ -181,12 +181,7 @@ class PodCRUD:
     async def get_pods_with_chat_channels(self) -> List[Pod]:
         """채팅방 URL이 있는 모든 파티 조회"""
         result = await self.db.execute(
-            select(Pod).where(
-                and_(
-                    Pod.chat_channel_url.isnot(None),
-                    Pod.is_active,
-                )
-            )
+            select(Pod).where(and_(Pod.chat_channel_url.isnot(None), Pod.is_active))
         )
         return list(result.scalars().all())
 
@@ -196,7 +191,7 @@ class PodCRUD:
         return list(result.scalars().all())
 
     async def update_chat_channel_url(
-        self, pod_id: int, channel_url: Optional[str]
+        self, pod_id: int, channel_url: str | None
     ) -> bool:
         """파티의 채팅방 URL 업데이트"""
         pod = await self.get_pod_by_id(pod_id)
@@ -208,14 +203,14 @@ class PodCRUD:
         return True
 
     # - MARK: 파티 조회
-    async def get_pod_by_id(self, pod_id: int) -> Optional[Pod]:
+    async def get_pod_by_id(self, pod_id: int) -> Pod | None:
         result = await self.db.execute(
             select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
         )
         return result.scalar_one_or_none()
 
     # - MARK: 파티 수정
-    async def update_pod(self, pod_id: int, **fields) -> Optional[Pod]:
+    async def update_pod(self, pod_id: int, **fields) -> Pod | None:
         pod = await self.get_pod_by_id(pod_id)
         if not pod:
             return None
@@ -238,13 +233,13 @@ class PodCRUD:
     # - MARK: 파티 목록 조회
     async def get_pods(
         self,
-        user_id: Optional[int] = None,
-        selected_artist_id: Optional[int] = None,
-        main_category: Optional[str] = None,
-        sub_categories: Optional[List[str]] = None,
-        location: Optional[str] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        user_id: int | None = None,
+        selected_artist_id: int | None = None,
+        main_category: str | None = None,
+        sub_categories: List[str | None] = None,
+        location: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         page: int = 1,
         size: int = 20,
     ) -> Dict[str, Any]:
@@ -266,10 +261,7 @@ class PodCRUD:
 
         if location:
             query = query.where(
-                or_(
-                    Pod.place.contains(location),
-                    Pod.address.contains(location),
-                )
+                or_(Pod.place.contains(location), Pod.address.contains(location))
             )
 
         if sub_categories:
@@ -313,11 +305,7 @@ class PodCRUD:
 
     # - MARK: 요즘 인기 있는 파티 조회
     async def get_trending_pods(
-        self,
-        user_id: int,
-        selected_artist_id: int,
-        page: int = 1,
-        size: int = 20,
+        self, user_id: int, selected_artist_id: int, page: int = 1, size: int = 20
     ) -> List[Pod]:
         """
         요즘 인기 있는 파티 조회
@@ -392,7 +380,7 @@ class PodCRUD:
         self,
         user_id: int,
         selected_artist_id: int,
-        location: Optional[str] = None,
+        location: str | None = None,
         page: int = 1,
         size: int = 20,
     ) -> List[Pod]:
@@ -460,11 +448,7 @@ class PodCRUD:
 
     # - MARK: 우리 만난적 있어요 파티 조회
     async def get_history_based_pods(
-        self,
-        user_id: int,
-        selected_artist_id: int,
-        page: int = 1,
-        size: int = 20,
+        self, user_id: int, selected_artist_id: int, page: int = 1, size: int = 20
     ) -> List[Pod]:
         """
         우리 만난적 있어요 파티 조회
@@ -522,10 +506,7 @@ class PodCRUD:
         # 2순위: 유저가 개설한 팟에 참여한 유저가 개설한 모임
         # 사용자가 개설한 파티에 참여한 유저들 조회
         my_pods_query = select(Pod.id).where(
-            and_(
-                Pod.owner_id == user_id,
-                Pod.created_at >= ninety_days_ago,
-            )
+            and_(Pod.owner_id == user_id, Pod.created_at >= ninety_days_ago)
         )
         my_pods_result = await self.db.execute(my_pods_query)
         my_pod_ids = [row[0] for row in my_pods_result.all()]
@@ -632,7 +613,7 @@ class PodCRUD:
         self,
         user_id: int,
         selected_artist_id: int,
-        location: Optional[str] = None,
+        location: str | None = None,
         page: int = 1,
         size: int = 20,
     ) -> List[Pod]:
@@ -747,7 +728,7 @@ class PodCRUD:
 
     # - MARK: 조회수 증가 (공통 메서드)
     async def _increment_view_count(
-        self, pod_id: int, user_id: Optional[int] = None
+        self, pod_id: int, user_id: int | None = None
     ) -> None:
         """조회수 증가 (중복 방지)"""
         if not user_id:
@@ -776,8 +757,8 @@ class PodCRUD:
 
     # - MARK: 파티 상세 조회
     async def get_pod_detail(
-        self, pod_id: int, user_id: Optional[int] = None
-    ) -> Optional[Pod]:
+        self, pod_id: int, user_id: int | None = None
+    ) -> Pod | None:
         """파티 상세 정보 조회"""
         query = select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
 
@@ -807,12 +788,12 @@ class PodCRUD:
     async def search_pods(
         self,
         query: str,
-        selected_artist_id: Optional[int] = None,
-        main_category: Optional[str] = None,
-        sub_categories: Optional[List[str]] = None,
-        location: Optional[str] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        selected_artist_id: int | None = None,
+        main_category: str | None = None,
+        sub_categories: List[str | None] = None,
+        location: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         page: int = 1,
         size: int = 20,
     ) -> Dict[str, Any]:
@@ -856,10 +837,7 @@ class PodCRUD:
 
         if location:
             search_query = search_query.where(
-                or_(
-                    Pod.place.contains(location),
-                    Pod.address.contains(location),
-                )
+                or_(Pod.place.contains(location), Pod.address.contains(location))
             )
 
         # main_category가 있으면 해당 메인 카테고리의 서브 카테고리들로 필터링
@@ -1046,12 +1024,7 @@ class PodCRUD:
         query = (
             select(Pod)
             .options(selectinload(Pod.images))
-            .where(
-                and_(
-                    Pod.is_active,
-                    Pod.owner_id == user_id,
-                )
-            )
+            .where(and_(Pod.is_active, Pod.owner_id == user_id))
         )
 
         # 정렬 (최신순)
@@ -1088,12 +1061,7 @@ class PodCRUD:
             select(Pod)
             .options(selectinload(Pod.images))
             .join(PodMember, Pod.id == PodMember.pod_id)
-            .where(
-                and_(
-                    Pod.is_active,
-                    PodMember.user_id == user_id,
-                )
-            )
+            .where(and_(Pod.is_active, PodMember.user_id == user_id))
         )
 
         # 정렬 (최신순)
@@ -1130,12 +1098,7 @@ class PodCRUD:
             select(Pod)
             .options(selectinload(Pod.images))
             .join(PodLike, Pod.id == PodLike.pod_id)
-            .where(
-                and_(
-                    Pod.is_active,
-                    PodLike.user_id == user_id,
-                )
-            )
+            .where(and_(Pod.is_active, PodLike.user_id == user_id))
         )
 
         # 정렬 (최신순)

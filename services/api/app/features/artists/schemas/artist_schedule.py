@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +20,7 @@ class ScheduleMemberDto(BaseModel):
     id: int | None = Field(default=None, serialization_alias="id")
     ko_name: str = Field(..., serialization_alias="koName", description="멤버 한글명")
     en_name: str = Field(..., serialization_alias="enName", description="멤버 영문명")
-    artist_id: Optional[int] = Field(
+    artist_id: int | None = Field(
         None, serialization_alias="artistId", description="아티스트 ID"
     )
 
@@ -38,7 +38,7 @@ class ScheduleContentDto(BaseModel):
         ..., serialization_alias="type", description="콘텐츠 유형 (video, image)"
     )
     path: str = Field(..., serialization_alias="path", description="콘텐츠 경로/URL")
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None, serialization_alias="title", description="콘텐츠 제목"
     )
 
@@ -62,10 +62,10 @@ class ArtistScheduleDto(BaseModel):
     end_time: int = Field(
         ..., serialization_alias="endTime", description="일정 종료 시간 (밀리초)"
     )
-    text: Optional[str] = Field(default=None, serialization_alias="text")
+    text: str | None = Field(default=None, serialization_alias="text")
     title: str = Field(serialization_alias="title")
-    channel: Optional[str] = Field(default=None, serialization_alias="channel")
-    location: Optional[str] = Field(default=None, serialization_alias="location")
+    channel: str | None = Field(default=None, serialization_alias="channel")
+    location: str | None = Field(default=None, serialization_alias="location")
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
 
@@ -88,7 +88,7 @@ class ScheduleMemberCreateRequest(BaseModel):
 
     ko_name: str = Field(..., description="멤버 한글명")
     en_name: str = Field(..., description="멤버 영문명")
-    artist_id: Optional[int] = Field(None, description="아티스트 ID")
+    artist_id: int | None = Field(None, description="아티스트 ID")
 
 
 class ScheduleContentCreateRequest(BaseModel):
@@ -96,22 +96,22 @@ class ScheduleContentCreateRequest(BaseModel):
 
     type: str = Field(..., description="콘텐츠 유형 (video, image)")
     path: str = Field(..., description="콘텐츠 경로/URL")
-    title: Optional[str] = Field(None, description="콘텐츠 제목")
+    title: str | None = Field(None, description="콘텐츠 제목")
 
 
 class ArtistScheduleCreateRequest(BaseModel):
     """아티스트 스케줄 생성 요청"""
 
-    artist_id: Optional[int] = Field(None, description="아티스트 ID")
-    unit_id: Optional[int] = Field(None, description="아티스트 유닛 ID")
+    artist_id: int | None = Field(None, description="아티스트 ID")
+    unit_id: int | None = Field(None, description="아티스트 유닛 ID")
     artist_ko_name: str = Field(..., description="아티스트 한글명")
     type: ScheduleTypeEnum = Field(..., description="일정 유형")
     start_time: int = Field(..., description="일정 시작 시간 (밀리초)")
     end_time: int = Field(..., description="일정 종료 시간 (밀리초)")
-    text: Optional[str] = Field(None, description="일정 상세 설명")
+    text: str | None = Field(None, description="일정 상세 설명")
     title: str = Field(..., description="일정 제목")
-    channel: Optional[str] = Field(None, description="방송 채널")
-    location: Optional[str] = Field(None, description="장소")
+    channel: str | None = Field(None, description="방송 채널")
+    location: str | None = Field(None, description="장소")
 
     # 관계 데이터
     members: List[ScheduleMemberCreateRequest] = []

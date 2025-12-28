@@ -53,23 +53,23 @@ class PodLikeService:
                     return
 
                 # 파티장 정보 조회
-                pod_owner_id = getattr(pod, 'owner_id', None)
+                pod_owner_id = getattr(pod, "owner_id", None)
                 if pod_owner_id is None:
                     return
-                    
+
                 owner_result = await self.db.execute(
                     select(User).where(User.id == pod_owner_id)
                 )
                 owner = owner_result.scalar_one_or_none()
 
-                owner_fcm_token = getattr(owner, 'fcm_token', None) if owner else None
+                owner_fcm_token = getattr(owner, "fcm_token", None) if owner else None
                 if owner and owner_fcm_token:
                     # FCM 서비스 초기화
                     fcm_service = FCMService()
 
                     # 좋아요 달성 알림 전송
-                    owner_id = getattr(owner, 'id', None)
-                    pod_title = getattr(pod, 'title', '') or ''
+                    owner_id = getattr(owner, "id", None)
+                    pod_title = getattr(pod, "title", "") or ""
                     await fcm_service.send_pod_likes_threshold(
                         token=owner_fcm_token,
                         party_name=pod_title,

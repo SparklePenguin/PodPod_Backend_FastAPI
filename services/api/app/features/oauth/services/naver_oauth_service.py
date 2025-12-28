@@ -31,10 +31,7 @@ class NaverOAuthService:
         print(f"🔍 DEBUG - code: {code}, state: {state}")
 
         token_params = GetNaverTokenRequest(
-            client_id=client_id,
-            client_secret=client_secret,
-            code=code,
-            state=state,
+            client_id=client_id, client_secret=client_secret, code=code, state=state
         )
 
         async with httpx.AsyncClient() as client:

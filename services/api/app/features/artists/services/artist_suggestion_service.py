@@ -1,5 +1,3 @@
-from typing import Optional
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import PageDto
@@ -45,7 +43,7 @@ class ArtistSuggestionService:
 
     async def get_suggestion_by_id(
         self, suggestion_id: int
-    ) -> Optional[ArtistSuggestionDto]:
+    ) -> ArtistSuggestionDto | None:
         """ID로 제안 조회"""
         suggestion = await self.artist_sugg_repo.get_suggestion_by_id(suggestion_id)
         if not suggestion:
@@ -66,10 +64,7 @@ class ArtistSuggestionService:
         ]
 
         return PageDto.create(
-            items=suggestion_dtos,
-            page=page,
-            size=size,
-            total_count=total_count,
+            items=suggestion_dtos, page=page, size=size, total_count=total_count
         )
 
     async def get_artist_ranking(
@@ -88,10 +83,7 @@ class ArtistSuggestionService:
         ]
 
         return PageDto.create(
-            items=ranking_dtos,
-            page=page,
-            size=limit,
-            total_count=total_count,
+            items=ranking_dtos, page=page, size=limit, total_count=total_count
         )
 
     async def get_suggestions_by_artist_name(
@@ -111,8 +103,5 @@ class ArtistSuggestionService:
         ]
 
         return PageDto.create(
-            items=suggestion_dtos,
-            page=page,
-            size=size,
-            total_count=total_count,
+            items=suggestion_dtos, page=page, size=size, total_count=total_count
         )

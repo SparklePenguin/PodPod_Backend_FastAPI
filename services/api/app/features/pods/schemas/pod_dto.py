@@ -2,7 +2,7 @@ import datetime
 import json
 
 # 순환 import 방지를 위한 TYPE_CHECKING
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, List
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -24,35 +24,33 @@ if TYPE_CHECKING:
 class PodSearchRequest(BaseModel):
     """팟 검색 요청"""
 
-    title: Optional[str] = Field(
-        None, serialization_alias="title", description="팟 제목"
-    )
-    main_category: Optional[str] = Field(
+    title: str | None = Field(None, serialization_alias="title", description="팟 제목")
+    main_category: str | None = Field(
         None,
         serialization_alias="mainCategory",
         description="메인 카테고리 (ACCOMPANY, GOODS, TOUR, ETC)",
     )
-    sub_category: Optional[str] = Field(
+    sub_category: str | None = Field(
         None, serialization_alias="subCategory", description="서브 카테고리"
     )
-    start_date: Optional[datetime.date] = Field(
+    start_date: datetime.date | None = Field(
         None, serialization_alias="startDate", description="시작 날짜"
     )
-    end_date: Optional[datetime.date] = Field(
+    end_date: datetime.date | None = Field(
         None, serialization_alias="endDate", description="종료 날짜"
     )
-    location: Optional[List[str]] = Field(
+    location: List[str | None] = Field(
         None,
         serialization_alias="location",
         description="지역 리스트 (address 또는 sub_address에 포함)",
     )
-    page: Optional[int] = Field(
+    page: int | None = Field(
         1, serialization_alias="page", ge=1, description="페이지 번호"
     )
-    page_size: Optional[int] = Field(
+    page_size: int | None = Field(
         20, serialization_alias="pageSize", ge=1, le=100, description="페이지 크기"
     )
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         None,
         serialization_alias="limit",
         description="결과 제한 (deprecated, pageSize 사용 권장)",
@@ -76,70 +74,38 @@ class PodSearchRequest(BaseModel):
 
 
 class PodDto(BaseModel):
-    id: int = Field(serialization_alias="id", examples=[1])
-    owner_id: int = Field(serialization_alias="ownerId", examples=[1])
-    title: str = Field(serialization_alias="title", examples=["string"])
-    description: str = Field(
-        serialization_alias="description",
-        examples=["파티 설명"],
+    id: int = Field(serialization_alias="id")
+    owner_id: int = Field(serialization_alias="ownerId")
+    title: str = Field(serialization_alias="title")
+    description: str = Field(serialization_alias="description")
+    image_url: str | None = Field(default=None, serialization_alias="imageUrl")
+    thumbnail_url: str | None = Field(default=None, serialization_alias="thumbnailUrl")
+    sub_categories: List[str] = Field(serialization_alias="subCategories")
+    capacity: int = Field(serialization_alias="capacity")
+    place: str = Field(serialization_alias="meetingPlace")
+    address: str = Field(serialization_alias="address")
+    sub_address: str | None = Field(default=None, serialization_alias="subAddress")
+    x: float | None = Field(
+        default=None, serialization_alias="x", description="경도 (longitude)"
     )
-    image_url: Optional[str] = Field(
-        default=None,
-        serialization_alias="imageUrl",
-        examples=["string?"],
+    y: float | None = Field(
+        default=None, serialization_alias="y", description="위도 (latitude)"
     )
-    thumbnail_url: Optional[str] = Field(
-        default=None,
-        serialization_alias="thumbnailUrl",
-        examples=["string?"],
-    )
-    sub_categories: List[str] = Field(
-        serialization_alias="subCategories",
-        examples=[["string"]],
-    )
-    capacity: int = Field(serialization_alias="capacity", examples=[4])
-    place: str = Field(serialization_alias="meetingPlace", examples=["string"])
-    address: str = Field(
-        serialization_alias="address",
-        examples=["string"],
-    )
-    sub_address: Optional[str] = Field(
-        default=None,
-        serialization_alias="subAddress",
-        examples=["string?"],
-    )
-    x: Optional[float] = Field(
-        default=None,
-        serialization_alias="x",
-        examples=[127.123456],
-        description="경도 (longitude)",
-    )
-    y: Optional[float] = Field(
-        default=None,
-        serialization_alias="y",
-        examples=[37.123456],
-        description="위도 (latitude)",
-    )
-    meeting_date: Optional[int] = Field(
+    meeting_date: int | None = Field(
         serialization_alias="meetingDate",
-        examples=[1705276800000],
         description="만남 날짜/시간 (timestamp in milliseconds)",
     )
-    selected_artist_id: Optional[int] = Field(
-        default=None,
-        serialization_alias="selectedArtistId",
-        examples=[1],
+    selected_artist_id: int | None = Field(
+        default=None, serialization_alias="selectedArtistId"
     )
     status: PodStatus = Field(
         default=PodStatus.RECRUITING,
         serialization_alias="status",
-        examples=["RECRUITING"],
         description="파티 상태 (RECRUITING: 모집중, FULL: 인원 가득참, COMPLETED: 모집 완료, CLOSED: 종료)",
     )
-    chat_channel_url: Optional[str] = Field(
+    chat_channel_url: str | None = Field(
         default=None,
         serialization_alias="chatChannelUrl",
-        examples=["pod_20_chat"],
         description="Sendbird 채팅방 URL",
     )
 
@@ -151,10 +117,8 @@ class PodDto(BaseModel):
     )
 
     # 개인화 필드
-    is_liked: bool = Field(
-        default=False, serialization_alias="isLiked", examples=[False]
-    )
-    my_application: Optional[SimpleApplicationDto] = Field(
+    is_liked: bool = Field(default=False, serialization_alias="isLiked")
+    my_application: SimpleApplicationDto | None = Field(
         default=None,
         serialization_alias="myApplication",
         description="현재 사용자의 신청서 정보",
@@ -166,11 +130,9 @@ class PodDto(BaseModel):
     )
 
     # 통계 및 메타데이터 필드
-    view_count: int = Field(default=0, serialization_alias="viewCount", examples=[0])
-    joined_users_count: int = Field(
-        default=0, serialization_alias="joinedUsersCount", examples=[0]
-    )
-    like_count: int = Field(default=0, serialization_alias="likeCount", examples=[0])
+    view_count: int = Field(default=0, serialization_alias="viewCount")
+    joined_users_count: int = Field(default=0, serialization_alias="joinedUsersCount")
+    like_count: int = Field(default=0, serialization_alias="likeCount")
     joined_users: List[SimpleUserDto] = Field(
         default_factory=list,
         serialization_alias="joinedUsers",
@@ -181,12 +143,8 @@ class PodDto(BaseModel):
         serialization_alias="reviews",
         description="파티 후기 목록",
     )
-    created_at: datetime.datetime = Field(
-        serialization_alias="createdAt", examples=["2025-01-01T00:00:00"]
-    )
-    updated_at: datetime.datetime = Field(
-        serialization_alias="updatedAt", examples=["2025-01-01T00:00:00"]
-    )
+    created_at: datetime.datetime = Field(serialization_alias="createdAt")
+    updated_at: datetime.datetime = Field(serialization_alias="updatedAt")
 
     model_config = {
         "from_attributes": True,

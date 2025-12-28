@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 from jose import JWTError, jwt
@@ -11,7 +10,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-async def get_user_id_from_token(token: str) -> Optional[int]:
+async def get_user_id_from_token(token: str) -> int | None:
     """WebSocket 연결에서 토큰으로 사용자 ID 추출"""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
@@ -25,9 +24,7 @@ async def get_user_id_from_token(token: str) -> Optional[int]:
 
 @router.websocket("/ws/{channel_url}")
 async def websocket_endpoint(
-    websocket: WebSocket,
-    channel_url: str,
-    token: Optional[str] = Query(None),
+    websocket: WebSocket, channel_url: str, token: str | None = Query(None)
 ):
     """
     WebSocket 채팅 엔드포인트

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from sqlalchemy import and_, delete, desc, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,9 +17,7 @@ class FollowCRUD:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_follow(
-        self, follower_id: int, following_id: int
-    ) -> Optional[Follow]:
+    async def create_follow(self, follower_id: int, following_id: int) -> Follow | None:
         """팔로우 생성"""
         try:
             # 자기 자신을 팔로우하는지 확인
@@ -31,12 +29,12 @@ class FollowCRUD:
                 follower_id, following_id
             )
             if existing_follow:
-                is_active_value = getattr(existing_follow, 'is_active', False)
+                is_active_value = getattr(existing_follow, "is_active", False)
                 if is_active_value:
                     return existing_follow
                 else:
                     # 비활성화된 팔로우가 있으면 재활성화
-                    setattr(existing_follow, 'is_active', True)
+                    setattr(existing_follow, "is_active", True)
                     await self.db.commit()
                     return existing_follow
 
@@ -58,14 +56,14 @@ class FollowCRUD:
                 return False
 
             # 레코드 삭제 대신 is_active = False로 업데이트
-            setattr(follow, 'is_active', False)
+            setattr(follow, "is_active", False)
             await self.db.commit()
             return True
         except Exception:
             await self.db.rollback()
             return False
 
-    async def get_follow(self, follower_id: int, following_id: int) -> Optional[Follow]:
+    async def get_follow(self, follower_id: int, following_id: int) -> Follow | None:
         """특정 팔로우 조회 (활성화된 것만)"""
         query = select(Follow).where(
             and_(
@@ -79,7 +77,7 @@ class FollowCRUD:
 
     async def get_follow_any_status(
         self, follower_id: int, following_id: int
-    ) -> Optional[Follow]:
+    ) -> Follow | None:
         """특정 팔로우 조회 (활성화 상태 무관)"""
         query = select(Follow).where(
             and_(Follow.follower_id == follower_id, Follow.following_id == following_id)
@@ -97,7 +95,7 @@ class FollowCRUD:
 
     async def get_following_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> Tuple[List[Tuple[User, datetime, Optional[str]]], int]:
+    ) -> Tuple[List[Tuple[User, datetime, str | None]], int]:
         """팔로우하는 사용자 목록 조회"""
         offset = (page - 1) * size
 
@@ -137,8 +135,9 @@ class FollowCRUD:
         following_data_raw = result.all()
 
         # Row 객체를 Tuple로 변환
-        following_data: List[Tuple[User, datetime, Optional[str]]] = [
-            (row[0], row[1], row[2] if len(row) > 2 else None) for row in following_data_raw
+        following_data: List[Tuple[User, datetime, str | None]] = [
+            (row[0], row[1], row[2] if len(row) > 2 else None)
+            for row in following_data_raw
         ]
 
         # 총 팔로우 수 조회 (자기 자신 제외)
@@ -172,7 +171,7 @@ class FollowCRUD:
 
     async def get_followers_list(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> Tuple[List[Tuple[User, datetime, Optional[str]]], int]:
+    ) -> Tuple[List[Tuple[User, datetime, str | None]], int]:
         """팔로워 목록 조회"""
         offset = (page - 1) * size
 
@@ -212,8 +211,9 @@ class FollowCRUD:
         followers_data_raw = result.all()
 
         # Row 객체를 Tuple로 변환
-        followers_data: List[Tuple[User, datetime, Optional[str]]] = [
-            (row[0], row[1], row[2] if len(row) > 2 else None) for row in followers_data_raw
+        followers_data: List[Tuple[User, datetime, str | None]] = [
+            (row[0], row[1], row[2] if len(row) > 2 else None)
+            for row in followers_data_raw
         ]
 
         # 총 팔로워 수 조회 (자기 자신 제외)
@@ -246,7 +246,7 @@ class FollowCRUD:
         return followers_data, total_count
 
     async def get_follow_stats(
-        self, user_id: int, current_user_id: Optional[int] = None
+        self, user_id: int, current_user_id: int | None = None
     ) -> dict:
         """팔로우 통계 조회 (자기 자신 제외)"""
         # 팔로우하는 수 (자기 자신 제외, 활성화된 것만)
@@ -331,7 +331,7 @@ class FollowCRUD:
 
     async def get_recommended_users(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> List[Tuple[User, Optional[str]]]:
+    ) -> List[Tuple[User, str | None]]:
         """추천 유저 목록 조회 (팔로우/차단한 사용자 제외)"""
         offset = (page - 1) * size
 
@@ -370,7 +370,7 @@ class FollowCRUD:
         users_raw = result.all()
 
         # Row 객체를 Tuple로 변환
-        users: List[Tuple[User, Optional[str]]] = [
+        users: List[Tuple[User, str | None]] = [
             (row[0], row[1] if len(row) > 1 else None) for row in users_raw
         ]
 
@@ -378,12 +378,12 @@ class FollowCRUD:
 
     async def get_notification_status(
         self, follower_id: int, following_id: int
-    ) -> Optional[bool]:
+    ) -> bool | None:
         """특정 팔로우 관계의 알림 설정 상태 조회"""
         follow = await self.get_follow(follower_id, following_id)
         if not follow:
             return None
-        return bool(getattr(follow, 'notification_enabled', False))
+        return bool(getattr(follow, "notification_enabled", False))
 
     async def update_notification_status(
         self, follower_id: int, following_id: int, notification_enabled: bool
@@ -394,7 +394,7 @@ class FollowCRUD:
             if not follow:
                 return False
 
-            setattr(follow, 'notification_enabled', notification_enabled)
+            setattr(follow, "notification_enabled", notification_enabled)
             await self.db.commit()
             await self.db.refresh(follow)
             return True

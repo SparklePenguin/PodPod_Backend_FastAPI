@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ router = APIRouter()
 
 # - MARK: 파티 참여 신청 요청 스키마
 class ApplyToPodRequest(BaseModel):
-    message: Optional[str] = Field(
+    message: str | None = Field(
         default=None, serialization_alias="message", description="참여 신청 메시지"
     )
 
@@ -36,9 +36,7 @@ class ReviewApplicationRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-def get_pod_service(
-    db: AsyncSession = Depends(get_session),
-) -> PodService:
+def get_pod_service(db: AsyncSession = Depends(get_session)) -> PodService:
     return PodService(db)
 
 
@@ -64,7 +62,7 @@ def get_recruitment_service(
 )
 async def apply_to_pod(
     pod_id: int,
-    request: Optional[ApplyToPodRequest] = None,
+    request: ApplyToPodRequest | None = None,
     user_id: int = Depends(get_current_user_id),
     recruitment_service: RecruitmentService = Depends(get_recruitment_service),
 ):
@@ -138,10 +136,7 @@ async def handle_application(
     assert result is not None, "result should not be None after check"
     result_dict: dict = result
 
-    return BaseResponse.ok(
-        data=result_dict,
-        message_ko=result_dict["message"],
-    )
+    return BaseResponse.ok(data=result_dict, message_ko=result_dict["message"])
 
 
 # - MARK: 파티 참여 신청 목록 조회

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from app.features.follow.schemas import SimpleUserDto
@@ -9,7 +7,7 @@ class PodMemberDto(BaseModel):
     id: int = Field(serialization_alias="id", description="신청서 ID")
     user: SimpleUserDto = Field(serialization_alias="user")
     role: str = Field(serialization_alias="role")
-    message: Optional[str] = Field(
+    message: str | None = Field(
         default=None, serialization_alias="message", description="참여 신청 메시지"
     )
     joined_at: int = Field(

@@ -1,14 +1,12 @@
 import logging
-from typing import List, Optional, Union
+from typing import List, Union
 
 import firebase_admin
 from firebase_admin import credentials, messaging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.features.notifications.repositories.notification import (
-    notification_crud,
-)
+from app.features.notifications.repositories.notification import notification_crud
 from app.features.notifications.schemas.notification import (
     FollowNotiSubType,
     PodNotiSubType,
@@ -68,11 +66,11 @@ class FCMService:
         token: str,
         title: str,
         body: str,
-        data: Optional[dict] = None,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
-        related_pod_id: Optional[int] = None,
+        data: dict | None = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
+        related_pod_id: int | None = None,
     ) -> bool:
         """
         FCM 푸시 알림 전송 및 DB 저장
@@ -84,7 +82,7 @@ class FCMService:
             data: 추가 데이터 (선택사항)
             db: DB 세션 (알림 저장용, 선택사항)
             user_id: 사용자 ID (알림 받는 사람, 선택사항)
-            related_user_id: 관련 유저 ID (알림 발생시킨 사람, Optional)
+            related_user_id: 관련 유저 ID (알림 발생시킨 사람)
             related_pod_id: 관련 파티 ID (Optional)
 
         Returns:
@@ -140,10 +138,7 @@ class FCMService:
 
             # 메시지 생성
             message = messaging.Message(
-                notification=messaging.Notification(
-                    title=title,
-                    body=body,
-                ),
+                notification=messaging.Notification(title=title, body=body),
                 data=data or {},
                 token=token,
             )
@@ -241,7 +236,7 @@ class FCMService:
             return False
 
     async def _invalidate_token(
-        self, token: str, db: Optional[AsyncSession] = None, user_id: int | None = None
+        self, token: str, db: AsyncSession | None = None, user_id: int | None = None
     ):
         """유효하지 않은 FCM 토큰을 DB에서 제거"""
         try:
@@ -255,11 +250,7 @@ class FCMService:
             logger.error(f"FCM 토큰 무효화 실패: {e}")
 
     async def send_multicast_notification(
-        self,
-        tokens: List[str],
-        title: str,
-        body: str,
-        data: Optional[dict] = None,
+        self, tokens: List[str], title: str, body: str, data: dict | None = None
     ) -> dict:
         """
         여러 사용자에게 FCM 푸시 알림 전송
@@ -276,10 +267,7 @@ class FCMService:
         try:
             # 멀티캐스트 메시지 생성
             message = messaging.MulticastMessage(
-                notification=messaging.Notification(
-                    title=title,
-                    body=body,
-                ),
+                notification=messaging.Notification(title=title, body=body),
                 data=data or {},
                 tokens=tokens,
             )
@@ -371,9 +359,9 @@ class FCMService:
         token: str,
         nickname: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 참여 요청 알림 전송"""
         body, data = self._format_message(
@@ -398,16 +386,14 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
-        related_pod_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
+        related_pod_id: int | None = None,
     ) -> bool:
         """파티 참여 요청 승인 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_REQUEST_APPROVED,
-            party_name=party_name,
-            pod_id=pod_id,
+            PodNotiSubType.POD_REQUEST_APPROVED, party_name=party_name, pod_id=pod_id
         )
         # 알림 받을 사용자 ID 추가
         data["target_user_id"] = str(user_id) if user_id else ""
@@ -428,16 +414,14 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
-        related_pod_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
+        related_pod_id: int | None = None,
     ) -> bool:
         """파티 참여 요청 거절 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_REQUEST_REJECTED,
-            party_name=party_name,
-            pod_id=pod_id,
+            PodNotiSubType.POD_REQUEST_REJECTED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -456,9 +440,9 @@ class FCMService:
         nickname: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 새 멤버 참여 알림 전송"""
         body, data = self._format_message(
@@ -483,9 +467,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 정보 수정 알림 전송"""
         body, data = self._format_message(
@@ -507,9 +491,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 확정 알림 전송"""
         body, data = self._format_message(
@@ -531,9 +515,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 취소 알림 전송"""
         body, data = self._format_message(
@@ -555,9 +539,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 시작 1시간 전 알림 전송"""
         body, data = self._format_message(
@@ -579,9 +563,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 마감 임박 알림 전송"""
         body, data = self._format_message(
@@ -603,9 +587,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 취소 임박 알림 전송"""
         body, data = self._format_message(
@@ -629,9 +613,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 좋아요 10개 달성 알림 전송"""
         body, data = self._format_message(
@@ -655,9 +639,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 조회수 10회 달성 알림 전송"""
         body, data = self._format_message(
@@ -681,15 +665,13 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 정원 가득 참 알림 전송 (파티장에게)"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_CAPACITY_FULL,
-            party_name=party_name,
-            pod_id=pod_id,
+            PodStatusNotiSubType.POD_CAPACITY_FULL, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -709,9 +691,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """좋아요한 파티 마감 임박 알림 전송"""
         body, data = self._format_message(
@@ -735,9 +717,9 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """좋아요한 파티에 자리 생김 알림 전송"""
         body, data = self._format_message(
@@ -764,10 +746,10 @@ class FCMService:
         nickname: str,
         party_name: str,
         review_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
-        related_pod_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
+        related_pod_id: int | None = None,
     ) -> bool:
         """리뷰 등록 알림 전송"""
         body, data = self._format_message(
@@ -792,8 +774,8 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
     ) -> bool:
         """리뷰 작성 유도 알림 (1일 후) 전송"""
         body, data = self._format_message(
@@ -814,8 +796,8 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
     ) -> bool:
         """리뷰 작성 리마인드 알림 (1주일 후) 전송"""
         body, data = self._format_message(
@@ -837,9 +819,9 @@ class FCMService:
         nickname: str,
         review_id: int,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """다른 참여자 리뷰 작성 알림 전송"""
         body, data = self._format_message(
@@ -863,15 +845,13 @@ class FCMService:
         token: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """파티 완료 알림 전송"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_COMPLETED,
-            party_name=party_name,
-            pod_id=pod_id,
+            PodStatusNotiSubType.POD_COMPLETED, party_name=party_name, pod_id=pod_id
         )
 
         return await self.send_notification(
@@ -892,9 +872,9 @@ class FCMService:
         token: str,
         nickname: str,
         follow_user_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """팔로우 알림 전송"""
         body, data = self._format_message(
@@ -919,9 +899,9 @@ class FCMService:
         nickname: str,
         party_name: str,
         pod_id: int,
-        db: Optional[AsyncSession] = None,
-        user_id: Optional[int] = None,
-        related_user_id: Optional[int] = None,
+        db: AsyncSession | None = None,
+        user_id: int | None = None,
+        related_user_id: int | None = None,
     ) -> bool:
         """팔로우한 유저의 파티 생성 알림 전송"""
         body, data = self._format_message(

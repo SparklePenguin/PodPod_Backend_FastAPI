@@ -235,7 +235,12 @@ $RECYCLE.BIN/
 
 # Log files
 *.log
+*.log.gz
 logs/
+logs/dev/
+logs/stg/
+logs/prod/
+logs/local/
 
 # Configuration files with sensitive data
 config.ini

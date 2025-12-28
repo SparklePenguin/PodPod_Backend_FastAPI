@@ -8,12 +8,8 @@ class SignUpRequest(BaseModel):
     username: str | None = Field(default=None, serialization_alias="username")
     nickname: str | None = Field(default=None, serialization_alias="nickname")
     password: str | None = Field(default=None, serialization_alias="password")
-    profile_image: str | None = Field(
-        default=None, serialization_alias="profileImage"
-    )
-    auth_provider: str | None = Field(
-        default=None, serialization_alias="authProvider"
-    )
+    profile_image: str | None = Field(default=None, serialization_alias="profileImage")
+    auth_provider: str | None = Field(default=None, serialization_alias="authProvider")
     auth_provider_id: str | None = Field(
         default=None, serialization_alias="authProviderId"
     )

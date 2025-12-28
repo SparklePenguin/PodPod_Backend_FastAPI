@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generic, Optional, TypeVar
+from typing import Any, Dict, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -6,46 +6,24 @@ T = TypeVar("T")
 
 
 class BaseResponse(BaseModel, Generic[T]):
-    data: Optional[T] = Field(
-        default=None,
-        serialization_alias="data",
-        examples=[None],
+    data: T | None = Field(default=None, serialization_alias="data")
+    http_status: int | None = Field(
+        default=None, serialization_alias="httpStatus", description="HTTP 상태 코드"
     )
-    http_status: Optional[int] = Field(
-        default=None,
-        serialization_alias="httpStatus",
-        description="HTTP 상태 코드",
-        examples=[None],
+    message_ko: str | None = Field(
+        default=None, serialization_alias="messageKo", description="한국어 메시지"
     )
-    message_ko: Optional[str] = Field(
-        default=None,
-        serialization_alias="messageKo",
-        description="한국어 메시지",
-        examples=[None],
+    message_en: str | None = Field(
+        default=None, serialization_alias="messageEn", description="영어 메시지"
     )
-    message_en: Optional[str] = Field(
-        default=None,
-        serialization_alias="messageEn",
-        description="영어 메시지",
-        examples=[None],
+    error_key: str | None = Field(
+        default=None, serialization_alias="error", description="에러 코드 키"
     )
-    error_key: Optional[str] = Field(
-        default=None,
-        serialization_alias="error",
-        description="에러 코드 키",
-        examples=[None],
+    error_code: int | None = Field(
+        default=None, serialization_alias="errorCode", description="숫자 에러 코드"
     )
-    error_code: Optional[int] = Field(
-        default=None,
-        serialization_alias="errorCode",
-        description="숫자 에러 코드",
-        examples=[None],
-    )
-    dev_note: Optional[str] = Field(
-        default=None,
-        serialization_alias="devNote",
-        description="개발자 노트",
-        examples=[None],
+    dev_note: str | None = Field(
+        default=None, serialization_alias="devNote", description="개발자 노트"
     )
 
     model_config = {
@@ -58,26 +36,12 @@ class BaseResponse(BaseModel, Generic[T]):
         cls,
         data: T = None,
         http_status: int = 200,
-        message_ko: Optional[str] = None,
-        message_en: Optional[str] = None,
+        message_ko: str | None = None,
+        message_en: str | None = None,
     ) -> "BaseResponse[T]":
         return cls(
             data=data,
             http_status=http_status,
-            message_ko=message_ko,
-            message_en=message_en,
-        )
-
-    @classmethod
-    def created(
-        cls,
-        data: T = None,
-        message_ko: Optional[str] = None,
-        message_en: Optional[str] = None,
-    ) -> "BaseResponse[T]":
-        return cls(
-            data=data,
-            http_status=201,
             message_ko=message_ko,
             message_en=message_en,
         )

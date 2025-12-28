@@ -31,16 +31,14 @@ class AppleOAuthService:
         try:
             # Apple ID 토큰 검증
             apple_user_info = await self._verify_apple_token(
-                request.identity_token,
-                audience,
+                request.identity_token, audience
             )
 
             # Authorization Code가 있으면 토큰 교환
             # 지금은 Apple API를 사용하지 않기 때문에 사용하지 않음
             if request.authorization_code:
                 await self._exchange_authorization_code(
-                    request.authorization_code,
-                    audience,
+                    request.authorization_code, audience
                 )
 
             # Apple 사용자 정보를 OAuth 서비스 형식에 맞게 변환

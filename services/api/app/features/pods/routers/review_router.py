@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -331,7 +329,7 @@ async def delete_review(
     },
 )
 async def get_user_written_reviews(
-    user_id: Optional[int] = Query(
+    user_id: int | None = Query(
         None,
         serialization_alias="userId",
         description="조회할 사용자 ID (없으면 현재 사용자)",
@@ -384,7 +382,7 @@ async def get_user_written_reviews(
     },
 )
 async def get_user_received_reviews(
-    user_id: Optional[int] = Query(
+    user_id: int | None = Query(
         None,
         serialization_alias="userId",
         description="조회할 사용자 ID (없으면 현재 사용자)",

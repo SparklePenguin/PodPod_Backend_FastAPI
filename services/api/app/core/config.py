@@ -1,12 +1,11 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from pydantic_settings import BaseSettings
 
 
-def load_config_file(config_path: Optional[str] = None) -> dict:
+def load_config_file(config_path: str | None = None) -> dict:
     """YAML 설정 파일을 로드합니다."""
     if config_path is None:
         # 환경변수로 config 파일 지정 가능
@@ -46,8 +45,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # Sendbird 설정 (Infisical에서)
-    SENDBIRD_APP_ID: Optional[str] = None
-    SENDBIRD_API_TOKEN: Optional[str] = None
+    SENDBIRD_APP_ID: str | None = None
+    SENDBIRD_API_TOKEN: str | None = None
 
     # 채팅 서비스 설정
     USE_WEBSOCKET_CHAT: bool = False  # True면 WebSocket 사용, False면 Sendbird 사용
@@ -63,42 +62,45 @@ class Settings(BaseSettings):
     ROOT_PATH: str = ""  # Nginx 프록시 경로 (예: /stg, /rm)
 
     # 카카오 OAuth 설정
-    KAKAO_CLIENT_ID: Optional[str] = None
-    KAKAO_CLIENT_SECRET: Optional[str] = None  # Infisical에서
+    KAKAO_CLIENT_ID: str | None = None
+    KAKAO_CLIENT_SECRET: str | None = None  # Infisical에서
     KAKAO_REDIRECT_URI: str = "http://localhost:3000/auth/kakao/callback"
     KAKAO_TOKEN_URL: str = "https://kauth.kakao.com/oauth/token"
     KAKAO_USER_INFO_URL: str = "https://kapi.kakao.com/v2/user/me"
 
     # Google OAuth 설정
-    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_ID: str | None = None
 
     # Apple OAuth 설정
     APPLE_PUBLIC_KEYS_URL: str = "https://appleid.apple.com/auth/keys"
     APPLE_TOKEN_URL: str = "https://appleid.apple.com/auth/token"
-    APPLE_CLIENT_ID: Optional[str] = None
-    APPLE_TEAM_ID: Optional[str] = None
-    APPLE_KEY_ID: Optional[str] = None
-    APPLE_PRIVATE_KEY: Optional[str] = None
+    APPLE_CLIENT_ID: str | None = None
+    APPLE_TEAM_ID: str | None = None
+    APPLE_KEY_ID: str | None = None
+    APPLE_PRIVATE_KEY: str | None = None
     APPLE_REDIRECT_URI: str = "http://localhost:3000/auth/apple/callback"
-    APPLE_SCHEME: Optional[str] = None
+    APPLE_SCHEME: str | None = None
     APPLE_ISSUER: str = "https://appleid.apple.com"
 
     # Google Sheets 설정
     GOOGLE_CREDENTIALS_PATH: str = "credentials.json"
-    GOOGLE_SHEETS_ID: Optional[str] = None
+    GOOGLE_SHEETS_ID: str | None = None
     GOOGLE_SHEETS_RANGE: str = "1xxx: 인증/로그인 관련 오류!A:F"
-    GOOGLE_SHEETS_CREDENTIALS: Optional[str] = None
+    GOOGLE_SHEETS_CREDENTIALS: str | None = None
 
     # Firebase Cloud Messaging 설정
-    FIREBASE_SERVICE_ACCOUNT_KEY: Optional[str] = None
+    FIREBASE_SERVICE_ACCOUNT_KEY: str | None = None
 
     # 서버 설정 (디버그 모드)
     DEBUG: bool = False
 
     # 파일 업로드 설정
-    UPLOADS_DIR: Optional[str] = None  # 환경별로 다르게 설정됨
+    UPLOADS_DIR: str | None = None  # 환경별로 다르게 설정됨
 
-    def __init__(self, config_path: Optional[str] = None, **kwargs):
+    # 로그 디렉토리 설정
+    LOGS_DIR: str | None = None  # 환경별로 다르게 설정됨
+
+    def __init__(self, config_path: str | None = None, **kwargs):
         # Config 파일 로드
         config = load_config_file(config_path)
 
@@ -189,7 +191,9 @@ class Settings(BaseSettings):
 
             # 채팅 서비스 설정
             chat_config = config.get("chat", {})
-            kwargs.setdefault("USE_WEBSOCKET_CHAT", chat_config.get("use_websocket", False))
+            kwargs.setdefault(
+                "USE_WEBSOCKET_CHAT", chat_config.get("use_websocket", False)
+            )
 
         # 환경변수에서 민감한 정보 로드 (Infisical에서 주입)
         # USE_WEBSOCKET_CHAT도 환경변수로 오버라이드 가능
@@ -228,10 +232,54 @@ class Settings(BaseSettings):
                 "Infisical을 사용하여 환경변수를 주입해주세요."
             )
 
+        # 환경별 uploads 디렉토리 설정
+        from pathlib import Path
+
+        if self.ENVIRONMENT in ["local", "development"]:
+            # 로컬/개발 환경: 프로젝트 루트/uploads/local 또는 uploads/dev
+            project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+            env_suffix = "local" if self.ENVIRONMENT == "local" else "dev"
+            self.UPLOADS_DIR = str(project_root / "uploads" / env_suffix)
+        elif self.ENVIRONMENT in ["staging", "stg"]:
+            # 스테이징 환경: /srv/uploads/podpod/stg/
+            self.UPLOADS_DIR = "/srv/uploads/podpod/stg"
+        elif self.ENVIRONMENT in ["production", "prod"]:
+            # 프로덕션 환경: /srv/uploads/podpod/prod/
+            self.UPLOADS_DIR = "/srv/uploads/podpod/prod"
+        else:
+            # 기본값: 프로젝트 루트/uploads/dev
+            project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+            self.UPLOADS_DIR = str(project_root / "uploads" / "dev")
+
+        # uploads 디렉토리가 없으면 생성
+        Path(self.UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
+
+        # 환경별 logs 디렉토리 설정
+        if self.ENVIRONMENT in ["local", "development"]:
+            # 로컬/개발 환경: 프로젝트 루트/logs/local 또는 logs/dev
+            project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+            env_suffix = "local" if self.ENVIRONMENT == "local" else "dev"
+            self.LOGS_DIR = str(project_root / "logs" / env_suffix)
+        elif self.ENVIRONMENT in ["staging", "stg"]:
+            # 스테이징 환경: /srv/logs/podpod/stg/
+            self.LOGS_DIR = "/srv/logs/podpod/stg"
+        elif self.ENVIRONMENT in ["production", "prod"]:
+            # 프로덕션 환경: /srv/logs/podpod/prod/
+            self.LOGS_DIR = "/srv/logs/podpod/prod"
+        else:
+            # 기본값: 프로젝트 루트/logs/dev
+            project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+            self.LOGS_DIR = str(project_root / "logs" / "dev")
+
+        # logs 디렉토리가 없으면 생성
+        Path(self.LOGS_DIR).mkdir(parents=True, exist_ok=True)
+
         print(f"환경 설정 완료: {self.ENVIRONMENT}")
         print(
             f"데이터베이스: {self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
         )
+        print(f"Uploads 디렉토리: {self.UPLOADS_DIR}")
+        print(f"Logs 디렉토리: {self.LOGS_DIR}")
 
     @property
     def DATABASE_URL(self) -> str:

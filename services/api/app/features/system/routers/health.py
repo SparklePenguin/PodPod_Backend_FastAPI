@@ -20,22 +20,12 @@ router = APIRouter()
 class HealthCheckResponse(BaseModel):
     """서버 상태 응답"""
 
-    status: str = Field(
-        serialization_alias="status", description="서버 상태", examples=["healthy"]
-    )
-    timestamp: str = Field(
-        serialization_alias="timestamp",
-        description="확인 시간",
-        examples=["2025-10-09T12:00:00"],
-    )
+    status: str = Field(serialization_alias="status", description="서버 상태")
+    timestamp: str = Field(serialization_alias="timestamp", description="확인 시간")
     database: str = Field(
-        serialization_alias="database",
-        description="데이터베이스 상태",
-        examples=["connected"],
+        serialization_alias="database", description="데이터베이스 상태"
     )
-    version: str = Field(
-        serialization_alias="version", description="API 버전", examples=["1.0.0"]
-    )
+    version: str = Field(serialization_alias="version", description="API 버전")
 
     model_config = {"populate_by_name": True}
 

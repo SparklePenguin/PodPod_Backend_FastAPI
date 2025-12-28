@@ -301,8 +301,10 @@ class RecruitmentService:
                     # 다시 파티 정보를 조회하여 최신 상태 확인
                     final_pod = await self._pod_repo.get_pod_by_id(application_pod_id)
                     if final_pod:
-                        final_member_count = await self._pod_repo.get_joined_users_count(
-                            application_pod_id
+                        final_member_count = (
+                            await self._pod_repo.get_joined_users_count(
+                                application_pod_id
+                            )
                         )
                         final_pod_capacity = getattr(final_pod, "capacity", 0) or 0
                         final_pod_status = getattr(final_pod, "status", None)

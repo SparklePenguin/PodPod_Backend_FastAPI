@@ -23,16 +23,10 @@ class Follow(Base):
         comment="팔로우받는 사용자 ID",
     )
     notification_enabled = Column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="알림 활성화 여부",
+        Boolean, default=True, nullable=False, comment="알림 활성화 여부"
     )
     is_active = Column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="팔로우 활성화 여부",
+        Boolean, default=True, nullable=False, comment="팔로우 활성화 여부"
     )
     created_at = Column(
         DateTime,

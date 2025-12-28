@@ -95,10 +95,7 @@ async def create_sendbird_channels(db: AsyncSession = Depends(get_session)):
                         "meetingPlace": pod_place or "",
                         "meetingDate": (
                             int(
-                                datetime.combine(
-                                    meeting_date,
-                                    meeting_time,
-                                ).timestamp()
+                                datetime.combine(meeting_date, meeting_time).timestamp()
                                 * 1000
                             )
                             if (meeting_date := getattr(pod, "meeting_date", None))
@@ -339,8 +336,7 @@ async def check_sendbird_channels(db: AsyncSession = Depends(get_session)):
 
 @router.get("/channel-metadata/{channel_url}")
 async def get_channel_metadata(
-    channel_url: str,
-    db: AsyncSession = Depends(get_session),
+    channel_url: str, db: AsyncSession = Depends(get_session)
 ):
     """채널 메타데이터 확인"""
     try:
@@ -391,9 +387,7 @@ async def get_channel_metadata(
 
 
 @router.put("/update-metadata")
-async def update_channel_metadata(
-    db: AsyncSession = Depends(get_session),
-):
+async def update_channel_metadata(db: AsyncSession = Depends(get_session)):
     """기존 채팅방들의 메타데이터 업데이트"""
     try:
         pod_crud = PodCRUD(db)
@@ -449,10 +443,7 @@ async def update_channel_metadata(
                     "meetingPlace": pod_place or "",
                     "meetingDate": (
                         int(
-                            datetime.combine(
-                                meeting_date,
-                                meeting_time,
-                            ).timestamp()
+                            datetime.combine(meeting_date, meeting_time).timestamp()
                             * 1000
                         )
                         if (meeting_date := getattr(pod, "meeting_date", None))

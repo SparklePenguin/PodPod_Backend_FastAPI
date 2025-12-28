@@ -1,4 +1,5 @@
 """Notifications feature schemas"""
+
 from .notification import (
     NotificationCategory,
     NotificationResponse,

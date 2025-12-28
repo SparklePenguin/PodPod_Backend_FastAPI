@@ -70,7 +70,8 @@ services:
       # 개발 환경에서는 코드 변경 시 자동 반영을 위한 볼륨 마운트
       - ./services/api:/app
       - /app/.venv  # 가상환경은 제외
-      - ./services/api/uploads:/app/uploads  # 업로드 파일 영속성
+      - ./uploads/dev:/app/uploads/dev  # 개발 환경 업로드 파일
+      - ./logs/dev:/app/logs/dev  # 개발 환경 로그 파일
       - ./shared:/app/shared  # 공유 모델
     networks:
       - podpod-network

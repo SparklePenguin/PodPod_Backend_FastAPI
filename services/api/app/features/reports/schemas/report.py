@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -7,13 +7,9 @@ from pydantic import BaseModel, Field, field_validator
 class ReportReasonDto(BaseModel):
     """신고 사유 DTO"""
 
-    id: int = Field(..., description="신고 사유 ID", examples=[1])
-    code: str = Field(..., description="신고 사유 코드", examples=["ABUSIVE_LANGUAGE"])
-    description: str = Field(
-        ...,
-        description="신고 사유 설명",
-        examples=["욕설, 비속어 사용 - 불쾌한 언어 또는 욕설이 포함되어 있어요"],
-    )
+    id: int = Field(..., description="신고 사유 ID")
+    code: str = Field(..., description="신고 사유 코드")
+    description: str = Field(..., description="신고 사유 설명")
 
     model_config = {
         "from_attributes": True,
@@ -36,30 +32,20 @@ class CreateReportRequest(BaseModel):
     """신고 생성 요청 스키마"""
 
     reported_user_id: int = Field(
-        ...,
-        serialization_alias="reportedUserId",
-        description="신고당한 사용자 ID",
-        examples=[2],
+        ..., serialization_alias="reportedUserId", description="신고당한 사용자 ID"
     )
     report_types: List[int] = Field(
         ...,
         serialization_alias="reportTypes",
         description="신고 유형 ID 목록 (1~8, 최대 3개)",
-        examples=[[1, 2]],
         min_length=1,
         max_length=3,
     )
-    reason: Optional[str] = Field(
-        None,
-        description="신고 이유 (추가 설명)",
-        examples=["불쾌한 언어를 사용했습니다."],
-        max_length=500,
+    reason: str | None = Field(
+        None, description="신고 이유 (추가 설명)", max_length=500
     )
     should_block: bool = Field(
-        ...,
-        serialization_alias="shouldBlock",
-        description="신고와 함께 차단 여부",
-        examples=[True],
+        ..., serialization_alias="shouldBlock", description="신고와 함께 차단 여부"
     )
 
     @field_validator("report_types")
@@ -86,24 +72,18 @@ class CreateReportRequest(BaseModel):
 class ReportResponse(BaseModel):
     """신고 응답 스키마"""
 
-    id: int = Field(..., description="신고 ID", examples=[1])
+    id: int = Field(..., description="신고 ID")
     reporter_id: int = Field(
-        ...,
-        serialization_alias="reporterId",
-        description="신고를 수행한 사용자 ID",
-        examples=[1],
+        ..., serialization_alias="reporterId", description="신고를 수행한 사용자 ID"
     )
     reported_user_id: int = Field(
-        ...,
-        serialization_alias="reportedUserId",
-        description="신고당한 사용자 ID",
-        examples=[2],
+        ..., serialization_alias="reportedUserId", description="신고당한 사용자 ID"
     )
     report_types: List[int] = Field(
         ..., serialization_alias="reportTypes", description="신고 유형 ID 목록"
     )
-    reason: Optional[str] = Field(None, description="신고 이유 (추가 설명)")
-    blocked: bool = Field(..., description="차단 여부", examples=[True])
+    reason: str | None = Field(None, description="신고 이유 (추가 설명)")
+    blocked: bool = Field(..., description="차단 여부")
     created_at: datetime.datetime = Field(
         ..., serialization_alias="createdAt", description="신고 생성 시간"
     )
