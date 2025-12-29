@@ -235,7 +235,12 @@ $RECYCLE.BIN/
 
 # Log files
 *.log
-logs/
+*.log.gz
+services/api/logs/
+services/api/logs/dev/
+services/api/logs/stg/
+services/api/logs/prod/
+services/api/logs/local/
 
 # Configuration files with sensitive data
 config.ini
@@ -280,7 +285,9 @@ Icon?
 Thumbs.db
 
 # Uploaded files
-uploads/
+services/api/uploads/
+services/api/uploads/dev/
+services/api/uploads/local/
 
 # User images and MVP data files
 UserImages/
@@ -296,3 +303,6 @@ unmatched_files.md
 # Prometheus
 data/
 prometheus.log
+
+# Dependencies markers
+scripts/.setup

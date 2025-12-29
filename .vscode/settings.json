@@ -19,12 +19,21 @@
   "explorer.fileNesting.expand": false,
   "explorer.fileNesting.patterns": {
     "config.dev.yaml": "config.*.yaml",
-    "docker-compose.dev.yml": "docker-compose.*.yml",
+    "docker-compose.dev.yml": "docker-compose.*.yml, .dockerignore",
     "Dockerfile": ".dockerignore", 
     ".env": ".env.example",
     "pyproject.toml": "setup.py, setup.cfg",
+    ".gitignore": ".gitmodules",
     "prometheus.dev.yml": "prometheus.*.yml",
   },
+
+  // 마이크로 서비스 아키텍처
   "python-envs.defaultEnvManager": "ms-python.python:system",
-  "python-envs.pythonProjects": []
+  "python-envs.pythonProjects": [
+    {
+      "path": "packages/scraping",
+      "envManager": "ms-python.python:system",
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
 }

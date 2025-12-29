@@ -1,0 +1,13 @@
+# FastAPI 및 웹 서버
+fastapi==0.116.1
+uvicorn==0.35.0
+
+# 데이터베이스
+SQLAlchemy==2.0.43
+aiomysql==0.2.0
+
+# 파일 업로드
+python-multipart==0.0.6
+
+# 유틸리티
+python-dotenv==1.0.0
