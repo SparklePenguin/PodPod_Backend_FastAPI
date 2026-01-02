@@ -50,9 +50,11 @@ class UserService:
             await self._session.refresh(user)
 
     # - MARK: 유저 FCM 토큰 업데이트
-    async def update_fcm_token(self, user_id: int, fcm_token: str | None):
+    async def update_fcm_token(self, user_id: int, fcm_token: str | None) -> UserDetailDto:
         """유저 FCM 토큰 업데이트"""
         await self._user_repo.update_fcm_token(user_id, fcm_token)
+        # 업데이트된 사용자 정보 반환
+        return await self.get_user_with_follow_stats(user_id, user_id)
 
     # - MARK: 사용자 생성
     async def create_user(

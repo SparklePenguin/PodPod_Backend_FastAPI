@@ -182,10 +182,10 @@ async def update_fcm_token(
     current_user_id: int = Depends(get_current_user_id),
     service: UserService = Depends(get_user_service),
 ):
-    await service.update_fcm_token(current_user_id, fcm_token)
+    user = await service.update_fcm_token(current_user_id, fcm_token)
 
     return BaseResponse.ok(
-        data={"updated": True},
+        data=user,
         message_ko="FCM 토큰이 업데이트되었습니다.",
         message_en="FCM token updated successfully.",
     )
