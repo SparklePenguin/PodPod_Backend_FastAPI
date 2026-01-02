@@ -46,8 +46,8 @@ class OAuthService:
     # - MARK: 구글 토큰 로그인
     async def sign_in_with_google(self, request: GoogleLoginRequest):
         """Google 로그인 처리"""
-        # Google 토큰 검증
-        oauth_user_info = await self._google_service.get_google_user_info(
+        # Google ID 토큰 검증 및 사용자 정보 추출
+        oauth_user_info = await self._google_service.verify_google_id_token(
             request.id_token
         )
 

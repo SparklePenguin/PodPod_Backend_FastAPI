@@ -1,4 +1,5 @@
 from app.common.schemas import BaseResponse, PageDto
+from app.core.error_codes import get_error_info
 from app.deps.auth import get_current_user_id
 from app.deps.service import get_pod_review_service
 from app.features.pods.schemas import (
@@ -55,19 +56,19 @@ async def get_review(
 
 # - MARK: 파티별 후기 목록 조회
 @router.get(
-    "/pod/{pod_id}",
+    "",
     response_model=BaseResponse[PageDto[PodReviewDto]],
-    description="파티별 후기 목록 조회",
+    description="후기 목록 조회 (파티 ID로 필터링 가능)",
 )
-async def get_reviews_by_pod(
-    pod_id: int = Path(..., description="파티 ID"),
+async def get_reviews(
+    pod_id: int = Query(..., alias="pod", description="파티 ID (필터링용)"),
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(
         20, ge=1, le=100, description="페이지 크기 (1~100)"
     ),
     service: PodReviewService = Depends(get_pod_review_service),
 ):
-    """파티별 후기 목록 조회"""
+    """후기 목록 조회 (파티 ID로 필터링)"""
     try:
         reviews = await service.get_reviews_by_pod(pod_id, page, size)
 

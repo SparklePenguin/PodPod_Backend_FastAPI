@@ -16,7 +16,6 @@ from app.features.users.schemas import (
     UpdateProfileRequest,
     UserDetailDto,
 )
-from app.features.users.schemas.user_dto import UserDto
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -302,7 +301,9 @@ class UserService:
         return user_data
 
     # - MARK: 약관 동의
-    async def accept_terms(self, user_id: int, terms_accepted: bool = True) -> UserDetailDto:
+    async def accept_terms(
+        self, user_id: int, terms_accepted: bool = True
+    ) -> UserDetailDto:
         """약관 동의 처리"""
         # 약관 동의 업데이트 (repo 메서드 사용)
         user = await self._user_repo.update_terms_accepted(user_id, terms_accepted)

@@ -380,23 +380,6 @@ class SchedulerService:
                 f"- 파티 ID: {pod.id}, 제목: {pod.title}, 시간: {pod.meeting_time}, 상태: {status_str}"
             )
 
-        # 파티 88번 특별 조회
-        pod88_query = select(Pod).where(Pod.id == 88)
-        pod88_result = await db.execute(pod88_query)
-        pod88 = pod88_result.scalar_one_or_none()
-
-        if pod88:
-            # status 접근 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
-            try:
-                status_str = str(pod88.status).upper()
-            except Exception:
-                status_str = "UNKNOWN"
-            logger.info(
-                f"파티 88번 정보: ID={pod88.id}, 제목={pod88.title}, 날짜={pod88.meeting_date}, 시간={pod88.meeting_time}, 상태={status_str}"
-            )
-        else:
-            logger.info("파티 88번을 찾을 수 없습니다.")
-
         # 1시간 후 시작하는 모임들 조회
         # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
         query = select(Pod).where(
