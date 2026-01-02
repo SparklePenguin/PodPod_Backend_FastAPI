@@ -16,7 +16,7 @@ class PodLikeRepository:
         if exists.scalar_one_or_none() is not None:
             return True
         self._session.add(PodLike(pod_id=pod_id, user_id=user_id))
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     # - MARK: 좋아요 취소
@@ -28,7 +28,7 @@ class PodLikeRepository:
         if row is None:
             return True
         await self._session.delete(row)
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     # - MARK: 좋아요 개수
@@ -46,3 +46,17 @@ class PodLikeRepository:
             )
         )
         return q.scalar_one_or_none() is not None
+
+    # - MARK: 좋아요한 사용자 목록 조회
+    async def get_users_who_liked_pod(self, pod_id: int):
+        """파티를 좋아요한 사용자 목록 조회"""
+        from app.features.users.models import User
+
+        query = (
+            select(User)
+            .join(PodLike, User.id == PodLike.user_id)
+            .where(PodLike.pod_id == pod_id)
+            .distinct()
+        )
+        result = await self._session.execute(query)
+        return result.scalars().all()

@@ -98,3 +98,16 @@ class UserRepository:
         )
         await self._session.commit()
         return await self.get_by_id(user_id)
+
+    # - MARK: 사용자 성향 타입 조회
+    async def get_user_tendency_type(self, user_id: int) -> str:
+        """사용자의 성향 타입 조회"""
+        from app.features.tendencies.models import UserTendencyResult
+
+        result = await self._session.execute(
+            select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
+        )
+        tendency = result.scalar_one_or_none()
+        return (
+            str(tendency.tendency_type) if tendency and tendency.tendency_type else ""
+        )

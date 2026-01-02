@@ -1,3 +1,5 @@
+"""Like 관련 모델들"""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint
@@ -6,6 +8,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
+# - MARK: Pod Like Model
 class PodLike(Base):
     __tablename__ = "pod_likes"
 

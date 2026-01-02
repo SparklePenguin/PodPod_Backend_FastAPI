@@ -13,18 +13,38 @@ from app.features.notifications.services.notification_service import (
     NotificationService,
 )
 from app.features.oauth.services.oauth_service import OAuthService
-from app.features.pods.services.pod_like_service import PodLikeService
-from app.features.pods.services.pod_review_service import PodReviewService
+from app.features.pods.repositories.application_repository import (
+    ApplicationRepository,
+)
+from app.features.pods.repositories.like_repository import PodLikeRepository
+from app.features.pods.repositories.pod_repository import PodRepository
+from app.features.pods.repositories.review_repository import PodReviewRepository
+from app.features.pods.services.application_notification_service import (
+    ApplicationNotificationService,
+)
+from app.features.pods.services.application_service import ApplicationService
+from app.features.pods.services.like_notification_service import (
+    LikeNotificationService,
+)
+from app.features.pods.services.like_service import LikeService
 from app.features.pods.services.pod_service import PodService
-from app.features.pods.services.recruitment_service import RecruitmentService
+from app.features.pods.services.review_notification_service import (
+    ReviewNotificationService,
+)
+from app.features.pods.services.review_service import ReviewService
+from app.features.pods.use_cases.application_use_case import ApplicationUseCase
+from app.features.pods.use_cases.like_use_case import LikeUseCase
+from app.features.pods.use_cases.pod_use_case import PodUseCase
+from app.features.pods.use_cases.review_use_case import ReviewUseCase
 from app.features.reports.services.report_service import ReportService
 from app.features.session.services.session_service import SessionService
 from app.features.tendencies.services.tendency_service import TendencyService
+from app.features.users.repositories import UserRepository
 from app.features.users.services.block_user_service import BlockUserService
+from app.features.users.services.user_artist_service import UserArtistService
 from app.features.users.services.user_notification_service import (
     UserNotificationService,
 )
-from app.features.users.services.user_artist_service import UserArtistService
 from app.features.users.services.user_service import UserService
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -107,25 +127,155 @@ def get_notification_service(
     return NotificationService(session=session)
 
 
-def get_pod_review_service(
+def get_like_notification_service(
     session: AsyncSession = Depends(get_session),
     fcm_service: FCMService = Depends(get_fcm_service),
-) -> PodReviewService:
-    return PodReviewService(session=session, fcm_service=fcm_service)
+) -> LikeNotificationService:
+    user_repo = UserRepository(session)
+    pod_repo = PodRepository(session)
+    like_repo = PodLikeRepository(session)
+    return LikeNotificationService(
+        session=session,
+        fcm_service=fcm_service,
+        user_repo=user_repo,
+        pod_repo=pod_repo,
+        like_repo=like_repo,
+    )
 
 
-def get_pod_like_service(
+def get_review_notification_service(
     session: AsyncSession = Depends(get_session),
     fcm_service: FCMService = Depends(get_fcm_service),
-) -> PodLikeService:
-    return PodLikeService(session, fcm_service=fcm_service)
+) -> ReviewNotificationService:
+    user_repo = UserRepository(session)
+    pod_repo = PodRepository(session)
+    return ReviewNotificationService(
+        session=session,
+        fcm_service=fcm_service,
+        user_repo=user_repo,
+        pod_repo=pod_repo,
+    )
 
 
-def get_recruitment_service(
+def get_review_service(
+    session: AsyncSession = Depends(get_session),
+    review_repo: PodReviewRepository = Depends(
+        lambda: PodReviewRepository(Depends(get_session)())
+    ),
+    user_repo: UserRepository = Depends(lambda: UserRepository(Depends(get_session)())),
+    notification_service: ReviewNotificationService = Depends(
+        get_review_notification_service
+    ),
+) -> ReviewService:
+    # session을 직접 사용하기 위해 다시 생성
+    review_repo = PodReviewRepository(session)
+    user_repo = UserRepository(session)
+    return ReviewService(
+        session=session,
+        review_repo=review_repo,
+        user_repo=user_repo,
+        notification_service=notification_service,
+    )
+
+
+def get_like_service(
+    session: AsyncSession = Depends(get_session),
+    like_repo: PodLikeRepository = Depends(
+        lambda: PodLikeRepository(Depends(get_session)())
+    ),
+    notification_service: LikeNotificationService = Depends(
+        get_like_notification_service
+    ),
+) -> LikeService:
+    # session을 직접 사용하기 위해 다시 생성
+    like_repo = PodLikeRepository(session)
+    return LikeService(
+        session=session,
+        like_repo=like_repo,
+        notification_service=notification_service,
+    )
+
+
+def get_application_notification_service(
     session: AsyncSession = Depends(get_session),
     fcm_service: FCMService = Depends(get_fcm_service),
-) -> RecruitmentService:
-    return RecruitmentService(session, fcm_service=fcm_service)
+) -> ApplicationNotificationService:
+    user_repo = UserRepository(session)
+    pod_repo = PodRepository(session)
+    like_repo = PodLikeRepository(session)
+    return ApplicationNotificationService(
+        session=session,
+        fcm_service=fcm_service,
+        user_repo=user_repo,
+        pod_repo=pod_repo,
+        like_repo=like_repo,
+    )
+
+
+def get_application_service(
+    session: AsyncSession = Depends(get_session),
+    pod_repo: PodRepository = Depends(lambda: PodRepository(Depends(get_session)())),
+    application_repo: ApplicationRepository = Depends(
+        lambda: ApplicationRepository(Depends(get_session)())
+    ),
+    user_repo: UserRepository = Depends(lambda: UserRepository(Depends(get_session)())),
+    notification_service: ApplicationNotificationService = Depends(
+        get_application_notification_service
+    ),
+) -> ApplicationService:
+    # session을 직접 사용하기 위해 다시 생성
+    pod_repo = PodRepository(session)
+    application_repo = ApplicationRepository(session)
+    user_repo = UserRepository(session)
+    return ApplicationService(
+        session=session,
+        pod_repo=pod_repo,
+        application_repo=application_repo,
+        user_repo=user_repo,
+        notification_service=notification_service,
+    )
+
+
+def get_application_use_case(
+    session: AsyncSession = Depends(get_session),
+    application_service: ApplicationService = Depends(get_application_service),
+) -> ApplicationUseCase:
+    pod_repo = PodRepository(session)
+    application_repo = ApplicationRepository(session)
+    return ApplicationUseCase(
+        session=session,
+        application_service=application_service,
+        pod_repo=pod_repo,
+        application_repo=application_repo,
+    )
+
+
+def get_like_use_case(
+    session: AsyncSession = Depends(get_session),
+    like_service: LikeService = Depends(get_like_service),
+) -> LikeUseCase:
+    pod_repo = PodRepository(session)
+    like_repo = PodLikeRepository(session)
+    return LikeUseCase(
+        session=session,
+        like_service=like_service,
+        pod_repo=pod_repo,
+        like_repo=like_repo,
+    )
+
+
+def get_review_use_case(
+    session: AsyncSession = Depends(get_session),
+    review_service: ReviewService = Depends(get_review_service),
+) -> ReviewUseCase:
+    pod_repo = PodRepository(session)
+    review_repo = PodReviewRepository(session)
+    return ReviewUseCase(
+        session=session,
+        review_service=review_service,
+        pod_repo=pod_repo,
+        review_repo=review_repo,
+    )
 
 
 def get_follow_service(
@@ -139,19 +289,68 @@ def get_follow_service(
 
 def get_pod_service(
     session: AsyncSession = Depends(get_session),
-    review_service: PodReviewService = Depends(get_pod_review_service),
-    like_service: PodLikeService = Depends(get_pod_like_service),
-    recruitment_service: RecruitmentService = Depends(get_recruitment_service),
+    review_service: ReviewService = Depends(get_review_service),
+    like_service: LikeService = Depends(get_like_service),
     follow_service: FollowService = Depends(get_follow_service),
     fcm_service: FCMService = Depends(get_fcm_service),
+    application_service: ApplicationService = Depends(get_application_service),
 ) -> PodService:
+    from app.features.users.services.user_service import UserService
+    from app.features.pods.services.pod_notification_service import (
+        PodNotificationService,
+    )
+
+    from app.features.users.repositories import UserRepository
+
+    pod_repo = PodRepository(session)
+    application_repo = ApplicationRepository(session)
+    review_repo = PodReviewRepository(session)
+    like_repo = PodLikeRepository(session)
+    user_repo = UserRepository(session)
+    user_service = UserService(session)
+    pod_notification_service = PodNotificationService(
+        session=session,
+        fcm_service=fcm_service,
+        pod_repo=pod_repo,
+    )
     return PodService(
         session=session,
+        pod_repo=pod_repo,
+        application_repo=application_repo,
+        review_repo=review_repo,
+        like_repo=like_repo,
+        user_repo=user_repo,
+        application_service=application_service,
+        user_service=user_service,
+        notification_service=pod_notification_service,
         review_service=review_service,
         like_service=like_service,
-        recruitment_service=recruitment_service,
         follow_service=follow_service,
+    )
+
+
+def get_pod_use_case(
+    session: AsyncSession = Depends(get_session),
+    pod_service: PodService = Depends(get_pod_service),
+    follow_service: FollowService = Depends(get_follow_service),
+    fcm_service: FCMService = Depends(get_fcm_service),
+) -> PodUseCase:
+    from app.features.pods.services.pod_notification_service import (
+        PodNotificationService,
+    )
+
+    pod_repo = PodRepository(session)
+    pod_notification_service = PodNotificationService(
+        session=session,
         fcm_service=fcm_service,
+        pod_repo=pod_repo,
+    )
+    return PodUseCase(
+        session=session,
+        pod_service=pod_service,
+        pod_repo=pod_repo,
+        notification_service=pod_notification_service,
+        follow_service=follow_service,
     )
 
 

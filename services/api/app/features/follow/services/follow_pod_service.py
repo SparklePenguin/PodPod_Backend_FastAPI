@@ -1,10 +1,16 @@
 from app.common.schemas.page_dto import PageDto
 from app.features.follow.repositories.follow_pod_repository import FollowPodRepository
 from app.features.follow.services.follow_utils import create_page_dto
+from app.features.pods.models import (
+    AccompanySubCategory,
+    EtcSubCategory,
+    GoodsSubCategory,
+    TourSubCategory,
+)
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import PodDetailDto
-from app.features.pods.services.pod_review_service import PodReviewService
+from app.features.pods.services.review_service import ReviewService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -61,7 +67,7 @@ class FollowPodService:
             # PodDetailDto를 수동으로 생성하여 MissingGreenlet 오류 방지
             # 후기 목록 조회
             reviews = await self._review_repo.get_all_reviews_by_pod(pod_id)
-            review_service = PodReviewService(self._session)
+            review_service = ReviewService(self._session)
             review_dtos = []
             for review in reviews:
                 review_dto = await review_service._convert_to_dto(review)
@@ -77,11 +83,16 @@ class FollowPodService:
                 import json
 
                 try:
-                    pod_sub_categories = (
-                        json.loads(pod_sub_categories) if pod_sub_categories else []
-                    )
+                    parsed = json.loads(pod_sub_categories) if pod_sub_categories else []
+                    pod_sub_categories = parsed if isinstance(parsed, list) else []
                 except (ValueError, TypeError, json.JSONDecodeError):
                     pod_sub_categories = []
+            elif isinstance(pod_sub_categories, list):
+                pod_sub_categories = pod_sub_categories
+            else:
+                pod_sub_categories = []
+            
+            # 카테고리 검증은 use case에서 처리 (이미 저장된 데이터는 그대로 표시)
 
             from datetime import datetime, timezone
 

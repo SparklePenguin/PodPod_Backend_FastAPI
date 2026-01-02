@@ -1,104 +1,38 @@
+from typing import List
+
 from app.common.schemas import BaseResponse, PageDto
-from app.core.database import get_session
-from app.core.error_codes import get_error_info
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_pod_service
-from app.features.pods.schemas import PodCreateRequest, PodDetailDto
-from app.features.pods.schemas.pod_search_request import PodSearchRequest
+from app.deps.service import get_pod_service, get_pod_use_case
+from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_service import PodService
-from fastapi import (
-    APIRouter,
-    Body,
-    Depends,
-    File,
-    Form,
-    Path,
-    Query,
-    UploadFile,
-    status,
-)
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.features.pods.use_cases.pod_use_case import PodUseCase
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
 
 router = APIRouter(dependencies=[])
 
 
-# - MARK: 파티 생성
+# MARK: - 파티 생성
 @router.post(
     "",
     response_model=BaseResponse[PodDetailDto],
     description="파티 생성",
 )
 async def create_pod(
-    title: str = Form(..., description="파티 제목"),
-    description: str | None = Form(..., description="파티 설명"),
-    sub_categories: list[str] = Form(
-        [],
-        alias="subCategories",
-        description="서브 카테고리 (예: ['EXCHANGE', 'SALE', 'GROUP_PURCHASE'] 등)",
-    ),
-    capacity: int = Form(..., description="최대 인원수"),
-    place: str = Form(..., description="장소명"),
-    address: str = Form(..., description="주소"),
-    sub_address: str | None = Form(None, alias="subAddress", description="상세 주소"),
-    x: float | None = Form(None, description="경도 (longitude)"),
-    y: float | None = Form(None, description="위도 (latitude)"),
-    # 이제 meetingDate 하나로 UTC datetime을 받음
-    meeting_date: str = Form(
-        ...,
-        alias="meetingDate",
-        description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
-    ),
-    selected_artist_id: int = Form(
-        ..., alias="selectedArtistId", description="선택된 아티스트 ID"
-    ),
-    images: list[UploadFile] = File(..., description="파티 이미지 리스트"),
+    pod_data: PodForm = Depends(),
+    images: List[UploadFile] = File(..., description="파티 이미지 리스트"),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
 ):
-    # sub_categories는 이미 리스트이므로 그대로 사용
-    sub_category_list = sub_categories
-
-    # meetingDate(UTC datetime) 파싱 → date/time 분리
-    import logging
-    from datetime import date, datetime, time, timezone
-
-    logger = logging.getLogger(__name__)
-
-    normalized = meeting_date.replace("Z", "+00:00")
-    dt = datetime.fromisoformat(normalized)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    dt_utc = dt.astimezone(timezone.utc)
-
-    parsed_meeting_date: date = dt_utc.date()
-    parsed_meeting_time: time = dt_utc.time()
-
-    logger.info(
-        f"[파티 생성] UTC 시간 저장: 원본={meeting_date}, UTC datetime={dt_utc.isoformat()}, "
-        f"date={parsed_meeting_date}, time={parsed_meeting_time}"
+    """파티 생성"""
+    pod = await service.create_pod_from_form(
+        owner_id=user_id,
+        pod_form=pod_data,
+        images=images,
     )
-
-    # PodCreateRequest 객체 생성
-    req = PodCreateRequest(
-        title=title,
-        description=description,
-        sub_categories=sub_category_list,
-        capacity=capacity,
-        place=place,
-        address=address,
-        sub_address=sub_address,
-        x=x,
-        y=y,
-        meetingDate=parsed_meeting_date,
-        meetingTime=parsed_meeting_time,
-        selected_artist_id=selected_artist_id,
-    )
-
-    pod = await service.create_pod(owner_id=user_id, req=req, images=images)
     return BaseResponse.ok(data=pod, http_status=status.HTTP_201_CREATED)
 
 
-# - MARK: 인기 파티 조회
+# MARK: - 인기 파티 조회
 @router.get(
     "/trending",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -117,7 +51,7 @@ async def get_trending_pods(
     return BaseResponse.ok(data=pods)
 
 
-# - MARK: 마감 직전 파티 조회
+# MARK: - 마감 직전 파티 조회
 @router.get(
     "/closing-soon",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -137,7 +71,7 @@ async def get_closing_soon_pods(
     return BaseResponse.ok(data=pods)
 
 
-# - MARK: 우리 만난적 있어요 파티 조회
+# MARK: - 우리 만난적 있어요 파티 조회
 @router.get(
     "/history-based",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -156,7 +90,7 @@ async def get_history_based_pods(
     return BaseResponse.ok(data=pods)
 
 
-# - MARK: 인기 최고 카테고리 파티 조회
+# MARK: - 인기 최고 카테고리 파티 조회
 @router.get(
     "/popular-category",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -176,6 +110,7 @@ async def get_popular_categories_pods(
     return BaseResponse.ok(data=pods)
 
 
+# MARK: - 내가 참여한 파티 목록 조회
 @router.get(
     "/user/joined",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -188,28 +123,15 @@ async def get_my_joined_pods(
     pod_service: PodService = Depends(get_pod_service),
 ):
     """내가 참여한 파티 목록 조회"""
-    try:
-        joined_pods = await pod_service.get_user_joined_pods(
-            current_user_id, page, size
-        )
-
-        return BaseResponse.ok(
-            data=joined_pods,
-            http_status=status.HTTP_200_OK,
-            message_ko="내가 참여한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved my joined pods.",
-        )
-    except Exception:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
+    joined_pods = await pod_service.get_user_joined_pods(current_user_id, page, size)
+    return BaseResponse.ok(
+        data=joined_pods,
+        message_ko="내가 참여한 파티 목록을 조회했습니다.",
+        message_en="Successfully retrieved my joined pods.",
+    )
 
 
+# MARK: - 내가 저장한 파티 목록 조회
 @router.get(
     "/user/liked",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -222,26 +144,15 @@ async def get_my_liked_pods(
     pod_service: PodService = Depends(get_pod_service),
 ):
     """내가 저장한 파티 목록 조회"""
-    try:
-        liked_pods = await pod_service.get_user_liked_pods(current_user_id, page, size)
-
-        return BaseResponse.ok(
-            data=liked_pods,
-            http_status=status.HTTP_200_OK,
-            message_ko="내가 저장한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved my liked pods.",
-        )
-    except Exception:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
+    liked_pods = await pod_service.get_user_liked_pods(current_user_id, page, size)
+    return BaseResponse.ok(
+        data=liked_pods,
+        message_ko="내가 저장한 파티 목록을 조회했습니다.",
+        message_en="Successfully retrieved my liked pods.",
+    )
 
 
+# MARK: - 사용자가 개설한 파티 목록 조회
 @router.get(
     "/user",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -259,50 +170,16 @@ async def get_user_pods(
     pod_service: PodService = Depends(get_pod_service),
 ):
     """사용자가 개설한 파티 목록 조회"""
-    try:
-        # userId가 제공되지 않으면 현재 사용자 ID 사용
-        target_user_id = userId if userId is not None else current_user_id
-
-        # 먼저 해당 사용자가 존재하는지 확인
-        from app.core.error_codes import get_error_info
-        from app.features.users.services.user_service import UserService
-
-        user_service = UserService(pod_service.db)
-        try:
-            await user_service.get_user(target_user_id)
-        except Exception:
-            # 사용자가 존재하지 않으면 404 오류 반환
-            error_info = get_error_info("USER_NOT_FOUND")
-            return BaseResponse.error(
-                error_key=error_info.error_key,
-                error_code=error_info.code,
-                http_status=error_info.http_status,
-                message_ko="사용자를 찾을 수 없습니다.",
-                message_en="User not found.",
-            )
-
-        user_pods = await pod_service.get_user_pods(target_user_id, page, size)
-
-        return BaseResponse.ok(
-            data=user_pods,
-            http_status=status.HTTP_200_OK,
-            message_ko="사용자가 개설한 파티 목록을 조회했습니다.",
-            message_en="Successfully retrieved user's pods.",
-        )
-    except Exception:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="유저의 파티 목록 조회 중 오류가 발생했습니다.",
-            message_en="An error occurred while retrieving user's pods.",
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=None,
-        )
+    target_user_id = userId if userId is not None else current_user_id
+    user_pods = await pod_service.get_user_pods(target_user_id, page, size)
+    return BaseResponse.ok(
+        data=user_pods,
+        message_ko="사용자가 개설한 파티 목록을 조회했습니다.",
+        message_en="Successfully retrieved user's pods.",
+    )
 
 
-# - MARK: 팟 목록 조회 (검색 포함)
+# MARK: - 팟 목록 조회 (검색 포함)
 @router.post(
     "/search",
     response_model=BaseResponse[PageDto[PodDetailDto]],
@@ -311,49 +188,14 @@ async def get_user_pods(
 async def get_pods(
     search_request: PodSearchRequest,
     current_user_id: int = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_session),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """팟 목록을 조회합니다."""
-    try:
-        pod_service = PodService(db)
-        result = await pod_service.search_pods(
-            user_id=current_user_id,
-            title=search_request.title,
-            main_category=search_request.main_category,
-            sub_category=search_request.sub_category,
-            start_date=search_request.start_date,
-            end_date=search_request.end_date,
-            location=search_request.location,
-            page=search_request.page or 1,
-            size=search_request.page_size or 20,
-        )
-
-        return BaseResponse.ok(result, message_ko="팟 목록 조회 성공", http_status=200)
-
-    except ValueError as e:
-        error_info = get_error_info("INVALID_REQUEST")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="잘못된 날짜 형식입니다.",
-            message_en="Invalid date format.",
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=str(e),
-        )
-    except Exception as e:
-        error_info = get_error_info("INTERNAL_SERVER_ERROR")
-        return BaseResponse(
-            data=None,
-            http_status=error_info.http_status,
-            message_ko="팟 목록 조회 중 오류가 발생했습니다.",
-            message_en="An error occurred while retrieving pods.",
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            dev_note=str(e),
-        )
-
-
+    result = await pod_use_case.search_pods(
+        user_id=current_user_id,
+        search_request=search_request,
+    )
+    return BaseResponse.ok(data=result, message_ko="팟 목록 조회 성공")
 
 
 # - MARK: 파티 상세 조회
@@ -379,31 +221,7 @@ async def get_pod_detail(
 )
 async def update_pod(
     pod_id: int,
-    title: str | None = Form(None, description="파티 제목"),
-    description: str | None = Form(None, description="파티 설명"),
-    sub_categories: list[str | None] = Form(
-        None, alias="subCategories", description="서브 카테고리"
-    ),
-    capacity: int | None = Form(None, description="최대 인원수"),
-    place: str | None = Form(None, description="장소명"),
-    address: str | None = Form(None, description="주소"),
-    sub_address: str | None = Form(None, alias="subAddress", description="상세 주소"),
-    x: float | None = Form(None, description="경도 (longitude)"),
-    y: float | None = Form(None, description="위도 (latitude)"),
-    # 이제 meetingDate 하나로 UTC datetime을 받음
-    meeting_date: str | None = Form(
-        None,
-        alias="meetingDate",
-        description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
-    ),
-    selected_artist_id: int | None = Form(
-        None, alias="selectedArtistId", description="선택된 아티스트 ID"
-    ),
-    image_orders: str | None = Form(
-        None,
-        alias="imageOrders",
-        description="이미지 순서 JSON 문자열 (기존: {type: 'existing', url: '...'}, 신규: {type: 'new', fileIndex: 0})",
-    ),
+    pod_data: PodForm = Depends(),
     new_images: list[UploadFile | None] = File(
         None,
         alias="newImages",
@@ -412,96 +230,43 @@ async def update_pod(
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    # 모든 Form 데이터 로깅
-    logger.info("[API] 받은 모든 Form 데이터:")
-    logger.info(f"[API] - title: {title}")
-    logger.info(f"[API] - description: {description}")
-    logger.info(f"[API] - image_orders: '{image_orders}'")
-    logger.info(f"[API] - image_orders 타입: {type(image_orders)}")
-    logger.info(f"[API] - new_images 개수: {len(new_images) if new_images else 0}")
-
-    # 업데이트할 필드들 준비
-    update_fields = {}
-
-    # 기본 정보 업데이트
-    if title is not None:
-        update_fields["title"] = title
-    if description is not None:
-        update_fields["description"] = description
-    if sub_categories is not None:
-        update_fields["sub_categories"] = sub_categories
-    if capacity is not None:
-        update_fields["capacity"] = capacity
-    if place is not None:
-        update_fields["place"] = place
-    if address is not None:
-        update_fields["address"] = address
-    if sub_address is not None:
-        update_fields["sub_address"] = sub_address
-    if x is not None:
-        update_fields["x"] = x
-    if y is not None:
-        update_fields["y"] = y
-    if selected_artist_id is not None:
-        update_fields["selected_artist_id"] = selected_artist_id
-
-    # 날짜와 시간 파싱 (meetingDate: UTC datetime → date/time 분리)
-    if meeting_date is not None:
-        from datetime import datetime, timezone
-
-        normalized = meeting_date.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(normalized)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-
-        dt_utc = dt.astimezone(timezone.utc)
-
-        update_fields["meeting_date"] = dt_utc.date()
-        update_fields["meeting_time"] = dt_utc.time()
-
-        logger.info(
-            f"[파티 수정] UTC 시간 저장: 원본={meeting_date}, UTC datetime={dt_utc.isoformat()}, "
-            f"date={update_fields['meeting_date']}, time={update_fields['meeting_time']}"
-        )
-
-    # 파티 업데이트 실행 (이미지 포함)
-    updated_pod = await pod_service.update_pod_with_images(
+    """파티 수정"""
+    updated_pod = await pod_service.update_pod_from_form(
         pod_id=pod_id,
         current_user_id=current_user_id,
-        update_fields=update_fields,
-        image_orders=image_orders,
+        pod_form=pod_data,
         new_images=new_images,
     )
-
-    if updated_pod is None:
-        error_info = get_error_info("POD_UPDATE_FAILED")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=status.HTTP_400_BAD_REQUEST,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
-
     return BaseResponse.ok(data=updated_pod)
 
 
-# - MARK: 파티 삭제
+# MARK: - 파티 삭제
 @router.delete(
     "/{pod_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    description="파티 삭제",
+    description="파티 삭제 (파티장만 가능)",
 )
-async def delete_pod(pod_id: int, pod_service: PodService = Depends(get_pod_service)):
+async def delete_pod(
+    pod_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    pod_service: PodService = Depends(get_pod_service),
+):
+    """파티 삭제 (파티장만 가능)"""
+    # 파티 조회 및 파티장 확인
+    pod = await pod_service._pod_repo.get_pod_by_id(pod_id)
+    if not pod:
+        from app.features.pods.exceptions import PodNotFoundException
+        raise PodNotFoundException(pod_id)
+    
+    if pod.owner_id != current_user_id:
+        from app.features.pods.exceptions import NoPodAccessPermissionException
+        raise NoPodAccessPermissionException(pod_id, current_user_id)
+    
     await pod_service.delete_pod(pod_id)
     return BaseResponse.ok(http_status=status.HTTP_204_NO_CONTENT)
 
 
-# - MARK: 파티 상태 업데이트 (JSON 요청 본문 방식 - 더 RESTful)
+# MARK: - 파티 상태 업데이트
 @router.patch(
     "/{pod_id}/status",
     response_model=BaseResponse[PodDetailDto],
@@ -514,18 +279,7 @@ async def update_pod_status(
     pod_service: PodService = Depends(get_pod_service),
 ):
     """파티 상태 업데이트"""
-    if "status" not in request:
-        from app.core.error_codes import get_error_info
-        error_info = get_error_info("MISSING_STATUS")
-        return BaseResponse.error(
-            error_key=error_info.error_key,
-            error_code=error_info.code,
-            http_status=error_info.http_status,
-            message_ko=error_info.message_ko,
-            message_en=error_info.message_en,
-        )
-
-    status_value = request["status"]
+    status_value = request.get("status")
     updated_pod = await pod_service.update_pod_status_by_owner(
         pod_id, status_value, current_user_id
     )
@@ -535,7 +289,7 @@ async def update_pod_status(
     )
 
 
-# - MARK: 파티 멤버 삭제 (토큰 기반)
+# MARK: - 파티 멤버 삭제
 @router.delete(
     "/{pod_id}/member",
     response_model=BaseResponse[dict],
@@ -551,12 +305,23 @@ async def delete_pod_member(
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
-    """파티 멤버 삭제"""
+    """파티 멤버 삭제 (일반 멤버만 가능, 파티장은 파티 삭제 엔드포인트 사용)"""
+    # 파티 조회 및 파티장 확인
+    pod = await pod_service._pod_repo.get_pod_by_id(pod_id)
+    if not pod:
+        from app.features.pods.exceptions import PodNotFoundException
+        raise PodNotFoundException(pod_id)
+    
+    # user_id가 제공되면 사용, 없으면 현재 사용자 사용
+    target_user_id = int(user_id) if user_id and user_id.strip() else current_user_id
+    
+    # 파티장인지 확인
+    if pod.owner_id == target_user_id:
+        from app.features.pods.exceptions import PodAccessDeniedException
+        raise PodAccessDeniedException("파티장은 파티 삭제 엔드포인트를 사용해주세요.")
+    
     result = await pod_service.leave_pod(pod_id, user_id, current_user_id)
-
-    if result["is_owner"]:
-        message = f"파티장이 나가서 파티가 종료되었습니다. {result['members_removed']}명의 멤버가 함께 나갔습니다."
-    else:
-        message = "파티에서 성공적으로 나갔습니다."
-
-    return BaseResponse.ok(data=result, message_ko=message)
+    return BaseResponse.ok(
+        data=result,
+        message_ko="파티에서 성공적으로 나갔습니다.",
+    )

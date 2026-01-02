@@ -137,10 +137,6 @@ app.openapi_tags = [
         "description": "파티(Pod) 관리 API",
     },
     {
-        "name": "pod-reviews",
-        "description": "파티 후기 API",
-    },
-    {
         "name": "follow",
         "description": "팔로우 관리 API",
     },
@@ -167,6 +163,22 @@ app.openapi_tags = [
     {
         "name": "health",
         "description": "시스템 헬스체크 API",
+    },
+    {
+        "name": "applications",
+        "description": "파티 신청서 관리 API",
+    },
+    {
+        "name": "reviews",
+        "description": "파티 후기 API",
+    },
+    {
+        "name": "admin",
+        "description": "관리자 API",
+    },
+    {
+        "name": "artist-suggestions",
+        "description": "아티스트 추천 API",
     },
 ]
 

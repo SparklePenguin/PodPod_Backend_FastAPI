@@ -1,3 +1,5 @@
+"""Review 관련 모델들"""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text
@@ -6,6 +8,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
+# - MARK: Pod Review Model
 class PodReview(Base):
     __tablename__ = "pod_reviews"
 

@@ -1,10 +1,13 @@
+"""Review 관련 스키마들"""
+
 from datetime import datetime, timezone
 
-from app.features.pods.schemas.pod_dto import PodDto
+from app.features.pods.schemas.pod_schemas import PodDto
 from app.features.users.schemas import UserDto
 from pydantic import BaseModel, Field, field_serializer
 
 
+# - MARK: Pod Review DTO
 class PodReviewDto(BaseModel):
     """후기 응답 DTO"""
 
@@ -30,3 +33,20 @@ class PodReviewDto(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
+
+
+# - MARK: Pod Review Create Request
+class PodReviewCreateRequest(BaseModel):
+    """후기 생성 요청 스키마"""
+
+    pod_id: int = Field(..., alias="podId", description="파티 ID")
+    rating: int = Field(..., ge=1, le=5, description="별점 (1-5)")
+    content: str = Field(..., min_length=1, max_length=1000, description="후기 내용")
+
+
+# - MARK: Pod Review Update Request
+class PodReviewUpdateRequest(BaseModel):
+    """후기 수정 요청 스키마"""
+
+    rating: int = Field(..., ge=1, le=5, description="별점 (1-5)")
+    content: str = Field(..., min_length=1, max_length=1000, description="후기 내용")

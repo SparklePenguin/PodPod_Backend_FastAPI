@@ -2,7 +2,7 @@ from app.core.security import get_password_hash
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
 from app.features.pods.repositories.application_repository import (
-    PodApplicationRepository,
+    ApplicationRepository,
 )
 from app.features.users.exceptions import (
     EmailAlreadyExistsException,
@@ -15,6 +15,7 @@ from app.features.users.repositories import UserRepository
 from app.features.users.schemas import (
     UpdateProfileRequest,
     UserDetailDto,
+    UserDto,
 )
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +29,7 @@ class UserService:
 
         self._follow_service = FollowService(session, fcm_service=FCMService())
         self._follow_repo = FollowRepository(session)
-        self._pod_application_repo = PodApplicationRepository(session)
+        self._pod_application_repo = ApplicationRepository(session)
         self._session = session
 
     # - MARK: 유저 복구
@@ -234,6 +235,30 @@ class UserService:
             return None
         except Exception:
             return None
+
+    # - MARK: UserDto 생성
+    def create_user_dto(
+        self, user: User | None, tendency_type: str = "", is_following: bool = False
+    ) -> UserDto:
+        """User 모델과 성향 타입으로 UserDto 생성 (재사용 가능)"""
+        if not user:
+            return UserDto(
+                id=0,
+                nickname="",
+                profile_image="",
+                intro="",
+                tendency_type=tendency_type,
+                is_following=is_following,
+            )
+
+        return UserDto(
+            id=user.id or 0,
+            nickname=user.nickname or "",
+            profile_image=user.profile_image or "",
+            intro=user.intro or "",
+            tendency_type=tendency_type,
+            is_following=is_following,
+        )
 
     # - MARK: UserDetailDto 데이터 준비
     async def _prepare_user_dto_data(

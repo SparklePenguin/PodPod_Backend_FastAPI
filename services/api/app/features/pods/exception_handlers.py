@@ -8,10 +8,6 @@ Pods 도메인 전용 Exception Handler
      이 딕셔너리는 app/core/exception_loader.py에서 자동으로 읽어서 등록됩니다.
 """
 
-import logging
-
-from fastapi import Request
-from fastapi.responses import JSONResponse
 
 from app.common.schemas import BaseResponse
 from app.features.pods.exceptions import (
@@ -27,13 +23,13 @@ from app.features.pods.exceptions import (
     ReviewNotFoundException,
     ReviewPermissionDeniedException,
 )
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
-logger = logging.getLogger(__name__)
 
 
 async def pod_not_found_handler(request: Request, exc: PodNotFoundException):
     """PodNotFoundException 처리: 파티를 찾을 수 없는 경우"""
-    logger.warning(f"Pod not found: pod_id={exc.pod_id}, path={request.url.path}")
 
     response = BaseResponse(
         data=None,
@@ -53,9 +49,6 @@ async def no_pod_access_permission_handler(
     request: Request, exc: NoPodAccessPermissionException
 ):
     """NoPodAccessPermissionException 처리: 파티 접근 권한이 없는 경우"""
-    logger.warning(
-        f"No pod access permission: pod_id={exc.pod_id}, user_id={exc.user_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -73,7 +66,6 @@ async def no_pod_access_permission_handler(
 
 async def pod_already_closed_handler(request: Request, exc: PodAlreadyClosedException):
     """PodAlreadyClosedException 처리: 이미 처리된 파티인 경우"""
-    logger.warning(f"Pod already closed: pod_id={exc.pod_id}, path={request.url.path}")
 
     response = BaseResponse(
         data=None,
@@ -91,7 +83,6 @@ async def pod_already_closed_handler(request: Request, exc: PodAlreadyClosedExce
 
 async def pod_is_full_handler(request: Request, exc: PodIsFullException):
     """PodIsFullException 처리: 파티가 가득 찬 경우"""
-    logger.warning(f"Pod is full: pod_id={exc.pod_id}, path={request.url.path}")
 
     response = BaseResponse(
         data=None,
@@ -109,9 +100,6 @@ async def pod_is_full_handler(request: Request, exc: PodIsFullException):
 
 async def already_member_handler(request: Request, exc: AlreadyMemberException):
     """AlreadyMemberException 처리: 이미 파티 멤버인 경우"""
-    logger.warning(
-        f"Already member: pod_id={exc.pod_id}, user_id={exc.user_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -129,9 +117,6 @@ async def already_member_handler(request: Request, exc: AlreadyMemberException):
 
 async def already_applied_handler(request: Request, exc: AlreadyAppliedException):
     """AlreadyAppliedException 처리: 이미 신청한 경우"""
-    logger.warning(
-        f"Already applied: pod_id={exc.pod_id}, user_id={exc.user_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -149,9 +134,6 @@ async def already_applied_handler(request: Request, exc: AlreadyAppliedException
 
 async def pod_access_denied_handler(request: Request, exc: PodAccessDeniedException):
     """PodAccessDeniedException 처리: 파티 접근이 거부된 경우"""
-    logger.warning(
-        f"Pod access denied: pod_id={exc.pod_id}, user_id={exc.user_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -171,9 +153,6 @@ async def review_already_exists_handler(
     request: Request, exc: ReviewAlreadyExistsException
 ):
     """ReviewAlreadyExistsException 처리: 이미 후기를 작성한 경우"""
-    logger.warning(
-        f"Review already exists: pod_id={exc.pod_id}, user_id={exc.user_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -191,9 +170,6 @@ async def review_already_exists_handler(
 
 async def review_not_found_handler(request: Request, exc: ReviewNotFoundException):
     """ReviewNotFoundException 처리: 후기를 찾을 수 없는 경우"""
-    logger.warning(
-        f"Review not found: review_id={exc.review_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -213,9 +189,6 @@ async def review_permission_denied_handler(
     request: Request, exc: ReviewPermissionDeniedException
 ):
     """ReviewPermissionDeniedException 처리: 후기 수정/삭제 권한이 없는 경우"""
-    logger.warning(
-        f"Review permission denied: review_id={exc.review_id}, user_id={exc.user_id}, path={request.url.path}"
-    )
 
     response = BaseResponse(
         data=None,
@@ -233,7 +206,6 @@ async def review_permission_denied_handler(
 
 async def invalid_image_handler(request: Request, exc: InvalidImageException):
     """InvalidImageException 처리: 이미지가 유효하지 않은 경우"""
-    logger.warning(f"Invalid image: reason={exc.reason}, path={request.url.path}")
 
     response = BaseResponse(
         data=None,
