@@ -1,13 +1,10 @@
-from fastapi import APIRouter, Depends, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.database import get_session
 from app.deps.service import get_session_service
 from app.features.session.schemas import LoginRequest, TokenRefreshRequest
 from app.features.session.services.session_service import SessionService
+from fastapi import APIRouter, Depends, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 router = APIRouter()
 security = HTTPBearer()

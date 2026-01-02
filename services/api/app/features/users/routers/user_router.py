@@ -211,26 +211,3 @@ async def delete_my_account(
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         # 다른 오류는 그대로 전파
         raise e
-
-
-# - MARK: 특정 사용자 삭제
-@router.delete(
-    "/{user_id}",
-    description="특정 사용자 삭제",
-)
-async def delete_user(
-    user_id: int,
-    current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
-):
-    """특정 사용자 삭제"""
-    try:
-        await service.delete_user(user_id)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        # 사용자가 존재하지 않는 경우에도 204 No Content 반환
-        # (이미 삭제된 상태와 동일하므로)
-        if "USER_NOT_FOUND" in str(e):
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-        # 다른 오류는 그대로 전파
-        raise e
