@@ -1,15 +1,10 @@
-from typing import List
-
 from app.core.security import get_password_hash
-from app.features.artists.models import Artist
-from app.features.artists.schemas import ArtistDto
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
 from app.features.pods.repositories.application_repository import (
     PodApplicationRepository,
 )
 from app.features.users.exceptions import (
-    ArtistNotFoundException,
     EmailAlreadyExistsException,
     EmailRequiredException,
     SameOAuthProviderExistsException,
@@ -30,7 +25,6 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self._user_repo = UserRepository(session)
         from app.core.services.fcm_service import FCMService
-
         from app.features.follow.services.follow_service import FollowService
 
         self._follow_service = FollowService(session, fcm_service=FCMService())
@@ -145,6 +139,8 @@ class UserService:
         self, user_id: int, current_user_id: int
     ) -> UserDetailDto:
         """다른 사용자 정보 조회 (팔로우 통계 포함)"""
+        # commit 후 세션이 닫혔을 수 있으므로 항상 새로 조회
+        # expire_on_commit=False로 설정되어 있어도 안전하게 새로 조회
         user = await self._user_repo.get_by_id(user_id)
         if not user:
             raise UserNotFoundException(user_id)
@@ -152,9 +148,9 @@ class UserService:
         if user.is_del:
             raise UserNotFoundException(user_id)
 
-        # UserDto 생성 시 상태 정보 및 팔로우 통계 포함
+        # UserDetailDto 생성 시 상태 정보 및 팔로우 통계 포함
         user_data = await self._prepare_user_dto_data(user, current_user_id)
-        return UserDto.model_validate(user_data, from_attributes=False)
+        return UserDetailDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 프로필 업데이트
     async def update_profile(
@@ -169,62 +165,6 @@ class UserService:
         # UserDetailDto 생성 시 상태 정보 포함
         user_dto_data = await self._prepare_user_dto_data(user, user.id)
         return UserDto.model_validate(user_dto_data, from_attributes=False)
-
-    # - MARK: 선호 아티스트 조회
-    async def get_preferred_artists(self, user_id: int) -> List[ArtistDto]:
-        """사용자의 선호 아티스트 목록 조회"""
-        # 아티스트 ID 목록 가져오기
-        artist_ids = await self._user_repo.get_preferred_artist_ids(user_id)
-
-        if not artist_ids:
-            return []
-
-        # 모든 아티스트를 한 번에 조회
-        query = select(Artist).where(Artist.id.in_(artist_ids))
-        result = await self._session.execute(query)
-        artists = result.scalars().all()
-
-        # ID 순서 유지를 위한 딕셔너리 생성
-        artist_dict = {artist.id: artist for artist in artists}
-
-        # 원래 순서대로 반환
-        return [
-            ArtistDto.model_validate(artist_dict[artist_id], from_attributes=True)
-            for artist_id in artist_ids
-            if artist_id in artist_dict
-        ]
-
-    # - MARK: 선호 아티스트 업데이트 (추가/제거)
-    async def update_preferred_artists(
-        self, user_id: int, artist_ids: List[int]
-    ) -> List[ArtistDto]:
-        """선호 아티스트 목록을 완전히 교체하여 업데이트"""
-        # 트랜잭션 시작
-        async with self._session.begin():
-            if not artist_ids:
-                # 빈 리스트면 모든 선호 아티스트 제거
-                await self._user_repo.remove_all_preferred_artists(user_id)
-                return []
-
-            # 모든 아티스트를 한 번에 조회하여 존재 확인
-            query = select(Artist).where(Artist.id.in_(artist_ids))
-            result = await self._session.execute(query)
-            artists = result.scalars().all()
-
-            found_ids = {artist.id for artist in artists}
-            missing_ids = set(artist_ids) - found_ids
-
-            if missing_ids:
-                raise ArtistNotFoundException(list(missing_ids)[0])
-
-            # 기존 선호 아티스트 모두 제거 (bulk 작업)
-            await self._user_repo.remove_all_preferred_artists(user_id)
-
-            # 새로운 선호 아티스트 일괄 추가 (bulk 작업)
-            await self._user_repo.add_preferred_artists(user_id, artist_ids)
-
-        # 업데이트된 선호 아티스트 목록 반환
-        return await self.get_preferred_artists(user_id)
 
     # - MARK: 사용자 온보딩 상태 결정
     def _determine_user_state(
@@ -250,8 +190,13 @@ class UserService:
     async def _has_preferred_artists(self, user_id: int) -> bool:
         """사용자가 선호 아티스트를 설정했는지 확인"""
         try:
-            preferred_artists = await self.get_preferred_artists(user_id)
-            return len(preferred_artists) > 0
+            from app.features.users.repositories.user_artist_repository import (
+                UserArtistRepository,
+            )
+
+            user_artist_repo = UserArtistRepository(self._session)
+            artist_ids = await user_artist_repo.get_preferred_artist_ids(user_id)
+            return len(artist_ids) > 0
         except Exception:
             return False
 
@@ -260,7 +205,6 @@ class UserService:
         """사용자가 성향 테스트를 완료했는지 확인"""
         # UserTendencyResult 테이블에서 해당 user_id의 결과가 있는지 확인
         from app.features.tendencies.models import UserTendencyResult
-        from sqlalchemy import select
 
         try:
             result = await self._session.execute(
@@ -275,7 +219,6 @@ class UserService:
     async def _get_user_tendency_type(self, user_id: int) -> str | None:
         """사용자의 성향 타입 조회"""
         from app.features.tendencies.models import UserTendencyResult
-        from sqlalchemy import select
 
         try:
             result = await self._session.execute(
@@ -294,7 +237,12 @@ class UserService:
         self, user, current_user_id: int | None = None
     ) -> dict:
         """UserDetailDto 생성을 위한 데이터 준비"""
+        import datetime
+        from datetime import timezone
+
         # 기본 사용자 정보
+        # created_at과 updated_at은 항상 값이 있어야 하므로 None 체크
+        now = datetime.datetime.now(timezone.utc)
         user_data = {
             "id": user.id,
             "email": user.email,
@@ -303,8 +251,8 @@ class UserService:
             "profile_image": user.profile_image,
             "intro": user.intro,
             "terms_accepted": user.terms_accepted,
-            "created_at": user.created_at,
-            "updated_at": user.updated_at,
+            "created_at": user.created_at if user.created_at is not None else now,
+            "updated_at": user.updated_at if user.updated_at is not None else now,
         }
 
         # 실제 데이터 조회
@@ -319,8 +267,13 @@ class UserService:
         # 성향 타입 추가
         user_data["tendency_type"] = await self._get_user_tendency_type(user.id)
 
-        # 팔로우 통계 추가 (모든 경우에 포함)
+        # 팔로우 통계 추가 (모든 경우에 포함, 항상 값 제공)
+        # commit 후 트랜잭션이 닫혔을 수 있으므로 예외 처리로 기본값 제공
         try:
+            # 세션 상태 확인
+            if not self._session.is_active:
+                raise ValueError("Session is not active")
+
             if current_user_id and current_user_id != user.id:
                 # 다른 사용자 정보 조회 시: 팔로우 여부 포함
                 follow_stats = await self._follow_service.get_follow_stats(
@@ -333,9 +286,13 @@ class UserService:
                 )
             user_data["follow_stats"] = follow_stats
             user_data["is_following"] = follow_stats.is_following
-        except Exception:
-            # 팔로우 통계 조회 실패 시 None으로 설정
-            user_data["follow_stats"] = None
+        except (Exception, ValueError):
+            # 팔로로우 통계 조회 실패 시 기본값 제공 (세션이 닫혔거나 다른 오류)
+            from app.features.follow.schemas import FollowStatsDto
+
+            user_data["follow_stats"] = FollowStatsDto(
+                following_count=0, followers_count=0, is_following=False
+            )
             user_data["is_following"] = False
 
         return user_data
@@ -366,7 +323,7 @@ class UserService:
         from app.features.pods.models.pod.pod_status import PodStatus
         from app.features.pods.models.pod.pod_view import PodView
         from app.features.users.models import UserNotificationSettings
-        from sqlalchemy import delete, select
+        from sqlalchemy import delete
 
         # 사용자 존재 확인
         user = await self._user_repo.get_by_id(user_id)
@@ -381,11 +338,12 @@ class UserService:
         try:
             # ========== 삭제 가능한 데이터 (개인 데이터) ==========
             # 1. 선호 아티스트 삭제
-            preferred_artist_ids = await self._user_repo.get_preferred_artist_ids(
-                user_id
+            from app.features.users.repositories.user_artist_repository import (
+                UserArtistRepository,
             )
-            for artist_id in preferred_artist_ids:
-                await self._user_repo.remove_preferred_artist(user_id, artist_id)
+
+            user_artist_repo = UserArtistRepository(self._session)
+            await user_artist_repo.remove_all_preferred_artists(user_id)
 
             # 2. 파티 신청서 삭제
             await self._pod_application_repo.delete_all_by_user_id(user_id)

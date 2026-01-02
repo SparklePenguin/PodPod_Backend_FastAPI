@@ -24,6 +24,7 @@ from app.features.users.services.block_user_service import BlockUserService
 from app.features.users.services.user_notification_service import (
     UserNotificationService,
 )
+from app.features.users.services.user_artist_service import UserArtistService
 from app.features.users.services.user_service import UserService
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,6 +57,12 @@ def get_oauth_service(session: AsyncSession = Depends(get_session)) -> OAuthServ
 
 def get_user_service(session: AsyncSession = Depends(get_session)) -> UserService:
     return UserService(session)
+
+
+def get_user_artist_service(
+    session: AsyncSession = Depends(get_session),
+) -> UserArtistService:
+    return UserArtistService(session)
 
 
 def get_block_user_service(

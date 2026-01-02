@@ -9,27 +9,28 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.api.v1.router import api_router
-from app.core.config import settings
-from app.core.database import init_db
-from app.core.exceptions import (
+from app.api.v1.router import api_router  # noqa: E402
+from app.core.config import settings  # noqa: E402
+from app.core.database import init_db  # noqa: E402
+from app.core.exception_loader import register_exception_handlers  # noqa: E402
+from app.core.exceptions import (  # noqa: E402
     BusinessException,
     business_exception_handler,
     general_exception_handler,
     http_exception_handler,
     validation_exception_handler,
-    value_error_handler)
-from app.core.exception_loader import register_exception_handlers
-from app.core.logging_config import setup_logging
-from app.core.startup import startup_events, sync_startup_events
-from app.middleware.logging_middleware import LoggingMiddleware
-from fastapi import FastAPI, HTTPException
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer
-from fastapi.staticfiles import StaticFiles
-from prometheus_fastapi_instrumentator import Instrumentator
-from starlette.exceptions import HTTPException as StarletteHTTPException
+    value_error_handler,
+)
+from app.core.logging_config import setup_logging  # noqa: E402
+from app.core.startup import startup_events, sync_startup_events  # noqa: E402
+from app.middleware.logging_middleware import LoggingMiddleware  # noqa: E402
+from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.security import HTTPBearer  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+from prometheus_fastapi_instrumentator import Instrumentator  # noqa: E402
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
 
 # 로깅 설정
 setup_logging()
@@ -65,7 +66,8 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="소셜 로그인을 지원하는 FastAPI 백엔드",
     lifespan=lifespan,
-    root_path=settings.ROOT_PATH if hasattr(settings, "ROOT_PATH") else "")
+    root_path=settings.ROOT_PATH if hasattr(settings, "ROOT_PATH") else "",
+)
 
 # Prometheus 메트릭 수집 설정
 Instrumentator().instrument(app).expose(app)
@@ -94,7 +96,8 @@ app.add_middleware(
         "Origin",
         "Access-Control-Request-Method",
         "Access-Control-Request-Headers",
-    ])
+    ],
+)
 
 # 로깅 미들웨어 추가
 app.add_middleware(LoggingMiddleware)

@@ -229,6 +229,9 @@ class OAuthService:
         )
 
         if user:
+            # User 모델에서 user_id 가져오기 (commit 전에 저장)
+            user_id = user.id
+            
             # 소프트 삭제된 경우 복구
             if user.is_del:
                 await self._user_service.restore_user(user, oauth_user_info)
@@ -237,10 +240,10 @@ class OAuthService:
             if fcm_token:
                 await self._user_service.update_fcm_token(user.id, fcm_token)
 
-            # User 모델에서 user_id 가져오기
-            user_id = user.id
-            # 각 메서드가 이미 commit/refresh를 수행하므로 추가 commit/refresh 불필요
-            user_dto = await self._user_service.get_user(user_id)
+            # commit 후 트랜잭션이 닫힐 수 있으므로 새로운 쿼리로 조회
+            # LoginInfoDto는 UserDetailDto를 요구하므로 get_user_with_follow_stats 사용
+            # user_id를 사용하여 새로 조회 (세션 상태와 무관하게 동작)
+            user_dto = await self._user_service.get_user_with_follow_stats(user_id, user_id)
         else:
             # 2. 새 사용자 생성 (UserDto 반환)
             # create_user 내부에서 이미 commit/refresh 수행

@@ -2,7 +2,7 @@ from typing import List
 
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_user_service
+from app.deps.service import get_user_artist_service, get_user_service
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas.sign_up_request import SignUpRequest
 from app.features.users.exceptions import ImageUploadException
@@ -12,6 +12,7 @@ from app.features.users.schemas import (
     UpdateProfileRequest,
     UserDetailDto,
 )
+from app.features.users.services.user_artist_service import UserArtistService
 from app.features.users.services.user_service import UserService
 from app.utils.file_upload import upload_profile_image
 from fastapi import (
@@ -147,7 +148,7 @@ async def update_user_profile(
 )
 async def get_user_preferred_artists(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    service: UserArtistService = Depends(get_user_artist_service),
 ):
     artists = await service.get_preferred_artists(current_user_id)
     return BaseResponse.ok(data=artists)
@@ -162,7 +163,7 @@ async def get_user_preferred_artists(
 async def update_user_preferred_artists(
     artists_data: UpdatePreferredArtistsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    service: UserArtistService = Depends(get_user_artist_service),
 ):
     artists = await service.update_preferred_artists(
         current_user_id, artists_data.artist_ids
