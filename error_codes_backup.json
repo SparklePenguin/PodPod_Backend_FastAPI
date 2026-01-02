@@ -1,0 +1,289 @@
+{
+  "INVALID_CREDENTIALS": {
+    "code": 1001,
+    "http_status": 401,
+    "message_ko": "아이디 또는 비밀번호가 올바르지 않습니다.",
+    "message_en": "Invalid username or password.",
+    "dev_note": "입력값 검증 후 로그인 실패 처리"
+  },
+  "USER_NOT_FOUND": {
+    "code": 2009,
+    "http_status": 404,
+    "message_ko": "사용자를 찾을 수 없습니다",
+    "message_en": "User not found",
+    "dev_note": "사용자 ID/이메일 조회 쿼리 확인"
+  },
+  "TOKEN_EXPIRED": {
+    "code": 1004,
+    "http_status": 401,
+    "message_ko": "인증 토큰이 만료되었습니다.",
+    "message_en": "Authentication token has expired.",
+    "dev_note": "Refresh 토큰 발급 유도"
+  },
+  "INVALID_TOKEN": {
+    "code": 1006,
+    "http_status": 401,
+    "message_ko": "토큰이 유효하지 않습니다.",
+    "message_en": "Invalid token.",
+    "dev_note": "토큰 파싱 및 검증 로직 확인"
+  },
+  "AUTHENTICATION_REQUIRED": {
+    "code": 1007,
+    "http_status": 401,
+    "message_ko": "인증이 필요합니다.",
+    "message_en": "Authentication required.",
+    "dev_note": "인증 미들웨어 적용 여부 확인"
+  },
+  "OAUTH_AUTHENTICATION_FAILED": {
+    "code": 1008,
+    "http_status": 401,
+    "message_ko": "OAuth 인증에 실패했습니다.",
+    "message_en": "OAuth authentication failed.",
+    "dev_note": "OAuth provider 설정 및 토큰 검증 로직 점검"
+  },
+  "OAUTH_PROVIDER_NOT_SUPPORTED": {
+    "code": 1009,
+    "http_status": 401,
+    "message_ko": "OAuth 프로바이더가 지원되지 않습니다.",
+    "message_en": "OAuth provider not supported.",
+    "dev_note": "허용된 provider 목록 및 설정 확인"
+  },
+  "OAUTH_USER_INFO_FETCH_FAILED": {
+    "code": 1010,
+    "http_status": 401,
+    "message_ko": "OAuth 사용자 정보를 가져올 수 없습니다.",
+    "message_en": "Failed to fetch OAuth user info.",
+    "dev_note": "OAuth API 호출 및 권한 설정 확인"
+  },
+  "EMAIL_ALREADY_EXISTS": {
+    "code": 2001,
+    "http_status": 400,
+    "message_ko": "이메일이 이미 등록되어 있습니다",
+    "message_en": "Email already exists",
+    "dev_note": "이메일 중복 체크 로직 및 unique 제약 확인"
+  },
+  "USERNAME_ALREADY_TAKEN": {
+    "code": 2002,
+    "http_status": 400,
+    "message_ko": "사용자명이 이미 사용 중입니다",
+    "message_en": "Username already taken",
+    "dev_note": "사용자명 중복 체크 로직 확인"
+  },
+  "NICKNAME_ALREADY_TAKEN": {
+    "code": 2003,
+    "http_status": 400,
+    "message_ko": "닉네임이 이미 사용 중입니다",
+    "message_en": "Nickname already taken",
+    "dev_note": "닉네임 중복 체크 로직 확인"
+  },
+  "PASSWORD_TOO_SHORT": {
+    "code": 2004,
+    "http_status": 400,
+    "message_ko": "비밀번호가 너무 짧습니다",
+    "message_en": "Password too short",
+    "dev_note": "비밀번호 길이 정책 강화"
+  },
+  "PASSWORD_TOO_WEAK": {
+    "code": 2005,
+    "http_status": 400,
+    "message_ko": "비밀번호가 너무 약합니다",
+    "message_en": "Password too weak",
+    "dev_note": "비밀번호 강도 검사 로직 보강"
+  },
+  "INVALID_EMAIL_FORMAT": {
+    "code": 2006,
+    "http_status": 400,
+    "message_ko": "이메일 형식이 올바르지 않습니다",
+    "message_en": "Invalid email format",
+    "dev_note": "이메일 정규식 검증 확인"
+  },
+  "INVALID_USERNAME_FORMAT": {
+    "code": 2007,
+    "http_status": 400,
+    "message_ko": "사용자명 형식이 올바르지 않습니다",
+    "message_en": "Invalid username format",
+    "dev_note": "사용자명 정규식 검증 확인"
+  },
+  "INVALID_NICKNAME_FORMAT": {
+    "code": 2008,
+    "http_status": 400,
+    "message_ko": "닉네임 형식이 올바르지 않습니다",
+    "message_en": "Invalid nickname format",
+    "dev_note": "닉네임 정규식 검증 확인"
+  },
+  "PROFILE_IMAGE_UPLOAD_FAILED": {
+    "code": 2010,
+    "http_status": 400,
+    "message_ko": "프로필 이미지 업로드에 실패했습니다",
+    "message_en": "Profile image upload failed",
+    "dev_note": "S3/스토리지 설정 및 업로드 로직 확인"
+  },
+  "SAME_OAUTH_PROVIDER_EXISTS": {
+    "code": 2011,
+    "http_status": 400,
+    "message_ko": "같은 OAuth 프로바이더의 계정이 이미 존재합니다",
+    "message_en": "Account with same OAuth provider already exists",
+    "dev_note": "소셜 연동 시 동일 provider 계정 중복 로직 확인"
+  },
+  "DIFFERENT_OAUTH_PROVIDER_EXISTS": {
+    "code": 2012,
+    "http_status": 400,
+    "message_ko": "다른 OAuth 프로바이더의 계정이 이미 존재합니다",
+    "message_en": "Account with different OAuth provider already exists",
+    "dev_note": "이메일 동일·provider 상이 시 계정 연결/안내 처리"
+  },
+  "INVALID_PAYMENT_INFO": {
+    "code": 3001,
+    "http_status": 400,
+    "message_ko": "결제 정보가 올바르지 않습니다",
+    "message_en": "Invalid payment information",
+    "dev_note": "결제 파라미터 및 서명 검증 확인"
+  },
+  "INVALID_PAYMENT_AMOUNT": {
+    "code": 3002,
+    "http_status": 400,
+    "message_ko": "결제 금액이 올바르지 않습니다",
+    "message_en": "Invalid payment amount",
+    "dev_note": "금액 계산 및 요청 값 검증"
+  },
+  "PAYMENT_CANCELLED": {
+    "code": 3003,
+    "http_status": 400,
+    "message_ko": "결제가 취소되었습니다",
+    "message_en": "Payment cancelled",
+    "dev_note": "PG사 응답 확인 및 취소 처리 로직 점검"
+  },
+  "PAYMENT_FAILED": {
+    "code": 3004,
+    "http_status": 400,
+    "message_ko": "결제에 실패했습니다",
+    "message_en": "Payment failed",
+    "dev_note": "결제 API 응답 및 로그 확인"
+  },
+  "REFUND_FAILED": {
+    "code": 3005,
+    "http_status": 400,
+    "message_ko": "환불 처리에 실패했습니다",
+    "message_en": "Refund failed",
+    "dev_note": "PG사 환불 API 호출 및 트랜잭션 확인"
+  },
+  "SETTLEMENT_INFO_NOT_FOUND": {
+    "code": 3006,
+    "http_status": 400,
+    "message_ko": "정산 정보를 찾을 수 없습니다",
+    "message_en": "Settlement information not found",
+    "dev_note": "정산 데이터 유무 확인"
+  },
+  "POD_NOT_FOUND": {
+    "code": 4001,
+    "http_status": 404,
+    "message_ko": "파티를 찾을 수 없습니다",
+    "message_en": "Pod not found",
+    "dev_note": "pod id 조회 쿼리 및 캐시 확인"
+  },
+  "NO_POD_ACCESS_PERMISSION": {
+    "code": 4002,
+    "http_status": 403,
+    "message_ko": "파티에 접근할 권한이 없습니다",
+    "message_en": "No permission to access pod",
+    "dev_note": "권한 체크 로직 점검"
+  },
+  "POD_ALREADY_CLOSED": {
+    "code": 4003,
+    "http_status": 400,
+    "message_ko": "파티가 이미 마감되었습니다",
+    "message_en": "Pod is already closed",
+    "dev_note": "모집 상태 업데이트 로직 확인"
+  },
+  "POD_IS_FULL": {
+    "code": 4004,
+    "http_status": 400,
+    "message_ko": "파티 정원이 가득 찼습니다",
+    "message_en": "Pod is full",
+    "dev_note": "capacity 검사 로직 보강"
+  },
+  "ALREADY_JOINED_POD": {
+    "code": 4005,
+    "http_status": 400,
+    "message_ko": "이미 참여한 파티입니다",
+    "message_en": "Already joined pod",
+    "dev_note": "중복 참여 방지 로직 확인"
+  },
+  "POD_JOIN_FAILED": {
+    "code": 4006,
+    "http_status": 400,
+    "message_ko": "파티 참여에 실패했습니다",
+    "message_en": "Failed to join pod",
+    "dev_note": "트랜잭션 및 DB 오류 로그 점검"
+  },
+  "POD_LEAVE_FAILED": {
+    "code": 4007,
+    "http_status": 400,
+    "message_ko": "파티에서 나가기에 실패했습니다",
+    "message_en": "Failed to leave pod",
+    "dev_note": "트랜잭션 및 DB 오류 로그 점검"
+  },
+  "ARTIST_NOT_FOUND": {
+    "code": 4008,
+    "http_status": 404,
+    "message_ko": "아티스트를 찾을 수 없습니다",
+    "message_en": "Artist not found",
+    "dev_note": "artist id 조회 로직 확인"
+  },
+  "TENDENCY_RESULT_NOT_FOUND": {
+    "code": 4009,
+    "http_status": 400,
+    "message_ko": "성향 테스트 결과를 찾을 수 없습니다",
+    "message_en": "Tendency test result not found",
+    "dev_note": "결과 저장/조회 로직 점검"
+  },
+  "TENDENCY_TEST_NOT_COMPLETED": {
+    "code": 4010,
+    "http_status": 400,
+    "message_ko": "성향 테스트가 완료되지 않았습니다",
+    "message_en": "Tendency test not completed",
+    "dev_note": "진행 상태 체크 로직 보강"
+  },
+  "INTERNAL_SERVER_ERROR": {
+    "code": 5001,
+    "http_status": 500,
+    "message_ko": "내부 서버 오류가 발생했습니다",
+    "message_en": "Internal server error",
+    "dev_note": "서버 로그 및 예외 스택 추적"
+  },
+  "DATABASE_CONNECTION_FAILED": {
+    "code": 5002,
+    "http_status": 500,
+    "message_ko": "데이터베이스 연결에 실패했습니다",
+    "message_en": "Database connection failed",
+    "dev_note": "DB 연결 설정 및 네트워크 점검"
+  },
+  "EXTERNAL_API_CALL_FAILED": {
+    "code": 5003,
+    "http_status": 500,
+    "message_ko": "외부 API 호출에 실패했습니다",
+    "message_en": "External API call failed",
+    "dev_note": "외부 API 응답 로그 및 네트워크 점검"
+  },
+  "FILE_UPLOAD_FAILED": {
+    "code": 5004,
+    "http_status": 500,
+    "message_ko": "파일 업로드에 실패했습니다",
+    "message_en": "File upload failed",
+    "dev_note": "스토리지/S3 설정 및 업로드 로직 점검"
+  },
+  "EMAIL_SENDING_FAILED": {
+    "code": 5005,
+    "http_status": 500,
+    "message_ko": "이메일 발송에 실패했습니다",
+    "message_en": "Email sending failed",
+    "dev_note": "메일 서버 설정 및 SMTP 로그 점검"
+  },
+  "NOTIFICATION_SENDING_FAILED": {
+    "code": 5006,
+    "http_status": 500,
+    "message_ko": "알림 발송에 실패했습니다",
+    "message_en": "Notification sending failed",
+    "dev_note": "푸시/메시징 서버 설정 및 로그 점검"
+  }
+}
