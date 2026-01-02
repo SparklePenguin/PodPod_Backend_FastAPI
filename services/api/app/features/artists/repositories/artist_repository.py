@@ -46,7 +46,12 @@ class ArtistRepository:
         if not artist_ids:
             return []
         
-        query = select(Artist).where(Artist.id.in_(artist_ids))
+        # 관계 데이터를 미리 로드하여 lazy loading 방지
+        query = (
+            select(Artist)
+            .options(selectinload(Artist.images), selectinload(Artist.names))
+            .where(Artist.id.in_(artist_ids))
+        )
         result = await self._session.execute(query)
         # scalars().all()은 동기 메서드이지만 이미 비동기 실행 후이므로 블로킹되지 않음
         # 명시적으로 리스트로 변환하여 반환
