@@ -235,40 +235,38 @@ class Settings(BaseSettings):
 
         # 환경별 uploads 디렉토리 설정
         if self.ENVIRONMENT in ["local", "development"]:
-            # 로컬/개발 환경: 서비스 내부/uploads/local 또는 uploads/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            env_suffix = "local" if self.ENVIRONMENT == "local" else "dev"
-            self.UPLOADS_DIR = str(service_root / "uploads" / env_suffix)
+            # 로컬/개발 환경: services/api/uploads/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.UPLOADS_DIR = str(api_root / "uploads" / "dev")
         elif self.ENVIRONMENT in ["staging", "stg"]:
-            # 스테이징 환경: /srv/uploads/podpod/stg/
-            self.UPLOADS_DIR = "/srv/uploads/podpod/stg"
+            # 스테이징 환경: /Users/Shared/Projects/PodPod/uploads/stg
+            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/stg"
         elif self.ENVIRONMENT in ["production", "prod"]:
-            # 프로덕션 환경: /srv/uploads/podpod/prod/
-            self.UPLOADS_DIR = "/srv/uploads/podpod/prod"
+            # 프로덕션 환경: /Users/Shared/Projects/PodPod/uploads/prod
+            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/prod"
         else:
-            # 기본값: 서비스 내부/uploads/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            self.UPLOADS_DIR = str(service_root / "uploads" / "dev")
+            # 기본값: services/api/uploads/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.UPLOADS_DIR = str(api_root / "uploads" / "dev")
 
         # uploads 디렉토리가 없으면 생성
         Path(self.UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
 
         # 환경별 logs 디렉토리 설정
         if self.ENVIRONMENT in ["local", "development"]:
-            # 로컬/개발 환경: 서비스 내부/logs/local 또는 logs/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            env_suffix = "local" if self.ENVIRONMENT == "local" else "dev"
-            self.LOGS_DIR = str(service_root / "logs" / env_suffix)
+            # 로컬/개발 환경: services/api/logs/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.LOGS_DIR = str(api_root / "logs" / "dev")
         elif self.ENVIRONMENT in ["staging", "stg"]:
-            # 스테이징 환경: /srv/logs/podpod/stg/
-            self.LOGS_DIR = "/srv/logs/podpod/stg"
+            # 스테이징 환경: /Users/Shared/Projects/PodPod/logs/stg
+            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/stg"
         elif self.ENVIRONMENT in ["production", "prod"]:
-            # 프로덕션 환경: /srv/logs/podpod/prod/
-            self.LOGS_DIR = "/srv/logs/podpod/prod"
+            # 프로덕션 환경: /Users/Shared/Projects/PodPod/logs/prod
+            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/prod"
         else:
-            # 기본값: 서비스 내부/logs/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            self.LOGS_DIR = str(service_root / "logs" / "dev")
+            # 기본값: services/api/logs/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.LOGS_DIR = str(api_root / "logs" / "dev")
 
         # logs 디렉토리가 없으면 생성
         Path(self.LOGS_DIR).mkdir(parents=True, exist_ok=True)

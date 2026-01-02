@@ -39,8 +39,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./uploads/prod:/srv/uploads/podpod/prod  # 프로덕션 업로드 파일
-      - ./logs/prod:/srv/logs/podpod/prod  # 프로덕션 로그 파일
+      - /Users/Shared/Projects/PodPod/uploads/prod:/Users/Shared/Projects/PodPod/uploads/prod  # 프로덕션 업로드 파일
+      - /Users/Shared/Projects/PodPod/logs/prod:/Users/Shared/Projects/PodPod/logs/prod  # 프로덕션 로그 파일
     networks:
       - podpod-network-prod
     # 프로덕션에서는 worker 수를 증가시켜 성능 향상

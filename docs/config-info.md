@@ -34,6 +34,11 @@ app:
   root_path: ""  # Nginx 프록시 경로 (예: /stg)
 ```
 
+**환경별 base_url 예시:**
+- **dev**: `http://localhost:8000`
+- **staging**: `https://sp-podpod.com/stg`
+- **production**: `https://sp-podpod.com`
+
 ### JWT
 ```yaml
 jwt:
@@ -72,11 +77,26 @@ infisical:
 ## 파일 위치 자동 설정
 
 ### Uploads
-- **local/dev**: `services/api/uploads/{local|dev}/`
-- **staging**: `/srv/uploads/podpod/stg/`
-- **production**: `/srv/uploads/podpod/prod/`
+- **local/development**: `services/api/uploads/dev/`
+  - `pods/images/` - Pod 이미지
+  - `pods/thumbnails/` - Pod 썸네일
+  - `users/profiles/` - 사용자 프로필 이미지
+  - `artists/` - 아티스트 이미지
+  - 접근 URL: `http://localhost:8000/uploads/...`
+- **staging**: `/Users/Shared/Projects/PodPod/uploads/stg/`
+  - `pods/images/` - Pod 이미지
+  - `pods/thumbnails/` - Pod 썸네일
+  - `users/profiles/` - 사용자 프로필 이미지
+  - `artists/` - 아티스트 이미지
+  - 접근 URL: `https://sp-podpod.com/stg/uploads/...` (Nginx location: `/stg/uploads/`)
+- **production**: `/Users/Shared/Projects/PodPod/uploads/prod/`
+  - `pods/images/` - Pod 이미지
+  - `pods/thumbnails/` - Pod 썸네일
+  - `users/profiles/` - 사용자 프로필 이미지
+  - `artists/` - 아티스트 이미지
+  - 접근 URL: `https://sp-podpod.com/uploads/...` (Nginx location: `/uploads/`)
 
 ### Logs
-- **local/dev**: `services/api/logs/{local|dev}/`
-- **staging**: `/srv/logs/podpod/stg/`
-- **production**: `/srv/logs/podpod/prod/`
+- **local/development**: `services/api/logs/dev/`
+- **staging**: `/Users/Shared/Projects/PodPod/logs/stg/`
+- **production**: `/Users/Shared/Projects/PodPod/logs/prod/`

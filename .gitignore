@@ -237,10 +237,6 @@ $RECYCLE.BIN/
 *.log
 *.log.gz
 services/api/logs/
-services/api/logs/dev/
-services/api/logs/stg/
-services/api/logs/prod/
-services/api/logs/local/
 
 # Configuration files with sensitive data
 config.ini
@@ -286,8 +282,9 @@ Thumbs.db
 
 # Uploaded files
 services/api/uploads/
-services/api/uploads/dev/
-services/api/uploads/local/
+# 예외: dev 환경의 artists와 profile_random_images는 Git에 포함
+!services/api/uploads/dev/artists/
+!services/api/uploads/dev/profile_random_images/
 
 # User images and MVP data files
 UserImages/
