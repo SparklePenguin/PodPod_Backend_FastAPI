@@ -83,8 +83,8 @@ api_router.include_router(
 )
 
 # 인증 관련 라우터 (features/auth)
-api_router.include_router(sessions_router, prefix="/sessions", tags=["sessions"])
-api_router.include_router(oauths_router, prefix="/oauths", tags=["oauths"])
+api_router.include_router(sessions_router, prefix="/session", tags=["session"])
+api_router.include_router(oauths_router, prefix="/oauth", tags=["oauth"])
 
 # 아티스트 관련 라우터 (features/artists)
 api_router.include_router(artists_router, prefix="/artists", tags=["artists"])

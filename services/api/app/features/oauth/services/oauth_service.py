@@ -59,14 +59,10 @@ class OAuthService:
         )
 
     # - MARK: 애플 토큰 로그인
-    async def sign_in_with_apple(
-        self, request: AppleLoginRequest, audience: str = "com.sparkle-penguin.podpod"
-    ) -> LoginInfoDto:
+    async def sign_in_with_apple(self, request: AppleLoginRequest) -> LoginInfoDto:
         """Apple 로그인 처리"""
         try:
-            oauth_user_info = await self._apple_service.get_apple_user_info(
-                request, audience
-            )
+            oauth_user_info = await self._apple_service.get_apple_user_info(request)
         except HTTPException:
             raise
         except ValueError as e:
@@ -144,17 +140,10 @@ class OAuthService:
                 raise OAuthTokenInvalidException(provider="apple")
 
             # Apple 로그인 처리
-            apple_client_id = settings.APPLE_CLIENT_ID
-            if not apple_client_id:
-                raise OAuthAuthenticationFailedException(
-                    provider="apple", reason="Apple 클라이언트 ID가 설정되지 않았습니다"
-                )
-
             sign_in_response = await self.sign_in_with_apple(
                 AppleLoginRequest(
                     identity_token=id_token, authorization_code=code, user=user_dict
-                ),
-                audience=apple_client_id,
+                )
             )
 
             # Android Deep Link로 리다이렉트
