@@ -50,7 +50,9 @@ class UserService:
             await self._session.refresh(user)
 
     # - MARK: 유저 FCM 토큰 업데이트
-    async def update_fcm_token(self, user_id: int, fcm_token: str | None) -> UserDetailDto:
+    async def update_fcm_token(
+        self, user_id: int, fcm_token: str | None
+    ) -> UserDetailDto:
         """유저 FCM 토큰 업데이트"""
         await self._user_repo.update_fcm_token(user_id, fcm_token)
         # 업데이트된 사용자 정보 반환
@@ -124,7 +126,7 @@ class UserService:
         return UserDetailDto.model_validate(user_data_dto, from_attributes=False)
 
     # - MARK: 사용자 조회
-    async def get_user(self, user_id: int) -> UserDto:
+    async def get_user(self, user_id: int) -> UserDetailDto:
         user = await self._user_repo.get_by_id(user_id)
         if not user:
             raise UserNotFoundException(user_id)
@@ -134,7 +136,7 @@ class UserService:
 
         # UserDetailDto 생성 시 상태 정보 포함
         user_data = await self._prepare_user_dto_data(user, user.id)
-        return UserDto.model_validate(user_data, from_attributes=False)
+        return UserDetailDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 사용자 조회 (팔로우 통계 포함)
     async def get_user_with_follow_stats(
@@ -166,7 +168,7 @@ class UserService:
 
         # UserDetailDto 생성 시 상태 정보 포함
         user_dto_data = await self._prepare_user_dto_data(user, user.id)
-        return UserDto.model_validate(user_dto_data, from_attributes=False)
+        return UserDetailDto.model_validate(user_dto_data, from_attributes=False)
 
     # - MARK: 사용자 온보딩 상태 결정
     def _determine_user_state(
@@ -300,7 +302,7 @@ class UserService:
         return user_data
 
     # - MARK: 약관 동의
-    async def accept_terms(self, user_id: int, terms_accepted: bool = True) -> UserDto:
+    async def accept_terms(self, user_id: int, terms_accepted: bool = True) -> UserDetailDto:
         """약관 동의 처리"""
         # 약관 동의 업데이트 (repo 메서드 사용)
         user = await self._user_repo.update_terms_accepted(user_id, terms_accepted)
@@ -309,7 +311,7 @@ class UserService:
 
         # 업데이트된 사용자 정보 조회
         user_data = await self._prepare_user_dto_data(user, user_id)
-        return UserDto.model_validate(user_data, from_attributes=False)
+        return UserDetailDto.model_validate(user_data, from_attributes=False)
 
     # - MARK: 사용자 삭제
     async def delete_user(self, user_id: int) -> None:
