@@ -1,4 +1,4 @@
-from app.features.pods.models.pod import PodLike
+from app.features.pods.models import PodLike
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

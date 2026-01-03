@@ -18,9 +18,9 @@ class ApplicationStatus(str, Enum):
     REJECTED = "rejected"  # 거절됨
 
 
-# - MARK: Application Model (간단한 버전 - PodApplDto에 대응)
+# - MARK: Application Model
 class Application(Base):
-    """파티 참여 신청서 모델 (간단한 버전)"""
+    """파티 참여 신청서 모델"""
 
     __tablename__ = "pod_applications"
 
@@ -42,23 +42,6 @@ class Application(Base):
     is_hidden = Column(
         Boolean, nullable=False, default=False, comment="파티장이 숨김 처리했는지 여부"
     )
-
-    # 관계 설정 (리스트용 - 최소화)
-    pod = relationship("Pod", back_populates="applications")
-    user = relationship("User", foreign_keys=[user_id], lazy="joined")
-
-    __table_args__ = (
-        # 같은 파티에 같은 사용자가 중복 신청할 수 없도록 제약
-        {"extend_existing": True}
-    )
-
-
-# - MARK: Application Detail Model (상세 버전 - PodApplDetailDto에 대응)
-class ApplicationDetail(Application):
-    """파티 참여 신청서 모델 (상세 버전)"""
-
-    __tablename__ = "pod_applications"
-
     message = Column(Text, nullable=True, comment="참여 신청 메시지")
     reviewed_at = Column(DateTime, nullable=True, comment="검토 시간")
     reviewed_by = Column(
@@ -68,5 +51,14 @@ class ApplicationDetail(Application):
         comment="검토한 사용자 ID (파티 개설자)",
     )
 
-    # 관계 설정 (상세용)
+    # 관계 설정
+    pod_detail = relationship("PodDetail", back_populates="applications")
+    user = relationship("User", foreign_keys=[user_id], lazy="joined")
     reviewer = relationship("User", foreign_keys=[reviewed_by])
+    # 하위 호환성을 위한 pod 관계 (viewonly)
+    pod = relationship("Pod", foreign_keys=[pod_id], viewonly=True)
+
+    __table_args__ = (
+        # 같은 파티에 같은 사용자가 중복 신청할 수 없도록 제약
+        {"extend_existing": True}
+    )

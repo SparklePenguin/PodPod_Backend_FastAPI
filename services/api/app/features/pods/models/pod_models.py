@@ -115,21 +115,22 @@ class Pod(Base):
         Integer, ForeignKey("artists.id"), nullable=True, index=True
     )
     title = Column(String(100), nullable=False)
-    description = Column(String(500), nullable=True)
-    image_url = Column(String(500), nullable=True)
     thumbnail_url = Column(String(500), nullable=True)
     sub_categories = Column(Text, nullable=True)
     capacity = Column(Integer, nullable=False)
     place = Column(String(200), nullable=False)
-    address = Column(String(300), nullable=False)
-    sub_address = Column(String(300), nullable=True)
-    x = Column(Float, nullable=True, comment="경도 (longitude)")
-    y = Column(Float, nullable=True, comment="위도 (latitude)")
     meeting_date = Column(Date, nullable=False)
     meeting_time = Column(Time, nullable=False)
     status = Column(SQLEnum(PodStatus), default=PodStatus.RECRUITING, nullable=False)
-    chat_channel_url = Column(String(255), nullable=True, comment="Sendbird 채팅방 URL")
-    is_active = Column(Boolean, default=True)
+    is_del = Column(Boolean, default=False)
+    chat_room_id = Column(
+        Integer,
+        ForeignKey("chat_rooms.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+        index=True,
+        comment="채팅방 ID",
+    )
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
@@ -145,14 +146,53 @@ class Pod(Base):
         "PodRating", back_populates="pod", cascade="all, delete-orphan"
     )
     views = relationship("PodView", back_populates="pod", cascade="all, delete-orphan")
+    detail = relationship(
+        "PodDetail",
+        uselist=False,
+        back_populates="pod",
+        cascade="all, delete-orphan",
+    )
+    chat_room = relationship("ChatRoom", foreign_keys=[chat_room_id], uselist=False)
+
+
+# - MARK: Pod Detail Model
+class PodDetail(Base):
+    __tablename__ = "pod_details"
+
+    pod_id = Column(
+        Integer,
+        ForeignKey("pods.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    description = Column(String(500), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    address = Column(String(300), nullable=False)
+    sub_address = Column(String(300), nullable=True)
+    x = Column(Float, nullable=True, comment="경도 (longitude)")
+    y = Column(Float, nullable=True, comment="위도 (latitude)")
+    # chat_channel_url은 deprecated (chat_room_id 사용)
+    chat_channel_url = Column(
+        String(255),
+        nullable=True,
+        comment="채팅방 URL (deprecated - Pod.chat_room_id 사용)",
+    )
+
+    # relations
+    pod = relationship("Pod", back_populates="detail")
+    images = relationship(
+        "PodImage",
+        back_populates="pod_detail",
+        cascade="all, delete-orphan",
+    )
     applications = relationship(
-        "Application", back_populates="pod", cascade="all, delete-orphan"
+        "Application",
+        back_populates="pod_detail",
+        cascade="all, delete-orphan",
     )
     reviews = relationship(
-        "PodReview", back_populates="pod", cascade="all, delete-orphan"
-    )
-    images = relationship(
-        "PodImage", back_populates="pod", cascade="all, delete-orphan"
+        "PodReview",
+        back_populates="pod_detail",
+        cascade="all, delete-orphan",
     )
 
 
@@ -163,13 +203,17 @@ class PodImage(Base):
     __tablename__ = "pod_images"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    pod_id = Column(Integer, ForeignKey("pods.id"), nullable=False, index=True)
+    pod_detail_id = Column(
+        Integer, ForeignKey("pod_details.pod_id", ondelete="CASCADE"), nullable=False, index=True
+    )
     image_url = Column(String(500), nullable=False)  # 이미지 URL
     thumbnail_url = Column(String(500), nullable=True)  # 썸네일 URL
     display_order = Column(Integer, nullable=False, default=0)  # 표시 순서
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    pod = relationship("Pod", back_populates="images")
+    pod_detail = relationship("PodDetail", back_populates="images")
+    # 하위 호환성을 위한 pod 관계 (viewonly)
+    pod = relationship("Pod", foreign_keys=[pod_detail_id], viewonly=True)
 
 
 # - MARK: Pod Member Model

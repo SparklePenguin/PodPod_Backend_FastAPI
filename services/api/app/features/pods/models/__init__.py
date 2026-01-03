@@ -2,7 +2,6 @@
 
 from .application_models import (
     Application,
-    ApplicationDetail,
     ApplicationStatus,
 )
 from .like_models import PodLike
@@ -13,6 +12,7 @@ from .pod_models import (
     GoodsSubCategory,
     MainCategory,
     Pod,
+    PodDetail,
     PodImage,
     PodMember,
     PodRating,
@@ -26,13 +26,13 @@ from .review_models import PodReview
 __all__ = [
     "AccompanySubCategory",
     "Application",
-    "ApplicationDetail",
     "ApplicationStatus",
     "CATEGORY_SUBCATEGORY_MAP",
     "EtcSubCategory",
     "GoodsSubCategory",
     "MainCategory",
     "Pod",
+    "PodDetail",
     "PodImage",
     "PodLike",
     "PodMember",

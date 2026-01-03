@@ -7,6 +7,7 @@ from app.features.pods.exceptions import (
     ReviewPermissionDeniedException,
 )
 from app.features.pods.models import PodReview
+from app.features.pods.models.pod_models import Pod
 from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import (
     PodDto,
@@ -17,6 +18,7 @@ from app.features.pods.schemas import (
 from app.features.pods.services.review_notification_service import (
     ReviewNotificationService,
 )
+from app.features.users.models.user import User
 from app.features.users.repositories import UserRepository
 from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -219,39 +221,80 @@ class ReviewService:
 
             # PodDto 생성 - 안전하게 처리
             try:
-                pod = review.pod if hasattr(review, "pod") and review.pod else None
+                pod_raw = review.pod if hasattr(review, "pod") and review.pod else None
+                pod: Pod | None = pod_raw if isinstance(pod_raw, Pod) else None
+                from datetime import date
+                from datetime import time as time_module
+
+                # sub_categories 파싱
+                pod_sub_categories = []
+                if pod and pod.sub_categories:
+                    if isinstance(pod.sub_categories, str):
+                        import json
+
+                        try:
+                            pod_sub_categories = json.loads(pod.sub_categories)
+                        except Exception:
+                            pod_sub_categories = []
+                    elif isinstance(pod.sub_categories, list):
+                        pod_sub_categories = pod.sub_categories
+
                 simple_pod = PodDto(
                     id=pod.id or 0 if pod else 0,
                     owner_id=pod.owner_id or 0 if pod else 0,
                     title=pod.title or "" if pod else "",
-                    thumbnail_url=(pod.thumbnail_url or pod.image_url or "")
-                    if pod
-                    else "",
-                    sub_categories=sub_categories,
-                    meeting_place=pod.place or "" if pod else "",
-                    meeting_date=_convert_to_combined_timestamp(
-                        pod.meeting_date if pod else None,
-                        pod.meeting_time if pod else None,
-                    )
-                    or 0,
+                    thumbnail_url=(pod.thumbnail_url or "") if pod else "",
+                    sub_categories=pod_sub_categories,
+                    selected_artist_id=pod.selected_artist_id if pod else None,
+                    capacity=pod.capacity or 0 if pod else 0,
+                    place=pod.place or "" if pod else "",
+                    meeting_date=pod.meeting_date
+                    if pod and pod.meeting_date
+                    else date.today(),
+                    meeting_time=pod.meeting_time
+                    if pod and pod.meeting_time
+                    else time_module.min,
+                    status=pod.status,
+                    is_del=pod.is_del if pod else False,
+                    created_at=pod.created_at
+                    if pod and pod.created_at
+                    else datetime.now(timezone.utc),
+                    updated_at=pod.updated_at
+                    if pod and pod.updated_at
+                    else datetime.now(timezone.utc),
                 )
             except Exception:
                 # 기본값으로 PodDto 생성
+                from datetime import date
+                from datetime import time as time_module
+
+                from app.features.pods.models import PodStatus
+
                 simple_pod = PodDto(
                     id=0,
                     owner_id=0,
                     title="",
                     thumbnail_url="",
                     sub_categories=[],
-                    meeting_place="",
-                    meeting_date=0,
+                    selected_artist_id=None,
+                    capacity=0,
+                    place="",
+                    meeting_date=date.today(),
+                    meeting_time=time_module.min,
+                    status=PodStatus.RECRUITING,
+                    is_del=False,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
                 )
 
             # UserDto 생성 - 안전하게 처리
             try:
                 # 성향 타입 조회 (repository 사용)
                 user_tendency_type = ""
-                user = review.user if hasattr(review, "user") and review.user else None
+                user_raw = (
+                    review.user if hasattr(review, "user") and review.user else None
+                )
+                user: User | None = user_raw if isinstance(user_raw, User) else None
                 if user and user.id:
                     user_tendency_type = await self._user_repo.get_user_tendency_type(
                         user.id

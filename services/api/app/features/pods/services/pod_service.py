@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.common.schemas import PageDto
 from app.core.config import settings
-from app.core.services.sendbird_service import SendbirdService
+from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.follow.services.follow_service import FollowService
 from app.features.pods.exceptions import (
     InvalidDateException,
@@ -29,7 +29,6 @@ from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import (
     ImageOrderDto,
     PodDetailDto,
-    PodDto,
     PodForm,
     PodImageDto,
 )
@@ -199,9 +198,9 @@ class PodService:
                 except ValueError:
                     image_thumbnail_url = image_url
 
-                # PodImage 저장
+                # PodImage 저장 (pod_detail_id 사용)
                 pod_image = PodImage(
-                    pod_id=pod.id,
+                    pod_detail_id=pod.id,  # pod_detail_id는 pod_id와 동일
                     image_url=image_url,
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
@@ -210,8 +209,10 @@ class PodService:
 
         # Pod 모델을 PodDetailDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
-            # images 관계를 다시 로드 (MissingGreenlet 오류 방지)
-            await self._session.refresh(pod, ["images"])
+            # PodDetail과 images 관계를 다시 로드 (MissingGreenlet 오류 방지)
+            await self._session.refresh(pod, ["detail"])
+            if pod.detail:
+                await self._session.refresh(pod.detail, ["images"])
             pod_dto = await self._enrich_pod_dto(pod, owner_id)
 
             # 팔로워들에게 파티 생성 알림 전송
@@ -317,34 +318,38 @@ class PodService:
     ) -> PodDetailDto:
         """Form 데이터로부터 파티 수정 (비즈니스 로직 검증 포함)"""
         # 업데이트할 필드들 준비
-        update_fields = {}
+
+        # Pod 업데이트 필드
+        pod_update_fields = {}
+        # PodDetail 업데이트 필드
+        pod_detail_update_fields = {}
 
         # 기본 정보 업데이트
         if pod_form.title is not None:
-            update_fields["title"] = pod_form.title
+            pod_update_fields["title"] = pod_form.title
         if pod_form.description is not None:
-            update_fields["description"] = pod_form.description
+            pod_detail_update_fields["description"] = pod_form.description
         if pod_form.sub_categories is not None:
             try:
                 parsed = json.loads(pod_form.sub_categories)
                 if isinstance(parsed, list):
-                    update_fields["sub_categories"] = parsed
+                    pod_update_fields["sub_categories"] = parsed
             except Exception:
                 pass
         if pod_form.capacity is not None:
-            update_fields["capacity"] = pod_form.capacity
+            pod_update_fields["capacity"] = pod_form.capacity
         if pod_form.place is not None:
-            update_fields["place"] = pod_form.place
+            pod_update_fields["place"] = pod_form.place
         if pod_form.address is not None:
-            update_fields["address"] = pod_form.address
+            pod_detail_update_fields["address"] = pod_form.address
         if pod_form.sub_address is not None:
-            update_fields["sub_address"] = pod_form.sub_address
+            pod_detail_update_fields["sub_address"] = pod_form.sub_address
         if pod_form.x is not None:
-            update_fields["x"] = pod_form.x
+            pod_detail_update_fields["x"] = pod_form.x
         if pod_form.y is not None:
-            update_fields["y"] = pod_form.y
+            pod_detail_update_fields["y"] = pod_form.y
         if pod_form.selected_artist_id is not None:
-            update_fields["selected_artist_id"] = pod_form.selected_artist_id
+            pod_update_fields["selected_artist_id"] = pod_form.selected_artist_id
 
         # 날짜와 시간 파싱 (meetingDate: UTC datetime → date/time 분리)
         if pod_form.meeting_date is not None:
@@ -356,8 +361,8 @@ class PodService:
 
                 dt_utc = dt.astimezone(timezone.utc)
 
-                update_fields["meeting_date"] = dt_utc.date()
-                update_fields["meeting_time"] = dt_utc.time()
+                pod_update_fields["meeting_date"] = dt_utc.date()
+                pod_update_fields["meeting_time"] = dt_utc.time()
             except (ValueError, AttributeError) as e:
                 raise InvalidDateException(pod_form.meeting_date) from e
 
@@ -365,7 +370,8 @@ class PodService:
         updated_pod = await self.update_pod_with_images(
             pod_id=pod_id,
             current_user_id=current_user_id,
-            update_fields=update_fields,
+            update_fields=pod_update_fields,
+            pod_detail_update_fields=pod_detail_update_fields,
             image_orders=pod_form.image_orders,
             new_images=new_images,
         )
@@ -380,6 +386,7 @@ class PodService:
         pod_id: int,
         current_user_id: int,
         update_fields: dict,
+        pod_detail_update_fields: dict | None = None,
         image_orders: str | None = None,
         new_images: list[UploadFile | None] = None,
     ) -> PodDetailDto | None:
@@ -423,7 +430,7 @@ class PodService:
                         # 기존 이미지
                         if order_item.url:
                             pod_image = PodImage(
-                                pod_id=pod_id,
+                                pod_detail_id=pod_id,
                                 image_url=order_item.url,
                                 thumbnail_url=order_item.url,
                                 display_order=index,
@@ -461,7 +468,7 @@ class PodService:
                                 image_thumbnail_url = image_url
 
                             pod_image = PodImage(
-                                pod_id=pod_id,
+                                pod_detail_id=pod_id,
                                 image_url=image_url,
                                 thumbnail_url=image_thumbnail_url,
                                 display_order=index,
@@ -523,7 +530,7 @@ class PodService:
             if thumbnail_url:
                 update_fields["thumbnail_url"] = thumbnail_url
 
-        # 파티 기본 정보 업데이트
+        # Pod 기본 정보 업데이트
         if update_fields:
             # sub_categories를 JSON 문자열로 변환
             if "sub_categories" in update_fields and isinstance(
@@ -535,21 +542,27 @@ class PodService:
 
             await self._pod_repo.update_pod(pod_id, **update_fields)
 
+        # PodDetail 업데이트
+        if pod_detail_update_fields:
+            await self._pod_repo.update_pod_detail(pod_id, **pod_detail_update_fields)
+
         # 파티 정보 다시 조회하여 DTO로 변환
         updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
         if updated_pod:
-            await self._session.refresh(updated_pod, ["images"])
+            await self._session.refresh(updated_pod, ["detail"])
+            if updated_pod.detail:
+                await self._session.refresh(updated_pod.detail, ["images"])
 
-            # thumbnail_url이 변경되었고 채팅방이 있으면 Sendbird 채널 cover_url 업데이트
-            if "thumbnail_url" in update_fields and updated_pod.chat_channel_url:
+            # thumbnail_url이 변경되었고 채팅방이 있으면 채팅방 cover_url 업데이트
+            if "thumbnail_url" in update_fields and updated_pod.chat_room_id:
                 try:
-                    sendbird_service = SendbirdService()
-                    await sendbird_service.update_channel_cover_url(
-                        channel_url=updated_pod.chat_channel_url,
+                    chat_room_repo = ChatRoomRepository(self._session)
+                    await chat_room_repo.update_cover_url(
+                        chat_room_id=updated_pod.chat_room_id,
                         cover_url=updated_pod.thumbnail_url or "",
                     )
                 except Exception:
-                    # 채널 업데이트 실패는 파티 업데이트를 막지 않음
+                    # 채팅방 업데이트 실패는 파티 업데이트를 막지 않음
                     pass
 
             pod_dto = await self._enrich_pod_dto(updated_pod, current_user_id)
@@ -558,7 +571,7 @@ class PodService:
         return None
 
     async def _delete_pod_images(self, pod_id: int):
-        """파티의 모든 이미지 삭제"""
+        """파티의 모든 이미지 삭제 (PodDetail의 images 삭제)"""
         await self._pod_repo.delete_pod_images(pod_id)
 
     # - MARK: 파티 상태 업데이트 (파티장만 가능)
@@ -585,7 +598,7 @@ class PodService:
         return await self._enrich_pod_dto(updated_pod, user_id)
 
     # - MARK: 파티 완료 처리 (하위 호환성을 위해 유지)
-    async def complete_pod(self, pod_id: int, user_id: int) -> PodDto:
+    async def complete_pod(self, pod_id: int, user_id: int) -> PodDetailDto:
         """파티장이 파티를 완료 상태로 변경 (하위 호환성)"""
         return await self.update_pod_status_by_owner(pod_id, "COMPLETED", user_id)
 
@@ -619,29 +632,19 @@ class PodService:
             all_members = await self._pod_repo.get_pod_members(pod_id)
             member_ids = [member.user_id for member in all_members]
 
-            # Sendbird 채팅방에서 모든 멤버 제거
-            if pod.chat_channel_url:
+            # 채팅방에서 모든 멤버 제거
+            if pod.chat_room_id:
                 try:
-                    sendbird_service = SendbirdService()
-
+                    chat_room_repo = ChatRoomRepository(self._session)
                     # 모든 멤버를 채팅방에서 제거
-                    chat_channel_url_value = pod.chat_channel_url
-                    if chat_channel_url_value:
-                        for member_id in member_ids:
-                            await sendbird_service.remove_member_from_channel(
-                                channel_url=chat_channel_url_value,
-                                user_id=str(member_id),
-                            )
+                    for member_id in member_ids:
+                        await chat_room_repo.remove_member(pod.chat_room_id, member_id)
 
                     # 파티장도 채팅방에서 제거
-                    if pod.chat_channel_url:
-                        await sendbird_service.remove_member_from_channel(
-                            channel_url=pod.chat_channel_url,
-                            user_id=str(target_user_id),
-                        )
+                    await chat_room_repo.remove_member(pod.chat_room_id, target_user_id)
 
                 except Exception:
-                    # Sendbird 채팅방 멤버 제거 실패는 무시
+                    # 채팅방 멤버 제거 실패는 무시
                     pass
 
             # 파티장만 데이터베이스에서 제거 (멤버는 유지하여 상태 확인 가능하도록)
@@ -652,7 +655,7 @@ class PodService:
             await self._pod_repo.update_pod_status(pod_id, PodStatus.CANCELED)
 
             # 파티 비활성화 (소프트 삭제)
-            await self._pod_repo.update_pod(pod_id, is_active=False)
+            await self._pod_repo.update_pod(pod_id, is_del=True)
 
             return {
                 "left": True,
@@ -664,17 +667,14 @@ class PodService:
         else:
             # 일반 멤버가 나가는 경우 - 본인만 나가기 (권한 확인은 use case에서 처리)
 
-            # Sendbird 채팅방에서 제거
-            if pod.chat_channel_url:
+            # 채팅방에서 제거
+            if pod.chat_room_id:
                 try:
-                    sendbird_service = SendbirdService()
-
-                    await sendbird_service.remove_member_from_channel(
-                        channel_url=pod.chat_channel_url, user_id=str(target_user_id)
-                    )
+                    chat_room_repo = ChatRoomRepository(self._session)
+                    await chat_room_repo.remove_member(pod.chat_room_id, target_user_id)
 
                 except Exception:
-                    # Sendbird 채팅방 제거 실패는 무시
+                    # 채팅방 제거 실패는 무시
                     pass
 
             # 데이터베이스에서 멤버 제거
@@ -701,25 +701,20 @@ class PodService:
         all_members = await self._pod_repo.get_pod_members(pod_id)
         member_ids = [member.user_id for member in all_members]
 
-        # Sendbird 채팅방에서 모든 멤버 제거
-        if pod.chat_channel_url:
+        # 채팅방에서 모든 멤버 제거
+        if pod.chat_room_id:
             try:
-                sendbird_service = SendbirdService()
-
+                chat_room_repo = ChatRoomRepository(self._session)
                 # 모든 멤버를 채팅방에서 제거
                 for member_id in member_ids:
-                    await sendbird_service.remove_member_from_channel(
-                        channel_url=pod.chat_channel_url, user_id=str(member_id)
-                    )
+                    await chat_room_repo.remove_member(pod.chat_room_id, member_id)
 
                 # 파티장도 채팅방에서 제거
                 if pod.owner_id is not None:
-                    await sendbird_service.remove_member_from_channel(
-                        channel_url=pod.chat_channel_url, user_id=str(pod.owner_id)
-                    )
+                    await chat_room_repo.remove_member(pod.chat_room_id, pod.owner_id)
 
             except Exception:
-                # Sendbird 채팅방 멤버 제거 실패는 무시
+                # 채팅방 멤버 제거 실패는 무시
                 pass
 
         # 파티장만 데이터베이스에서 제거 (멤버는 유지하여 상태 확인 가능하도록)
@@ -731,7 +726,7 @@ class PodService:
 
         # 파티 비활성화 (소프트 삭제)
         if pod:
-            setattr(pod, "is_active", False)
+            setattr(pod, "is_del", True)
 
     # - MARK: 요즘 인기 있는 파티 조회
     async def get_trending_pods(
@@ -999,32 +994,21 @@ class PodService:
                 return []
         return []
 
+    # MARK: - 헬퍼 메서드
+
     async def _enrich_pod_dto(
         self, pod: Pod, user_id: int | None = None
     ) -> PodDetailDto:
         """Pod를 PodDetailDto로 변환하고 추가 정보를 설정"""
 
-        # meeting_date와 meeting_time을 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
-        def _convert_to_timestamp(meeting_date, meeting_time):
-            """date와 time 객체를 UTC로 해석하여 timestamp로 변환"""
-            if meeting_date is None:
-                return None
-            from datetime import time as time_module
-
-            if meeting_time is None:
-                dt = datetime.combine(
-                    meeting_date, time_module.min, tzinfo=timezone.utc
-                )
-            else:
-                dt = datetime.combine(meeting_date, meeting_time, tzinfo=timezone.utc)
-            timestamp_ms = int(dt.timestamp() * 1000)  # milliseconds
-            return timestamp_ms
+        # PodDetail 조회
+        pod_detail = pod.detail
 
         # 이미지 리스트 조회
         images_dto = []
-        if hasattr(pod, "images") and pod.images:
+        if pod_detail and pod_detail.images:
             # display_order로 정렬
-            pod_images: list[PodImage] = list(pod.images)
+            pod_images: list[PodImage] = list(pod_detail.images)
             for img in sorted(pod_images, key=lambda x: x.display_order or 0):
                 images_dto.append(PodImageDto.model_validate(img))
 
@@ -1062,20 +1046,22 @@ class PodService:
             id=pod.id or 0,
             owner_id=pod.owner_id or 0,
             title=pod.title or "",
-            description=pod.description or "",
-            image_url=pod.image_url,
+            description=pod_detail.description if pod_detail else "",
+            image_url=pod_detail.image_url if pod_detail else None,
             thumbnail_url=pod.thumbnail_url,
             sub_categories=pod_sub_categories,
             capacity=pod.capacity or 0,
             place=pod.place or "",
-            address=pod.address or "",
-            sub_address=pod.sub_address,
-            x=pod.x,
-            y=pod.y,
-            meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),
+            address=pod_detail.address if pod_detail else "",
+            sub_address=pod_detail.sub_address if pod_detail else None,
+            x=pod_detail.x if pod_detail else None,
+            y=pod_detail.y if pod_detail else None,
+            meeting_date=pod.meeting_date if pod.meeting_date else date.today(),
+            meeting_time=pod.meeting_time if pod.meeting_time else time.min,
             selected_artist_id=pod.selected_artist_id,
             status=pod_status,
-            chat_channel_url=pod.chat_channel_url,
+            is_del=pod.is_del if pod.is_del else False,
+            chat_room_id=pod.chat_room_id,
             images=images_dto,
             created_at=pod_created_at,
             updated_at=pod_updated_at,
@@ -1187,7 +1173,13 @@ class PodService:
         # 파티에 들어온 신청서 목록 조회
         if pod.id is None:
             return pod_dto
-        applications = await self._application_repo.get_applications_by_pod_id(pod.id)
+        # PodDetail에서 applications 가져오기
+        if pod_detail and pod_detail.applications:
+            applications = list(pod_detail.applications)
+        else:
+            applications = await self._application_repo.get_applications_by_pod_id(
+                pod.id
+            )
 
         application_dtos = []
         for app in applications:
@@ -1219,7 +1211,11 @@ class PodService:
         # 후기 목록 조회 및 추가
         if pod.id is None:
             return pod_dto
-        reviews = await self._review_repo.get_all_reviews_by_pod(pod.id)
+        # PodDetail에서 reviews 가져오기
+        if pod_detail and pod_detail.reviews:
+            reviews = list(pod_detail.reviews)
+        else:
+            reviews = await self._review_repo.get_all_reviews_by_pod(pod.id)
 
         review_dtos = []
         for review in reviews:

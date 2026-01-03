@@ -4,7 +4,7 @@ from typing import List
 
 from app.features.locations.repositories.location_repository import LocationRepository
 from app.features.locations.schemas import LocationDto
-from app.features.pods.models.pod.pod import Pod
+from app.features.pods.models import Pod
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

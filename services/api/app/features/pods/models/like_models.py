@@ -2,10 +2,9 @@
 
 from datetime import datetime, timezone
 
+from app.core.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 # - MARK: Pod Like Model

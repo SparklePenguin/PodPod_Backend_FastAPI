@@ -295,12 +295,11 @@ def get_pod_service(
     fcm_service: FCMService = Depends(get_fcm_service),
     application_service: ApplicationService = Depends(get_application_service),
 ) -> PodService:
-    from app.features.users.services.user_service import UserService
     from app.features.pods.services.pod_notification_service import (
         PodNotificationService,
     )
-
     from app.features.users.repositories import UserRepository
+    from app.features.users.services.user_service import UserService
 
     pod_repo = PodRepository(session)
     application_repo = ApplicationRepository(session)

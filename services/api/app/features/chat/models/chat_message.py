@@ -15,7 +15,20 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    channel_url = Column(String(255), nullable=False, index=True, comment="채널 URL")
+    chat_room_id = Column(
+        Integer,
+        ForeignKey("chat_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="채팅방 ID",
+    )
+    # channel_url은 deprecated (chat_room_id 사용)
+    channel_url = Column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="채널 URL (deprecated - chat_room_id 사용)",
+    )
     user_id = Column(
         Integer, ForeignKey("users.id"), nullable=False, index=True, comment="발신자 ID"
     )
@@ -34,4 +47,5 @@ class ChatMessage(Base):
     )
 
     # 관계 설정
+    chat_room = relationship("ChatRoom", back_populates="messages", foreign_keys=[chat_room_id])
     user = relationship("User", foreign_keys=[user_id])

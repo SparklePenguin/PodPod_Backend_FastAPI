@@ -14,7 +14,7 @@ from app.features.pods.repositories.application_repository import (
     ApplicationRepository,
 )
 from app.features.pods.repositories.pod_repository import PodRepository
-from app.features.pods.schemas import PodApplDetailDto
+from app.features.pods.schemas import PodApplDto
 from app.features.pods.services.application_service import ApplicationService
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,7 +37,7 @@ class ApplicationUseCase:
     # MARK: - 파티 참여 신청
     async def apply_to_pod(
         self, pod_id: int, user_id: int, message: str | None = None
-    ) -> PodApplDetailDto:
+    ) -> PodApplDto:
         """파티 참여 신청 (비즈니스 로직 검증)"""
         # 파티 존재 확인
         pod = await self._pod_repo.get_pod_by_id(pod_id)
@@ -73,7 +73,7 @@ class ApplicationUseCase:
     # MARK: - 신청서 승인/거절
     async def review_application(
         self, application_id: int, status: str, reviewed_by: int
-    ) -> PodApplDetailDto:
+    ) -> PodApplDto:
         """신청서 승인/거절 (비즈니스 로직 검증)"""
         # 신청서 존재 확인
         application = await self._application_repo.get_application_by_id(application_id)
@@ -192,7 +192,7 @@ class ApplicationUseCase:
     # MARK: - 파티별 신청서 목록 조회
     async def get_applications_by_pod_id(
         self, pod_id: int, include_hidden: bool = False
-    ) -> List[PodApplDetailDto]:
+    ) -> List[PodApplDto]:
         """파티별 신청서 목록 조회 (비즈니스 로직 검증)"""
         # 파티 존재 확인
         pod = await self._pod_repo.get_pod_by_id(pod_id)

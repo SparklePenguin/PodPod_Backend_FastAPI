@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 from app.features.follow.models import Follow
-from app.features.pods.models.pod import Pod
+from app.features.pods.models import Pod, PodStatus
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -18,20 +18,20 @@ class FollowPodRepository:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[Pod], int]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
-        from app.features.pods.models.pod.pod_status import PodStatus
+        from app.features.pods.models import PodDetail
 
         offset = (page - 1) * size
 
         # 팔로우하는 사용자들이 만든 파티 조회 (활성화된 팔로우만, 모집중인 파티만)
         query = (
             select(Pod)
-            .options(selectinload(Pod.images))
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .join(Follow, Pod.owner_id == Follow.following_id)
             .where(
                 and_(
                     Follow.follower_id == user_id,
                     Follow.is_active,  # 활성화된 팔로우만
-                    Pod.is_active,  # 활성화된 파티만
+                    ~Pod.is_del,  # 삭제되지 않은 파티만
                     Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
                 )
             )
@@ -50,7 +50,7 @@ class FollowPodRepository:
                 and_(
                     Follow.follower_id == user_id,
                     Follow.is_active,  # 활성화된 팔로우만
-                    Pod.is_active,  # 활성화된 파티만
+                    ~Pod.is_del,  # 삭제되지 않은 파티만
                     Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
                 )
             )

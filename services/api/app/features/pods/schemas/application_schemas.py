@@ -9,22 +9,6 @@ from pydantic import BaseModel, Field
 # - MARK: Pod Application DTO
 class PodApplDto(BaseModel):
     id: int = Field(description="신청서 ID")
-    user: UserDto = Field(description="신청한 사용자 정보")
-    status: str = Field(
-        description="신청 상태 (pending, approved, rejected)",
-    )
-    message: str | None = Field(default=None, description="신청 메시지")
-    applied_at: datetime = Field(alias="appliedAt", description="신청 시간")
-
-    model_config = {
-        "from_attributes": True,
-        "populate_by_name": True,
-    }
-
-
-# - MARK: Pod Application Detail DTO
-class PodApplDetailDto(BaseModel):
-    id: int = Field(description="신청서 ID")
     podId: int = Field(alias="podId", description="파티 ID")
     user: UserDto = Field(description="신청자 정보")
     message: str | None = Field(default=None, description="참여 신청 메시지")

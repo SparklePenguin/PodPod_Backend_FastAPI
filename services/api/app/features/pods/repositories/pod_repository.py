@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from app.features.pods.models import (
     Pod,
+    PodDetail,
     PodLike,
     PodMember,
     PodRating,
@@ -12,7 +13,7 @@ from app.features.pods.models import (
     get_subcategories_by_main_category,
 )
 from app.features.pods.schemas import PodDto
-from app.features.users.models import User
+from app.features.users.models import User, UserBlock
 from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,8 +26,6 @@ class PodRepository:
     # - MARK: Helper methods
     def _get_blocked_users_query(self, user_id: int):
         """차단된 사용자 ID 조회 쿼리"""
-        from app.features.users.models import UserBlock
-
         return select(UserBlock.blocked_id).where(UserBlock.blocker_id == user_id)
 
     def _get_view_count_subquery(self):
@@ -100,8 +99,6 @@ class PodRepository:
             owner_id=owner_id,
             selected_artist_id=selected_artist_id,
             title=title,
-            description=description,
-            image_url=image_url,
             thumbnail_url=thumbnail_url,
             sub_categories=(
                 json.dumps(sub_categories, ensure_ascii=False)
@@ -110,16 +107,26 @@ class PodRepository:
             ),
             capacity=capacity,
             place=place,
-            address=address,
-            sub_address=sub_address,
-            x=x,
-            y=y,
             meeting_date=meeting_date,
             meeting_time=meeting_time,
             status=status,
         )
         self._session.add(pod)
         await self._session.flush()
+
+        # PodDetail 생성
+        pod_detail = PodDetail(
+            pod_id=pod.id,
+            description=description,
+            image_url=image_url,
+            address=address,
+            sub_address=sub_address,
+            x=x,
+            y=y,
+        )
+        self._session.add(pod_detail)
+        await self._session.flush()
+
         return pod
 
     # - MARK: 파티 생성 (채팅방 포함)
@@ -142,10 +149,12 @@ class PodRepository:
         y: float | None = None,
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
-        """파티 생성 후 Sendbird 채팅방도 함께 생성"""
+        """파티 생성 후 자체 채팅방도 함께 생성"""
         from datetime import datetime
 
-        from app.core.services.sendbird_service import SendbirdService
+        from app.features.chat.repositories.chat_room_repository import (
+            ChatRoomRepository,
+        )
 
         # 파티 생성
         pod = await self.create_pod(
@@ -168,98 +177,143 @@ class PodRepository:
         )
 
         try:
-            # Sendbird 채팅방 생성
-            sendbird_service = SendbirdService()
-            channel_url = f"pod_{pod.id}_{int(datetime.now().timestamp())}"
+            # 자체 채팅방 생성
+            chat_room_repo = ChatRoomRepository(self._session)
 
-            # PodDto 객체 생성 (meeting_date와 meeting_time을 하나로 합쳐서 timestamp로 변환)
-            def _convert_to_combined_timestamp(meeting_date, meeting_time):
-                """date와 time 객체를 UTC로 해석하여 하나의 timestamp로 변환"""
-                if meeting_date is None:
-                    return None
-                if meeting_time is None:
-                    # time이 없으면 date만 사용 (00:00:00)
-                    dt = datetime.combine(meeting_date, time.min, tzinfo=timezone.utc)
-                else:
-                    # date와 time을 결합 (UTC로 해석)
-                    dt = datetime.combine(
-                        meeting_date, meeting_time, tzinfo=timezone.utc
-                    )
-                return int(dt.timestamp() * 1000)  # milliseconds
-
-            # meeting_date 변환 (None일 경우 0으로 설정)
-            meeting_date_timestamp = _convert_to_combined_timestamp(
-                meeting_date, meeting_time
-            )
-            if meeting_date_timestamp is None:
-                meeting_date_timestamp = 0
-
+            # PodDto를 메타데이터로 저장
             simple_pod_dto = PodDto(
                 id=getattr(pod, "id"),
                 owner_id=owner_id,
                 title=title,
                 thumbnail_url=thumbnail_url or image_url or "",
                 sub_categories=sub_categories,
-                meeting_place=place,
-                meeting_date=meeting_date_timestamp,
+                selected_artist_id=selected_artist_id,
+                capacity=capacity,
+                place=place,
+                meeting_date=meeting_date,
+                meeting_time=meeting_time,
+                status=status,
+                is_del=False,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
 
             # 채팅방 생성 (파티장만 참여)
-            channel_data = await sendbird_service.create_group_channel_with_join(
-                user_ids=[str(owner_id)],
+            chat_room = await chat_room_repo.create_chat_room(
+                pod_id=pod.id,
                 name=title,
-                channel_url=channel_url,
-                cover_url=thumbnail_url
-                or image_url,  # 채팅방 커버 이미지로 썸네일 우선 사용
-                data=simple_pod_dto.model_dump(mode="json", by_alias=True),
+                cover_url=thumbnail_url or image_url,
+                metadata=simple_pod_dto.model_dump(mode="json", by_alias=True),
+                owner_id=owner_id,
             )
 
-            if channel_data and "channel_url" in channel_data:
-                # 생성된 채팅방 URL을 파티에 저장
-                pod.chat_channel_url = channel_data["channel_url"]
+            if chat_room:
+                # Pod에 chat_room_id 저장
+                pod.chat_room_id = chat_room.id
                 await self._session.flush()
-                print(f"파티 {pod.id} 채팅방 생성 성공: {channel_data['channel_url']}")
+                print(f"파티 {pod.id} 채팅방 생성 성공: chat_room_id={chat_room.id}")
             else:
                 print(f"파티 {pod.id} 채팅방 생성 실패")
                 await self._session.rollback()
 
         except Exception as e:
-            print(f"Sendbird 설정 오류: {e}")
+            print(f"채팅방 생성 오류: {e}")
             await self._session.rollback()
             raise e
 
         return pod
 
     async def get_pods_with_chat_channels(self) -> List[Pod]:
-        """채팅방 URL이 있는 모든 파티 조회"""
+        """채팅방이 있는 모든 파티 조회"""
+        from app.features.chat.models.chat_room import ChatRoom
+
         result = await self._session.execute(
-            select(Pod).where(and_(Pod.chat_channel_url.isnot(None), Pod.is_active))
+            select(Pod)
+            .join(ChatRoom, Pod.id == ChatRoom.pod_id)
+            .where(and_(ChatRoom.is_active, ~Pod.is_del))
         )
         return list(result.scalars().all())
 
     async def get_all_pods(self) -> List[Pod]:
         """모든 활성 파티 조회"""
-        result = await self._session.execute(select(Pod).where(Pod.is_active))
+        result = await self._session.execute(select(Pod).where(~Pod.is_del))
         return list(result.scalars().all())
 
     async def update_chat_channel_url(
         self, pod_id: int, channel_url: str | None
     ) -> bool:
-        """파티의 채팅방 URL 업데이트"""
-        pod = await self.get_pod_by_id(pod_id)
-        if not pod:
+        """파티의 채팅방 URL 업데이트 (deprecated - ChatRoom 사용 권장)"""
+        # 하위 호환성을 위해 유지하지만, 실제로는 ChatRoom을 사용해야 함
+        pod_detail = await self.get_pod_detail_by_pod_id(pod_id)
+        if not pod_detail:
             return False
 
-        setattr(pod, "chat_channel_url", channel_url)
+        pod_detail.chat_channel_url = channel_url
         await self._session.flush()
         return True
 
     # - MARK: 파티 조회
     async def get_pod_by_id(self, pod_id: int) -> Pod | None:
         result = await self._session.execute(
-            select(Pod).options(selectinload(Pod.images)).where(Pod.id == pod_id)
+            select(Pod)
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .where(Pod.id == pod_id)
         )
         return result.scalar_one_or_none()
+
+    async def get_pod_detail_by_pod_id(self, pod_id: int) -> PodDetail | None:
+        """PodDetail 조회"""
+        result = await self._session.execute(
+            select(PodDetail)
+            .options(
+                selectinload(PodDetail.images),
+                selectinload(PodDetail.applications),
+                selectinload(PodDetail.reviews),
+            )
+            .where(PodDetail.pod_id == pod_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_pod_detail(
+        self,
+        pod_id: int,
+        description: str | None = None,
+        image_url: str | None = None,
+        address: str = "",
+        sub_address: str | None = None,
+        x: float | None = None,
+        y: float | None = None,
+        chat_channel_url: str | None = None,
+    ) -> PodDetail:
+        """PodDetail 생성"""
+        pod_detail = PodDetail(
+            pod_id=pod_id,
+            description=description,
+            image_url=image_url,
+            address=address,
+            sub_address=sub_address,
+            x=x,
+            y=y,
+            chat_channel_url=chat_channel_url,
+        )
+        self._session.add(pod_detail)
+        await self._session.flush()
+        await self._session.refresh(pod_detail)
+        return pod_detail
+
+    async def update_pod_detail(self, pod_id: int, **fields) -> PodDetail | None:
+        """PodDetail 수정"""
+        pod_detail = await self.get_pod_detail_by_pod_id(pod_id)
+        if not pod_detail:
+            return None
+
+        for field, value in fields.items():
+            if hasattr(pod_detail, field):
+                setattr(pod_detail, field, value)
+
+        await self._session.flush()
+        await self._session.refresh(pod_detail)
+        return pod_detail
 
     # - MARK: 파티 수정
     async def update_pod(self, pod_id: int, **fields) -> Pod | None:
@@ -279,7 +333,7 @@ class PodRepository:
     async def delete_pod(self, pod_id: int) -> None:
         pod = await self.get_pod_by_id(pod_id)
         if pod:
-            setattr(pod, "is_active", False)
+            setattr(pod, "is_del", True)
             await self._session.flush()
 
     # - MARK: 파티 목록 조회
@@ -299,7 +353,12 @@ class PodRepository:
         offset = (page - 1) * size
 
         # 기본 쿼리
-        query = select(Pod).options(selectinload(Pod.images)).where(Pod.is_active)
+        query = (
+            select(Pod)
+            .join(PodDetail, Pod.id == PodDetail.pod_id)
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .where(~Pod.is_del)
+        )
 
         # 조건 추가
         if selected_artist_id:
@@ -313,7 +372,10 @@ class PodRepository:
 
         if location:
             query = query.where(
-                or_(Pod.place.contains(location), Pod.address.contains(location))
+                or_(
+                    Pod.place.contains(location),
+                    PodDetail.address.contains(location),
+                )
             )
 
         if sub_categories:
@@ -382,7 +444,7 @@ class PodRepository:
                 view_count_subquery.label("view_count"),
                 like_count_subquery.label("like_count"),
             )
-            .options(selectinload(Pod.images))
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .where(base_conditions)
             .order_by(
                 desc(view_count_subquery),  # 조회수 높은 순
@@ -441,7 +503,8 @@ class PodRepository:
         offset = (page - 1) * size
         closing_soon_query = (
             select(Pod, view_count_subquery.label("view_count"))
-            .options(selectinload(Pod.images))
+            .join(PodDetail, Pod.id == PodDetail.pod_id)
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .where(and_(base_conditions, time_condition))
             .order_by(
                 Pod.meeting_time.asc(),  # 시작 시간이 가까운 순
@@ -602,7 +665,7 @@ class PodRepository:
         offset = (page - 1) * size
         history_query = (
             select(Pod)
-            .options(selectinload(Pod.images))
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .where(history_conditions)
             .order_by(*order_conditions)
             .offset(offset)
@@ -640,7 +703,7 @@ class PodRepository:
 
         # 기본 조건: 마감되지 않은 파티 + 선택된 아티스트 기준
         base_conditions = and_(
-            Pod.is_active,
+            ~Pod.is_del,
             Pod.status == PodStatus.RECRUITING,  # 모집중인 파티만
             Pod.meeting_date >= now.date(),  # 마감되지 않은 파티
             Pod.selected_artist_id == selected_artist_id,  # 선택된 아티스트 기준
@@ -652,7 +715,7 @@ class PodRepository:
             select(Pod.sub_categories, func.count().label("category_count"))
             .where(
                 and_(
-                    Pod.is_active,
+                    ~Pod.is_del,
                     Pod.selected_artist_id == selected_artist_id,
                     Pod.created_at >= seven_days_ago,
                 )
@@ -671,7 +734,7 @@ class PodRepository:
             .join(PodView, Pod.id == PodView.pod_id)
             .where(
                 and_(
-                    Pod.is_active,
+                    ~Pod.is_del,
                     Pod.selected_artist_id == selected_artist_id,
                     Pod.created_at >= seven_days_ago,
                     PodView.created_at >= seven_days_ago,
@@ -703,9 +766,12 @@ class PodRepository:
             category_priority = None
 
         # 지역 조건
-        location_conditions = []
         if location:
-            location_conditions.append(Pod.place.contains(location))
+            location_conditions = [
+                Pod.place.contains(location),
+                PodDetail.address.contains(location),
+            ]
+            category_conditions = and_(category_conditions, or_(*location_conditions))
 
         # 메인 쿼리
         offset = (page - 1) * size
@@ -718,7 +784,8 @@ class PodRepository:
 
         popular_query = (
             select(Pod, view_count_subquery.label("view_count"))
-            .options(selectinload(Pod.images))
+            .join(PodDetail, Pod.id == PodDetail.pod_id)
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .where(category_conditions)
             .order_by(*order_conditions)
             .offset(offset)
@@ -805,26 +872,29 @@ class PodRepository:
         offset = (page - 1) * size
 
         # 기본 쿼리
-        # query가 비어있으면 검색 조건 없이 is_active만 체크
+        # query가 비어있으면 검색 조건 없이 is_del만 체크
         if query and query.strip():
             search_query = (
                 select(Pod)
-                .options(selectinload(Pod.images))
+                .join(PodDetail, Pod.id == PodDetail.pod_id)
+                .options(selectinload(Pod.detail).selectinload(PodDetail.images))
                 .where(
                     and_(
-                        Pod.is_active,
+                        ~Pod.is_del,
                         or_(
                             Pod.title.contains(query),
-                            Pod.description.contains(query),
+                            PodDetail.description.contains(query),
                             Pod.place.contains(query),
                         ),
                     )
                 )
             )
         else:
-            # query가 비어있으면 is_active만 체크
+            # query가 비어있으면 is_del만 체크
             search_query = (
-                select(Pod).options(selectinload(Pod.images)).where(Pod.is_active)
+                select(Pod)
+                .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+                .where(~Pod.is_del)
             )
 
         # 조건 추가
@@ -840,8 +910,18 @@ class PodRepository:
             search_query = search_query.where(Pod.meeting_date <= end_date)
 
         if location:
+            # PodDetail과 join이 필요
+            if not any(
+                t.entity.class_ == PodDetail
+                for t in search_query.column_descriptions
+                if hasattr(t, "entity") and hasattr(t.entity, "class_")
+            ):
+                search_query = search_query.join(PodDetail, Pod.id == PodDetail.pod_id)
             search_query = search_query.where(
-                or_(Pod.place.contains(location), Pod.address.contains(location))
+                or_(
+                    Pod.place.contains(location),
+                    PodDetail.address.contains(location),
+                )
             )
 
         # main_category가 있으면 해당 메인 카테고리의 서브 카테고리들로 필터링
@@ -864,7 +944,7 @@ class PodRepository:
             search_query = search_query.where(or_(*category_conditions))
 
         # is_active == True 필터가 항상 적용되도록 보장 (다른 조건들이 추가되어도 유지)
-        search_query = search_query.where(Pod.is_active)
+        search_query = search_query.where(~Pod.is_del)
 
         # 정렬 (최신순)
         search_query = search_query.order_by(desc(Pod.created_at))
@@ -899,8 +979,8 @@ class PodRepository:
         # 파티장도 포함시키기 위해 추가 조회
         pod_query = (
             select(Pod)
-            .options(selectinload(Pod.images))
-            .where(Pod.id == pod_id, Pod.is_active)
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .where(Pod.id == pod_id, ~Pod.is_del)
         )
         pod_result = await self._session.execute(pod_query)
         pod = pod_result.scalar_one_or_none()
@@ -1002,8 +1082,8 @@ class PodRepository:
         # 기본 쿼리
         query = (
             select(Pod)
-            .options(selectinload(Pod.images))
-            .where(and_(Pod.is_active, Pod.owner_id == user_id))
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .where(and_(~Pod.is_del, Pod.owner_id == user_id))
         )
 
         # 정렬 (최신순)
@@ -1032,9 +1112,9 @@ class PodRepository:
         # 기본 쿼리 (PodMember를 통해 참여한 파티 조회)
         query = (
             select(Pod)
-            .options(selectinload(Pod.images))
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .join(PodMember, Pod.id == PodMember.pod_id)
-            .where(and_(Pod.is_active, PodMember.user_id == user_id))
+            .where(and_(~Pod.is_del, PodMember.user_id == user_id))
         )
 
         # 정렬 (최신순)
@@ -1063,9 +1143,9 @@ class PodRepository:
         # 기본 쿼리 (PodLike를 통해 좋아요한 파티 조회)
         query = (
             select(Pod)
-            .options(selectinload(Pod.images))
+            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
             .join(PodLike, Pod.id == PodLike.pod_id)
-            .where(and_(Pod.is_active, PodLike.user_id == user_id))
+            .where(and_(~Pod.is_del, PodLike.user_id == user_id))
         )
 
         # 정렬 (최신순)
@@ -1120,18 +1200,19 @@ class PodRepository:
         from app.features.pods.models import PodImage
 
         result = await self._session.execute(
-            select(PodImage).where(PodImage.pod_id == pod_id)
+            select(PodImage).where(PodImage.pod_detail_id == pod_id)
         )
         return result.scalars().all()
 
     async def delete_pod_images(self, pod_id: int) -> None:
-        """파티의 모든 이미지 삭제"""
+        """파티의 모든 이미지 삭제 (PodDetail의 images 삭제)"""
         from app.features.pods.models import PodImage
 
         result = await self._session.execute(
-            select(PodImage).where(PodImage.pod_id == pod_id)
+            select(PodImage).where(PodImage.pod_detail_id == pod_id)
         )
         images = result.scalars().all()
 
         for image in images:
             await self._session.delete(image)
+        await self._session.flush()

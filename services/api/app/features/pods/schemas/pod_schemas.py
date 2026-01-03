@@ -1,6 +1,6 @@
 """Pod 관련 스키마들"""
 
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import TYPE_CHECKING, List
 
 from app.features.pods.models.pod_models import (
@@ -31,10 +31,20 @@ class PodDto(BaseModel):
     sub_categories: list[str] = Field(
         ..., alias="subCategories", description="서브 카테고리 목록"
     )
-    meeting_place: str = Field(..., alias="meetingPlace", description="만남 장소")
-    meeting_date: int = Field(
-        ..., alias="meetingDate", description="만남 날짜/시간 (timestamp)"
+    selected_artist_id: int | None = Field(
+        default=None, alias="selectedArtistId", description="선택된 아티스트 ID"
     )
+    capacity: int = Field(..., description="최대 인원수")
+    place: str = Field(..., alias="meetingPlace", description="만남 장소")
+    meeting_date: date = Field(..., alias="meetingDate", description="만남 날짜")
+    meeting_time: time = Field(..., alias="meetingTime", description="만남 시간")
+    status: PodStatus = Field(
+        default=PodStatus.RECRUITING,
+        description="파티 상태 (RECRUITING: 모집중, COMPLETED: 모집 완료, CLOSED: 종료, CANCELED: 취소)",
+    )
+    is_del: bool = Field(default=False, alias="isDel", description="삭제 여부")
+    created_at: datetime = Field(..., alias="createdAt", description="생성 시간")
+    updated_at: datetime = Field(..., alias="updatedAt", description="수정 시간")
 
     model_config = {
         "from_attributes": True,
@@ -57,19 +67,18 @@ class PodDetailDto(BaseModel):
     sub_address: str | None = Field(default=None, alias="subAddress")
     x: float | None = Field(default=None, description="경도 (longitude)")
     y: float | None = Field(default=None, description="위도 (latitude)")
-    meeting_date: int | None = Field(
-        alias="meetingDate",
-        description="만남 날짜/시간 (timestamp in milliseconds)",
-    )
+    meeting_date: date = Field(..., alias="meetingDate", description="만남 날짜")
+    meeting_time: time = Field(..., alias="meetingTime", description="만남 시간")
     selected_artist_id: int | None = Field(default=None, alias="selectedArtistId")
     status: PodStatus = Field(
         default=PodStatus.RECRUITING,
         description="파티 상태 (RECRUITING: 모집중, FULL: 인원 가득참, COMPLETED: 모집 완료, CLOSED: 종료)",
     )
-    chat_channel_url: str | None = Field(
+    is_del: bool = Field(default=False, alias="isDel", description="삭제 여부")
+    chat_room_id: int | None = Field(
         default=None,
-        alias="chatChannelUrl",
-        description="Sendbird 채팅방 URL",
+        alias="chatRoomId",
+        description="채팅방 ID",
     )
 
     # 이미지 리스트
@@ -160,10 +169,10 @@ class PodSearchRequest(BaseModel):
     sub_category: str | None = Field(
         None, alias="subCategory", description="서브 카테고리"
     )
-    start_date: datetime.date | None = Field(
+    start_date: date | None = Field(
         None, alias="startDate", description="시작 날짜"
     )
-    end_date: datetime.date | None = Field(
+    end_date: date | None = Field(
         None, alias="endDate", description="종료 날짜"
     )
     location: List[str | None] = Field(

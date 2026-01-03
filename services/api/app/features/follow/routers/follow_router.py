@@ -11,7 +11,7 @@ from app.features.follow.schemas import (
     UserDto,
 )
 from app.features.follow.services.follow_service import FollowService
-from app.features.pods.schemas.pod_detail_dto import PodDetailDto
+from app.features.pods.schemas import PodDetailDto
 from fastapi import APIRouter, Depends, Path, Query, status
 
 

@@ -2,13 +2,13 @@
 
 from typing import List
 
-from app.core.services.sendbird_service import SendbirdService
-from app.features.pods.models import ApplicationDetail, PodStatus
+from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
+from app.features.pods.models import Application, PodStatus
 from app.features.pods.repositories.application_repository import (
     ApplicationRepository,
 )
 from app.features.pods.repositories.pod_repository import PodRepository
-from app.features.pods.schemas import PodApplDetailDto, PodApplDto
+from app.features.pods.schemas import PodApplDto
 from app.features.pods.services.application_notification_service import (
     ApplicationNotificationService,
 )
@@ -60,7 +60,7 @@ class ApplicationService:
 
     def _create_pod_appl_dto(
         self,
-        application: ApplicationDetail,
+        application: Application,
         user_dto: UserDto,
         include_message: bool = True,
     ) -> PodApplDto:
@@ -83,12 +83,12 @@ class ApplicationService:
 
     def _create_application_dto(
         self,
-        application: ApplicationDetail,
+        application: Application,
         user_dto: UserDto,
         reviewer_dto: UserDto | None = None,
-    ) -> PodApplDetailDto:
-        """Application 모델과 UserDto로 PodApplDetailDto 생성"""
-        return PodApplDetailDto(
+    ) -> PodApplDto:
+        """Application 모델과 UserDto로 PodApplDto 생성"""
+        return PodApplDto(
             id=application.id or 0,
             podId=application.pod_id or 0,
             user=user_dto,
@@ -102,7 +102,7 @@ class ApplicationService:
     # MARK: - 신청서 생성
     async def create_application(
         self, pod_id: int, user_id: int, message: str | None = None
-    ) -> PodApplDetailDto:
+    ) -> PodApplDto:
         """신청서 생성 및 DTO 변환 (서비스 로직)"""
         # 신청서 생성
         application = await self._application_repo.create_application(
@@ -134,7 +134,7 @@ class ApplicationService:
     # MARK: - 신청서 승인/거절 처리
     async def review_application(
         self, application_id: int, status: str, reviewed_by: int
-    ) -> PodApplDetailDto:
+    ) -> PodApplDto:
         """신청서 승인/거절 처리 및 DTO 변환 (서비스 로직)"""
         # 신청서 승인/거절 처리
         application = await self._application_repo.review_application(
@@ -164,14 +164,19 @@ class ApplicationService:
                 application_pod_id, application_user_id
             )
 
-            # 샌드버드 채팅방에 멤버 초대
+            # 채팅방에 멤버 추가
             try:
+                from app.features.chat.repositories.chat_room_repository import (
+                    ChatRoomRepository,
+                )
+
                 pod = await self._pod_repo.get_pod_by_id(application_pod_id)
-                if pod and pod.chat_channel_url:
-                    sendbird_service = SendbirdService()
-                    await sendbird_service.join_channel(
-                        channel_url=pod.chat_channel_url,
-                        user_ids=[str(application_user_id)],
+                if pod and pod.chat_room_id:
+                    chat_room_repo = ChatRoomRepository(self._session)
+                    await chat_room_repo.add_member(
+                        chat_room_id=pod.chat_room_id,
+                        user_id=application_user_id,
+                        role="member",
                     )
             except Exception:
                 pass

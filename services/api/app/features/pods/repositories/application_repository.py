@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 
 from app.features.pods.models import (
     Application,
-    ApplicationDetail,
     ApplicationStatus,
     Pod,
     PodMember,
@@ -19,7 +18,7 @@ class ApplicationRepository:
     # - MARK: 파티 참여 신청서 생성
     async def create_application(
         self, pod_id: int, user_id: int, message: str | None = None
-    ) -> ApplicationDetail:
+    ) -> Application:
         # 중복 신청 방지 (PENDING 상태만 체크)
         existing_application = await self._session.execute(
             select(Application).where(
@@ -36,7 +35,7 @@ class ApplicationRepository:
         # 현재 시간 저장
         current_time = datetime.now(timezone.utc)
 
-        application = ApplicationDetail(
+        application = Application(
             pod_id=pod_id,
             user_id=user_id,
             message=message,
@@ -49,11 +48,9 @@ class ApplicationRepository:
         return application
 
     # - MARK: 신청서 조회 (상세)
-    async def get_application_by_id(
-        self, application_id: int
-    ) -> ApplicationDetail | None:
+    async def get_application_by_id(self, application_id: int) -> Application | None:
         result = await self._session.execute(
-            select(ApplicationDetail).where(ApplicationDetail.id == application_id)
+            select(Application).where(Application.id == application_id)
         )
         return result.scalar_one_or_none()
 
@@ -93,8 +90,8 @@ class ApplicationRepository:
     # - MARK: 사용자의 신청서 목록 조회 (리스트용)
     async def get_applications_by_user_id(
         self, user_id: int, status: str | ApplicationStatus | None = None
-    ) -> list[ApplicationDetail]:
-        query = select(ApplicationDetail).where(ApplicationDetail.user_id == user_id)
+    ) -> list[Application]:
+        query = select(Application).where(Application.user_id == user_id)
 
         if status:
             # status를 Enum으로 변환 (문자열인 경우)
@@ -106,9 +103,9 @@ class ApplicationRepository:
             else:
                 status_enum = status
             if status_enum:
-                query = query.where(ApplicationDetail.status == status_enum)
+                query = query.where(Application.status == status_enum)
 
-        query = query.order_by(ApplicationDetail.applied_at.desc())
+        query = query.order_by(Application.applied_at.desc())
 
         result = await self._session.execute(query)
         return list(result.scalars().all())
@@ -116,7 +113,7 @@ class ApplicationRepository:
     # - MARK: 신청서 승인/거절
     async def review_application(
         self, application_id: int, status: str | ApplicationStatus, reviewed_by: int
-    ) -> ApplicationDetail:
+    ) -> Application:
         application = await self.get_application_by_id(application_id)
         if not application:
             raise ValueError("신청서를 찾을 수 없습니다.")
@@ -143,8 +140,8 @@ class ApplicationRepository:
             application_db_id = application_db_id_raw
         if application_db_id is not None:
             stmt = (
-                update(ApplicationDetail)
-                .where(ApplicationDetail.id == application_db_id)
+                update(Application)
+                .where(Application.id == application_db_id)
                 .values(
                     status=status_enum,
                     reviewed_at=current_time,
@@ -193,7 +190,7 @@ class ApplicationRepository:
         await self._session.execute(
             delete(Application).where(Application.user_id == user_id)
         )
-        await self._session.commit()
+        await self._session.flush()
 
     # - MARK: 파티 멤버 관리
     async def add_member(
@@ -216,7 +213,7 @@ class ApplicationRepository:
 
         # 파티 정보 조회 및 capacity 체크
         pod_q = await self._session.execute(
-            select(Pod).where(Pod.id == pod_id, Pod.is_active)
+            select(Pod).where(Pod.id == pod_id, ~Pod.is_del)
         )
         pod = pod_q.scalar_one_or_none()
         if not pod:
@@ -259,7 +256,7 @@ class ApplicationRepository:
         if row is None:
             return True
         await self._session.delete(row)
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     async def list_members(self, pod_id: int) -> list[PodMember]:

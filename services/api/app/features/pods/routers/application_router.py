@@ -7,7 +7,6 @@ from app.deps.auth import get_current_user_id
 from app.deps.service import get_application_use_case
 from app.features.pods.schemas import (
     ApplyToPodRequest,
-    PodApplDetailDto,
     PodApplDto,
     ReviewApplicationRequest,
 )
@@ -41,7 +40,7 @@ async def get_pod_applications(
 
 @pod_applications_router.post(
     "",
-    response_model=BaseResponse[PodApplDetailDto],
+    response_model=BaseResponse[PodApplDto],
     description="신청서 생성 (파티 참여 신청)",
 )
 # MARK: - 파티 참여 신청
@@ -63,7 +62,7 @@ async def create_application(
 
 @applications_router.put(
     "/{application_id}/review",
-    response_model=BaseResponse[PodApplDetailDto],
+    response_model=BaseResponse[PodApplDto],
     description="신청서 리뷰 등록/수정 (승인/거절)",
 )
 # MARK: - 신청서 승인/거절

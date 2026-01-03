@@ -347,11 +347,13 @@ class UserService:
         - 다른 곳에서 조회되거나 문제 생기는 데이터는 isDel로 처리
         """
         from app.features.notifications.models.notification import Notification
-        from app.features.pods.models.pod.pod import Pod
-        from app.features.pods.models.pod.pod_like import PodLike
-        from app.features.pods.models.pod.pod_member import PodMember
-        from app.features.pods.models.pod.pod_status import PodStatus
-        from app.features.pods.models.pod.pod_view import PodView
+        from app.features.pods.models import (
+            Pod,
+            PodLike,
+            PodMember,
+            PodStatus,
+            PodView,
+        )
         from app.features.users.models import UserNotificationSettings
         from sqlalchemy import delete
 

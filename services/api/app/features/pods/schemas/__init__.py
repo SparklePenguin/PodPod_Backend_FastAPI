@@ -2,7 +2,6 @@
 
 from .application_schemas import (
     ApplyToPodRequest,
-    PodApplDetailDto,
     PodApplDto,
     ReviewApplicationRequest,
 )
@@ -28,7 +27,6 @@ PodDetailDto.model_rebuild()
 __all__ = [
     "ApplyToPodRequest",
     "ImageOrderDto",
-    "PodApplDetailDto",
     "PodApplDto",
     "PodDetailDto",
     "PodDto",
