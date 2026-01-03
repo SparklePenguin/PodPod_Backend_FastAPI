@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from app.features.users.models import User
-from sqlalchemy import select, update
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -26,8 +26,10 @@ class UserRepository:
     ) -> User | None:
         result = await self._session.execute(
             select(User).where(
-                User.auth_provider == auth_provider,
-                User.auth_provider_id == auth_provider_id,
+                and_(
+                    User.auth_provider == auth_provider,
+                    User.auth_provider_id == auth_provider_id,
+                )
             )
         )
         return result.scalar_one_or_none()

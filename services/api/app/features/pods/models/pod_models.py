@@ -3,12 +3,12 @@
 from datetime import datetime, timezone
 from enum import Enum
 
+from app.core.database import Base
 from sqlalchemy import (
     Boolean,
     Column,
     Date,
     DateTime,
-    Enum as SQLEnum,
     Float,
     ForeignKey,
     Integer,
@@ -17,9 +17,10 @@ from sqlalchemy import (
     Time,
     UniqueConstraint,
 )
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 # - MARK: Pod Status Enum
@@ -152,6 +153,18 @@ class Pod(Base):
         back_populates="pod",
         cascade="all, delete-orphan",
     )
+    images = relationship(
+        "PodImage",
+        primaryjoin="Pod.id == PodImage.pod_detail_id",
+        foreign_keys="[PodImage.pod_detail_id]",
+        cascade="all, delete-orphan",
+    )
+    applications = relationship(
+        "Application", back_populates="pod", cascade="all, delete-orphan"
+    )
+    reviews = relationship(
+        "PodReview", back_populates="pod", cascade="all, delete-orphan"
+    )
     chat_room = relationship("ChatRoom", foreign_keys=[chat_room_id], uselist=False)
 
 
@@ -179,21 +192,6 @@ class PodDetail(Base):
 
     # relations
     pod = relationship("Pod", back_populates="detail")
-    images = relationship(
-        "PodImage",
-        back_populates="pod_detail",
-        cascade="all, delete-orphan",
-    )
-    applications = relationship(
-        "Application",
-        back_populates="pod_detail",
-        cascade="all, delete-orphan",
-    )
-    reviews = relationship(
-        "PodReview",
-        back_populates="pod_detail",
-        cascade="all, delete-orphan",
-    )
 
 
 # - MARK: Pod Image Model
@@ -204,16 +202,28 @@ class PodImage(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     pod_detail_id = Column(
-        Integer, ForeignKey("pod_details.pod_id", ondelete="CASCADE"), nullable=False, index=True
+        Integer,
+        ForeignKey("pod_details.pod_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     image_url = Column(String(500), nullable=False)  # 이미지 URL
     thumbnail_url = Column(String(500), nullable=True)  # 썸네일 URL
     display_order = Column(Integer, nullable=False, default=0)  # 표시 순서
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    pod_detail = relationship("PodDetail", back_populates="images")
-    # 하위 호환성을 위한 pod 관계 (viewonly)
-    pod = relationship("Pod", foreign_keys=[pod_detail_id], viewonly=True)
+    pod = relationship(
+        "Pod",
+        primaryjoin="PodImage.pod_detail_id == Pod.id",
+        foreign_keys=[pod_detail_id],
+        viewonly=True,
+    )
+    # 하위 호환성을 위한 pod_detail 관계 (viewonly)
+    pod_detail = relationship(
+        "PodDetail",
+        primaryjoin="PodImage.pod_detail_id == PodDetail.pod_id",
+        viewonly=True,
+    )
 
 
 # - MARK: Pod Member Model
@@ -259,7 +269,9 @@ class PodView(Base):
     user = relationship("User")
 
     __table_args__ = (
-        UniqueConstraint("pod_id", "user_id", "ip_address", name="uq_pod_views_pod_user_ip"),
+        UniqueConstraint(
+            "pod_id", "user_id", "ip_address", name="uq_pod_views_pod_user_ip"
+        ),
     )
 
 

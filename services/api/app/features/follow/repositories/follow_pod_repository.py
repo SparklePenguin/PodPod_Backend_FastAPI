@@ -18,14 +18,12 @@ class FollowPodRepository:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[Pod], int]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
-        from app.features.pods.models import PodDetail
-
         offset = (page - 1) * size
 
         # 팔로우하는 사용자들이 만든 파티 조회 (활성화된 팔로우만, 모집중인 파티만)
         query = (
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .join(Follow, Pod.owner_id == Follow.following_id)
             .where(
                 and_(

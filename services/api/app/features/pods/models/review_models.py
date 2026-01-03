@@ -2,10 +2,9 @@
 
 from datetime import datetime, timezone
 
+from app.core.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 # - MARK: Pod Review Model
@@ -44,7 +43,5 @@ class PodReview(Base):
     )
 
     # 관계 설정
-    pod_detail = relationship("PodDetail", back_populates="reviews")
+    pod = relationship("Pod", foreign_keys=[pod_id], back_populates="reviews")
     user = relationship("User", back_populates="pod_reviews")
-    # 하위 호환성을 위한 pod 관계 (viewonly)
-    pod = relationship("Pod", foreign_keys=[pod_id], viewonly=True)

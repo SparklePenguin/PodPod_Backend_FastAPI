@@ -159,15 +159,11 @@ def get_review_notification_service(
 
 def get_review_service(
     session: AsyncSession = Depends(get_session),
-    review_repo: PodReviewRepository = Depends(
-        lambda: PodReviewRepository(Depends(get_session)())
-    ),
-    user_repo: UserRepository = Depends(lambda: UserRepository(Depends(get_session)())),
     notification_service: ReviewNotificationService = Depends(
         get_review_notification_service
     ),
 ) -> ReviewService:
-    # session을 직접 사용하기 위해 다시 생성
+    # session을 직접 사용하기 위해 생성
     review_repo = PodReviewRepository(session)
     user_repo = UserRepository(session)
     return ReviewService(
@@ -180,14 +176,11 @@ def get_review_service(
 
 def get_like_service(
     session: AsyncSession = Depends(get_session),
-    like_repo: PodLikeRepository = Depends(
-        lambda: PodLikeRepository(Depends(get_session)())
-    ),
     notification_service: LikeNotificationService = Depends(
         get_like_notification_service
     ),
 ) -> LikeService:
-    # session을 직접 사용하기 위해 다시 생성
+    # session을 직접 사용하기 위해 생성
     like_repo = PodLikeRepository(session)
     return LikeService(
         session=session,
@@ -214,16 +207,11 @@ def get_application_notification_service(
 
 def get_application_service(
     session: AsyncSession = Depends(get_session),
-    pod_repo: PodRepository = Depends(lambda: PodRepository(Depends(get_session)())),
-    application_repo: ApplicationRepository = Depends(
-        lambda: ApplicationRepository(Depends(get_session)())
-    ),
-    user_repo: UserRepository = Depends(lambda: UserRepository(Depends(get_session)())),
     notification_service: ApplicationNotificationService = Depends(
         get_application_notification_service
     ),
 ) -> ApplicationService:
-    # session을 직접 사용하기 위해 다시 생성
+    # session을 직접 사용하기 위해 생성
     pod_repo = PodRepository(session)
     application_repo = ApplicationRepository(session)
     user_repo = UserRepository(session)

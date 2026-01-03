@@ -52,11 +52,9 @@ class Application(Base):
     )
 
     # 관계 설정
-    pod_detail = relationship("PodDetail", back_populates="applications")
+    pod = relationship("Pod", foreign_keys=[pod_id], back_populates="applications")
     user = relationship("User", foreign_keys=[user_id], lazy="joined")
     reviewer = relationship("User", foreign_keys=[reviewed_by])
-    # 하위 호환성을 위한 pod 관계 (viewonly)
-    pod = relationship("Pod", foreign_keys=[pod_id], viewonly=True)
 
     __table_args__ = (
         # 같은 파티에 같은 사용자가 중복 신청할 수 없도록 제약

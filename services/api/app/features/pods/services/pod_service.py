@@ -1006,9 +1006,9 @@ class PodService:
 
         # 이미지 리스트 조회
         images_dto = []
-        if pod_detail and pod_detail.images:
+        if pod.images:
             # display_order로 정렬
-            pod_images: list[PodImage] = list(pod_detail.images)
+            pod_images: list[PodImage] = list(pod.images)
             for img in sorted(pod_images, key=lambda x: x.display_order or 0):
                 images_dto.append(PodImageDto.model_validate(img))
 
@@ -1173,9 +1173,9 @@ class PodService:
         # 파티에 들어온 신청서 목록 조회
         if pod.id is None:
             return pod_dto
-        # PodDetail에서 applications 가져오기
-        if pod_detail and pod_detail.applications:
-            applications = list(pod_detail.applications)
+        # Pod에서 applications 가져오기
+        if pod.applications:
+            applications = list(pod.applications)
         else:
             applications = await self._application_repo.get_applications_by_pod_id(
                 pod.id
@@ -1211,9 +1211,9 @@ class PodService:
         # 후기 목록 조회 및 추가
         if pod.id is None:
             return pod_dto
-        # PodDetail에서 reviews 가져오기
-        if pod_detail and pod_detail.reviews:
-            reviews = list(pod_detail.reviews)
+        # Pod에서 reviews 가져오기
+        if pod.reviews:
+            reviews = list(pod.reviews)
         else:
             reviews = await self._review_repo.get_all_reviews_by_pod(pod.id)
 

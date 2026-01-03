@@ -256,7 +256,12 @@ class PodRepository:
     async def get_pod_by_id(self, pod_id: int) -> Pod | None:
         result = await self._session.execute(
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(
+                selectinload(Pod.detail),
+                selectinload(Pod.images),
+                selectinload(Pod.applications),
+                selectinload(Pod.reviews),
+            )
             .where(Pod.id == pod_id)
         )
         return result.scalar_one_or_none()
@@ -265,11 +270,6 @@ class PodRepository:
         """PodDetail 조회"""
         result = await self._session.execute(
             select(PodDetail)
-            .options(
-                selectinload(PodDetail.images),
-                selectinload(PodDetail.applications),
-                selectinload(PodDetail.reviews),
-            )
             .where(PodDetail.pod_id == pod_id)
         )
         return result.scalar_one_or_none()
@@ -356,7 +356,7 @@ class PodRepository:
         query = (
             select(Pod)
             .join(PodDetail, Pod.id == PodDetail.pod_id)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(~Pod.is_del)
         )
 
@@ -444,7 +444,7 @@ class PodRepository:
                 view_count_subquery.label("view_count"),
                 like_count_subquery.label("like_count"),
             )
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(base_conditions)
             .order_by(
                 desc(view_count_subquery),  # 조회수 높은 순
@@ -504,7 +504,7 @@ class PodRepository:
         closing_soon_query = (
             select(Pod, view_count_subquery.label("view_count"))
             .join(PodDetail, Pod.id == PodDetail.pod_id)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(and_(base_conditions, time_condition))
             .order_by(
                 Pod.meeting_time.asc(),  # 시작 시간이 가까운 순
@@ -665,7 +665,7 @@ class PodRepository:
         offset = (page - 1) * size
         history_query = (
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(history_conditions)
             .order_by(*order_conditions)
             .offset(offset)
@@ -785,7 +785,7 @@ class PodRepository:
         popular_query = (
             select(Pod, view_count_subquery.label("view_count"))
             .join(PodDetail, Pod.id == PodDetail.pod_id)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(category_conditions)
             .order_by(*order_conditions)
             .offset(offset)
@@ -877,7 +877,7 @@ class PodRepository:
             search_query = (
                 select(Pod)
                 .join(PodDetail, Pod.id == PodDetail.pod_id)
-                .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+                .options(selectinload(Pod.detail), selectinload(Pod.images))
                 .where(
                     and_(
                         ~Pod.is_del,
@@ -893,7 +893,7 @@ class PodRepository:
             # query가 비어있으면 is_del만 체크
             search_query = (
                 select(Pod)
-                .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+                .options(selectinload(Pod.detail), selectinload(Pod.images))
                 .where(~Pod.is_del)
             )
 
@@ -979,7 +979,7 @@ class PodRepository:
         # 파티장도 포함시키기 위해 추가 조회
         pod_query = (
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(Pod.id == pod_id, ~Pod.is_del)
         )
         pod_result = await self._session.execute(pod_query)
@@ -1082,7 +1082,7 @@ class PodRepository:
         # 기본 쿼리
         query = (
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .where(and_(~Pod.is_del, Pod.owner_id == user_id))
         )
 
@@ -1112,7 +1112,7 @@ class PodRepository:
         # 기본 쿼리 (PodMember를 통해 참여한 파티 조회)
         query = (
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .join(PodMember, Pod.id == PodMember.pod_id)
             .where(and_(~Pod.is_del, PodMember.user_id == user_id))
         )
@@ -1143,7 +1143,7 @@ class PodRepository:
         # 기본 쿼리 (PodLike를 통해 좋아요한 파티 조회)
         query = (
             select(Pod)
-            .options(selectinload(Pod.detail).selectinload(PodDetail.images))
+            .options(selectinload(Pod.detail), selectinload(Pod.images))
             .join(PodLike, Pod.id == PodLike.pod_id)
             .where(and_(~Pod.is_del, PodLike.user_id == user_id))
         )
