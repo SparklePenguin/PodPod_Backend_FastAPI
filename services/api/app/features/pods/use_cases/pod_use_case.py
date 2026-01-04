@@ -7,9 +7,11 @@ from app.features.follow.services.follow_service import FollowService
 from app.features.pods.exceptions import (
     InvalidDateException,
     InvalidPodStatusException,
+    InvalidPodTypeException,
     MissingStatusException,
     NoPodAccessPermissionException,
     PodNotFoundException,
+    SelectedArtistIdRequiredException,
 )
 from app.features.pods.models import (
     AccompanySubCategory,
@@ -18,6 +20,7 @@ from app.features.pods.models import (
     PodStatus,
     TourSubCategory,
 )
+from app.common.schemas import PageDto
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_notification_service import PodNotificationService
@@ -278,6 +281,76 @@ class PodUseCase:
 
         # 서비스 로직 호출
         return await self._pod_service.get_user_pods(user_id, page, size)
+
+    # MARK: - 파티 목록 조회 (타입별)
+    async def get_pods_by_type(
+        self,
+        user_id: int,
+        pod_type: str,
+        selected_artist_id: int | None = None,
+        location: str | None = None,
+        page: int = 1,
+        size: int = 20,
+    ) -> tuple[PageDto[PodDetailDto], str, str]:
+        """파티 목록 조회 (비즈니스 로직 검증)
+        
+        Returns:
+            tuple[PageDto[PodDetailDto], message_ko, message_en]: 파티 목록과 메시지
+        """
+        # 전체 파티 목록 타입들 (selected_artist_id 필수)
+        if pod_type == "trending":
+            if selected_artist_id is None:
+                raise SelectedArtistIdRequiredException(pod_type)
+            pods = await self._pod_service.get_trending_pods(
+                user_id, selected_artist_id, page, size
+            )
+            return pods, "인기 파티 목록을 조회했습니다.", "Successfully retrieved trending pods."
+        
+        elif pod_type == "closing-soon":
+            if selected_artist_id is None:
+                raise SelectedArtistIdRequiredException(pod_type)
+            pods = await self._pod_service.get_closing_soon_pods(
+                user_id, selected_artist_id, location, page, size
+            )
+            return pods, "마감 직전 파티 목록을 조회했습니다.", "Successfully retrieved closing soon pods."
+        
+        elif pod_type == "history-based":
+            if selected_artist_id is None:
+                raise SelectedArtistIdRequiredException(pod_type)
+            pods = await self._pod_service.get_history_based_pods(
+                user_id, selected_artist_id, page, size
+            )
+            return pods, "우리 만난적 있어요 파티 목록을 조회했습니다.", "Successfully retrieved history-based pods."
+        
+        elif pod_type == "popular-category":
+            if selected_artist_id is None:
+                raise SelectedArtistIdRequiredException(pod_type)
+            pods = await self._pod_service.get_popular_categories_pods(
+                user_id, selected_artist_id, location, page, size
+            )
+            return pods, "인기 카테고리 파티 목록을 조회했습니다.", "Successfully retrieved popular category pods."
+        
+        # 사용자별 파티 목록 타입들
+        elif pod_type == "joined":
+            pods = await self._pod_service.get_user_joined_pods(user_id, page, size)
+            return pods, "내가 참여한 파티 목록을 조회했습니다.", "Successfully retrieved my joined pods."
+        
+        elif pod_type == "liked":
+            pods = await self._pod_service.get_user_liked_pods(user_id, page, size)
+            return pods, "내가 저장한 파티 목록을 조회했습니다.", "Successfully retrieved my liked pods."
+        
+        elif pod_type == "owned":
+            pods = await self._pod_service.get_user_pods(user_id, page, size)
+            return pods, "내가 개설한 파티 목록을 조회했습니다.", "Successfully retrieved my owned pods."
+        
+        elif pod_type == "following":
+            pods = await self._follow_service.get_following_pods(
+                user_id=user_id, page=page, size=size
+            )
+            return pods, "팔로우하는 사용자의 파티 목록을 조회했습니다.", "Successfully retrieved following users' pods."
+        
+        else:
+            raise InvalidPodTypeException(pod_type)
 
     # MARK: - 파티 검색
     async def search_pods(

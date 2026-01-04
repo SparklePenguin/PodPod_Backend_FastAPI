@@ -114,7 +114,7 @@ async def get_pod_types():
     response_model=BaseResponse[PageDto[PodDetailDto]],
     description="파티 목록 조회 (type: trending, closing-soon, history-based, popular-category, joined, liked, owned, following)",
 )
-async def get_pods(
+async def get_pods_by_type(
     type: str = Query(
         ...,
         description="파티 타입: trending(인기), closing-soon(마감직전), history-based(우리만난적있어요), popular-category(인기카테고리), joined(참여한), liked(저장한), owned(개설한), following(팔로우한 사용자들의 파티)",
@@ -132,84 +132,17 @@ async def get_pods(
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
     current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """파티 목록 조회"""
-    # 전체 파티 목록 타입들
-    if type == "trending":
-        if selected_artist_id is None:
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="selectedArtistId is required for trending type",
-            )
-        pods = await pod_service.get_trending_pods(
-            current_user_id, selected_artist_id, page, size
-        )
-        message_ko = "인기 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved trending pods."
-    elif type == "closing-soon":
-        if selected_artist_id is None:
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="selectedArtistId is required for closing-soon type",
-            )
-        pods = await pod_service.get_closing_soon_pods(
-            current_user_id, selected_artist_id, location, page, size
-        )
-        message_ko = "마감 직전 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved closing soon pods."
-    elif type == "history-based":
-        if selected_artist_id is None:
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="selectedArtistId is required for history-based type",
-            )
-        pods = await pod_service.get_history_based_pods(
-            current_user_id, selected_artist_id, page, size
-        )
-        message_ko = "우리 만난적 있어요 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved history-based pods."
-    elif type == "popular-category":
-        if selected_artist_id is None:
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="selectedArtistId is required for popular-category type",
-            )
-        pods = await pod_service.get_popular_categories_pods(
-            current_user_id, selected_artist_id, location, page, size
-        )
-        message_ko = "인기 카테고리 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved popular category pods."
-    # 사용자별 파티 목록 타입들
-    elif type == "joined":
-        pods = await pod_service.get_user_joined_pods(current_user_id, page, size)
-        message_ko = "내가 참여한 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved my joined pods."
-    elif type == "liked":
-        pods = await pod_service.get_user_liked_pods(current_user_id, page, size)
-        message_ko = "내가 저장한 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved my liked pods."
-    elif type == "owned":
-        pods = await pod_service.get_user_pods(current_user_id, page, size)
-        message_ko = "내가 개설한 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved my owned pods."
-    elif type == "following":
-        pods = await pod_service._follow_service.get_following_pods(
-            user_id=current_user_id, page=page, size=size
-        )
-        message_ko = "팔로우하는 사용자의 파티 목록을 조회했습니다."
-        message_en = "Successfully retrieved following users' pods."
-    else:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid type. Must be one of: trending, closing-soon, history-based, popular-category, joined, liked, owned, following",
-        )
-    
+    pods, message_ko, message_en = await pod_use_case.get_pods_by_type(
+        user_id=current_user_id,
+        pod_type=type,
+        selected_artist_id=selected_artist_id,
+        location=location,
+        page=page,
+        size=size,
+    )
     return BaseResponse.ok(data=pods, message_ko=message_ko, message_en=message_en)
 
 
@@ -246,7 +179,7 @@ async def get_user_pods(
     response_model=BaseResponse[PageDto[PodDetailDto]],
     description="팟 목록 조회",
 )
-async def get_pods(
+async def search_pods(
     search_request: PodSearchRequest,
     current_user_id: int = Depends(get_current_user_id),
     pod_use_case: PodUseCase = Depends(get_pod_use_case),
@@ -317,12 +250,14 @@ async def delete_pod(
     pod = await pod_service._pod_repo.get_pod_by_id(pod_id)
     if not pod:
         from app.features.pods.exceptions import PodNotFoundException
+
         raise PodNotFoundException(pod_id)
-    
+
     if pod.owner_id != current_user_id:
         from app.features.pods.exceptions import NoPodAccessPermissionException
+
         raise NoPodAccessPermissionException(pod_id, current_user_id)
-    
+
     await pod_service.delete_pod(pod_id)
     return BaseResponse.ok(http_status=status.HTTP_204_NO_CONTENT)
 
@@ -371,16 +306,18 @@ async def delete_pod_member(
     pod = await pod_service._pod_repo.get_pod_by_id(pod_id)
     if not pod:
         from app.features.pods.exceptions import PodNotFoundException
+
         raise PodNotFoundException(pod_id)
-    
+
     # user_id가 제공되면 사용, 없으면 현재 사용자 사용
     target_user_id = int(user_id) if user_id and user_id.strip() else current_user_id
-    
+
     # 파티장인지 확인
     if pod.owner_id == target_user_id:
         from app.features.pods.exceptions import PodAccessDeniedException
+
         raise PodAccessDeniedException("파티장은 파티 삭제 엔드포인트를 사용해주세요.")
-    
+
     result = await pod_service.leave_pod(pod_id, user_id, current_user_id)
     return BaseResponse.ok(
         data=result,
