@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 
 from app.common.schemas import PageDto
 from app.features.follow.repositories.follow_repository import FollowRepository
-from app.features.tendencies.services.tendency_service import TendencyService
+from app.features.tendencies.repositories.tendency_repository import TendencyRepository
+from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 from app.features.users.exceptions import (
     BlockNotFoundException,
     CannotBlockSelfException,
@@ -21,15 +22,18 @@ class BlockUserService:
         self._block_repo = BlockUserRepository(session)
         self._user_repo = UserRepository(session)
         self._follow_repo = FollowRepository(session)
-        self._tendency_service = TendencyService(session)
+        tendency_repo = TendencyRepository(session)
+        self._tendency_use_case = TendencyUseCase(session, tendency_repo)
 
     # - MARK: 사용자 성향 타입 조회
     async def _get_user_tendency_type(self, user_id: int) -> str | None:
         """사용자의 성향 타입 조회"""
         try:
-            tendency = await self._tendency_service.get_user_tendency(user_id)
-            if tendency:
-                return tendency.type
+            user_tendency = await self._tendency_use_case.get_user_tendency_result(
+                user_id
+            )
+            if user_tendency:
+                return user_tendency.tendency_type
             return None
         except Exception:
             return None

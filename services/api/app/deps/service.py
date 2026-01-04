@@ -40,7 +40,11 @@ from app.features.pods.use_cases.pod_use_case import PodUseCase
 from app.features.pods.use_cases.review_use_case import ReviewUseCase
 from app.features.reports.services.report_service import ReportService
 from app.features.session.services.session_service import SessionService
-from app.features.tendencies.services.tendency_service import TendencyService
+from app.features.tendencies.repositories.tendency_repository import TendencyRepository
+from app.features.tendencies.services.tendency_calculation_service import (
+    TendencyCalculationService,
+)
+from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 from app.features.users.repositories import UserRepository
 from app.features.users.services.block_user_service import BlockUserService
 from app.features.users.services.user_artist_service import UserArtistService
@@ -99,10 +103,16 @@ def get_user_notification_service(
     return UserNotificationService(session)
 
 
-def get_tendency_service(
+def get_tendency_use_case(
     session: AsyncSession = Depends(get_session),
-) -> TendencyService:
-    return TendencyService(session=session)
+) -> TendencyUseCase:
+    tendency_repo = TendencyRepository(session)
+    calculation_service = TendencyCalculationService()
+    return TendencyUseCase(
+        session=session,
+        tendency_repo=tendency_repo,
+        calculation_service=calculation_service,
+    )
 
 
 def get_session_service(

@@ -11,7 +11,8 @@ from app.features.notifications.schemas import (
     get_notification_main_type,
 )
 from app.features.pods.schemas import PodDto
-from app.features.tendencies.services.tendency_service import TendencyService
+from app.features.tendencies.repositories.tendency_repository import TendencyRepository
+from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +23,8 @@ class NotificationService:
     def __init__(self, session: AsyncSession):
         self._session = session
         self._notification_repo = NotificationRepository(session)
-        self._tendency_service = TendencyService(session)
+        tendency_repo = TendencyRepository(session)
+        self._tendency_use_case = TendencyUseCase(session, tendency_repo)
 
     # - MARK: 알림 목록 조회
     async def get_notifications(
@@ -137,7 +139,7 @@ class NotificationService:
             # 사용자의 성향 정보 조회
             tendency_type = ""
             try:
-                user_tendency = await self._tendency_service.get_user_tendency_result(
+                user_tendency = await self._tendency_use_case.get_user_tendency_result(
                     notification.related_user.id
                 )
                 tendency_type = user_tendency.tendency_type if user_tendency else ""
