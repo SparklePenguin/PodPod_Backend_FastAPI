@@ -10,7 +10,7 @@ class UserReportRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    # - MARK: 신고 생성
+    # - MARK: 신고 생성 (커밋 없음)
     async def create_report(
         self,
         reporter_id: int,
@@ -19,7 +19,7 @@ class UserReportRepository:
         reason: str | None,
         blocked: bool,
     ) -> UserReport | None:
-        """사용자 신고 생성"""
+        """사용자 신고 생성 (커밋은 use_case에서 처리)"""
         try:
             # 자기 자신을 신고하는지 확인
             if reporter_id == reported_user_id:
@@ -33,8 +33,6 @@ class UserReportRepository:
                 blocked=blocked,
             )
             self._session.add(report)
-            await self._session.commit()
-            await self._session.refresh(report)
             return report
         except Exception:
             await self._session.rollback()

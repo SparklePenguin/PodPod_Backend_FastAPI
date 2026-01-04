@@ -38,7 +38,12 @@ from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from app.features.pods.use_cases.like_use_case import LikeUseCase
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from app.features.pods.use_cases.review_use_case import ReviewUseCase
-from app.features.reports.services.report_service import ReportService
+from app.features.follow.repositories.follow_repository import FollowRepository
+from app.features.reports.use_cases.report_use_case import ReportUseCase
+from app.features.users.repositories import (
+    BlockUserRepository,
+    UserReportRepository,
+)
 from app.features.session.repositories.session_repository import SessionRepository
 from app.features.session.use_cases.session_use_case import SessionUseCase
 from app.features.tendencies.repositories.tendency_repository import TendencyRepository
@@ -126,10 +131,20 @@ def get_session_use_case(
     )
 
 
-def get_report_service(
+def get_report_use_case(
     session: AsyncSession = Depends(get_session),
-) -> ReportService:
-    return ReportService(session)
+) -> ReportUseCase:
+    report_repo = UserReportRepository(session)
+    user_repo = UserRepository(session)
+    block_repo = BlockUserRepository(session)
+    follow_repo = FollowRepository(session)
+    return ReportUseCase(
+        session=session,
+        report_repo=report_repo,
+        user_repo=user_repo,
+        block_repo=block_repo,
+        follow_repo=follow_repo,
+    )
 
 
 def get_location_service(

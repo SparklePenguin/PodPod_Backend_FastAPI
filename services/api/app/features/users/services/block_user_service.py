@@ -62,6 +62,11 @@ class BlockUserService:
         # 2. 차단한 사람이 나를 팔로우하고 있었다면 팔로우 해제
         await self._follow_repo.delete_follow(blocked_id, blocker_id)
 
+        # 트랜잭션 커밋
+        await self._session.commit()
+        if block:
+            await self._session.refresh(block)
+
         # datetime 기본값 제공
         created_at_val = (
             block.created_at

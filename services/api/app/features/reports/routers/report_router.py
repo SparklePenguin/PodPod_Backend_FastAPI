@@ -2,13 +2,13 @@ from typing import List
 
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_report_service
+from app.deps.service import get_report_use_case
 from app.features.reports.schemas import (
     CreateReportRequest,
     ReportInfoDto,
     ReportReasonDto,
 )
-from app.features.reports.services.report_service import ReportService
+from app.features.reports.use_cases.report_use_case import ReportUseCase
 from fastapi import APIRouter, Depends
 
 router = APIRouter()
@@ -21,9 +21,9 @@ router = APIRouter()
     description="신고 사유 목록 조회",
 )
 async def get_report_reasons(
-    service: ReportService = Depends(get_report_service),
+    use_case: ReportUseCase = Depends(get_report_use_case),
 ):
-    result = service.get_report_reasons()
+    result = ReportUseCase.get_report_reasons()
     return BaseResponse.ok(data=result)
 
 
@@ -36,9 +36,9 @@ async def get_report_reasons(
 async def create_report(
     request: CreateReportRequest,
     current_user_id: int = Depends(get_current_user_id),
-    service: ReportService = Depends(get_report_service),
+    use_case: ReportUseCase = Depends(get_report_use_case),
 ):
-    result = await service.create_report(
+    result = await use_case.create_report(
         reporter_id=current_user_id,
         reported_user_id=request.reported_user_id,
         report_types=request.report_types,
