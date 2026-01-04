@@ -80,7 +80,7 @@ api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(block_user_router, prefix="/users/blocks", tags=["users"])
 api_router.include_router(
     user_notification_router,
-    prefix="/users/notification-settings",
+    prefix="/users/me/notification-settings",
     tags=["users"],
 )
 
