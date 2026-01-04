@@ -1,7 +1,5 @@
 """Follow feature schemas"""
 
-from app.features.users.schemas.user_dto import UserDto
-
 from .follow_schemas import (
     FollowInfoDto,
     FollowNotificationStatusDto,
@@ -16,5 +14,4 @@ __all__ = [
     "FollowRequest",
     "FollowNotificationStatusDto",
     "FollowNotificationUpdateRequest",
-    "UserDto",
 ]

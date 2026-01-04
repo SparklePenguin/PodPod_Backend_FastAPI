@@ -18,7 +18,7 @@ from app.features.pods.schemas import (
 from app.features.pods.services.review_notification_service import (
     ReviewNotificationService,
 )
-from app.features.users.models.user import User
+from app.features.users.models import User
 from app.features.users.repositories import UserRepository
 from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession

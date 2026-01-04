@@ -5,9 +5,11 @@ from typing import Any, Dict
 
 import httpx
 from app.core.config import settings
-from app.features.oauth.schemas.apple_login_request import AppleLoginRequest
-from app.features.oauth.schemas.apple_token_response import AppleTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    AppleLoginRequest,
+    AppleTokenResponse,
+    OAuthUserInfo,
+)
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from jose.exceptions import JWTClaimsError

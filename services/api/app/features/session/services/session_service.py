@@ -6,8 +6,7 @@ from app.core.session import (
     revoke_refresh_token,
     verify_refresh_token,
 )
-from app.features.auth.schemas.credential_dto import CredentialDto
-from app.features.auth.schemas.login_info_dto import LoginInfoDto
+from app.features.auth.schemas import CredentialDto, LoginInfoDto
 from app.features.session.repositories import SessionRepository
 from app.features.users.schemas import UserDetailDto
 from fastapi import HTTPException, status

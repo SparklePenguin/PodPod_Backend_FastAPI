@@ -1,9 +1,11 @@
 import httpx
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
-from app.features.oauth.schemas.get_kakao_token_request import GetKakaoTokenRequest
-from app.features.oauth.schemas.kakao_token_response import KakaoTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    GetKakaoTokenRequest,
+    KakaoTokenResponse,
+    OAuthUserInfo,
+)
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 

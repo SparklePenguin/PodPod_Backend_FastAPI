@@ -6,21 +6,15 @@ from app.core.config import settings
 from app.features.notifications.repositories.notification_repository import (
     NotificationRepository,
 )
-from app.features.notifications.schemas.follow_noti_sub_type import FollowNotiSubType
-from app.features.notifications.schemas.notification_category import (
+from app.features.notifications.schemas import (
+    FollowNotiSubType,
+    PodNotiSubType,
+    PodStatusNotiSubType,
+    RecommendNotiSubType,
+    ReviewNotiSubType,
     get_notification_category,
-)
-from app.features.notifications.schemas.notification_utils import (
     get_notification_main_type,
 )
-from app.features.notifications.schemas.pod_noti_sub_type import PodNotiSubType
-from app.features.notifications.schemas.pod_status_noti_sub_type import (
-    PodStatusNotiSubType,
-)
-from app.features.notifications.schemas.recommend_noti_sub_type import (
-    RecommendNotiSubType,
-)
-from app.features.notifications.schemas.review_noti_sub_type import ReviewNotiSubType
 from app.features.users.repositories import UserNotificationRepository
 from firebase_admin import credentials, messaging
 from sqlalchemy.ext.asyncio import AsyncSession

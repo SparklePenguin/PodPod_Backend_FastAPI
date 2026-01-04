@@ -1,6 +1,6 @@
 from app.core.config import settings
 from app.core.session import verify_oauth_state
-from app.features.auth.schemas.login_info_dto import LoginInfoDto
+from app.features.auth.schemas import LoginInfoDto
 from app.features.auth.services import AuthService
 from app.features.oauth.exceptions import (
     OAuthAuthenticationFailedException,
@@ -8,14 +8,14 @@ from app.features.oauth.exceptions import (
     OAuthStateInvalidException,
     OAuthTokenInvalidException,
 )
-from app.features.oauth.schemas.apple_login_request import (
+from app.features.oauth.schemas import (
     AppleLoginRequest,
     AppleUserInfo,
+    GoogleLoginRequest,
+    KakaoLoginRequest,
+    OAuthProvider,
+    OAuthUserInfo,
 )
-from app.features.oauth.schemas.google_login_request import GoogleLoginRequest
-from app.features.oauth.schemas.kakao_login_request import KakaoLoginRequest
-from app.features.oauth.schemas.oauth_provider import OAuthProvider
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
 from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService

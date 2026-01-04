@@ -6,9 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
-from app.features.oauth.schemas.get_naver_token_request import GetNaverTokenRequest
-from app.features.oauth.schemas.naver_token_response import NaverTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    GetNaverTokenRequest,
+    NaverTokenResponse,
+    OAuthUserInfo,
+)
 
 
 class NaverOAuthService:

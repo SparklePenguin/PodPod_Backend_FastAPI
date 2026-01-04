@@ -1,11 +1,13 @@
 from app.common.schemas import BaseResponse
 from app.deps.redis import get_redis
 from app.deps.service import get_oauth_service
-from app.features.auth.schemas.login_info_dto import LoginInfoDto
-from app.features.oauth.schemas.apple_login_request import AppleLoginRequest
-from app.features.oauth.schemas.google_login_request import GoogleLoginRequest
-from app.features.oauth.schemas.kakao_login_request import KakaoLoginRequest
-from app.features.oauth.schemas.oauth_provider import OAuthProvider
+from app.features.auth.schemas import LoginInfoDto
+from app.features.oauth.schemas import (
+    AppleLoginRequest,
+    GoogleLoginRequest,
+    KakaoLoginRequest,
+    OAuthProvider,
+)
 from app.features.oauth.services.oauth_service import OAuthService
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse

@@ -2,7 +2,7 @@ from typing import List
 
 from app.common.schemas import BaseResponse
 from app.deps.service import get_tendency_service
-from app.features.tendencies.schemas.tendency_result_dto import TendencyResultDto
+from app.features.tendencies.schemas import TendencyResultDto
 from app.features.tendencies.services.tendency_service import TendencyService
 from fastapi import APIRouter, Depends
 

@@ -4,9 +4,11 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
-from app.features.oauth.schemas.get_google_token_request import GetGoogleTokenRequest
-from app.features.oauth.schemas.google_token_response import GoogleTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    GetGoogleTokenRequest,
+    GoogleTokenResponse,
+    OAuthUserInfo,
+)
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
