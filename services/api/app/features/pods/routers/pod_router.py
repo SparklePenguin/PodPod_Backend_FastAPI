@@ -33,94 +33,44 @@ async def create_pod(
     return BaseResponse.ok(data=pod, http_status=status.HTTP_201_CREATED)
 
 
-# MARK: - 인기 파티 조회
-@router.get(
-    "/trending",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
-    description="인기 파티 조회",
-)
-async def get_trending_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    pods = await pod_service.get_trending_pods(
-        current_user_id, selected_artist_id, page, size
-    )
-    return BaseResponse.ok(data=pods)
-
-
-# MARK: - 마감 직전 파티 조회
-@router.get(
-    "/closing-soon",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
-    description="마감 직전 파티 조회",
-)
-async def get_closing_soon_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    location: str | None = None,
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    pods = await pod_service.get_closing_soon_pods(
-        current_user_id, selected_artist_id, location, page, size
-    )
-    return BaseResponse.ok(data=pods)
-
-
-# MARK: - 우리 만난적 있어요 파티 조회
-@router.get(
-    "/history-based",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
-    description="우리 만난적 있어요 파티 조회",
-)
-async def get_history_based_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    pods = await pod_service.get_history_based_pods(
-        current_user_id, selected_artist_id, page, size
-    )
-    return BaseResponse.ok(data=pods)
-
-
-# MARK: - 인기 최고 카테고리 파티 조회
-@router.get(
-    "/popular-category",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
-    description="인기 최고 카테고리 파티 조회",
-)
-async def get_popular_categories_pods(
-    selected_artist_id: int = Query(..., alias="selectedArtistId"),
-    location: str | None = None,
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Query(1, description="사용자 ID (테스트용)"),
-    pod_service: PodService = Depends(get_pod_service),
-):
-    pods = await pod_service.get_popular_categories_pods(
-        current_user_id, selected_artist_id, location, page, size
-    )
-    return BaseResponse.ok(data=pods)
-
-
 # MARK: - 파티 타입 목록 조회
 @router.get(
-    "/me/types",
+    "/types",
     response_model=BaseResponse[dict],
-    description="내 파티 목록 조회 가능한 타입 목록",
+    description="파티 목록 조회 가능한 타입 목록",
 )
 async def get_pod_types():
     """사용 가능한 파티 타입 목록 조회"""
     types = {
         "types": [
+            {
+                "value": "trending",
+                "label_ko": "인기 파티",
+                "label_en": "Trending Pods",
+                "description_ko": "인기 파티 목록",
+                "description_en": "List of trending pods",
+            },
+            {
+                "value": "closing-soon",
+                "label_ko": "마감 직전 파티",
+                "label_en": "Closing Soon Pods",
+                "description_ko": "마감 직전 파티 목록",
+                "description_en": "List of pods closing soon",
+            },
+            {
+                "value": "history-based",
+                "label_ko": "우리 만난적 있어요",
+                "label_en": "History Based Pods",
+                "description_ko": "우리 만난적 있어요 파티 목록",
+                "description_en": "List of history-based pods",
+            },
+            {
+                "value": "popular-category",
+                "label_ko": "인기 카테고리",
+                "label_en": "Popular Category Pods",
+                "description_ko": "인기 카테고리 파티 목록",
+                "description_en": "List of popular category pods",
+            },
             {
                 "value": "joined",
                 "label_ko": "참여한 파티",
@@ -158,25 +108,84 @@ async def get_pod_types():
     )
 
 
-# MARK: - 내 파티 목록 조회 (통합)
+# MARK: - 파티 목록 조회 (통합)
 @router.get(
-    "/me",
+    "",
     response_model=BaseResponse[PageDto[PodDetailDto]],
-    description="내 파티 목록 조회 (type: joined, liked, owned, following)",
+    description="파티 목록 조회 (type: trending, closing-soon, history-based, popular-category, joined, liked, owned, following)",
 )
-async def get_my_pods(
+async def get_pods(
     type: str = Query(
         ...,
-        description="파티 타입: joined(참여한), liked(저장한), owned(개설한), following(팔로우한 사용자들의 파티)",
-        regex="^(joined|liked|owned|following)$",
+        description="파티 타입: trending(인기), closing-soon(마감직전), history-based(우리만난적있어요), popular-category(인기카테고리), joined(참여한), liked(저장한), owned(개설한), following(팔로우한 사용자들의 파티)",
+        regex="^(trending|closing-soon|history-based|popular-category|joined|liked|owned|following)$",
+    ),
+    selected_artist_id: int | None = Query(
+        None,
+        alias="selectedArtistId",
+        description="선택된 아티스트 ID (trending, closing-soon, history-based, popular-category 타입에 필요)",
+    ),
+    location: str | None = Query(
+        None,
+        description="지역 필터 (closing-soon, popular-category 타입에 선택사항)",
     ),
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
     current_user_id: int = Depends(get_current_user_id),
     pod_service: PodService = Depends(get_pod_service),
 ):
-    """내 파티 목록 조회"""
-    if type == "joined":
+    """파티 목록 조회"""
+    # 전체 파티 목록 타입들
+    if type == "trending":
+        if selected_artist_id is None:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="selectedArtistId is required for trending type",
+            )
+        pods = await pod_service.get_trending_pods(
+            current_user_id, selected_artist_id, page, size
+        )
+        message_ko = "인기 파티 목록을 조회했습니다."
+        message_en = "Successfully retrieved trending pods."
+    elif type == "closing-soon":
+        if selected_artist_id is None:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="selectedArtistId is required for closing-soon type",
+            )
+        pods = await pod_service.get_closing_soon_pods(
+            current_user_id, selected_artist_id, location, page, size
+        )
+        message_ko = "마감 직전 파티 목록을 조회했습니다."
+        message_en = "Successfully retrieved closing soon pods."
+    elif type == "history-based":
+        if selected_artist_id is None:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="selectedArtistId is required for history-based type",
+            )
+        pods = await pod_service.get_history_based_pods(
+            current_user_id, selected_artist_id, page, size
+        )
+        message_ko = "우리 만난적 있어요 파티 목록을 조회했습니다."
+        message_en = "Successfully retrieved history-based pods."
+    elif type == "popular-category":
+        if selected_artist_id is None:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="selectedArtistId is required for popular-category type",
+            )
+        pods = await pod_service.get_popular_categories_pods(
+            current_user_id, selected_artist_id, location, page, size
+        )
+        message_ko = "인기 카테고리 파티 목록을 조회했습니다."
+        message_en = "Successfully retrieved popular category pods."
+    # 사용자별 파티 목록 타입들
+    elif type == "joined":
         pods = await pod_service.get_user_joined_pods(current_user_id, page, size)
         message_ko = "내가 참여한 파티 목록을 조회했습니다."
         message_en = "Successfully retrieved my joined pods."
@@ -198,7 +207,7 @@ async def get_my_pods(
         from fastapi import HTTPException
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid type. Must be one of: joined, liked, owned, following",
+            detail="Invalid type. Must be one of: trending, closing-soon, history-based, popular-category, joined, liked, owned, following",
         )
     
     return BaseResponse.ok(data=pods, message_ko=message_ko, message_en=message_en)
