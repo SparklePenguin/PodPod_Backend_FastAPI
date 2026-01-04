@@ -85,19 +85,27 @@ class PodService:
         status: PodStatus = PodStatus.RECRUITING,
     ) -> PodDetailDto:
         """Form 데이터로부터 파티 생성 (검증은 use case에서 처리)"""
-        # sub_categories를 JSON 문자열에서 리스트로 변환
-        sub_categories_list = None
-        if pod_form.sub_categories:
-            try:
-                parsed = json.loads(pod_form.sub_categories)
-                sub_categories_list = parsed if isinstance(parsed, list) else None
-            except Exception:
-                sub_categories_list = None
-
-        # meetingDate(UTC datetime) 파싱 → date/time 분리
+        # sub_categories를 JSON 문자열에서 리스트로 변환 (필수)
+        if not pod_form.sub_categories:
+            raise ValueError("sub_categories는 필수입니다.")
+        
         try:
-            normalized = pod_form.meeting_date.replace("Z", "+00:00")
-            dt = datetime.fromisoformat(normalized)
+            parsed = json.loads(pod_form.sub_categories)
+            sub_categories_list = parsed if isinstance(parsed, list) else []
+            if not sub_categories_list:
+                raise ValueError("sub_categories는 비어있을 수 없습니다.")
+        except json.JSONDecodeError:
+            raise ValueError("sub_categories는 유효한 JSON 형식이어야 합니다.")
+        except Exception as e:
+            raise ValueError(f"sub_categories 파싱 실패: {str(e)}")
+
+        # meetingDate(datetime) → date/time 분리
+        if not pod_form.meeting_date:
+            raise InvalidDateException("meetingDate 필드가 누락되었습니다.")
+        
+        try:
+            # 이미 datetime 객체이므로 UTC로 변환 후 date/time 분리
+            dt = pod_form.meeting_date
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             dt_utc = dt.astimezone(timezone.utc)
@@ -105,13 +113,13 @@ class PodService:
             parsed_meeting_date: date = dt_utc.date()
             parsed_meeting_time: time = dt_utc.time()
         except (ValueError, AttributeError) as e:
-            raise InvalidDateException(pod_form.meeting_date) from e
+            raise InvalidDateException(str(pod_form.meeting_date)) from e
 
         result = await self.create_pod(
             owner_id=owner_id,
             title=pod_form.title,
             description=pod_form.description,
-            sub_categories=sub_categories_list,
+            sub_categories=sub_categories_list or [],
             capacity=pod_form.capacity,
             place=pod_form.place,
             address=pod_form.address,
@@ -134,7 +142,7 @@ class PodService:
         owner_id: int,
         title: str,
         description: str | None,
-        sub_categories: list[str],
+        sub_categories: list[str] | None,
         capacity: int,
         place: str,
         address: str,
@@ -209,10 +217,8 @@ class PodService:
 
         # Pod 모델을 PodDetailDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
-            # PodDetail과 images 관계를 다시 로드 (MissingGreenlet 오류 방지)
-            await self._session.refresh(pod, ["detail"])
-            if pod.detail:
-                await self._session.refresh(pod.detail, ["images"])
+            # PodDetail과 images, applications, reviews 관계를 다시 로드 (MissingGreenlet 오류 방지)
+            await self._session.refresh(pod, ["detail", "images", "applications", "reviews"])
             pod_dto = await self._enrich_pod_dto(pod, owner_id)
 
             # 팔로워들에게 파티 생성 알림 전송
@@ -549,9 +555,7 @@ class PodService:
         # 파티 정보 다시 조회하여 DTO로 변환
         updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
         if updated_pod:
-            await self._session.refresh(updated_pod, ["detail"])
-            if updated_pod.detail:
-                await self._session.refresh(updated_pod.detail, ["images"])
+            await self._session.refresh(updated_pod, ["detail", "images", "applications", "reviews"])
 
             # thumbnail_url이 변경되었고 채팅방이 있으면 채팅방 cover_url 업데이트
             if "thumbnail_url" in update_fields and updated_pod.chat_room_id:
@@ -1010,7 +1014,7 @@ class PodService:
             # display_order로 정렬
             pod_images: list[PodImage] = list(pod.images)
             for img in sorted(pod_images, key=lambda x: x.display_order or 0):
-                images_dto.append(PodImageDto.model_validate(img))
+                images_dto.append(PodImageDto.from_pod_image(img))
 
         # Pod 속성 추출
         pod_sub_categories_raw = pod.sub_categories

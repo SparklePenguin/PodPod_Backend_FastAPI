@@ -2,6 +2,7 @@ from typing import List
 
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
+from app.deps.pod_form import get_pod_form
 from app.deps.service import get_pod_service, get_pod_use_case
 from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_service import PodService
@@ -18,7 +19,7 @@ router = APIRouter(dependencies=[])
     description="파티 생성",
 )
 async def create_pod(
-    pod_data: PodForm = Depends(),
+    pod_data: PodForm = Depends(get_pod_form),
     images: List[UploadFile] = File(..., description="파티 이미지 리스트"),
     user_id: int = Depends(get_current_user_id),
     service: PodService = Depends(get_pod_service),
@@ -272,7 +273,7 @@ async def get_pod_detail(
 )
 async def update_pod(
     pod_id: int,
-    pod_data: PodForm = Depends(),
+    pod_data: PodForm = Depends(get_pod_form),
     new_images: list[UploadFile | None] = File(
         None,
         alias="newImages",
