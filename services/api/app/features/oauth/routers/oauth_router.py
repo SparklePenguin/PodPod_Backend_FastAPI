@@ -1,5 +1,4 @@
 from app.common.schemas import BaseResponse
-from app.core.config import settings
 from app.deps.redis import get_redis
 from app.deps.service import get_oauth_service
 from app.features.auth.schemas.login_info_dto import LoginInfoDto
@@ -185,8 +184,8 @@ async def apple_callback(
     description="Apple ID 토큰을 통한 Apple 로그인",
 )
 async def apple_login(
-    payload: AppleLoginRequest, service: OAuthService = Depends(get_oauth_service)
+    payload: AppleLoginRequest,
+    service: OAuthService = Depends(get_oauth_service),
 ):
-    audience = settings.APPLE_CLIENT_ID or "com.sparkle-penguin.podpod"
-    result = await service.sign_in_with_apple(payload, audience=audience)
+    result = await service.sign_in_with_apple(payload)
     return BaseResponse.ok(data=result)

@@ -1,8 +1,9 @@
-from app.core.security import (
+from app.core.security import verify_password
+from app.core.session import (
     add_token_to_blacklist,
     create_access_token,
     create_refresh_token,
-    verify_password,
+    revoke_refresh_token,
     verify_refresh_token,
 )
 from app.features.auth.schemas.credential_dto import CredentialDto
@@ -22,16 +23,32 @@ class SessionService:
         """토큰 생성"""
         return CredentialDto(
             access_token=create_access_token(user_id),
-            refresh_token=create_refresh_token(user_id),
+            refresh_token=await create_refresh_token(user_id),
         )
 
     # - MARK: 토큰 갱신
     async def refresh_token(self, refresh_token: str) -> CredentialDto:
         """토큰 갱신"""
-        user_id = verify_refresh_token(refresh_token)
+        from app.core.session import TokenInvalidError
+
+        # 1. Refresh token 검증 (Redis 확인 포함)
+        user_id = await verify_refresh_token(refresh_token)
+
+        # 2. 유저 존재 및 상태 확인
+        user = await self._session_repo.get_user_by_id(user_id)
+        if not user:
+            raise TokenInvalidError("User not found")
+
+        if user.is_del:
+            raise TokenInvalidError("User account has been deleted")
+
+        # 3. 기존 리프레시 토큰 무효화 (Redis에서 삭제)
+        await revoke_refresh_token(refresh_token)
+
+        # 4. 새 토큰 발급
         return CredentialDto(
             access_token=create_access_token(user_id),
-            refresh_token=create_refresh_token(user_id),
+            refresh_token=await create_refresh_token(user_id),
         )
 
     # - MARK: 이메일 로그인
@@ -77,10 +94,16 @@ class SessionService:
         return sign_in_response
 
     # - MARK: 로그아웃
-    async def logout(self, access_token: str, user_id: int | None = None):
+    async def logout(
+        self, access_token: str, refresh_token: str | None = None, user_id: int | None = None
+    ):
         """로그아웃 (토큰 무효화 및 FCM 토큰 삭제)"""
-        # 액세스 토큰을 블랙리스트에 추가하여 무효화
-        add_token_to_blacklist(access_token)
+        # 액세스 토큰을 블랙리스트에 추가하여 무효화 (TTL: 30분)
+        await add_token_to_blacklist(access_token, ttl_seconds=1800)
+
+        # 리프레시 토큰 무효화 (Redis에서 삭제)
+        if refresh_token:
+            await revoke_refresh_token(refresh_token)
 
         # FCM 토큰 삭제
         if user_id:
@@ -88,9 +111,9 @@ class SessionService:
 
     # - MARK: Refresh Token 검증
     @staticmethod
-    def verify_refresh_token(refresh_token: str) -> int:
+    async def verify_refresh_token(refresh_token: str) -> int:
         """Refresh Token 검증 및 user_id 반환 (정적 메서드)"""
-        return verify_refresh_token(refresh_token)
+        return await verify_refresh_token(refresh_token)
 
     # - MARK: Access Token 생성
     @staticmethod

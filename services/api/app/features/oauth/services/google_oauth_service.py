@@ -1,4 +1,7 @@
+import asyncio
 import httpx
+from google.auth.transport import requests
+from google.oauth2 import id_token
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas.get_google_token_request import GetGoogleTokenRequest
@@ -54,6 +57,36 @@ class GoogleOAuthService:
                 )
 
             return GoogleTokenResponse(**response.json())
+
+    # - MARK: 구글 ID 토큰 검증 및 사용자 정보 조회
+    async def verify_google_id_token(self, id_token_str: str) -> OAuthUserInfo:
+        """구글 ID 토큰 검증 및 사용자 정보 추출"""
+        try:
+            # ID 토큰 검증 (동기 함수를 비동기로 실행)
+            idinfo = await asyncio.to_thread(
+                id_token.verify_oauth2_token,
+                id_token_str,
+                requests.Request(),
+                settings.GOOGLE_CLIENT_ID,
+            )
+
+            # 사용자 정보 추출
+            return OAuthUserInfo(
+                id=str(idinfo.get("sub", "")),  # Google은 "sub"을 사용
+                username=idinfo.get("name"),
+                email=idinfo.get("email"),
+                image_url=idinfo.get("picture"),
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Google ID token: {str(e)}",
+            ) from e
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Failed to verify Google ID token: {str(e)}",
+            ) from e
 
     # - MARK: 구글 사용자 정보 조회
     async def get_google_user_info(self, access_token: str) -> OAuthUserInfo:

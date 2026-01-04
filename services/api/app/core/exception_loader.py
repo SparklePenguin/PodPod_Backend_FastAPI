@@ -50,11 +50,13 @@ def discover_exception_handlers(
     """
     handlers: Dict[Type[Exception], Callable] = {}
 
+    # 현재 파일 기준으로 app 디렉토리 계산 (항상 필요)
+    current_file = Path(__file__).resolve()
+    app_dir = current_file.parent.parent  # app/ 디렉토리
+
     # base_path가 None이면 현재 파일 기준으로 절대 경로 계산
     if base_path is None:
         # exception_loader.py -> app/core/ -> app/ -> features/
-        current_file = Path(__file__).resolve()
-        app_dir = current_file.parent.parent  # app/ 디렉토리
         features_path = app_dir / "features"
     else:
         features_path = Path(base_path)
@@ -75,7 +77,25 @@ def discover_exception_handlers(
     for handler_file in handler_files:
         # 상대 경로를 모듈 경로로 변환
         # 예: app/features/pods/exception_handlers.py -> app.features.pods.exception_handlers
-        module_path = str(handler_file.with_suffix("")).replace("/", ".")
+        # 절대 경로에서 app/ 이후 부분만 추출
+        handler_path = handler_file.resolve()
+
+        try:
+            # app/ 디렉토리를 기준으로 상대 경로 계산
+            relative_path = handler_path.relative_to(app_dir)
+            # .py 확장자 제거하고 / 를 . 으로 변환
+            # app. 접두사 추가
+            module_path = "app." + str(relative_path.with_suffix("")).replace("/", ".")
+        except ValueError:
+            # 상대 경로 계산 실패 시 절대 경로에서 직접 추출 시도
+            parts = handler_path.parts
+            try:
+                app_index = parts.index("app")
+                module_parts = parts[app_index:]
+                module_path = ".".join(module_parts).replace(".py", "")
+            except ValueError:
+                logger.error(f"Could not determine module path for {handler_file}")
+                continue
 
         try:
             # 동적으로 모듈 import

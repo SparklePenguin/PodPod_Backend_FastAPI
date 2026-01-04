@@ -67,8 +67,10 @@ class KakaoOAuthService:
 
         async with httpx.AsyncClient() as client:
             try:
+                # property_keys 파라미터로 이메일 정보 요청
                 response = await client.get(
                     self._kakao_user_info_url,
+                    params={"property_keys": '["kakao_account.email"]'},
                     headers={
                         "Authorization": f"Bearer {access_token}",
                         "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
@@ -108,5 +110,6 @@ class KakaoOAuthService:
             f"https://kauth.kakao.com/oauth/authorize?"
             f"client_id={settings.KAKAO_CLIENT_ID}&"
             f"redirect_uri={settings.KAKAO_REDIRECT_URI}&"
-            f"response_type=code"
+            f"response_type=code&"
+            f"scope=account_email"
         )

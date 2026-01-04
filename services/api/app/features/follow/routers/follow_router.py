@@ -11,7 +11,7 @@ from app.features.follow.schemas import (
     UserDto,
 )
 from app.features.follow.services.follow_service import FollowService
-from app.features.pods.schemas.pod_detail_dto import PodDetailDto
+from app.features.pods.schemas import PodDetailDto
 from fastapi import APIRouter, Depends, Path, Query, status
 
 
@@ -56,7 +56,7 @@ async def unfollow_user(
 
     return BaseResponse.ok(
         data=True,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="팔로우가 취소되었습니다.",
         message_en="Successfully unfollowed the user.",
     )
@@ -80,7 +80,7 @@ async def get_following_list(
 
     return BaseResponse.ok(
         data=following_list,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="팔로우 목록을 조회했습니다.",
         message_en="Successfully retrieved following list.",
     )
@@ -104,7 +104,7 @@ async def get_followers_list(
 
     return BaseResponse.ok(
         data=followers_list,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="팔로워 목록을 조회했습니다.",
         message_en="Successfully retrieved followers list.",
     )
@@ -127,7 +127,7 @@ async def get_follow_stats(
 
     return BaseResponse.ok(
         data=stats,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="팔로우 통계를 조회했습니다.",
         message_en="Successfully retrieved follow statistics.",
     )
@@ -151,7 +151,7 @@ async def get_following_users_pods(
 
     return BaseResponse.ok(
         data=pods,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="팔로우하는 사용자의 파티 목록을 조회했습니다.",
         message_en="Successfully retrieved following users' pods.",
     )
@@ -175,7 +175,7 @@ async def get_recommended_users(
 
     return BaseResponse.ok(
         data=users,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="추천 유저 목록을 조회했습니다.",
         message_en="Successfully retrieved recommended users.",
     )
@@ -201,7 +201,7 @@ async def get_notification_status(
 
     return BaseResponse.ok(
         data=notification_status,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="알림 설정 상태를 조회했습니다.",
         message_en="Successfully retrieved notification status.",
     )
@@ -229,7 +229,7 @@ async def update_notification_status(
 
     return BaseResponse.ok(
         data=notification_status,
-        http_status=status.HTTP_OK,
+        http_status=status.HTTP_200_OK,
         message_ko="알림 설정이 변경되었습니다.",
         message_en="Successfully updated notification status.",
     )

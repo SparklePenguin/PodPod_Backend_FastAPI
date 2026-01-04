@@ -34,8 +34,8 @@ async def get_current_user_id(
         # Access Token 만료 시 Refresh Token으로 갱신 시도
         if refresh_token:
             try:
-                # Refresh Token 검증 및 user_id 추출
-                user_id = SessionService.verify_refresh_token(refresh_token)
+                # Refresh Token 검증 및 user_id 추출 (Redis 확인 포함)
+                user_id = await SessionService.verify_refresh_token(refresh_token)
 
                 # 새 Access Token 생성
                 new_access_token = SessionService.create_access_token(user_id)

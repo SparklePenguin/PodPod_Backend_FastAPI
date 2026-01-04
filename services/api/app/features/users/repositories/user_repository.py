@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from app.features.users.models import PreferredArtist, User
-from sqlalchemy import delete, select, update
-from sqlalchemy.exc import IntegrityError
+from app.features.users.models import User
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -27,8 +26,10 @@ class UserRepository:
     ) -> User | None:
         result = await self._session.execute(
             select(User).where(
-                User.auth_provider == auth_provider,
-                User.auth_provider_id == auth_provider_id,
+                and_(
+                    User.auth_provider == auth_provider,
+                    User.auth_provider_id == auth_provider_id,
+                )
             )
         )
         return result.scalar_one_or_none()
@@ -62,80 +63,6 @@ class UserRepository:
         )
         await self._session.commit()
         return await self.get_by_id(user_id)
-
-    # - MARK: 선호 아티스트 ID 목록 조회
-    async def get_preferred_artist_ids(self, user_id: int) -> List[int]:
-        result = await self._session.execute(
-            select(PreferredArtist.artist_id).where(PreferredArtist.user_id == user_id)
-        )
-        return list(result.scalars().all())
-
-    # - MARK: 선호 아티스트 추가
-    async def add_preferred_artist(self, user_id: int, artist_id: int) -> None:
-        # 이미 존재하면 중복 추가 방지
-        exists_q = await self._session.execute(
-            select(PreferredArtist).where(
-                PreferredArtist.user_id == user_id,
-                PreferredArtist.artist_id == artist_id,
-            )
-        )
-        if exists_q.scalar_one_or_none() is not None:
-            return
-
-        preferred_artist = PreferredArtist(user_id=user_id, artist_id=artist_id)
-        self._session.add(preferred_artist)
-        try:
-            await self._session.commit()
-        except IntegrityError:
-            await self._session.rollback()
-            # FK/유니크 충돌 시 무시 (상위 레이어에서 검증 권장)
-            return
-
-    # - MARK: 선호 아티스트 제거
-    async def remove_preferred_artist(self, user_id: int, artist_id: int) -> None:
-        await self._session.execute(
-            delete(PreferredArtist).where(
-                PreferredArtist.user_id == user_id,
-                PreferredArtist.artist_id == artist_id,
-            )
-        )
-        await self._session.commit()
-
-    # - MARK: 선호 아티스트 일괄 제거
-    async def remove_all_preferred_artists(self, user_id: int) -> None:
-        """사용자의 모든 선호 아티스트 제거"""
-        await self._session.execute(
-            delete(PreferredArtist).where(PreferredArtist.user_id == user_id)
-        )
-        await self._session.commit()
-
-    # - MARK: 선호 아티스트 일괄 추가
-    async def add_preferred_artists(self, user_id: int, artist_ids: List[int]) -> None:
-        """여러 선호 아티스트를 한 번에 추가 (중복 체크 포함)"""
-        # 기존 선호 아티스트 조회
-        existing_ids = await self.get_preferred_artist_ids(user_id)
-        existing_set = set(existing_ids)
-
-        # 새로운 아티스트만 추가
-        new_artists = [
-            PreferredArtist(user_id=user_id, artist_id=artist_id)
-            for artist_id in artist_ids
-            if artist_id not in existing_set
-        ]
-
-        if new_artists:
-            self._session.add_all(new_artists)
-            try:
-                await self._session.commit()
-            except IntegrityError:
-                await self._session.rollback()
-                # 개별 추가로 폴백
-                for artist in new_artists:
-                    try:
-                        self._session.add(artist)
-                        await self._session.commit()
-                    except IntegrityError:
-                        await self._session.rollback()
 
     # - MARK: FCM 토큰 업데이트
     async def update_fcm_token(self, user_id: int, fcm_token: str | None) -> None:
@@ -173,3 +100,16 @@ class UserRepository:
         )
         await self._session.commit()
         return await self.get_by_id(user_id)
+
+    # - MARK: 사용자 성향 타입 조회
+    async def get_user_tendency_type(self, user_id: int) -> str:
+        """사용자의 성향 타입 조회"""
+        from app.features.tendencies.models import UserTendencyResult
+
+        result = await self._session.execute(
+            select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
+        )
+        tendency = result.scalar_one_or_none()
+        return (
+            str(tendency.tendency_type) if tendency and tendency.tendency_type else ""
+        )

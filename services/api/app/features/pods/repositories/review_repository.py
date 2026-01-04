@@ -1,8 +1,6 @@
 from typing import List, Tuple
 
-from app.features.pods.models.pod import Pod
-from app.features.pods.models.pod.pod_member import PodMember
-from app.features.pods.models.pod_review import PodReview
+from app.features.pods.models import Pod, PodMember, PodReview
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,7 +20,7 @@ class PodReviewRepository:
             pod_id=pod_id, user_id=user_id, rating=rating, content=content
         )
         self._session.add(review)
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(review)
 
         # 관계 로딩을 위해 다시 조회
@@ -125,7 +123,7 @@ class PodReviewRepository:
         if review:
             setattr(review, "rating", rating)
             setattr(review, "content", content)
-            await self._session.commit()
+            await self._session.flush()
             await self._session.refresh(review)
             return review
         return None
@@ -138,7 +136,7 @@ class PodReviewRepository:
 
         if review:
             await self._session.delete(review)
-            await self._session.commit()
+            await self._session.flush()
             return True
         return False
 

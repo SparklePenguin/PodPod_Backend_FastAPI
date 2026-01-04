@@ -4,9 +4,13 @@ from datetime import date, datetime, timedelta, timezone
 
 from app.core.database import get_session
 from app.core.services.fcm_service import FCMService
-from app.features.pods.models.pod import Pod, PodLike, PodMember
-from app.features.pods.models.pod.pod_rating import PodRating
-from app.features.pods.models.pod.pod_status import PodStatus
+from app.features.pods.models import (
+    Pod,
+    PodLike,
+    PodMember,
+    PodRating,
+    PodStatus,
+)
 from app.features.users.models import User
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -379,23 +383,6 @@ class SchedulerService:
             logger.info(
                 f"- 파티 ID: {pod.id}, 제목: {pod.title}, 시간: {pod.meeting_time}, 상태: {status_str}"
             )
-
-        # 파티 88번 특별 조회
-        pod88_query = select(Pod).where(Pod.id == 88)
-        pod88_result = await db.execute(pod88_query)
-        pod88 = pod88_result.scalar_one_or_none()
-
-        if pod88:
-            # status 접근 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
-            try:
-                status_str = str(pod88.status).upper()
-            except Exception:
-                status_str = "UNKNOWN"
-            logger.info(
-                f"파티 88번 정보: ID={pod88.id}, 제목={pod88.title}, 날짜={pod88.meeting_date}, 시간={pod88.meeting_time}, 상태={status_str}"
-            )
-        else:
-            logger.info("파티 88번을 찾을 수 없습니다.")
 
         # 1시간 후 시작하는 모임들 조회
         # enum 비교 시 안전하게 처리 (DB에 소문자 값이 남아있을 수 있음)
@@ -799,37 +786,10 @@ class SchedulerService:
                         # 파티 상태를 CANCELED로 변경
                         pod.status = PodStatus.CANCELED
                         # 파티 비활성화 (소프트 삭제)
-                        pod.is_active = False
+                        pod.is_del = True
                         logger.info(
-                            f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED, is_active=False"
+                            f"파티 상태 변경: pod_id={pod.id}, title={pod.title}, meeting_date={pod.meeting_date}, meeting_time={pod.meeting_time}, RECRUITING → CANCELED, is_del=True"
                         )
-
-                        # 채팅방이 있으면 Sendbird에서 삭제 (DB는 유지)
-                        if pod.chat_channel_url:
-                            try:
-                                from app.core.services.sendbird_service import (
-                                    SendbirdService,
-                                )
-
-                                channel_url = pod.chat_channel_url  # 삭제 전 URL 저장
-                                sendbird_service = SendbirdService()
-                                delete_success = await sendbird_service.delete_channel(
-                                    channel_url
-                                )
-
-                                if delete_success:
-                                    # Sendbird에서만 삭제하고 DB의 chat_channel_url은 유지
-                                    logger.info(
-                                        f"Sendbird 채팅방 삭제 완료 (DB URL 유지): pod_id={pod.id}, channel_url={channel_url}"
-                                    )
-                                else:
-                                    logger.warning(
-                                        f"Sendbird 채팅방 삭제 실패: pod_id={pod.id}, channel_url={channel_url}"
-                                    )
-                            except Exception as e:
-                                logger.error(
-                                    f"Sendbird 채팅방 삭제 중 오류: pod_id={pod.id}, channel_url={pod.chat_channel_url}, error={e}"
-                                )
                     else:
                         logger.warning(
                             f"파티 상태가 RECRUITING이 아님: pod_id={pod.id}, status={pod_status_value}"
@@ -964,7 +924,6 @@ class SchedulerService:
                     pod_id = getattr(pod, "id", None)
                     pod_title = getattr(pod, "title", "") or ""
                     pod_meeting_date = getattr(pod, "meeting_date", None)
-                    chat_channel_url = getattr(pod, "chat_channel_url", None)
 
                     if pod_id is None:
                         continue
@@ -981,33 +940,6 @@ class SchedulerService:
                     logger.info(
                         f"파티 상태 변경: pod_id={pod_id}, title={pod_title}, meeting_date={pod_meeting_date}, COMPLETED → CLOSED"
                     )
-
-                    # 채팅방이 있으면 Sendbird에서만 삭제 (DB는 유지)
-                    if chat_channel_url:
-                        try:
-                            from app.core.services.sendbird_service import (
-                                SendbirdService,
-                            )
-
-                            channel_url = chat_channel_url  # 삭제 전 URL 저장
-                            sendbird_service = SendbirdService()
-                            delete_success = await sendbird_service.delete_channel(
-                                channel_url
-                            )
-
-                            if delete_success:
-                                # Sendbird에서만 삭제하고 DB의 chat_channel_url은 유지
-                                logger.info(
-                                    f"Sendbird 채팅방 삭제 완료 (DB URL 유지): pod_id={pod_id}, channel_url={channel_url}"
-                                )
-                            else:
-                                logger.warning(
-                                    f"Sendbird 채팅방 삭제 실패: pod_id={pod_id}, channel_url={channel_url}"
-                                )
-                        except Exception as e:
-                            logger.error(
-                                f"Sendbird 채팅방 삭제 중 오류: pod_id={pod.id}, channel_url={pod.chat_channel_url}, error={e}"
-                            )
 
                 except Exception as e:
                     logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")

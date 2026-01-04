@@ -46,8 +46,8 @@ class OAuthService:
     # - MARK: 구글 토큰 로그인
     async def sign_in_with_google(self, request: GoogleLoginRequest):
         """Google 로그인 처리"""
-        # Google 토큰 검증
-        oauth_user_info = await self._google_service.get_google_user_info(
+        # Google ID 토큰 검증 및 사용자 정보 추출
+        oauth_user_info = await self._google_service.verify_google_id_token(
             request.id_token
         )
 
@@ -59,14 +59,10 @@ class OAuthService:
         )
 
     # - MARK: 애플 토큰 로그인
-    async def sign_in_with_apple(
-        self, request: AppleLoginRequest, audience: str = "com.sparkle-penguin.podpod"
-    ) -> LoginInfoDto:
+    async def sign_in_with_apple(self, request: AppleLoginRequest) -> LoginInfoDto:
         """Apple 로그인 처리"""
         try:
-            oauth_user_info = await self._apple_service.get_apple_user_info(
-                request, audience
-            )
+            oauth_user_info = await self._apple_service.get_apple_user_info(request)
         except HTTPException:
             raise
         except ValueError as e:
@@ -144,17 +140,10 @@ class OAuthService:
                 raise OAuthTokenInvalidException(provider="apple")
 
             # Apple 로그인 처리
-            apple_client_id = settings.APPLE_CLIENT_ID
-            if not apple_client_id:
-                raise OAuthAuthenticationFailedException(
-                    provider="apple", reason="Apple 클라이언트 ID가 설정되지 않았습니다"
-                )
-
             sign_in_response = await self.sign_in_with_apple(
                 AppleLoginRequest(
                     identity_token=id_token, authorization_code=code, user=user_dict
-                ),
-                audience=apple_client_id,
+                )
             )
 
             # Android Deep Link로 리다이렉트
@@ -240,6 +229,9 @@ class OAuthService:
         )
 
         if user:
+            # User 모델에서 user_id 가져오기 (commit 전에 저장)
+            user_id = user.id
+            
             # 소프트 삭제된 경우 복구
             if user.is_del:
                 await self._user_service.restore_user(user, oauth_user_info)
@@ -248,10 +240,10 @@ class OAuthService:
             if fcm_token:
                 await self._user_service.update_fcm_token(user.id, fcm_token)
 
-            # User 모델에서 user_id 가져오기
-            user_id = user.id
-            # 각 메서드가 이미 commit/refresh를 수행하므로 추가 commit/refresh 불필요
-            user_dto = await self._user_service.get_user(user_id)
+            # commit 후 트랜잭션이 닫힐 수 있으므로 새로운 쿼리로 조회
+            # LoginInfoDto는 UserDetailDto를 요구하므로 get_user_with_follow_stats 사용
+            # user_id를 사용하여 새로 조회 (세션 상태와 무관하게 동작)
+            user_dto = await self._user_service.get_user_with_follow_stats(user_id, user_id)
         else:
             # 2. 새 사용자 생성 (UserDto 반환)
             # create_user 내부에서 이미 commit/refresh 수행

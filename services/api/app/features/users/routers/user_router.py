@@ -1,17 +1,24 @@
 from typing import List
 
-from app.common.schemas import BaseResponse
+from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_user_service
+from app.deps.service import (
+    get_follow_service,
+    get_user_artist_service,
+    get_user_service,
+)
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas.sign_up_request import SignUpRequest
+from app.features.follow.services.follow_service import FollowService
 from app.features.users.exceptions import ImageUploadException
 from app.features.users.schemas import (
     AcceptTermsRequest,
     UpdatePreferredArtistsRequest,
     UpdateProfileRequest,
     UserDetailDto,
+    UserDto,
 )
+from app.features.users.services.user_artist_service import UserArtistService
 from app.features.users.services.user_service import UserService
 from app.utils.file_upload import upload_profile_image
 from fastapi import (
@@ -71,6 +78,92 @@ async def create_user(
     return BaseResponse.ok(data=result, http_status=status.HTTP_201_CREATED)
 
 
+# - MARK: 사용자 조회 타입 목록
+@router.get(
+    "/types",
+    response_model=BaseResponse[dict],
+    description="사용자 조회 가능한 타입 목록",
+)
+async def get_user_types():
+    """사용 가능한 사용자 조회 타입 목록"""
+    types = {
+        "types": [
+            {
+                "value": "recommended",
+                "label_ko": "추천 사용자",
+                "label_en": "Recommended Users",
+                "description_ko": "추천 사용자 목록",
+                "description_en": "List of recommended users",
+            },
+            {
+                "value": "followings",
+                "label_ko": "팔로우하는 사용자",
+                "label_en": "Following Users",
+                "description_ko": "내가 팔로우하는 사용자 목록",
+                "description_en": "List of users I follow",
+            },
+            {
+                "value": "followers",
+                "label_ko": "팔로워",
+                "label_en": "Followers",
+                "description_ko": "나를 팔로우하는 사용자 목록",
+                "description_en": "List of users who follow me",
+            },
+        ]
+    }
+    return BaseResponse.ok(
+        data=types,
+        message_ko="사용자 조회 타입 목록을 조회했습니다.",
+        message_en="Successfully retrieved user types.",
+    )
+
+
+# - MARK: 사용자 목록 조회 (통합)
+@router.get(
+    "",
+    response_model=BaseResponse[PageDto[UserDto]],
+    description="사용자 목록 조회 (type: recommended, followings, followers)",
+)
+async def get_users(
+    type: str = Query(
+        ...,
+        description="사용자 타입: recommended(추천), followings(팔로우하는), followers(팔로워)",
+        regex="^(recommended|followings|followers)$",
+    ),
+    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
+    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
+    current_user_id: int = Depends(get_current_user_id),
+    follow_service: FollowService = Depends(get_follow_service),
+):
+    """사용자 목록 조회"""
+    if type == "recommended":
+        users = await follow_service.get_recommended_users(
+            user_id=current_user_id, page=page, size=size
+        )
+        message_ko = "추천 유저 목록을 조회했습니다."
+        message_en = "Successfully retrieved recommended users."
+    elif type == "followings":
+        users = await follow_service.get_following_list(
+            user_id=current_user_id, page=page, size=size
+        )
+        message_ko = "팔로우 목록을 조회했습니다."
+        message_en = "Successfully retrieved following list."
+    elif type == "followers":
+        users = await follow_service.get_followers_list(
+            user_id=current_user_id, current_user_id=current_user_id, page=page, size=size
+        )
+        message_ko = "팔로워 목록을 조회했습니다."
+        message_en = "Successfully retrieved followers list."
+    else:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid type. Must be one of: recommended, followings, followers",
+        )
+    
+    return BaseResponse.ok(data=users, message_ko=message_ko, message_en=message_en)
+
+
 # - MARK: 본인 정보 조회
 @router.get(
     "/me",
@@ -84,6 +177,57 @@ async def get_my_info(
     """본인 정보 조회"""
     user = await service.get_user(current_user_id)
     return BaseResponse.ok(data=user)
+
+
+# - MARK: 선호 아티스트 조회
+@router.get(
+    "/preferred-artists",
+    response_model=BaseResponse[List[ArtistDto]],
+    description="사용자 선호 아티스트 조회 (토큰 필요)",
+)
+async def get_user_preferred_artists(
+    current_user_id: int = Depends(get_current_user_id),
+    service: UserArtistService = Depends(get_user_artist_service),
+):
+    artists = await service.get_preferred_artists(current_user_id)
+    return BaseResponse.ok(data=artists)
+
+
+# - MARK: 선호 아티스트 업데이트
+@router.put(
+    "/preferred-artists",
+    response_model=BaseResponse[dict],
+    description="현재 사용자의 선호 아티스트 목록을 업데이트합니다.",
+)
+async def update_user_preferred_artists(
+    artists_data: UpdatePreferredArtistsRequest,
+    current_user_id: int = Depends(get_current_user_id),
+    service: UserArtistService = Depends(get_user_artist_service),
+):
+    artists = await service.update_preferred_artists(
+        current_user_id, artists_data.artist_ids
+    )
+    return BaseResponse.ok(data={"artists": artists})
+
+
+# - MARK: FCM 토큰 업데이트
+@router.put(
+    "/fcm-token",
+    response_model=BaseResponse[UserDetailDto],
+    description="FCM 토큰 업데이트 (토큰 필요)",
+)
+async def update_fcm_token(
+    fcm_token: str = Query(..., alias="fcmToken", description="FCM 토큰"),
+    current_user_id: int = Depends(get_current_user_id),
+    service: UserService = Depends(get_user_service),
+):
+    user = await service.update_fcm_token(current_user_id, fcm_token)
+
+    return BaseResponse.ok(
+        data=user,
+        message_ko="FCM 토큰이 업데이트되었습니다.",
+        message_en="FCM token updated successfully.",
+    )
 
 
 # - MARK: 사용자 정보 조회
@@ -139,57 +283,6 @@ async def update_user_profile(
     return BaseResponse.ok(data=user)
 
 
-# - MARK: 선호 아티스트 조회
-@router.get(
-    "/preferred-artists",
-    response_model=BaseResponse[List[ArtistDto]],
-    description="사용자 선호 아티스트 조회 (토큰 필요)",
-)
-async def get_user_preferred_artists(
-    current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
-):
-    artists = await service.get_preferred_artists(current_user_id)
-    return BaseResponse.ok(data=artists)
-
-
-# - MARK: 선호 아티스트 업데이트
-@router.put(
-    "/preferred-artists",
-    response_model=BaseResponse[dict],
-    description="현재 사용자의 선호 아티스트 목록을 업데이트합니다.",
-)
-async def update_user_preferred_artists(
-    artists_data: UpdatePreferredArtistsRequest,
-    current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
-):
-    artists = await service.update_preferred_artists(
-        current_user_id, artists_data.artist_ids
-    )
-    return BaseResponse.ok(data={"artists": artists})
-
-
-# - MARK: FCM 토큰 업데이트
-@router.put(
-    "/fcm-token",
-    response_model=BaseResponse[UserDetailDto],
-    description="FCM 토큰 업데이트 (토큰 필요)",
-)
-async def update_fcm_token(
-    fcm_token: str = Query(..., alias="fcmToken", description="FCM 토큰"),
-    current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
-):
-    await service.update_fcm_token(current_user_id, fcm_token)
-
-    return BaseResponse.ok(
-        data={"updated": True},
-        message_ko="FCM 토큰이 업데이트되었습니다.",
-        message_en="FCM token updated successfully.",
-    )
-
-
 # - MARK: 본인 계정 삭제
 @router.delete(
     "/me",
@@ -202,29 +295,6 @@ async def delete_my_account(
     """본인 계정 삭제"""
     try:
         await service.delete_user(current_user_id)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    except Exception as e:
-        # 사용자가 존재하지 않는 경우에도 204 No Content 반환
-        # (이미 삭제된 상태와 동일하므로)
-        if "USER_NOT_FOUND" in str(e):
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-        # 다른 오류는 그대로 전파
-        raise e
-
-
-# - MARK: 특정 사용자 삭제
-@router.delete(
-    "/{user_id}",
-    description="특정 사용자 삭제",
-)
-async def delete_user(
-    user_id: int,
-    current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
-):
-    """특정 사용자 삭제"""
-    try:
-        await service.delete_user(user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         # 사용자가 존재하지 않는 경우에도 204 No Content 반환

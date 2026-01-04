@@ -24,22 +24,16 @@ class AppleOAuthService:
         self._apple_issuer = "https://appleid.apple.com"
 
     # - MARK: 애플 사용자 정보 조회
-    async def get_apple_user_info(
-        self, request: AppleLoginRequest, audience: str
-    ) -> OAuthUserInfo:
+    async def get_apple_user_info(self, request: AppleLoginRequest) -> OAuthUserInfo:
         """애플 ID 토큰으로 사용자 정보 조회"""
+        # 클라이언트에서 제공한 audience 사용
+        audience = request.audience
+
         try:
             # Apple ID 토큰 검증
             apple_user_info = await self._verify_apple_token(
                 request.identity_token, audience
             )
-
-            # Authorization Code가 있으면 토큰 교환
-            # 지금은 Apple API를 사용하지 않기 때문에 사용하지 않음
-            if request.authorization_code:
-                await self._exchange_authorization_code(
-                    request.authorization_code, audience
-                )
 
             # Apple 사용자 정보를 OAuth 서비스 형식에 맞게 변환
             username = apple_user_info.get("email", "").split("@")[0]

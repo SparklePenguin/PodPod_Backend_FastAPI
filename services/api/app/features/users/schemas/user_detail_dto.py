@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 from app.features.follow.schemas import FollowStatsDto
 from app.features.users.models import UserState
@@ -21,14 +21,14 @@ class UserDetailDto(BaseModel):
         alias="isFollowing",
         description="현재 사용자 기준 팔로우 여부",
     )
-    follow_stats: FollowStatsDto | None = Field(
-        default=None, alias="followStats", description="팔로우 통계 정보"
+    follow_stats: FollowStatsDto = Field(
+        ..., alias="followStats", description="팔로우 통계 정보"
     )
     terms_accepted: bool = Field(
         default=False, alias="termsAccepted", description="약관 동의 여부"
     )
-    created_at: datetime.datetime | None = Field(default=None, alias="createdAt")
-    updated_at: datetime.datetime | None = Field(default=None, alias="updatedAt")
+    created_at: datetime = Field(..., alias="createdAt")
+    updated_at: datetime = Field(..., alias="updatedAt")
 
     model_config = {
         "from_attributes": True,

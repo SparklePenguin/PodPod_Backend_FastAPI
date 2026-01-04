@@ -1,10 +1,16 @@
 from app.common.schemas.page_dto import PageDto
 from app.features.follow.repositories.follow_pod_repository import FollowPodRepository
 from app.features.follow.services.follow_utils import create_page_dto
+from app.features.pods.models import (
+    AccompanySubCategory,
+    EtcSubCategory,
+    GoodsSubCategory,
+    TourSubCategory,
+)
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import PodDetailDto
-from app.features.pods.services.pod_review_service import PodReviewService
+from app.features.pods.services.review_service import ReviewService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -40,28 +46,11 @@ class FollowPodService:
             # 사용자가 좋아요했는지 확인
             is_liked = await self._pod_repo.is_liked_by_user(pod_id, user_id)
 
-            # meeting_date와 meeting_time을 timestamp로 변환 (UTC로 저장된 값이므로 UTC로 해석)
-            def _convert_to_timestamp(meeting_date, meeting_time):
-                """date와 time 객체를 UTC로 해석하여 timestamp로 변환"""
-                if meeting_date is None:
-                    return None
-                from datetime import datetime, timezone
-                from datetime import time as time_module
-
-                if meeting_time is None:
-                    dt = datetime.combine(
-                        meeting_date, time_module.min, tzinfo=timezone.utc
-                    )
-                else:
-                    dt = datetime.combine(
-                        meeting_date, meeting_time, tzinfo=timezone.utc
-                    )
-                return int(dt.timestamp() * 1000)  # milliseconds
 
             # PodDetailDto를 수동으로 생성하여 MissingGreenlet 오류 방지
             # 후기 목록 조회
             reviews = await self._review_repo.get_all_reviews_by_pod(pod_id)
-            review_service = PodReviewService(self._session)
+            review_service = ReviewService(self._session)
             review_dtos = []
             for review in reviews:
                 review_dto = await review_service._convert_to_dto(review)
@@ -77,15 +66,20 @@ class FollowPodService:
                 import json
 
                 try:
-                    pod_sub_categories = (
-                        json.loads(pod_sub_categories) if pod_sub_categories else []
-                    )
+                    parsed = json.loads(pod_sub_categories) if pod_sub_categories else []
+                    pod_sub_categories = parsed if isinstance(parsed, list) else []
                 except (ValueError, TypeError, json.JSONDecodeError):
                     pod_sub_categories = []
+            elif isinstance(pod_sub_categories, list):
+                pod_sub_categories = pod_sub_categories
+            else:
+                pod_sub_categories = []
+            
+            # 카테고리 검증은 use case에서 처리 (이미 저장된 데이터는 그대로 표시)
 
             from datetime import datetime, timezone
 
-            from app.features.pods.models.pod.pod_status import PodStatus
+            from app.features.pods.models import PodStatus
 
             if pod.owner_id is None:
                 continue  # owner_id가 없으면 건너뛰기
@@ -106,24 +100,30 @@ class FollowPodService:
             if pod_updated_at is None:
                 pod_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
+            # PodDetail에서 정보 가져오기
+            pod_detail = pod.detail if pod.detail else None
+            
             pod_dto = PodDetailDto(
                 id=pod_id,
                 owner_id=pod.owner_id,
                 title=pod.title or "",
-                description=pod.description or "",
-                image_url=pod.image_url,
+                description=pod_detail.description if pod_detail else "",
+                image_url=pod_detail.image_url if pod_detail else None,
                 thumbnail_url=pod.thumbnail_url,
                 sub_categories=pod_sub_categories,
                 capacity=pod.capacity or 0,
                 place=pod.place or "",
-                address=pod.address or "",
-                sub_address=pod.sub_address,
-                x=pod.x,
-                y=pod.y,
-                meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),
+                address=pod_detail.address if pod_detail else "",
+                sub_address=pod_detail.sub_address if pod_detail else None,
+                x=pod_detail.x if pod_detail else None,
+                y=pod_detail.y if pod_detail else None,
+                meeting_date=pod.meeting_date if pod.meeting_date else None,
+                meeting_time=pod.meeting_time if pod.meeting_time else None,
                 selected_artist_id=pod.selected_artist_id,
                 status=pod_status_enum,
-                chat_channel_url=pod.chat_channel_url,
+                is_del=pod.is_del if pod.is_del else False,
+                chat_room_id=pod.chat_room_id,
+                images=[],  # 이미지는 별도로 로드 필요
                 created_at=pod_created_at,
                 updated_at=pod_updated_at,
                 # 실제 값 설정

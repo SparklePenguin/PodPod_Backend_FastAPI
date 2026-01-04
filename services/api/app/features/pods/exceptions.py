@@ -137,3 +137,31 @@ class InvalidPodStatusException(DomainException):
             format_params={"status_value": status_value},
         )
         self.status_value = status_value
+
+
+class InvalidDateException(DomainException):
+    """날짜 형식이 유효하지 않은 경우"""
+
+    def __init__(self, date_string: str | None = None):
+        super().__init__(
+            error_key="INVALID_DATE",
+            format_params={"date_string": date_string or "Invalid date"},
+        )
+        self.date_string = date_string
+
+
+class MissingStatusException(DomainException):
+    """상태 필드가 누락된 경우"""
+
+    def __init__(self):
+        super().__init__(error_key="MISSING_STATUS")
+
+
+class PodUpdateFailedException(DomainException):
+    """파티 업데이트 실패"""
+
+    def __init__(self, pod_id: int):
+        super().__init__(
+            error_key="POD_UPDATE_FAILED", format_params={"pod_id": pod_id}
+        )
+        self.pod_id = pod_id
