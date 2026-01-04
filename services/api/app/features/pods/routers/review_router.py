@@ -2,7 +2,7 @@
 
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_review_use_case
+from app.deps.providers import get_review_use_case
 from app.features.pods.schemas import (
     PodReviewCreateRequest,
     PodReviewDto,

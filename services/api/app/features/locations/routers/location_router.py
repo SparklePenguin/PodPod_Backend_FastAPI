@@ -1,7 +1,7 @@
 from typing import List
 
 from app.common.schemas import BaseResponse
-from app.deps.service import get_location_service
+from app.deps.providers import get_location_service
 from app.features.locations.schemas import LocationDto
 from app.features.locations.services.location_service import LocationService
 from fastapi import APIRouter, Depends

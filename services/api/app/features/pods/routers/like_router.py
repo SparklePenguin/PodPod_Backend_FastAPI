@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_like_use_case
+from app.deps.providers import get_like_use_case
 from app.features.pods.schemas import PodLikeDto
 from app.features.pods.use_cases.like_use_case import LikeUseCase
 from fastapi import APIRouter, Depends, Path

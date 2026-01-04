@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_artist_suggestion_service
+from app.deps.providers import get_artist_suggestion_service
 from app.features.artists.schemas import (
     ArtistSuggestionCreateRequest,
     ArtistSuggestionDto,

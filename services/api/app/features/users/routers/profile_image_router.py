@@ -5,7 +5,7 @@
 from typing import List
 
 from app.common.schemas import BaseResponse
-from app.deps.service import get_random_profile_image_service
+from app.deps.providers import get_random_profile_image_service
 from app.features.users.schemas import RandomProfileImageDto
 from app.features.users.services.random_profile_image_service import (
     RandomProfileImageService,

@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_tendency_use_case
+from app.deps.providers import get_tendency_use_case
 from app.features.tendencies.schemas import (
     SubmitTendencyTestRequest,
     TendencyDto,

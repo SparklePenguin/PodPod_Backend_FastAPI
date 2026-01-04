@@ -54,7 +54,7 @@ async def websocket_endpoint(
 
     # Chat UseCase를 통해 WebSocket 연결 처리
     from app.core.database import AsyncSessionLocal
-    from app.deps.service import get_chat_use_case
+    from app.deps.providers import get_chat_use_case
 
     async with AsyncSessionLocal() as session:
         chat_use_case = get_chat_use_case(session=session)
@@ -90,7 +90,7 @@ async def websocket_test_endpoint(
         )
 
     # Chat UseCase를 통해 WebSocket 연결 처리
-    from app.deps.service import get_chat_use_case
+    from app.deps.providers import get_chat_use_case
 
     async with AsyncSessionLocal() as session:
         chat_use_case = get_chat_use_case(session=session)

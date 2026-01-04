@@ -1,7 +1,7 @@
 from typing import List
 
 from app.common.schemas import BaseResponse
-from app.deps.service import get_tendency_use_case
+from app.deps.providers import get_tendency_use_case
 from app.features.tendencies.exceptions import TendencyResultNotFoundException
 from app.features.tendencies.schemas import TendencyResultDto
 from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase

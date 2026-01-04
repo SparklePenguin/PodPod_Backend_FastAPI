@@ -19,6 +19,9 @@ pydantic>=2.7.0
 pydantic-settings==2.2.1
 email-validator==2.1.0
 
+# 의존성 주입
+dependency-injector==4.48.3
+
 # HTTP 클라이언트
 httpx==0.28.1
 requests==2.31.0

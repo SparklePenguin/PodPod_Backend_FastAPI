@@ -2,7 +2,7 @@ from typing import List
 
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_report_use_case
+from app.deps.providers import get_report_use_case
 from app.features.reports.schemas import (
     CreateReportRequest,
     ReportInfoDto,

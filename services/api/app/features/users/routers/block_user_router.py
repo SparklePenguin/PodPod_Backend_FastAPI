@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_block_user_use_case
+from app.deps.providers import get_block_user_use_case
 from app.features.users.schemas import BlockInfoDto, UserDto
 from app.features.users.use_cases.block_user_use_case import BlockUserUseCase
 from fastapi import APIRouter, Depends, Query, status

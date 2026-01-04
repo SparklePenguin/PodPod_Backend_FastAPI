@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_follow_service
+from app.deps.providers import get_follow_service
 from app.features.follow.schemas import (
     FollowInfoDto,
     FollowRequest,

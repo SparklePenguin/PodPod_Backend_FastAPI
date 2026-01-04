@@ -1,5 +1,5 @@
 from app.common.schemas import BaseResponse, PageDto
-from app.deps.service import get_artist_schedule_service
+from app.deps.providers import get_artist_schedule_service
 from app.features.artists.schemas import ArtistScheduleDto
 from app.features.artists.services.artist_schedule_service import ArtistScheduleService
 from fastapi import APIRouter, Depends, Query

@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse
 from app.deps.redis import get_redis
-from app.deps.service import get_oauth_service
+from app.deps.providers import get_oauth_service
 from app.features.auth.schemas import LoginInfoDto
 from app.features.oauth.schemas import (
     AppleLoginRequest,

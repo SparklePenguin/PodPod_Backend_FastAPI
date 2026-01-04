@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_user_notification_use_case
+from app.deps.providers import get_user_notification_use_case
 from app.features.users.schemas import (
     UpdateUserNotificationSettingsRequest,
     UserNotificationSettingsDto,

@@ -3,7 +3,7 @@ from typing import List
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.pod_form import get_pod_form
-from app.deps.service import get_pod_service, get_pod_use_case
+from app.deps.providers import get_pod_service, get_pod_use_case
 from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_service import PodService
 from app.features.pods.use_cases.pod_use_case import PodUseCase
