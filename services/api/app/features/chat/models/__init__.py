@@ -2,7 +2,6 @@
 Chat models
 """
 
-from app.features.chat.models.chat_message import ChatMessage
-from app.features.chat.models.chat_room import ChatMember, ChatRoom
+from app.features.chat.models.chat_models import ChatMember, ChatMessage, ChatRoom
 
 __all__ = ["ChatMessage", "ChatRoom", "ChatMember"]

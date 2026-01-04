@@ -81,9 +81,7 @@ class Settings(BaseSettings):
 
     # MARK: - Chat Service
 
-    USE_WEBSOCKET_CHAT: bool = False  # True면 WebSocket 사용, False면 Sendbird 사용
-    SENDBIRD_APP_ID: str | None = None
-    SENDBIRD_API_TOKEN: str | None = None
+    USE_WEBSOCKET_CHAT: bool = True  # WebSocket 사용
 
     # MARK: - OAuth (Infisical)
     # Note: REDIRECT_URI는 base_url을 사용해 자동 생성됩니다 (@property 참고)
@@ -198,9 +196,6 @@ class Settings(BaseSettings):
         # JWT
         kwargs.setdefault("secret_key", os.getenv("SECRET_KEY", "your-secret-key-here"))
 
-        # Sendbird
-        kwargs.setdefault("SENDBIRD_APP_ID", os.getenv("SENDBIRD_APP_ID"))
-        kwargs.setdefault("SENDBIRD_API_TOKEN", os.getenv("SENDBIRD_API_TOKEN"))
 
         # OAuth (Infisical)
         kwargs.setdefault("KAKAO_CLIENT_ID", os.getenv("KAKAO_CLIENT_ID"))

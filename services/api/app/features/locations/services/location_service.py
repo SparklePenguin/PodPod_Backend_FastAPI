@@ -4,8 +4,6 @@ from typing import List
 
 from app.features.locations.repositories.location_repository import LocationRepository
 from app.features.locations.schemas import LocationDto
-from app.features.pods.models import Pod
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -115,10 +113,7 @@ class LocationService:
     async def get_popular_locations(self) -> List[LocationDto]:
         """인기 지역 조회 - 팟티의 address, sub_address에서 지역 매칭하여 카운트"""
         # 모든 팟티의 address, sub_address 조회
-        result = await self._session.execute(
-            select(Pod.address, Pod.sub_address).where(Pod.is_active)
-        )
-        pod_addresses = result.fetchall()
+        pod_addresses = await self._location_repo.get_pod_addresses()
 
         # 모든 지역 정보 조회
         locations = await self._location_repo.get_all_locations()

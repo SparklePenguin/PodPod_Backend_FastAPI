@@ -7,7 +7,7 @@ import json
 import logging
 
 from app.core.services.fcm_service import FCMService
-from app.core.services.websocket_service import ConnectionManager
+from app.features.chat.services.websocket_service import ConnectionManager
 from app.features.users.repositories import UserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 

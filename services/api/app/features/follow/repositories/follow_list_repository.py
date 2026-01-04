@@ -215,3 +215,21 @@ class FollowListRepository:
         ]
 
         return users
+
+    # - MARK: 특정 사용자들이 팔로우하는 사용자 ID 목록 조회
+    async def get_following_ids_by_user_ids(
+        self, follower_id: int, following_ids: List[int]
+    ) -> List[int]:
+        """현재 사용자가 팔로우하는 사용자 ID 목록 조회"""
+        if not following_ids:
+            return []
+
+        query = select(Follow.following_id).where(
+            and_(
+                Follow.follower_id == follower_id,
+                Follow.following_id.in_(following_ids),
+                Follow.is_active,
+            )
+        )
+        result = await self._session.execute(query)
+        return [row[0] for row in result.all()]

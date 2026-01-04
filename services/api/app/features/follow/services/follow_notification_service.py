@@ -10,8 +10,6 @@ from app.features.follow.repositories.follow_notification_repository import (
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.follow.schemas import FollowNotificationStatusDto
 from app.features.pods.repositories.pod_repository import PodRepository
-from app.features.users.models import User
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -67,16 +65,12 @@ class FollowNotificationService:
         """팔로우 알림 전송"""
         try:
             # 팔로우한 사용자 정보 조회
-            follower_result = await self._session.execute(
-                select(User).where(User.id == follower_id)
-            )
-            follower = follower_result.scalar_one_or_none()
+            from app.features.users.repositories import UserRepository
+            user_repo = UserRepository(self._session)
+            follower = await user_repo.get_by_id(follower_id)
 
             # 팔로우받은 사용자 정보 조회
-            following_result = await self._session.execute(
-                select(User).where(User.id == following_id)
-            )
-            following = following_result.scalar_one_or_none()
+            following = await user_repo.get_by_id(following_id)
 
             if not follower or not following:
                 logger.warning(
@@ -124,10 +118,9 @@ class FollowNotificationService:
                 return
 
             # 파티 생성자 정보 조회
-            pod_owner_result = await self._session.execute(
-                select(User).where(User.id == pod_owner_id)
-            )
-            pod_owner = pod_owner_result.scalar_one_or_none()
+            from app.features.users.repositories import UserRepository
+            user_repo = UserRepository(self._session)
+            pod_owner = await user_repo.get_by_id(pod_owner_id)
             if not pod_owner:
                 logger.warning(
                     f"파티 생성자 정보를 찾을 수 없음: pod_owner_id={pod_owner_id}"

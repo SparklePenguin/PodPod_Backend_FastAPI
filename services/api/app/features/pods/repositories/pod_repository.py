@@ -225,7 +225,7 @@ class PodRepository:
 
     async def get_pods_with_chat_channels(self) -> List[Pod]:
         """채팅방이 있는 모든 파티 조회"""
-        from app.features.chat.models.chat_room import ChatRoom
+        from app.features.chat.models.chat_models import ChatRoom
 
         result = await self._session.execute(
             select(Pod)
@@ -1195,6 +1195,22 @@ class PodRepository:
         return False
 
     # - MARK: PodImage 관련
+    async def add_pod_image(
+        self, pod_detail_id: int, image_url: str, thumbnail_url: str | None, display_order: int
+    ):
+        """파티 이미지 추가"""
+        from app.features.pods.models import PodImage
+
+        pod_image = PodImage(
+            pod_detail_id=pod_detail_id,
+            image_url=image_url,
+            thumbnail_url=thumbnail_url,
+            display_order=display_order,
+        )
+        self._session.add(pod_image)
+        await self._session.flush()
+        return pod_image
+
     async def get_pod_images(self, pod_id: int):
         """파티의 모든 이미지 조회"""
         from app.features.pods.models import PodImage

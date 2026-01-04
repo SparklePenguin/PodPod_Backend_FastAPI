@@ -1,7 +1,8 @@
 import json
-from typing import List
+from typing import List, Tuple
 
 from app.features.locations.models import Location
+from app.features.pods.models import Pod
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,3 +77,11 @@ class LocationRepository:
         await self._session.delete(location)
         await self._session.commit()
         return True
+
+    # - MARK: 파티 주소 조회
+    async def get_pod_addresses(self) -> List[Tuple[str, str | None]]:
+        """모든 활성 파티의 address, sub_address 조회"""
+        result = await self._session.execute(
+            select(Pod.address, Pod.sub_address).where(Pod.is_active)
+        )
+        return result.fetchall()

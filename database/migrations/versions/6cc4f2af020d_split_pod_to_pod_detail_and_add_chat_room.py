@@ -124,6 +124,7 @@ def upgrade() -> None:
             sa.Column('role', sa.String(length=20), nullable=False, server_default='member', comment='역할 (owner, admin, member)'),
             sa.Column('joined_at', sa.DateTime(), nullable=False, comment='참여 시간'),
             sa.Column('left_at', sa.DateTime(), nullable=True, comment='나간 시간 (null이면 참여 중)'),
+            sa.Column('last_read_at', sa.DateTime(), nullable=True, comment='마지막 읽은 시간 (읽지 않은 메시지 수 계산용)'),
             sa.ForeignKeyConstraint(['chat_room_id'], ['chat_rooms.id'], ondelete='CASCADE'),
             sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
             sa.PrimaryKeyConstraint('id'),
@@ -143,9 +144,48 @@ def upgrade() -> None:
     if 'chat_messages' in existing_tables:
         chat_message_columns = [col['name'] for col in inspector.get_columns('chat_messages')]
         if 'chat_room_id' not in chat_message_columns:
+            # 1단계: nullable=True로 추가 (기존 데이터가 있을 수 있음)
             op.add_column('chat_messages', sa.Column('chat_room_id', sa.Integer(), nullable=True, comment='채팅방 ID'))
+            
+            # 2단계: 기존 데이터 마이그레이션 (channel_url에서 chat_room_id 추출)
+            # channel_url 형식: "chat_room_{chat_room_id}" 또는 "pod_{pod_id}_chat"
+            # channel_url이 "chat_room_"으로 시작하는 경우 추출
+            op.execute("""
+                UPDATE chat_messages cm
+                INNER JOIN chat_rooms cr ON 
+                    (cm.channel_url LIKE CONCAT('chat_room_', cr.id) 
+                     OR cm.channel_url LIKE CONCAT('pod_', cr.pod_id, '_chat'))
+                SET cm.chat_room_id = cr.id
+                WHERE cm.chat_room_id IS NULL
+            """)
+            
+            # 3단계: 마이그레이션되지 않은 데이터 처리 (channel_url이 없는 경우 등)
+            # 기존 데이터가 있지만 chat_room_id를 찾을 수 없는 경우, 해당 메시지는 삭제하거나 기본값 설정
+            # 여기서는 삭제하지 않고 경고만 남김 (실제 운영에서는 데이터 확인 필요)
+            
+            # 4단계: NOT NULL로 변경 (모든 데이터가 마이그레이션된 후)
+            op.alter_column('chat_messages', 'chat_room_id',
+                           existing_type=sa.Integer(),
+                           nullable=False)
+            
             op.create_foreign_key('fk_chat_messages_chat_room_id', 'chat_messages', 'chat_rooms', ['chat_room_id'], ['id'], ondelete='CASCADE')
             op.create_index(op.f('ix_chat_messages_chat_room_id'), 'chat_messages', ['chat_room_id'], unique=False)
+    else:
+        # chat_messages 테이블이 없는 경우 새로 생성 (chat_room_id를 nullable=False로)
+        op.create_table(
+            'chat_messages',
+            sa.Column('id', sa.Integer(), nullable=False, autoincrement=True),
+            sa.Column('chat_room_id', sa.Integer(), nullable=False, comment='채팅방 ID'),
+            sa.Column('channel_url', sa.String(length=255), nullable=True, index=True, comment='채널 URL (deprecated - chat_room_id 사용)'),
+            sa.Column('user_id', sa.Integer(), nullable=False, index=True, comment='발신자 ID'),
+            sa.Column('message', sa.Text(), nullable=False, comment='메시지 내용'),
+            sa.Column('message_type', sa.String(length=20), nullable=False, server_default='MESG', comment='메시지 타입 (MESG, FILE, IMAGE 등)'),
+            sa.Column('created_at', sa.DateTime(), nullable=False, index=True),
+            sa.ForeignKeyConstraint(['chat_room_id'], ['chat_rooms.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index(op.f('ix_chat_messages_chat_room_id'), 'chat_messages', ['chat_room_id'], unique=False)
     
     # 9. PodImage에 pod_detail_id 컬럼 추가 및 기존 pod_id를 pod_detail_id로 변경
     if 'pod_images' in existing_tables:

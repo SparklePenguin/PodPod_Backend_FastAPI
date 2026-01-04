@@ -5,10 +5,9 @@
 import json
 from typing import Dict, List
 
-from sqlalchemy import and_, select
+from app.features.chat.models.chat_models import ChatMember, ChatMessage, ChatRoom
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.features.chat.models.chat_room import ChatMember, ChatRoom
 
 
 class ChatRoomRepository:
@@ -49,16 +48,23 @@ class ChatRoomRepository:
         """파티 ID로 채팅방 조회"""
         result = await self._session.execute(
             select(ChatRoom).where(
-                and_(ChatRoom.pod_id == pod_id, ChatRoom.is_active == True)
+                and_(ChatRoom.pod_id == pod_id, ChatRoom.is_active)
             )
         )
         return result.scalar_one_or_none()
 
     async def get_chat_room_by_id(self, chat_room_id: int) -> ChatRoom | None:
         """채팅방 ID로 조회"""
+        from sqlalchemy.orm import selectinload
+        
         result = await self._session.execute(
-            select(ChatRoom).where(
-                and_(ChatRoom.id == chat_room_id, ChatRoom.is_active == True)
+            select(ChatRoom)
+            .options(
+                selectinload(ChatRoom.pod),
+                selectinload(ChatRoom.members),
+            )
+            .where(
+                and_(ChatRoom.id == chat_room_id, ChatRoom.is_active)
             )
         )
         return result.scalar_one_or_none()
@@ -149,6 +155,44 @@ class ChatRoomRepository:
         await self._session.flush()
         return True
 
+    # - MARK: 읽음 처리
+    async def update_last_read_at(
+        self, chat_room_id: int, user_id: int
+    ) -> bool:
+        """사용자의 마지막 읽은 시간 업데이트"""
+        member = await self.get_member(chat_room_id, user_id)
+        if not member or member.left_at:
+            return False
+
+        from datetime import datetime, timezone
+
+        member.last_read_at = datetime.now(timezone.utc)
+        await self._session.flush()
+        return True
+
+    # - MARK: 읽지 않은 메시지 수 조회
+    async def get_unread_count(
+        self, chat_room_id: int, user_id: int
+    ) -> int:
+        """읽지 않은 메시지 수 조회"""
+        member = await self.get_member(chat_room_id, user_id)
+        if not member or member.left_at:
+            return 0
+
+        from sqlalchemy import select
+
+        # 마지막 읽은 시간 이후의 메시지 수
+        query = select(func.count(ChatMessage.id)).where(
+            ChatMessage.chat_room_id == chat_room_id,
+            ChatMessage.user_id != user_id,  # 자신이 보낸 메시지는 제외
+        )
+        
+        if member.last_read_at:
+            query = query.where(ChatMessage.created_at > member.last_read_at)
+        
+        result = await self._session.execute(query)
+        return result.scalar() or 0
+
     # - MARK: 멤버 조회
     async def get_member(
         self, chat_room_id: int, user_id: int
@@ -166,8 +210,12 @@ class ChatRoomRepository:
 
     async def get_active_members(self, chat_room_id: int) -> List[ChatMember]:
         """활성 멤버 목록 조회 (left_at이 null인 멤버)"""
+        from sqlalchemy.orm import selectinload
+        
         result = await self._session.execute(
-            select(ChatMember).where(
+            select(ChatMember)
+            .options(selectinload(ChatMember.user))
+            .where(
                 and_(
                     ChatMember.chat_room_id == chat_room_id,
                     ChatMember.left_at.is_(None),
@@ -186,14 +234,20 @@ class ChatRoomRepository:
     # - MARK: 사용자가 참여한 채팅방 목록 조회
     async def get_user_chat_rooms(self, user_id: int) -> List[ChatRoom]:
         """사용자가 참여한 채팅방 목록 조회"""
+        from sqlalchemy.orm import selectinload
+        
         result = await self._session.execute(
             select(ChatRoom)
+            .options(
+                selectinload(ChatRoom.pod),
+                selectinload(ChatRoom.members),
+            )
             .join(ChatMember, ChatRoom.id == ChatMember.chat_room_id)
             .where(
                 and_(
                     ChatMember.user_id == user_id,
                     ChatMember.left_at.is_(None),
-                    ChatRoom.is_active == True,
+                    ChatRoom.is_active,
                 )
             )
         )

@@ -6,7 +6,6 @@ API v1 Router
 # Admin routers
 from app.features.admin.routers.error_codes import router as error_codes_router
 from app.features.admin.routers.fcm import router as fcm_router
-from app.features.admin.routers.sendbird import router as sendbird_router
 
 # Artists routers
 from app.features.artists.routers.artist_router import router as artists_router
@@ -142,7 +141,6 @@ api_router.include_router(health_router, tags=["health"])
 # 관리자 관련 라우터 (admin)
 api_router.include_router(error_codes_router, prefix="/admin", tags=["admin"])
 api_router.include_router(fcm_router, prefix="/admin", tags=["admin"])
-api_router.include_router(sendbird_router, prefix="/admin/sendbird", tags=["admin"])
 
 # 채팅 WebSocket 라우터 (chat)
 api_router.include_router(chat_websocket_router, prefix="/chat", tags=["chat"])

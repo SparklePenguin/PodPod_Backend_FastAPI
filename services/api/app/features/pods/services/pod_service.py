@@ -207,13 +207,12 @@ class PodService:
                     image_thumbnail_url = image_url
 
                 # PodImage 저장 (pod_detail_id 사용)
-                pod_image = PodImage(
+                await self._pod_repo.add_pod_image(
                     pod_detail_id=pod.id,  # pod_detail_id는 pod_id와 동일
                     image_url=image_url,
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
                 )
-                self._session.add(pod_image)
 
         # Pod 모델을 PodDetailDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
@@ -435,13 +434,12 @@ class PodService:
                     if order_item.type == "existing":
                         # 기존 이미지
                         if order_item.url:
-                            pod_image = PodImage(
+                            await self._pod_repo.add_pod_image(
                                 pod_detail_id=pod_id,
                                 image_url=order_item.url,
                                 thumbnail_url=order_item.url,
                                 display_order=index,
                             )
-                            self._session.add(pod_image)
                             existing_count += 1
 
                             # 첫 번째 이미지면 썸네일로 설정
@@ -473,13 +471,12 @@ class PodService:
                             except ValueError:
                                 image_thumbnail_url = image_url
 
-                            pod_image = PodImage(
+                            await self._pod_repo.add_pod_image(
                                 pod_detail_id=pod_id,
                                 image_url=image_url,
                                 thumbnail_url=image_thumbnail_url,
                                 display_order=index,
                             )
-                            self._session.add(pod_image)
                             new_count += 1
 
                             # 첫 번째 이미지면 썸네일로 설정
@@ -520,13 +517,12 @@ class PodService:
                 except ValueError:
                     image_thumbnail_url = image_url
 
-                pod_image = PodImage(
-                    pod_id=pod_id,
+                await self._pod_repo.add_pod_image(
+                    pod_detail_id=pod_id,
                     image_url=image_url,
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
                 )
-                self._session.add(pod_image)
 
                 # 첫 번째 이미지면 썸네일로 설정
                 if index == 0:

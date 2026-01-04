@@ -84,16 +84,10 @@ class FollowListService:
             return set()
 
         # 한 번의 쿼리로 현재 사용자가 팔로우하는 사용자 ID 목록 조회
-        from app.features.follow.models import Follow
-        from sqlalchemy import select
-
-        query = select(Follow.following_id).where(
-            Follow.follower_id == current_user_id,
-            Follow.following_id.in_(user_ids),
-            Follow.is_active,
+        following_ids = await self._follow_list_repo.get_following_ids_by_user_ids(
+            current_user_id, user_ids
         )
-        result = await self._session.execute(query)
-        return {row[0] for row in result.all()}
+        return set(following_ids)
 
     # - MARK: 추천 유저 목록 조회
     async def get_recommended_users(self, user_id: int, page: int = 1, size: int = 20):

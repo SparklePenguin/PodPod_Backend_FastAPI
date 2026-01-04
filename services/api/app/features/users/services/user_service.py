@@ -4,6 +4,7 @@ from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
 from app.features.pods.repositories.application_repository import (
     ApplicationRepository,
 )
+from app.features.tendencies.repositories.tendency_repository import TendencyRepository
 from app.features.users.exceptions import (
     EmailAlreadyExistsException,
     EmailRequiredException,
@@ -12,6 +13,7 @@ from app.features.users.exceptions import (
 )
 from app.features.users.models import User, UserState
 from app.features.users.repositories import UserRepository
+from app.features.users.repositories.user_artist_repository import UserArtistRepository
 from app.features.users.schemas import (
     UpdateProfileRequest,
     UserDetailDto,
@@ -30,6 +32,8 @@ class UserService:
         self._follow_service = FollowService(session, fcm_service=FCMService())
         self._follow_repo = FollowRepository(session)
         self._pod_application_repo = ApplicationRepository(session)
+        self._tendency_repo = TendencyRepository(session)
+        self._user_artist_repo = UserArtistRepository(session)
         self._session = session
 
     # - MARK: 유저 복구
@@ -194,12 +198,7 @@ class UserService:
     async def _has_preferred_artists(self, user_id: int) -> bool:
         """사용자가 선호 아티스트를 설정했는지 확인"""
         try:
-            from app.features.users.repositories.user_artist_repository import (
-                UserArtistRepository,
-            )
-
-            user_artist_repo = UserArtistRepository(self._session)
-            artist_ids = await user_artist_repo.get_preferred_artist_ids(user_id)
+            artist_ids = await self._user_artist_repo.get_preferred_artist_ids(user_id)
             return len(artist_ids) > 0
         except Exception:
             return False
@@ -207,14 +206,8 @@ class UserService:
     # - MARK: 성향 테스트 완료 여부 확인
     async def _has_tendency_result(self, user_id: int) -> bool:
         """사용자가 성향 테스트를 완료했는지 확인"""
-        # UserTendencyResult 테이블에서 해당 user_id의 결과가 있는지 확인
-        from app.features.tendencies.models import UserTendencyResult
-
         try:
-            result = await self._session.execute(
-                select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
-            )
-            user_tendency = result.scalar_one_or_none()
+            user_tendency = await self._tendency_repo.get_user_tendency_result(user_id)
             return user_tendency is not None
         except Exception:
             return False
@@ -222,13 +215,8 @@ class UserService:
     # - MARK: 사용자 성향 타입 조회
     async def _get_user_tendency_type(self, user_id: int) -> str | None:
         """사용자의 성향 타입 조회"""
-        from app.features.tendencies.models import UserTendencyResult
-
         try:
-            result = await self._session.execute(
-                select(UserTendencyResult).where(UserTendencyResult.user_id == user_id)
-            )
-            user_tendency = result.scalar_one_or_none()
+            user_tendency = await self._tendency_repo.get_user_tendency_result(user_id)
             if user_tendency:
                 tendency_type_raw = user_tendency.tendency_type
                 return str(tendency_type_raw) if tendency_type_raw is not None else None
@@ -370,12 +358,7 @@ class UserService:
         try:
             # ========== 삭제 가능한 데이터 (개인 데이터) ==========
             # 1. 선호 아티스트 삭제
-            from app.features.users.repositories.user_artist_repository import (
-                UserArtistRepository,
-            )
-
-            user_artist_repo = UserArtistRepository(self._session)
-            await user_artist_repo.remove_all_preferred_artists(user_id)
+            await self._user_artist_repo.remove_all_preferred_artists(user_id)
 
             # 2. 파티 신청서 삭제
             await self._pod_application_repo.delete_all_by_user_id(user_id)
@@ -451,8 +434,7 @@ class UserService:
                 )
             )
 
-            # 모든 작업 성공 시 커밋
-            await self._session.commit()
+            # commit은 use_case에서 처리
         except Exception:
             # 오류 발생 시 롤백
             await self._session.rollback()

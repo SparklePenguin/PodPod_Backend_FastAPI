@@ -6,7 +6,9 @@ from app.features.artists.services.artist_service import ArtistService
 from app.features.artists.services.artist_suggestion_service import (
     ArtistSuggestionService,
 )
+from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.chat.services.chat_service import ChatService
+from app.features.chat.use_cases.chat_use_case import ChatUseCase
 from app.features.follow.services.follow_service import FollowService
 from app.features.locations.services.location_service import LocationService
 from app.features.notifications.services.notification_service import (
@@ -348,9 +350,22 @@ def get_chat_service(
     """Chat Service 생성 (WebSocket 서비스 포함)"""
     websocket_service = None
     if settings.USE_WEBSOCKET_CHAT:
-        from app.core.services.websocket_service import WebSocketService
+        from app.features.chat.services.websocket_service import WebSocketService
 
         websocket_service = WebSocketService()
     return ChatService(
         session=session, websocket_service=websocket_service, fcm_service=fcm_service
+    )
+
+
+def get_chat_use_case(
+    session: AsyncSession = Depends(get_session),
+    chat_service: ChatService = Depends(get_chat_service),
+) -> ChatUseCase:
+    """Chat UseCase 생성"""
+    chat_room_repo = ChatRoomRepository(session)
+    return ChatUseCase(
+        session=session,
+        chat_service=chat_service,
+        chat_room_repo=chat_room_repo,
     )
