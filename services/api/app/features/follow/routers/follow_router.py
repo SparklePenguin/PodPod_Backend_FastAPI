@@ -4,8 +4,6 @@ from app.deps.service import get_follow_service
 from app.features.follow.exceptions import FollowNotFoundException
 from app.features.follow.schemas import (
     FollowInfoDto,
-    FollowNotificationStatusDto,
-    FollowNotificationUpdateRequest,
     FollowRequest,
     FollowStatsDto,
 )
@@ -107,55 +105,3 @@ async def get_following_users_pods(
     )
 
 
-# - MARK: 특정 팔로우한 유저의 알림 설정 상태 조회
-@router.get(
-    "/notification/{following_id}",
-    response_model=BaseResponse[FollowNotificationStatusDto],
-    description="특정 팔로우한 유저의 알림 설정 상태 조회",
-)
-async def get_notification_status(
-    following_id: int = Path(..., description="팔로우한 사용자 ID"),
-    current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
-):
-    notification_status = await follow_service.get_notification_status(
-        follower_id=current_user_id, following_id=following_id
-    )
-
-    if not notification_status:
-        raise FollowNotFoundException(current_user_id, following_id)
-
-    return BaseResponse.ok(
-        data=notification_status,
-        http_status=status.HTTP_200_OK,
-        message_ko="알림 설정 상태를 조회했습니다.",
-        message_en="Successfully retrieved notification status.",
-    )
-
-
-# - MARK: 특정 팔로우한 유저의 알림 설정 변경
-@router.put(
-    "/notification",
-    response_model=BaseResponse[FollowNotificationStatusDto],
-    description="특정 팔로우한 유저의 알림 설정 변경",
-)
-async def update_notification_status(
-    request: FollowNotificationUpdateRequest,
-    current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
-):
-    notification_status = await follow_service.update_notification_status(
-        follower_id=current_user_id,
-        following_id=request.following_id,
-        notification_enabled=request.notification_enabled,
-    )
-
-    if not notification_status:
-        raise FollowNotFoundException(current_user_id, request.following_id)
-
-    return BaseResponse.ok(
-        data=notification_status,
-        http_status=status.HTTP_200_OK,
-        message_ko="알림 설정이 변경되었습니다.",
-        message_en="Successfully updated notification status.",
-    )

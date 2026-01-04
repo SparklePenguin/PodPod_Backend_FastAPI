@@ -9,6 +9,8 @@ from app.deps.service import (
 )
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas.sign_up_request import SignUpRequest
+from app.features.follow.exceptions import FollowNotFoundException
+from app.features.follow.schemas import FollowNotificationStatusDto
 from app.features.follow.services.follow_service import FollowService
 from app.features.users.exceptions import ImageUploadException
 from app.features.users.schemas import (
@@ -23,9 +25,11 @@ from app.features.users.services.user_service import UserService
 from app.utils.file_upload import upload_profile_image
 from fastapi import (
     APIRouter,
+    Body,
     Depends,
     File,
     Form,
+    Path,
     Query,
     Response,
     UploadFile,
@@ -303,3 +307,66 @@ async def delete_my_account(
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         # 다른 오류는 그대로 전파
         raise e
+
+
+# - MARK: 팔로우한 사용자 알림 음소거 설정 조회
+@router.get(
+    "/me/followings/{following_id}/mute",
+    response_model=BaseResponse[dict],
+    description="팔로우한 사용자의 알림 음소거 설정 조회",
+)
+async def get_following_mute_status(
+    following_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    follow_service: FollowService = Depends(get_follow_service),
+):
+    """팔로우한 사용자의 알림 음소거 설정 조회"""
+    notification_status = await follow_service.get_notification_status(
+        follower_id=current_user_id, following_id=following_id
+    )
+
+    if not notification_status:
+        raise FollowNotFoundException(current_user_id, following_id)
+
+    # notification_enabled가 false면 muted는 true
+    muted = not notification_status.notification_enabled
+
+    return BaseResponse.ok(
+        data={"muted": muted},
+        message_ko="알림 음소거 설정을 조회했습니다.",
+        message_en="Successfully retrieved mute status.",
+    )
+
+
+# - MARK: 팔로우한 사용자 알림 음소거 설정 변경
+@router.put(
+    "/me/followings/{following_id}/mute",
+    response_model=BaseResponse[dict],
+    description="팔로우한 사용자의 알림 음소거 설정 변경",
+)
+async def update_following_mute_status(
+    following_id: int,
+    request: dict = Body(..., description="음소거 설정 요청"),
+    current_user_id: int = Depends(get_current_user_id),
+    follow_service: FollowService = Depends(get_follow_service),
+):
+    """팔로우한 사용자의 알림 음소거 설정 변경"""
+    muted = request.get("muted", False)
+    
+    # muted가 true면 notification_enabled는 false
+    notification_enabled = not muted
+
+    notification_status = await follow_service.update_notification_status(
+        follower_id=current_user_id,
+        following_id=following_id,
+        notification_enabled=notification_enabled,
+    )
+
+    if not notification_status:
+        raise FollowNotFoundException(current_user_id, following_id)
+
+    return BaseResponse.ok(
+        data={"muted": muted},
+        message_ko="알림 음소거 설정이 변경되었습니다.",
+        message_en="Successfully updated mute status.",
+    )
