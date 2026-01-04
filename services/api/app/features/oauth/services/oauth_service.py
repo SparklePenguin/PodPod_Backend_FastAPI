@@ -40,19 +40,36 @@ class OAuthService:
         from app.features.pods.repositories.application_repository import (
             ApplicationRepository,
         )
+        from app.features.notifications.repositories.notification_repository import (
+            NotificationRepository,
+        )
+        from app.features.pods.repositories.like_repository import PodLikeRepository
+        from app.features.pods.repositories.pod_repository import PodRepository
         from app.features.tendencies.repositories.tendency_repository import (
             TendencyRepository,
         )
         from app.features.users.repositories.user_artist_repository import (
             UserArtistRepository,
         )
+        from app.features.users.repositories.user_notification_repository import (
+            UserNotificationRepository,
+        )
+        from app.features.users.services.user_dto_service import UserDtoService
+        from app.features.users.services.user_state_service import UserStateService
 
         user_repo = UserRepository(session)
         user_artist_repo = UserArtistRepository(session)
-        follow_service = FollowService(session, fcm_service=FCMService())
+        fcm_service = FCMService()
+        follow_service = FollowService(session, fcm_service=fcm_service)
         follow_repo = FollowRepository(session)
         pod_application_repo = ApplicationRepository(session)
+        pod_repo = PodRepository(session)
+        pod_like_repo = PodLikeRepository(session)
+        notification_repo = NotificationRepository(session)
+        user_notification_repo = UserNotificationRepository(session)
         tendency_repo = TendencyRepository(session)
+        user_state_service = UserStateService()
+        user_dto_service = UserDtoService()
         self._user_use_case = UserUseCase(
             session=session,
             user_repo=user_repo,
@@ -60,7 +77,13 @@ class OAuthService:
             follow_service=follow_service,
             follow_repo=follow_repo,
             pod_application_repo=pod_application_repo,
+            pod_repo=pod_repo,
+            pod_like_repo=pod_like_repo,
+            notification_repo=notification_repo,
+            user_notification_repo=user_notification_repo,
             tendency_repo=tendency_repo,
+            user_state_service=user_state_service,
+            user_dto_service=user_dto_service,
         )
         self._auth_service = AuthService(session)
         self._kakao_service = KakaoOAuthService(session)
