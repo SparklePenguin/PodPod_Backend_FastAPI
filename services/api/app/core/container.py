@@ -97,6 +97,9 @@ class Container(containers.DeclarativeContainer):
     # Configuration
     config = providers.Configuration()
 
+    # Session Dependency (런타임에 주입됨)
+    session = providers.Dependency(instance_of=AsyncSession)
+
     # Core Services (Singleton)
     fcm_service = providers.Singleton(FCMService)
     random_profile_image_service = providers.Singleton(RandomProfileImageService)
@@ -108,202 +111,143 @@ class Container(containers.DeclarativeContainer):
     tendency_calculation_service = providers.Singleton(TendencyCalculationService)
 
     # Repositories (Factory - session dependent)
-    user_repository = providers.Factory(UserRepository, session=providers.Dependency())
+    user_repository = providers.Factory(UserRepository, session=session)
     user_artist_repository = providers.Factory(
-        UserArtistRepository, session=providers.Dependency()
+        UserArtistRepository, session=session
     )
     block_user_repository = providers.Factory(
-        BlockUserRepository, session=providers.Dependency()
+        BlockUserRepository, session=session
     )
     user_notification_repository = providers.Factory(
-        UserNotificationRepository, session=providers.Dependency()
+        UserNotificationRepository, session=session
     )
     user_report_repository = providers.Factory(
-        UserReportRepository, session=providers.Dependency()
+        UserReportRepository, session=session
     )
 
     artist_repository = providers.Factory(
-        ArtistRepository, session=providers.Dependency()
+        ArtistRepository, session=session
     )
 
     follow_repository = providers.Factory(
-        FollowRepository, session=providers.Dependency()
+        FollowRepository, session=session
     )
 
-    pod_repository = providers.Factory(PodRepository, session=providers.Dependency())
+    pod_repository = providers.Factory(PodRepository, session=session)
     application_repository = providers.Factory(
-        ApplicationRepository, session=providers.Dependency()
+        ApplicationRepository, session=session
     )
     pod_like_repository = providers.Factory(
-        PodLikeRepository, session=providers.Dependency()
+        PodLikeRepository, session=session
     )
     pod_review_repository = providers.Factory(
-        PodReviewRepository, session=providers.Dependency()
+        PodReviewRepository, session=session
     )
 
     notification_repository = providers.Factory(
-        NotificationRepository, session=providers.Dependency()
+        NotificationRepository, session=session
     )
 
     tendency_repository = providers.Factory(
-        TendencyRepository, session=providers.Dependency()
+        TendencyRepository, session=session
     )
 
     session_repository = providers.Factory(
-        SessionRepository, session=providers.Dependency()
+        SessionRepository, session=session
     )
 
     chat_room_repository = providers.Factory(
-        ChatRoomRepository, session=providers.Dependency()
+        ChatRoomRepository, session=session
     )
 
     # Services (Factory - session or other dependencies)
-    artist_service = providers.Factory(ArtistService, session=providers.Dependency())
+    artist_service = providers.Factory(ArtistService, session=session)
     artist_schedule_service = providers.Factory(
-        ArtistScheduleService, session=providers.Dependency()
+        ArtistScheduleService, session=session
     )
     artist_suggestion_service = providers.Factory(
-        ArtistSuggestionService, session=providers.Dependency()
+        ArtistSuggestionService, session=session
     )
 
-    oauth_service = providers.Factory(OAuthService, session=providers.Dependency())
+    oauth_service = providers.Factory(OAuthService, session=session)
 
     location_service = providers.Factory(
-        LocationService, session=providers.Dependency()
+        LocationService, session=session
     )
 
     notification_service = providers.Factory(
-        NotificationService, session=providers.Dependency()
+        NotificationService, session=session
     )
 
     follow_service = providers.Factory(
         FollowService,
-        session=providers.Dependency(),
+        session=session,
         fcm_service=fcm_service,
     )
 
     # Notification Services
-    # Note: Repository providers need session, so we create them inline
     like_notification_service = providers.Factory(
         LikeNotificationService,
-        session=providers.Dependency(),
+        session=session,
         fcm_service=fcm_service,
-        user_repo=providers.Factory(
-            UserRepository, session=providers.Dependency()
-        ),
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        like_repo=providers.Factory(
-            PodLikeRepository, session=providers.Dependency()
-        ),
+        user_repo=user_repository,
+        pod_repo=pod_repository,
+        like_repo=pod_like_repository,
     )
 
     review_notification_service = providers.Factory(
         ReviewNotificationService,
-        session=providers.Dependency(),
+        session=session,
         fcm_service=fcm_service,
-        user_repo=providers.Factory(
-            UserRepository, session=providers.Dependency()
-        ),
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
+        user_repo=user_repository,
+        pod_repo=pod_repository,
     )
 
     application_notification_service = providers.Factory(
         ApplicationNotificationService,
-        session=providers.Dependency(),
+        session=session,
         fcm_service=fcm_service,
-        user_repo=providers.Factory(
-            UserRepository, session=providers.Dependency()
-        ),
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        like_repo=providers.Factory(
-            PodLikeRepository, session=providers.Dependency()
-        ),
+        user_repo=user_repository,
+        pod_repo=pod_repository,
+        like_repo=pod_like_repository,
     )
 
     pod_notification_service = providers.Factory(
         PodNotificationService,
-        session=providers.Dependency(),
+        session=session,
         fcm_service=fcm_service,
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
+        pod_repo=pod_repository,
     )
 
     # Pod Services
     like_service = providers.Factory(
         LikeService,
-        session=providers.Dependency(),
-        like_repo=providers.Factory(
-            PodLikeRepository, session=providers.Dependency()
-        ),
+        session=session,
+        like_repo=pod_like_repository,
         notification_service=like_notification_service,
     )
 
     review_service = providers.Factory(
         ReviewService,
-        session=providers.Dependency(),
-        review_repo=providers.Factory(
-            PodReviewRepository, session=providers.Dependency()
-        ),
-        user_repo=providers.Factory(
-            UserRepository, session=providers.Dependency()
-        ),
+        session=session,
+        review_repo=pod_review_repository,
+        user_repo=user_repository,
         notification_service=review_notification_service,
     )
 
     application_service = providers.Factory(
         ApplicationService,
-        session=providers.Dependency(),
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        application_repo=providers.Factory(
-            ApplicationRepository, session=providers.Dependency()
-        ),
-        user_repo=providers.Factory(
-            UserRepository, session=providers.Dependency()
-        ),
+        session=session,
+        pod_repo=pod_repository,
+        application_repo=application_repository,
+        user_repo=user_repository,
         notification_service=application_notification_service,
     )
 
-    pod_service = providers.Factory(
-        PodService,
-        session=providers.Dependency(),
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        application_repo=providers.Factory(
-            ApplicationRepository, session=providers.Dependency()
-        ),
-        review_repo=providers.Factory(
-            PodReviewRepository, session=providers.Dependency()
-        ),
-        like_repo=providers.Factory(
-            PodLikeRepository, session=providers.Dependency()
-        ),
-        user_repo=providers.Factory(
-            UserRepository, session=providers.Dependency()
-        ),
-        application_service=application_service,
-        user_use_case=user_use_case,  # Use the defined user_use_case provider
-        notification_service=pod_notification_service,
-        review_service=review_service,
-        like_service=like_service,
-        follow_service=follow_service,
-    )
-
-    # Chat Service
-    chat_service = providers.Factory(
-        ChatService,
-        session=providers.Dependency(),
-        websocket_service=providers.Callable(
-            lambda: __import__(
-                "app.features.chat.services.websocket_service", fromlist=["WebSocketService"]
-            ).WebSocketService()
-            if settings.USE_WEBSOCKET_CHAT
-            else None
-        ),
-        fcm_service=fcm_service,
-    )
-
-    # Use Cases
+    # Use Cases (pod_service보다 먼저 정의 필요)
     user_use_case = providers.Factory(
         UserUseCase,
-        session=providers.Dependency(),
+        session=session,
         user_repo=user_repository,
         user_artist_repo=user_artist_repository,
         follow_service=follow_service,
@@ -318,16 +262,46 @@ class Container(containers.DeclarativeContainer):
         user_dto_service=user_dto_service,
     )
 
+    pod_service = providers.Factory(
+        PodService,
+        session=session,
+        pod_repo=pod_repository,
+        application_repo=application_repository,
+        review_repo=pod_review_repository,
+        like_repo=pod_like_repository,
+        user_repo=user_repository,
+        application_service=application_service,
+        user_use_case=user_use_case,  # Use the defined user_use_case provider
+        notification_service=pod_notification_service,
+        review_service=review_service,
+        like_service=like_service,
+        follow_service=follow_service,
+    )
+
+    # Chat Service
+    chat_service = providers.Factory(
+        ChatService,
+        session=session,
+        websocket_service=providers.Callable(
+            lambda: __import__(
+                "app.features.chat.services.websocket_service", fromlist=["WebSocketService"]
+            ).WebSocketService()
+            if settings.USE_WEBSOCKET_CHAT
+            else None
+        ),
+        fcm_service=fcm_service,
+    )
+
     user_artist_use_case = providers.Factory(
         UserArtistUseCase,
-        session=providers.Dependency(),
+        session=session,
         user_artist_repo=user_artist_repository,
         artist_repo=artist_repository,
     )
 
     block_user_use_case = providers.Factory(
         BlockUserUseCase,
-        session=providers.Dependency(),
+        session=session,
         block_repo=block_user_repository,
         user_repo=user_repository,
         follow_repo=follow_repository,
@@ -336,27 +310,27 @@ class Container(containers.DeclarativeContainer):
 
     user_notification_use_case = providers.Factory(
         UserNotificationUseCase,
-        session=providers.Dependency(),
+        session=session,
         notification_repo=user_notification_repository,
         notification_dto_service=notification_dto_service,
     )
 
     tendency_use_case = providers.Factory(
         TendencyUseCase,
-        session=providers.Dependency(),
+        session=session,
         tendency_repo=tendency_repository,
         calculation_service=tendency_calculation_service,
     )
 
     session_use_case = providers.Factory(
         SessionUseCase,
-        session=providers.Dependency(),
+        session=session,
         session_repo=session_repository,
     )
 
     report_use_case = providers.Factory(
         ReportUseCase,
-        session=providers.Dependency(),
+        session=session,
         report_repo=user_report_repository,
         user_repo=user_repository,
         block_repo=block_user_repository,
@@ -365,46 +339,40 @@ class Container(containers.DeclarativeContainer):
 
     application_use_case = providers.Factory(
         ApplicationUseCase,
-        session=providers.Dependency(),
+        session=session,
         application_service=application_service,
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        application_repo=providers.Factory(
-            ApplicationRepository, session=providers.Dependency()
-        ),
+        pod_repo=pod_repository,
+        application_repo=application_repository,
     )
 
     like_use_case = providers.Factory(
         LikeUseCase,
-        session=providers.Dependency(),
+        session=session,
         like_service=like_service,
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        like_repo=providers.Factory(
-            PodLikeRepository, session=providers.Dependency()
-        ),
+        pod_repo=pod_repository,
+        like_repo=pod_like_repository,
     )
 
     review_use_case = providers.Factory(
         ReviewUseCase,
-        session=providers.Dependency(),
+        session=session,
         review_service=review_service,
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
-        review_repo=providers.Factory(
-            PodReviewRepository, session=providers.Dependency()
-        ),
+        pod_repo=pod_repository,
+        review_repo=pod_review_repository,
     )
 
     pod_use_case = providers.Factory(
         PodUseCase,
-        session=providers.Dependency(),
+        session=session,
         pod_service=pod_service,
-        pod_repo=providers.Factory(PodRepository, session=providers.Dependency()),
+        pod_repo=pod_repository,
         notification_service=pod_notification_service,
         follow_service=follow_service,
     )
 
     chat_use_case = providers.Factory(
         ChatUseCase,
-        session=providers.Dependency(),
+        session=session,
         chat_service=chat_service,
         chat_room_repo=chat_room_repository,
     )

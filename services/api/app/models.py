@@ -11,6 +11,13 @@ from app.features.artists.models import (
     ArtistUnit,
 )
 
+# Chat
+from app.features.chat.models import (
+    ChatMember,
+    ChatMessage,
+    ChatRoom,
+)
+
 # Follow
 from app.features.follow.models import Follow
 
@@ -19,13 +26,6 @@ from app.features.locations.models import Location
 
 # Notifications
 from app.features.notifications.models import Notification
-
-# Chat
-from app.features.chat.models import (
-    ChatMember,
-    ChatMessage,
-    ChatRoom,
-)
 
 # Pods
 from app.features.pods.models import (
