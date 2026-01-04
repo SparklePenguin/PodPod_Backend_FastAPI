@@ -1,8 +1,10 @@
 """Tendencies feature models"""
 
-from .tendency_result import TendencyResult
-from .tendency_survey import TendencySurvey
-from .user_tendency_result import UserTendencyResult
+from .tendency_models import (
+    TendencyResult,
+    TendencySurvey,
+    UserTendencyResult,
+)
 
 __all__ = [
     "TendencyResult",

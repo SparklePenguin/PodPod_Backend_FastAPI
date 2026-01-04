@@ -17,7 +17,7 @@ from app.features.follow.services.follow_notification_service import (
 from app.features.follow.services.follow_pod_service import FollowPodService
 from app.features.follow.services.follow_stats_service import FollowStatsService
 from app.features.pods.schemas import PodDetailDto
-from app.features.users.schemas.user_dto import UserDto
+from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession
 
 

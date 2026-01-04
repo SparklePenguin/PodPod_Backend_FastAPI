@@ -1,17 +1,26 @@
 """Users feature models"""
 
-from .preferred_artist import PreferredArtist
-from .user import User
-from .user_block import UserBlock
-from .user_notification_settings import UserNotificationSettings
-from .user_report import UserReport
-from .user_state import UserState
+from .user_block_models import (
+    UserBlock,
+    UserReport,
+)
+from .user_models import (
+    PreferredArtist,
+    User,
+    UserState,
+)
+from .user_notification_models import (
+    UserNotificationSettings,
+)
 
 __all__ = [
-    "PreferredArtist",
+    # User 기본
     "User",
-    "UserBlock",
-    "UserNotificationSettings",
-    "UserReport",
     "UserState",
+    "PreferredArtist",
+    # User Block & Report
+    "UserBlock",
+    "UserReport",
+    # User Notification
+    "UserNotificationSettings",
 ]

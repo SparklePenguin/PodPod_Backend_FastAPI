@@ -1,7 +1,6 @@
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.service import get_follow_service
-from app.features.follow.exceptions import FollowNotFoundException
 from app.features.follow.schemas import (
     FollowInfoDto,
     FollowRequest,
@@ -103,5 +102,3 @@ async def get_following_users_pods(
         message_ko="팔로우하는 사용자의 파티 목록을 조회했습니다.",
         message_en="Successfully retrieved following users' pods.",
     )
-
-

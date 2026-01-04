@@ -8,9 +8,8 @@ from app.deps.service import (
     get_user_service,
 )
 from app.features.artists.schemas import ArtistDto
-from app.features.auth.schemas.sign_up_request import SignUpRequest
+from app.features.auth.schemas import SignUpRequest
 from app.features.follow.exceptions import FollowNotFoundException
-from app.features.follow.schemas import FollowNotificationStatusDto
 from app.features.follow.services.follow_service import FollowService
 from app.features.users.exceptions import ImageUploadException
 from app.features.users.schemas import (
@@ -29,7 +28,6 @@ from fastapi import (
     Depends,
     File,
     Form,
-    Path,
     Query,
     Response,
     UploadFile,
@@ -154,17 +152,21 @@ async def get_users(
         message_en = "Successfully retrieved following list."
     elif type == "followers":
         users = await follow_service.get_followers_list(
-            user_id=current_user_id, current_user_id=current_user_id, page=page, size=size
+            user_id=current_user_id,
+            current_user_id=current_user_id,
+            page=page,
+            size=size,
         )
         message_ko = "팔로워 목록을 조회했습니다."
         message_en = "Successfully retrieved followers list."
     else:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid type. Must be one of: recommended, followings, followers",
         )
-    
+
     return BaseResponse.ok(data=users, message_ko=message_ko, message_en=message_en)
 
 
@@ -352,7 +354,7 @@ async def update_following_mute_status(
 ):
     """팔로우한 사용자의 알림 음소거 설정 변경"""
     muted = request.get("muted", False)
-    
+
     # muted가 true면 notification_enabled는 false
     notification_enabled = not muted
 

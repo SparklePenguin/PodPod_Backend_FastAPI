@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List
 
-from app.features.notifications.models.notification import Notification
+from app.features.notifications.models.notification_models import Notification
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload

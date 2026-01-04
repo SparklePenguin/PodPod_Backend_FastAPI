@@ -7,11 +7,15 @@ from shared.models.artist_name import ArtistName
 from shared.models.artist_unit import ArtistUnit
 
 # 도메인 특화 모델
-from .artist_schedule import ArtistSchedule
-from .artist_suggestion import ArtistSuggestion
-from .schedule_content import ScheduleContent
-from .schedule_member import ScheduleMember
-from .schedule_type import ScheduleType
+from .schedule_models import (
+    ArtistSchedule,
+    ScheduleContent,
+    ScheduleMember,
+    ScheduleType,
+)
+from .suggestion_models import (
+    ArtistSuggestion,
+)
 
 __all__ = [
     # 아티스트 기본 모델 (shared)

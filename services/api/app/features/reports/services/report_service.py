@@ -2,7 +2,7 @@ from typing import List
 
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.reports.exceptions import CannotReportSelfException
-from app.features.reports.models.report_reason import ReportReason
+from app.features.reports.models.report_models import ReportReason
 from app.features.reports.schemas import ReportInfoDto, ReportReasonDto
 from app.features.users.exceptions import UserNotFoundException
 from app.features.users.repositories import (

@@ -1,5 +1,5 @@
 """Notifications feature models"""
 
-from .notification import Notification
+from .notification_models import Notification
 
 __all__ = ["Notification"]

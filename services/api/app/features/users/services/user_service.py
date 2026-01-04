@@ -1,6 +1,6 @@
 from app.core.security import get_password_hash
 from app.features.follow.repositories.follow_repository import FollowRepository
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import OAuthUserInfo
 from app.features.pods.repositories.application_repository import (
     ApplicationRepository,
 )
@@ -334,7 +334,7 @@ class UserService:
         - 삭제되어도 문제없는 데이터는 삭제
         - 다른 곳에서 조회되거나 문제 생기는 데이터는 isDel로 처리
         """
-        from app.features.notifications.models.notification import Notification
+        from app.features.notifications.models.notification_models import Notification
         from app.features.pods.models import (
             Pod,
             PodLike,
