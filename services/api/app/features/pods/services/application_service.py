@@ -37,26 +37,13 @@ class ApplicationService:
         self._notification_service = notification_service
 
     # MARK: - 헬퍼 메서드
-    def _create_user_dto(self, user: User | None, tendency_type: str = "") -> UserDto:
+    def _create_user_dto(
+        self, user: User | None, tendency_type: str = ""
+    ) -> UserDto:
         """User 모델과 성향 타입으로 UserDto 생성"""
-        if not user:
-            return UserDto(
-                id=0,
-                nickname="",
-                profile_image="",
-                intro="",
-                tendency_type=tendency_type,
-                is_following=False,
-            )
+        from app.features.users.services.user_dto_service import UserDtoService
 
-        return UserDto(
-            id=user.id or 0,
-            nickname=user.nickname or "",
-            profile_image=user.profile_image or "",
-            intro=user.intro or "",
-            tendency_type=tendency_type,
-            is_following=False,
-        )
+        return UserDtoService.create_user_dto(user, tendency_type)
 
     def _create_pod_appl_dto(
         self,

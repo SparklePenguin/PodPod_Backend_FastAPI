@@ -40,7 +40,7 @@ from app.features.pods.services.pod_notification_service import (
 from app.features.pods.services.review_service import ReviewService
 from app.features.users.exceptions import UserNotFoundException
 from app.features.users.repositories import UserRepository
-from app.features.users.services.user_service import UserService
+from app.features.users.use_cases.user_use_case import UserUseCase
 from app.utils.file_upload import save_upload_file
 from fastapi import HTTPException, UploadFile
 from PIL import Image
@@ -57,7 +57,7 @@ class PodService:
         like_repo: PodLikeRepository,
         user_repo: UserRepository,
         application_service: ApplicationService,
-        user_service: UserService,
+        user_use_case: UserUseCase,
         notification_service: PodNotificationService,
         review_service: ReviewService,
         like_service: LikeService,
@@ -70,7 +70,7 @@ class PodService:
         self._like_repo = like_repo
         self._user_repo = user_repo
         self._application_service = application_service
-        self._user_service = user_service
+        self._user_use_case = user_use_case
         self._review_service = review_service
         self._like_service = like_service
         self._notification_service = notification_service
@@ -866,13 +866,8 @@ class PodService:
     ) -> PageDto[PodDetailDto]:
         """특정 유저가 개설한 파티 목록 조회 (비즈니스 로직 검증 포함)"""
         # 사용자 존재 확인
-        user_service = UserService(self._session)
-        try:
-            await user_service.get_user(user_id)
-        except UserNotFoundException:
-            raise
-        except Exception:
-            # 다른 예외는 UserNotFoundException으로 변환
+        user = await self._user_repo.get_by_id(user_id)
+        if not user or user.is_del:
             raise UserNotFoundException(user_id)
         try:
             result = await self._pod_repo.get_user_pods(user_id, page, size)
@@ -1105,7 +1100,11 @@ class PodService:
                 )
 
                 # UserDto 생성
-                owner_dto = self._user_service.create_user_dto(
+                from app.features.users.services.user_dto_service import (
+                    UserDtoService,
+                )
+
+                owner_dto = UserDtoService.create_user_dto(
                     owner, owner_tendency_type or ""
                 )
                 joined_users.append(owner_dto)
@@ -1125,7 +1124,11 @@ class PodService:
                 )
 
                 # UserDto 생성
-                user_dto = self._user_service.create_user_dto(user, tendency_type or "")
+                from app.features.users.services.user_dto_service import (
+                    UserDtoService,
+                )
+
+                user_dto = UserDtoService.create_user_dto(user, tendency_type or "")
                 joined_users.append(user_dto)
 
         pod_dto.joined_users = joined_users
@@ -1159,7 +1162,11 @@ class PodService:
                         )
 
                         # UserDto 생성
-                        user_dto = self._user_service.create_user_dto(
+                        from app.features.users.services.user_dto_service import (
+                            UserDtoService,
+                        )
+
+                        user_dto = UserDtoService.create_user_dto(
                             app_user, tendency_type or ""
                         )
 
@@ -1196,7 +1203,11 @@ class PodService:
                 )
 
                 # UserDto 생성
-                user_dto = self._user_service.create_user_dto(
+                from app.features.users.services.user_dto_service import (
+                    UserDtoService,
+                )
+
+                user_dto = UserDtoService.create_user_dto(
                     app_user, tendency_type or ""
                 )
 

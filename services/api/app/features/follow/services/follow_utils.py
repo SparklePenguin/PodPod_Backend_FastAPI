@@ -31,16 +31,9 @@ def create_page_dto(
     total_count: int,
 ) -> PageDto:
     """PageDto를 생성하는 재사용 가능한 함수"""
-    total_pages = (total_count + size - 1) // size if total_count > 0 else 0
-    has_next = page < total_pages
-    has_prev = page > 1
-
-    return PageDto(
+    return PageDto.create(
         items=items,
-        current_page=page,
+        page=page,
         size=size,
         total_count=total_count,
-        total_pages=total_pages,
-        has_next=has_next,
-        has_prev=has_prev,
     )

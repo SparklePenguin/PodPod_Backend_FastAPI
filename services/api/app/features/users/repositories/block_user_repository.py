@@ -32,16 +32,15 @@ class BlockUserRepository:
             await self._session.rollback()
             return None
 
-    # - MARK: 차단 해제
+    # - MARK: 차단 해제 (커밋 없음)
     async def delete_block(self, blocker_id: int, blocked_id: int) -> bool:
-        """사용자 차단 해제"""
+        """사용자 차단 해제 (커밋은 use_case에서 처리)"""
         try:
             block = await self.get_block(blocker_id, blocked_id)
             if not block:
                 return False
 
             await self._session.delete(block)
-            await self._session.commit()
             return True
         except Exception:
             await self._session.rollback()

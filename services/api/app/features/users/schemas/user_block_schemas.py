@@ -24,7 +24,7 @@ class BlockedUserDto(BaseModel):
     }
 
 
-class BlockUserResponse(BaseModel):
+class BlockInfoDto(BaseModel):
     """사용자 차단 응답 스키마"""
 
     blocker_id: int = Field(

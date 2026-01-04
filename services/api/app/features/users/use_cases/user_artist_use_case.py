@@ -1,6 +1,4 @@
-"""
-사용자 선호 아티스트 Service
-"""
+"""User Artist Use Case - 선호 아티스트 관련 비즈니스 로직 처리"""
 
 from typing import List
 
@@ -13,13 +11,18 @@ from app.features.users.repositories.user_artist_repository import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class UserArtistService:
-    """사용자 선호 아티스트 Service"""
+class UserArtistUseCase:
+    """사용자 선호 아티스트 관련 비즈니스 로직을 처리하는 Use Case"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_artist_repo: UserArtistRepository,
+        artist_repo: ArtistRepository,
+    ):
         self._session = session
-        self._user_artist_repo = UserArtistRepository(session)
-        self._artist_repo = ArtistRepository(session)
+        self._user_artist_repo = user_artist_repo
+        self._artist_repo = artist_repo
 
     # - MARK: 선호 아티스트 조회
     async def get_preferred_artists(self, user_id: int) -> List[ArtistDto]:

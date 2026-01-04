@@ -174,3 +174,13 @@ class NotificationRepository:
         result = await self._session.execute(stmt)
         await self._session.commit()
         return result.rowcount
+
+    # - MARK: 사용자 관련 알림 삭제
+    async def delete_all_by_user_id(self, user_id: int) -> None:
+        """사용자 ID와 관련된 모든 알림 삭제 (user_id와 related_user_id 모두)"""
+        await self._session.execute(
+            delete(Notification).where(
+                (Notification.user_id == user_id)
+                | (Notification.related_user_id == user_id)
+            )
+        )

@@ -2,7 +2,7 @@
 
 from .user_block_schemas import (
     BlockedUserDto,
-    BlockUserResponse,
+    BlockInfoDto,
 )
 from .user_notification_schemas import (
     UpdateUserNotificationSettingsRequest,
@@ -32,5 +32,5 @@ __all__ = [
     "UpdateUserNotificationSettingsRequest",
     # User Block
     "BlockedUserDto",
-    "BlockUserResponse",
+    "BlockInfoDto",
 ]

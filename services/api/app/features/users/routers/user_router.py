@@ -4,8 +4,8 @@ from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.service import (
     get_follow_service,
-    get_user_artist_service,
-    get_user_service,
+    get_user_artist_use_case,
+    get_user_use_case,
 )
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas import SignUpRequest
@@ -19,8 +19,8 @@ from app.features.users.schemas import (
     UserDetailDto,
     UserDto,
 )
-from app.features.users.services.user_artist_service import UserArtistService
-from app.features.users.services.user_service import UserService
+from app.features.users.use_cases.user_artist_use_case import UserArtistUseCase
+from app.features.users.use_cases.user_use_case import UserUseCase
 from app.utils.file_upload import upload_profile_image
 from fastapi import (
     APIRouter,
@@ -46,9 +46,9 @@ router = APIRouter()
 async def accept_terms(
     request: AcceptTermsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
-    result = await service.accept_terms(current_user_id, request.terms_accepted)
+    result = await use_case.accept_terms(current_user_id, request.terms_accepted)
     return BaseResponse.ok(
         data=result,
         message_ko="약관 동의가 완료되었습니다.",
@@ -65,9 +65,9 @@ async def accept_terms(
 )
 async def create_user(
     user_data: SignUpRequest,
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
-    result = await service.create_user(
+    result = await use_case.create_user(
         email=user_data.email,
         name=user_data.username,
         nickname=user_data.nickname,
@@ -178,10 +178,10 @@ async def get_users(
 )
 async def get_my_info(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """본인 정보 조회"""
-    user = await service.get_user(current_user_id)
+    user = await use_case.get_user(current_user_id)
     return BaseResponse.ok(data=user)
 
 
@@ -193,9 +193,9 @@ async def get_my_info(
 )
 async def get_user_preferred_artists(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserArtistService = Depends(get_user_artist_service),
+    use_case: UserArtistUseCase = Depends(get_user_artist_use_case),
 ):
-    artists = await service.get_preferred_artists(current_user_id)
+    artists = await use_case.get_preferred_artists(current_user_id)
     return BaseResponse.ok(data=artists)
 
 
@@ -208,9 +208,9 @@ async def get_user_preferred_artists(
 async def update_user_preferred_artists(
     artists_data: UpdatePreferredArtistsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserArtistService = Depends(get_user_artist_service),
+    use_case: UserArtistUseCase = Depends(get_user_artist_use_case),
 ):
-    artists = await service.update_preferred_artists(
+    artists = await use_case.update_preferred_artists(
         current_user_id, artists_data.artist_ids
     )
     return BaseResponse.ok(data={"artists": artists})
@@ -225,9 +225,9 @@ async def update_user_preferred_artists(
 async def update_fcm_token(
     fcm_token: str = Query(..., alias="fcmToken", description="FCM 토큰"),
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
-    user = await service.update_fcm_token(current_user_id, fcm_token)
+    user = await use_case.update_fcm_token(current_user_id, fcm_token)
 
     return BaseResponse.ok(
         data=user,
@@ -245,10 +245,10 @@ async def update_fcm_token(
 async def get_user_info(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """다른 사용자 정보 조회 (팔로우 통계 포함)"""
-    user = await service.get_user_with_follow_stats(user_id, current_user_id)
+    user = await use_case.get_user_with_follow_stats(user_id, current_user_id)
     return BaseResponse.ok(data=user)
 
 
@@ -264,7 +264,7 @@ async def update_user_profile(
     profile_image_path: str | None = Form(None, alias="profileImagePath"),
     image: UploadFile | None = File(None),
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     # 이미지 처리: 파일 업로드 또는 경로 지정
     profile_image_url = None
@@ -285,7 +285,7 @@ async def update_user_profile(
     profile_data = UpdateProfileRequest(
         nickname=nickname, intro=intro, profile_image=profile_image_url
     )
-    user = await service.update_profile(current_user_id, profile_data)
+    user = await use_case.update_profile(current_user_id, profile_data)
     return BaseResponse.ok(data=user)
 
 
@@ -296,11 +296,11 @@ async def update_user_profile(
 )
 async def delete_my_account(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """본인 계정 삭제"""
     try:
-        await service.delete_user(current_user_id)
+        await use_case.delete_user(current_user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         # 사용자가 존재하지 않는 경우에도 204 No Content 반환

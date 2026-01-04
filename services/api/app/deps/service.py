@@ -9,6 +9,7 @@ from app.features.artists.services.artist_suggestion_service import (
 from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.chat.services.chat_service import ChatService
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
+from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.follow.services.follow_service import FollowService
 from app.features.locations.services.location_service import LocationService
 from app.features.notifications.services.notification_service import (
@@ -38,12 +39,7 @@ from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from app.features.pods.use_cases.like_use_case import LikeUseCase
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from app.features.pods.use_cases.review_use_case import ReviewUseCase
-from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.reports.use_cases.report_use_case import ReportUseCase
-from app.features.users.repositories import (
-    BlockUserRepository,
-    UserReportRepository,
-)
 from app.features.session.repositories.session_repository import SessionRepository
 from app.features.session.use_cases.session_use_case import SessionUseCase
 from app.features.tendencies.repositories.tendency_repository import TendencyRepository
@@ -51,13 +47,23 @@ from app.features.tendencies.services.tendency_calculation_service import (
     TendencyCalculationService,
 )
 from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
-from app.features.users.repositories import UserRepository
-from app.features.users.services.block_user_service import BlockUserService
-from app.features.users.services.user_artist_service import UserArtistService
-from app.features.users.services.user_notification_service import (
-    UserNotificationService,
+from app.features.users.repositories import (
+    BlockUserRepository,
+    UserReportRepository,
+    UserRepository,
 )
-from app.features.users.services.user_service import UserService
+from app.features.users.repositories.user_artist_repository import (
+    UserArtistRepository,
+)
+from app.features.users.services.random_profile_image_service import (
+    RandomProfileImageService,
+)
+from app.features.users.use_cases.block_user_use_case import BlockUserUseCase
+from app.features.users.use_cases.user_artist_use_case import UserArtistUseCase
+from app.features.users.use_cases.user_notification_use_case import (
+    UserNotificationUseCase,
+)
+from app.features.users.use_cases.user_use_case import UserUseCase
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,6 +71,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 def get_fcm_service() -> FCMService:
     """FCM Service 싱글톤 반환"""
     return FCMService()
+
+
+def get_random_profile_image_service() -> RandomProfileImageService:
+    """랜덤 프로필 이미지 서비스 의존성 주입"""
+    return RandomProfileImageService()
 
 
 def get_artist_service(session: AsyncSession = Depends(get_session)) -> ArtistService:
@@ -87,26 +98,113 @@ def get_oauth_service(session: AsyncSession = Depends(get_session)) -> OAuthServ
     return OAuthService(session)
 
 
-def get_user_service(session: AsyncSession = Depends(get_session)) -> UserService:
-    return UserService(session)
-
-
-def get_user_artist_service(
+def get_user_use_case(
     session: AsyncSession = Depends(get_session),
-) -> UserArtistService:
-    return UserArtistService(session)
+) -> UserUseCase:
+    from app.core.services.fcm_service import FCMService
+    from app.features.follow.repositories.follow_repository import FollowRepository
+    from app.features.follow.services.follow_service import FollowService
+    from app.features.pods.repositories.application_repository import (
+        ApplicationRepository,
+    )
+    from app.features.notifications.repositories.notification_repository import (
+        NotificationRepository,
+    )
+    from app.features.pods.repositories.like_repository import PodLikeRepository
+    from app.features.pods.repositories.pod_repository import PodRepository
+    from app.features.tendencies.repositories.tendency_repository import (
+        TendencyRepository,
+    )
+    from app.features.users.repositories.user_notification_repository import (
+        UserNotificationRepository,
+    )
+    from app.features.users.services.user_dto_service import UserDtoService
+    from app.features.users.services.user_state_service import UserStateService
+
+    user_repo = UserRepository(session)
+    user_artist_repo = UserArtistRepository(session)
+    fcm_service = FCMService()
+    follow_service = FollowService(session, fcm_service=fcm_service)
+    follow_repo = FollowRepository(session)
+    pod_application_repo = ApplicationRepository(session)
+    pod_repo = PodRepository(session)
+    pod_like_repo = PodLikeRepository(session)
+    notification_repo = NotificationRepository(session)
+    user_notification_repo = UserNotificationRepository(session)
+    tendency_repo = TendencyRepository(session)
+    user_state_service = UserStateService()
+    user_dto_service = UserDtoService()
+    return UserUseCase(
+        session=session,
+        user_repo=user_repo,
+        user_artist_repo=user_artist_repo,
+        follow_service=follow_service,
+        follow_repo=follow_repo,
+        pod_application_repo=pod_application_repo,
+        pod_repo=pod_repo,
+        pod_like_repo=pod_like_repo,
+        notification_repo=notification_repo,
+        user_notification_repo=user_notification_repo,
+        tendency_repo=tendency_repo,
+        user_state_service=user_state_service,
+        user_dto_service=user_dto_service,
+    )
 
 
-def get_block_user_service(
+def get_user_artist_use_case(
     session: AsyncSession = Depends(get_session),
-) -> BlockUserService:
-    return BlockUserService(session)
+) -> UserArtistUseCase:
+    from app.features.artists.repositories.artist_repository import ArtistRepository
+    from app.features.users.repositories.user_artist_repository import (
+        UserArtistRepository,
+    )
+
+    user_artist_repo = UserArtistRepository(session)
+    artist_repo = ArtistRepository(session)
+    return UserArtistUseCase(
+        session=session,
+        user_artist_repo=user_artist_repo,
+        artist_repo=artist_repo,
+    )
 
 
-def get_user_notification_service(
+def get_block_user_use_case(
     session: AsyncSession = Depends(get_session),
-) -> UserNotificationService:
-    return UserNotificationService(session)
+) -> BlockUserUseCase:
+    from app.features.follow.repositories.follow_repository import FollowRepository
+    from app.features.tendencies.repositories.tendency_repository import (
+        TendencyRepository,
+    )
+    from app.features.users.repositories import BlockUserRepository, UserRepository
+
+    block_repo = BlockUserRepository(session)
+    user_repo = UserRepository(session)
+    follow_repo = FollowRepository(session)
+    tendency_repo = TendencyRepository(session)
+    return BlockUserUseCase(
+        session=session,
+        block_repo=block_repo,
+        user_repo=user_repo,
+        follow_repo=follow_repo,
+        tendency_repo=tendency_repo,
+    )
+
+
+def get_user_notification_use_case(
+    session: AsyncSession = Depends(get_session),
+) -> UserNotificationUseCase:
+    from app.features.notifications.services.notification_dto_service import (
+        NotificationDtoService,
+    )
+    from app.features.users.repositories import UserNotificationRepository
+
+    notification_repo = UserNotificationRepository(session)
+    notification_dto_service = NotificationDtoService()
+    return UserNotificationUseCase(
+        session=session,
+        notification_repo=notification_repo,
+        notification_dto_service=notification_dto_service,
+    )
 
 
 def get_tendency_use_case(
@@ -315,18 +413,44 @@ def get_pod_service(
     fcm_service: FCMService = Depends(get_fcm_service),
     application_service: ApplicationService = Depends(get_application_service),
 ) -> PodService:
+    from app.core.services.fcm_service import FCMService
+    from app.features.follow.repositories.follow_repository import FollowRepository
+    from app.features.follow.services.follow_service import FollowService
+    from app.features.pods.repositories.application_repository import (
+        ApplicationRepository,
+    )
     from app.features.pods.services.pod_notification_service import (
         PodNotificationService,
     )
+    from app.features.tendencies.repositories.tendency_repository import (
+        TendencyRepository,
+    )
     from app.features.users.repositories import UserRepository
-    from app.features.users.services.user_service import UserService
+    from app.features.users.repositories.user_artist_repository import (
+        UserArtistRepository,
+    )
+    from app.features.users.use_cases.user_use_case import UserUseCase
 
     pod_repo = PodRepository(session)
     application_repo = ApplicationRepository(session)
     review_repo = PodReviewRepository(session)
     like_repo = PodLikeRepository(session)
     user_repo = UserRepository(session)
-    user_service = UserService(session)
+    user_artist_repo = UserArtistRepository(session)
+    fcm_service = FCMService()
+    follow_service = FollowService(session, fcm_service=fcm_service)
+    follow_repo = FollowRepository(session)
+    pod_application_repo = ApplicationRepository(session)
+    tendency_repo = TendencyRepository(session)
+    user_use_case = UserUseCase(
+        session=session,
+        user_repo=user_repo,
+        user_artist_repo=user_artist_repo,
+        follow_service=follow_service,
+        follow_repo=follow_repo,
+        pod_application_repo=pod_application_repo,
+        tendency_repo=tendency_repo,
+    )
     pod_notification_service = PodNotificationService(
         session=session,
         fcm_service=fcm_service,
@@ -340,7 +464,7 @@ def get_pod_service(
         like_repo=like_repo,
         user_repo=user_repo,
         application_service=application_service,
-        user_service=user_service,
+        user_use_case=user_use_case,
         notification_service=pod_notification_service,
         review_service=review_service,
         like_service=like_service,

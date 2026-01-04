@@ -60,3 +60,12 @@ class PodLikeRepository:
         )
         result = await self._session.execute(query)
         return result.scalars().all()
+
+    # - MARK: 사용자 관련 삭제 메서드
+    async def delete_all_likes_by_user_id(self, user_id: int) -> None:
+        """사용자의 모든 파티 좋아요 삭제"""
+        from sqlalchemy import delete
+
+        await self._session.execute(
+            delete(PodLike).where(PodLike.user_id == user_id)
+        )

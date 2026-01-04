@@ -1232,3 +1232,40 @@ class PodRepository:
         for image in images:
             await self._session.delete(image)
         await self._session.flush()
+
+    # - MARK: 사용자 관련 삭제 메서드
+    async def delete_all_views_by_user_id(self, user_id: int) -> None:
+        """사용자의 모든 파티 조회 기록 삭제"""
+        from sqlalchemy import delete
+
+        await self._session.execute(
+            delete(PodView).where(PodView.user_id == user_id)
+        )
+
+    async def delete_all_members_by_user_id(self, user_id: int) -> None:
+        """사용자의 모든 파티 멤버십 삭제"""
+        from sqlalchemy import delete
+
+        await self._session.execute(
+            delete(PodMember).where(PodMember.user_id == user_id)
+        )
+
+    async def get_pods_by_owner_id(self, owner_id: int) -> List[Pod]:
+        """파티장 ID로 파티 목록 조회"""
+        result = await self._session.execute(
+            select(Pod).where(Pod.owner_id == owner_id)
+        )
+        return list(result.scalars().all())
+
+    async def cancel_pods_by_owner_id(self, owner_id: int) -> None:
+        """파티장인 파티들을 CANCELED 상태로 변경"""
+        pods = await self.get_pods_by_owner_id(owner_id)
+        for pod in pods:
+            if pod:
+                status_value = (
+                    PodStatus.CANCELED.value
+                    if hasattr(PodStatus.CANCELED, "value")
+                    else str(PodStatus.CANCELED)
+                )
+                pod.status = status_value
+                pod.is_del = False

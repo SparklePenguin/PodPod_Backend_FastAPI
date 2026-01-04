@@ -21,7 +21,7 @@ from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
 from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.users.repositories import UserRepository
-from app.features.users.services.user_service import UserService
+from app.features.users.use_cases.user_use_case import UserUseCase
 from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
@@ -34,7 +34,34 @@ class OAuthService:
     def __init__(self, session: AsyncSession):
         self._session = session
         self._user_repo = UserRepository(session)
-        self._user_service = UserService(session)
+        from app.core.services.fcm_service import FCMService
+        from app.features.follow.repositories.follow_repository import FollowRepository
+        from app.features.follow.services.follow_service import FollowService
+        from app.features.pods.repositories.application_repository import (
+            ApplicationRepository,
+        )
+        from app.features.tendencies.repositories.tendency_repository import (
+            TendencyRepository,
+        )
+        from app.features.users.repositories.user_artist_repository import (
+            UserArtistRepository,
+        )
+
+        user_repo = UserRepository(session)
+        user_artist_repo = UserArtistRepository(session)
+        follow_service = FollowService(session, fcm_service=FCMService())
+        follow_repo = FollowRepository(session)
+        pod_application_repo = ApplicationRepository(session)
+        tendency_repo = TendencyRepository(session)
+        self._user_use_case = UserUseCase(
+            session=session,
+            user_repo=user_repo,
+            user_artist_repo=user_artist_repo,
+            follow_service=follow_service,
+            follow_repo=follow_repo,
+            pod_application_repo=pod_application_repo,
+            tendency_repo=tendency_repo,
+        )
         self._auth_service = AuthService(session)
         self._kakao_service = KakaoOAuthService(session)
         self._google_service = GoogleOAuthService(session)
@@ -232,20 +259,22 @@ class OAuthService:
             
             # 소프트 삭제된 경우 복구
             if user.is_del:
-                await self._user_service.restore_user(user, oauth_user_info)
+                await self._user_use_case.restore_user(user, oauth_user_info)
 
             # FCM 토큰 업데이트
             if fcm_token:
-                await self._user_service.update_fcm_token(user.id, fcm_token)
+                await self._user_use_case.update_fcm_token(user.id, fcm_token)
 
             # commit 후 트랜잭션이 닫힐 수 있으므로 새로운 쿼리로 조회
             # LoginInfoDto는 UserDetailDto를 요구하므로 get_user_with_follow_stats 사용
             # user_id를 사용하여 새로 조회 (세션 상태와 무관하게 동작)
-            user_dto = await self._user_service.get_user_with_follow_stats(user_id, user_id)
+            user_dto = await self._user_use_case.get_user_with_follow_stats(
+                user_id, user_id
+            )
         else:
             # 2. 새 사용자 생성 (UserDto 반환)
             # create_user 내부에서 이미 commit/refresh 수행
-            user_dto = await self._user_service.create_user(
+            user_dto = await self._user_use_case.create_user(
                 email=oauth_user_info.email,
                 name=oauth_user_info.username,
                 nickname=oauth_user_info.nickname,

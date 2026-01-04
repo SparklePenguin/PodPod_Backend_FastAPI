@@ -1,45 +1,40 @@
+"""Block User Use Case - 사용자 차단 관련 비즈니스 로직 처리"""
+
 from datetime import datetime, timezone
 
 from app.common.schemas import PageDto
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.tendencies.repositories.tendency_repository import TendencyRepository
-from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 from app.features.users.exceptions import (
     BlockNotFoundException,
     CannotBlockSelfException,
     UserNotFoundException,
 )
 from app.features.users.repositories import BlockUserRepository, UserRepository
-from app.features.users.schemas import BlockUserResponse, UserDto
+from app.features.users.schemas import BlockInfoDto, UserDto
+from app.features.users.services.user_dto_service import UserDtoService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class BlockUserService:
-    """사용자 차단 서비스"""
+class BlockUserUseCase:
+    """사용자 차단 관련 비즈니스 로직을 처리하는 Use Case"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self,
+        session: AsyncSession,
+        block_repo: BlockUserRepository,
+        user_repo: UserRepository,
+        follow_repo: FollowRepository,
+        tendency_repo: TendencyRepository,
+    ):
         self._session = session
-        self._block_repo = BlockUserRepository(session)
-        self._user_repo = UserRepository(session)
-        self._follow_repo = FollowRepository(session)
-        tendency_repo = TendencyRepository(session)
-        self._tendency_use_case = TendencyUseCase(session, tendency_repo)
-
-    # - MARK: 사용자 성향 타입 조회
-    async def _get_user_tendency_type(self, user_id: int) -> str | None:
-        """사용자의 성향 타입 조회"""
-        try:
-            user_tendency = await self._tendency_use_case.get_user_tendency_result(
-                user_id
-            )
-            if user_tendency:
-                return user_tendency.tendency_type
-            return None
-        except Exception:
-            return None
+        self._block_repo = block_repo
+        self._user_repo = user_repo
+        self._follow_repo = follow_repo
+        self._tendency_repo = tendency_repo
 
     # - MARK: 사용자 차단
-    async def block_user(self, blocker_id: int, blocked_id: int) -> BlockUserResponse:
+    async def block_user(self, blocker_id: int, blocked_id: int) -> BlockInfoDto:
         """사용자 차단 (팔로우 관계도 함께 삭제)"""
         # 자기 자신을 차단하려는 경우
         if blocker_id == blocked_id:
@@ -74,7 +69,7 @@ class BlockUserService:
             else datetime.now(timezone.utc).replace(tzinfo=None)
         )
 
-        return BlockUserResponse(
+        return BlockInfoDto(
             blocker_id=block.blocker_id,
             blocked_id=block.blocked_id,
             created_at=created_at_val,
@@ -86,6 +81,9 @@ class BlockUserService:
         success = await self._block_repo.delete_block(blocker_id, blocked_id)
         if not success:
             raise BlockNotFoundException()
+
+        # 트랜잭션 커밋
+        await self._session.commit()
 
     # - MARK: 차단한 사용자 목록 조회
     async def get_blocked_users(
@@ -101,29 +99,31 @@ class BlockUserService:
             # 성향 타입 조회
             if user.id is None:
                 continue
-            tendency_type = await self._get_user_tendency_type(user.id)
+            try:
+                user_tendency = await self._tendency_repo.get_user_tendency_result(
+                    user.id
+                )
+                if user_tendency:
+                    tendency_type_raw = user_tendency.tendency_type
+                    tendency_type = (
+                        str(tendency_type_raw)
+                        if tendency_type_raw is not None
+                        else None
+                    )
+                else:
+                    tendency_type = None
+            except Exception:
+                tendency_type = None
 
-            user_dto = UserDto(
-                id=user.id,
-                nickname=user.nickname or "",
-                profile_image=user.profile_image or "",
-                intro=user.intro or "",
-                tendency_type=tendency_type or "",
-                is_following=False,  # 차단한 사용자는 팔로우할 수 없음
+            user_dto = UserDtoService.create_user_dto(
+                user, tendency_type or "", is_following=False
             )
             users.append(user_dto)
 
         # PageDto 생성
-        total_pages = (total_count + size - 1) // size
-        has_next = page < total_pages
-        has_prev = page > 1
-
-        return PageDto(
+        return PageDto.create(
             items=users,
             page=page,
             size=size,
-            total=total_count,
-            total_pages=total_pages,
-            has_next=has_next,
-            has_prev=has_prev,
+            total_count=total_count,
         )

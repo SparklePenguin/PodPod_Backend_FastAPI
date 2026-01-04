@@ -267,16 +267,13 @@ class PodUseCase:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> PodDetailDto:
         """사용자가 개설한 파티 목록 조회 (비즈니스 로직 검증)"""
-        from app.features.users.services.user_service import UserService
-
         # 사용자 존재 확인
-        user_service = UserService(self._session)
-        try:
-            await user_service.get_user(user_id)
-        except UserNotFoundException:
-            raise
-        except Exception:
-            # 다른 예외는 UserNotFoundException으로 변환
+        from app.features.users.repositories import UserRepository
+
+        user_repo = UserRepository(self._session)
+        user = await user_repo.get_by_id(user_id)
+        if not user or user.is_del:
+            raise UserNotFoundException(user_id)
             raise UserNotFoundException(user_id)
 
         # 서비스 로직 호출
