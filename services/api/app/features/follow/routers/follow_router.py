@@ -8,12 +8,10 @@ from app.features.follow.schemas import (
     FollowNotificationUpdateRequest,
     FollowRequest,
     FollowStatsDto,
-    UserDto,
 )
 from app.features.follow.services.follow_service import FollowService
 from app.features.pods.schemas import PodDetailDto
 from fastapi import APIRouter, Depends, Path, Query, status
-
 
 router = APIRouter()
 
@@ -62,54 +60,6 @@ async def unfollow_user(
     )
 
 
-# - MARK: 팔로우하는 사용자 목록 조회
-@router.get(
-    "/followings",
-    response_model=BaseResponse[PageDto[UserDto]],
-    description="팔로우하는 사용자 목록 조회",
-)
-async def get_following_list(
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
-):
-    following_list = await follow_service.get_following_list(
-        user_id=current_user_id, page=page, size=size
-    )
-
-    return BaseResponse.ok(
-        data=following_list,
-        http_status=status.HTTP_200_OK,
-        message_ko="팔로우 목록을 조회했습니다.",
-        message_en="Successfully retrieved following list.",
-    )
-
-
-# - MARK: 팔로워 목록 조회
-@router.get(
-    "/followers",
-    response_model=BaseResponse[PageDto[UserDto]],
-    description="팔로워 목록 조회",
-)
-async def get_followers_list(
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
-):
-    followers_list = await follow_service.get_followers_list(
-        user_id=current_user_id, current_user_id=current_user_id, page=page, size=size
-    )
-
-    return BaseResponse.ok(
-        data=followers_list,
-        http_status=status.HTTP_200_OK,
-        message_ko="팔로워 목록을 조회했습니다.",
-        message_en="Successfully retrieved followers list.",
-    )
-
-
 # - MARK: 팔로우 통계 조회
 @router.get(
     "/stats/{user_id}",
@@ -154,30 +104,6 @@ async def get_following_users_pods(
         http_status=status.HTTP_200_OK,
         message_ko="팔로우하는 사용자의 파티 목록을 조회했습니다.",
         message_en="Successfully retrieved following users' pods.",
-    )
-
-
-# - MARK: 추천 유저 목록 조회
-@router.get(
-    "/recommend",
-    response_model=BaseResponse[PageDto[UserDto]],
-    description="추천 유저 목록 조회",
-)
-async def get_recommended_users(
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
-):
-    users = await follow_service.get_recommended_users(
-        user_id=current_user_id, page=page, size=size
-    )
-
-    return BaseResponse.ok(
-        data=users,
-        http_status=status.HTTP_200_OK,
-        message_ko="추천 유저 목록을 조회했습니다.",
-        message_en="Successfully retrieved recommended users.",
     )
 
 
