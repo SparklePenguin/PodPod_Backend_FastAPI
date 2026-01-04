@@ -1,5 +1,8 @@
+"""Session Use Case - 비즈니스 로직 처리"""
+
 from app.core.security import verify_password
 from app.core.session import (
+    TokenInvalidError,
     add_token_to_blacklist,
     create_access_token,
     create_refresh_token,
@@ -8,50 +11,25 @@ from app.core.session import (
 )
 from app.features.auth.schemas import CredentialDto, LoginInfoDto
 from app.features.session.repositories import SessionRepository
+from app.features.users.exceptions import UserNotFoundException
 from app.features.users.schemas import UserDetailDto
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class SessionService:
-    def __init__(self, session: AsyncSession):
-        self._session_repo = SessionRepository(session)
+class SessionUseCase:
+    """세션 관련 비즈니스 로직을 처리하는 Use Case"""
 
-    # - MARK: 토큰 생성
-    async def create_token(self, user_id: int) -> CredentialDto:
-        """토큰 생성"""
-        return CredentialDto(
-            access_token=create_access_token(user_id),
-            refresh_token=await create_refresh_token(user_id),
-        )
-
-    # - MARK: 토큰 갱신
-    async def refresh_token(self, refresh_token: str) -> CredentialDto:
-        """토큰 갱신"""
-        from app.core.session import TokenInvalidError
-
-        # 1. Refresh token 검증 (Redis 확인 포함)
-        user_id = await verify_refresh_token(refresh_token)
-
-        # 2. 유저 존재 및 상태 확인
-        user = await self._session_repo.get_user_by_id(user_id)
-        if not user:
-            raise TokenInvalidError("User not found")
-
-        if user.is_del:
-            raise TokenInvalidError("User account has been deleted")
-
-        # 3. 기존 리프레시 토큰 무효화 (Redis에서 삭제)
-        await revoke_refresh_token(refresh_token)
-
-        # 4. 새 토큰 발급
-        return CredentialDto(
-            access_token=create_access_token(user_id),
-            refresh_token=await create_refresh_token(user_id),
-        )
+    def __init__(
+        self,
+        session: AsyncSession,
+        session_repo: SessionRepository,
+    ):
+        self._session = session
+        self._session_repo = session_repo
 
     # - MARK: 이메일 로그인
-    async def login(self, login_data):
+    async def login(self, login_data) -> LoginInfoDto:
         """이메일 로그인"""
         # 이메일로 사용자 찾기
         user = await self._session_repo.get_user_by_email(login_data.email)
@@ -79,23 +57,41 @@ class SessionService:
             )
 
         if hasattr(login_data, "fcm_token") and login_data.fcm_token:
-            await self._session_repo.update_fcm_token(user_id, login_data.fcm_token)
+            await self._update_fcm_token(user_id, login_data.fcm_token)
 
         # 토큰 생성
-        credential = await self.create_token(user_id)
+        credential = await self._create_token(user_id)
 
         # SignInResponse 생성
-        sign_in_response = LoginInfoDto(
+        return LoginInfoDto(
             credential=credential,
             user=UserDetailDto.model_validate(user, from_attributes=True),
         )
 
-        return sign_in_response
+    # - MARK: 토큰 갱신
+    async def refresh_token(self, refresh_token: str) -> CredentialDto:
+        """토큰 갱신"""
+        # 1. Refresh token 검증 (Redis 확인 포함)
+        user_id = await verify_refresh_token(refresh_token)
+
+        # 2. 유저 존재 및 상태 확인
+        user = await self._session_repo.get_user_by_id(user_id)
+        if not user:
+            raise TokenInvalidError("User not found")
+
+        if user.is_del:
+            raise TokenInvalidError("User account has been deleted")
+
+        # 3. 기존 리프레시 토큰 무효화 (Redis에서 삭제)
+        await revoke_refresh_token(refresh_token)
+
+        # 4. 새 토큰 발급
+        return await self._create_token(user_id)
 
     # - MARK: 로그아웃
     async def logout(
         self, access_token: str, refresh_token: str | None = None, user_id: int | None = None
-    ):
+    ) -> None:
         """로그아웃 (토큰 무효화 및 FCM 토큰 삭제)"""
         # 액세스 토큰을 블랙리스트에 추가하여 무효화 (TTL: 30분)
         await add_token_to_blacklist(access_token, ttl_seconds=1800)
@@ -106,16 +102,18 @@ class SessionService:
 
         # FCM 토큰 삭제
         if user_id:
-            await self._session_repo.update_fcm_token(user_id, None)
+            await self._update_fcm_token(user_id, None)
 
-    # - MARK: Refresh Token 검증
-    @staticmethod
-    async def verify_refresh_token(refresh_token: str) -> int:
-        """Refresh Token 검증 및 user_id 반환 (정적 메서드)"""
-        return await verify_refresh_token(refresh_token)
+    # - MARK: 토큰 생성 (내부 메서드)
+    async def _create_token(self, user_id: int) -> CredentialDto:
+        """토큰 생성"""
+        return CredentialDto(
+            access_token=create_access_token(user_id),
+            refresh_token=await create_refresh_token(user_id),
+        )
 
-    # - MARK: Access Token 생성
-    @staticmethod
-    def create_access_token(user_id: int) -> str:
-        """Access Token 생성 (정적 메서드)"""
-        return create_access_token(user_id)
+    # - MARK: FCM 토큰 업데이트 (커밋 포함)
+    async def _update_fcm_token(self, user_id: int, fcm_token: str | None) -> None:
+        """사용자의 FCM 토큰 업데이트 (커밋 포함)"""
+        await self._session_repo.update_fcm_token(user_id, fcm_token)
+        await self._session.commit()

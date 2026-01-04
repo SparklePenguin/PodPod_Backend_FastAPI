@@ -20,7 +20,6 @@ from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
 from app.features.oauth.services.naver_oauth_service import NaverOAuthService
-from app.features.session.services.session_service import SessionService
 from app.features.users.repositories import UserRepository
 from app.features.users.services.user_service import UserService
 from fastapi import HTTPException, status
@@ -36,7 +35,6 @@ class OAuthService:
         self._session = session
         self._user_repo = UserRepository(session)
         self._user_service = UserService(session)
-        self._session_service = SessionService(session)
         self._auth_service = AuthService(session)
         self._kakao_service = KakaoOAuthService(session)
         self._google_service = GoogleOAuthService(session)

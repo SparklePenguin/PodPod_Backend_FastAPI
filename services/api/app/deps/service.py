@@ -39,7 +39,8 @@ from app.features.pods.use_cases.like_use_case import LikeUseCase
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from app.features.pods.use_cases.review_use_case import ReviewUseCase
 from app.features.reports.services.report_service import ReportService
-from app.features.session.services.session_service import SessionService
+from app.features.session.repositories.session_repository import SessionRepository
+from app.features.session.use_cases.session_use_case import SessionUseCase
 from app.features.tendencies.repositories.tendency_repository import TendencyRepository
 from app.features.tendencies.services.tendency_calculation_service import (
     TendencyCalculationService,
@@ -115,10 +116,14 @@ def get_tendency_use_case(
     )
 
 
-def get_session_service(
+def get_session_use_case(
     session: AsyncSession = Depends(get_session),
-) -> SessionService:
-    return SessionService(session)
+) -> SessionUseCase:
+    session_repo = SessionRepository(session)
+    return SessionUseCase(
+        session=session,
+        session_repo=session_repo,
+    )
 
 
 def get_report_service(

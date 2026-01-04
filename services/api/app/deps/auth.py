@@ -1,4 +1,4 @@
-from app.features.session.services.session_service import SessionService
+from app.core.session import create_access_token, verify_refresh_token
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -35,10 +35,10 @@ async def get_current_user_id(
         if refresh_token:
             try:
                 # Refresh Token 검증 및 user_id 추출 (Redis 확인 포함)
-                user_id = await SessionService.verify_refresh_token(refresh_token)
+                user_id = await verify_refresh_token(refresh_token)
 
                 # 새 Access Token 생성
-                new_access_token = SessionService.create_access_token(user_id)
+                new_access_token = create_access_token(user_id)
 
                 # Response Header에 새 토큰 추가 (미들웨어에서 처리)
                 request.state.new_access_token = new_access_token

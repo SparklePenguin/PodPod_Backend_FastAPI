@@ -64,15 +64,14 @@ class UserRepository:
         await self._session.commit()
         return await self.get_by_id(user_id)
 
-    # - MARK: FCM 토큰 업데이트
+    # - MARK: FCM 토큰 업데이트 (커밋 없음)
     async def update_fcm_token(self, user_id: int, fcm_token: str | None) -> None:
-        """사용자의 FCM 토큰 업데이트"""
+        """사용자의 FCM 토큰 업데이트 (커밋은 use_case에서 처리)"""
         await self._session.execute(
             update(User)
             .where(User.id == user_id)
             .values(fcm_token=fcm_token, updated_at=datetime.now(timezone.utc))
         )
-        await self._session.commit()
 
     # - MARK: 사용자 정보 업데이트
     async def update_user(self, user_id: int, updates: Dict[str, Any]) -> User | None:
