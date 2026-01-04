@@ -7,7 +7,6 @@ from app.features.pods.models.pod_models import (
     PodStatus,
 )
 from app.features.users.schemas import UserDto
-from fastapi import Form
 from pydantic import (
     BaseModel,
     Field,
@@ -121,30 +120,29 @@ class PodDetailDto(BaseModel):
     }
 
 
-# - MARK: Pod Form (Form 데이터용 - FastAPI 0.95+ Form 직접 사용, 생성/수정 공통)
 class PodForm(BaseModel):
     """파티 생성/수정 Form 데이터 모델 (FastAPI 0.95+ 지원)"""
 
-    title: str | None = Form(None, description="파티 제목")
-    description: str | None = Form(None, description="파티 설명")
-    sub_categories: str | None = Form(
+    title: str | None = Field(None, description="파티 제목")
+    description: str | None = Field(None, description="파티 설명")
+    sub_categories: str | None = Field(
         None, alias="subCategories", description="서브 카테고리 JSON 문자열"
     )
-    capacity: int | None = Form(None, description="최대 인원수")
-    place: str | None = Form(None, description="장소명")
-    address: str | None = Form(None, description="주소")
-    sub_address: str | None = Form(None, alias="subAddress", description="상세 주소")
-    x: float | None = Form(None, description="경도 (longitude)")
-    y: float | None = Form(None, description="위도 (latitude)")
-    meeting_date: str | None = Form(
+    capacity: int | None = Field(None, description="최대 인원수")
+    place: str | None = Field(None, description="장소명")
+    address: str | None = Field(None, description="주소")
+    sub_address: str | None = Field(None, alias="subAddress", description="상세 주소")
+    x: float | None = Field(None, alias="x", description="경도 (longitude)")
+    y: float | None = Field(None, alias="y", description="위도 (latitude)")
+    meeting_date: datetime | None = Field(
         None,
         alias="meetingDate",
         description="만남 일시 (UTC ISO 8601, 예: 2025-11-20T12:00:00Z)",
     )
-    selected_artist_id: int | None = Form(
+    selected_artist_id: int | None = Field(
         None, alias="selectedArtistId", description="선택된 아티스트 ID"
     )
-    image_orders: str | None = Form(
+    image_orders: str | None = Field(
         None,
         alias="imageOrders",
         description="이미지 순서 JSON 문자열 (기존: {type: 'existing', url: '...'}, 신규: {type: 'new', fileIndex: 0})",
@@ -207,6 +205,18 @@ class PodImageDto(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
+    
+    @classmethod
+    def from_pod_image(cls, pod_image) -> "PodImageDto":
+        """PodImage 모델에서 PodImageDto 생성 (pod_detail_id를 pod_id로 매핑)"""
+        return cls(
+            id=pod_image.id,
+            pod_id=pod_image.pod_detail_id,  # pod_detail_id를 pod_id로 매핑
+            image_url=pod_image.image_url,
+            thumbnail_url=pod_image.thumbnail_url,
+            display_order=pod_image.display_order,
+            created_at=pod_image.created_at,
+        )
 
 
 # - MARK: Pod Member DTO
