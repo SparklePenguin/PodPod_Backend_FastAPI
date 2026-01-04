@@ -70,34 +70,34 @@ class UserService:
         fcm_token: str | None = None,
         password: str | None = None,
     ) -> UserDetailDto:
-        # 이메일 중복 확인 (provider도 함께 확인)
-        user_email = email
-        if user_email is None:
+        # 이메일 필수 체크: OAuth 로그인이 아닌 경우(일반 회원가입)에만 이메일 필수
+        if not auth_provider and email is None:
             raise EmailRequiredException()
 
-        # 타입 체커를 위해 명시적으로 str임을 보장
-        assert user_email is not None, "user_email should not be None after check"
-        existing_user = await self._user_repo.get_by_email(user_email)
-        if existing_user:
-            # 같은 provider인지 확인
-            existing_auth_provider = existing_user.auth_provider
-            existing_auth_provider_id = existing_user.auth_provider_id
+        # 이메일 중복 확인 (이메일이 있고, provider도 함께 확인)
+        user_email = email
+        if user_email is not None:
+            existing_user = await self._user_repo.get_by_email(user_email)
+            if existing_user:
+                # 같은 provider인지 확인
+                existing_auth_provider = existing_user.auth_provider
+                existing_auth_provider_id = existing_user.auth_provider_id
 
-            if (
-                auth_provider
-                and existing_auth_provider == auth_provider
-                and existing_auth_provider_id == auth_provider_id
-            ):
-                # 같은 provider의 같은 계정이면 중복 에러
-                raise SameOAuthProviderExistsException(
-                    provider=auth_provider or "unknown"
-                )
-            elif not auth_provider:
-                # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
-                raise EmailAlreadyExistsException(email=user_email)
-            else:
-                # 다른 OAuth provider인 경우 계속 진행 (새 계정 생성)
-                pass
+                if (
+                    auth_provider
+                    and existing_auth_provider == auth_provider
+                    and existing_auth_provider_id == auth_provider_id
+                ):
+                    # 같은 provider의 같은 계정이면 중복 에러
+                    raise SameOAuthProviderExistsException(
+                        provider=auth_provider or "unknown"
+                    )
+                elif not auth_provider:
+                    # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
+                    raise EmailAlreadyExistsException(email=user_email)
+                else:
+                    # 다른 OAuth provider인 경우 계속 진행 (새 계정 생성)
+                    pass
 
         # 비밀번호 해싱
         if password is not None:
