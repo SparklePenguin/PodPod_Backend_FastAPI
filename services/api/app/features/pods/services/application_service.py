@@ -53,9 +53,9 @@ class ApplicationService:
         if include_message:
             message = getattr(application, "message", None)
 
-        status_str = str(application.status) if application.status else ""
+        status_str = str(application.status.name) if application.status else ""
         if not status_str and hasattr(application, "status"):
-            status_str = str(application.status) if application.status else ""
+            status_str = str(application.status.name) if application.status else ""
 
         return PodApplDto(
             id=application.id or 0,
@@ -78,7 +78,7 @@ class ApplicationService:
             pod_id=application.pod_id or 0,
             user=user_dto,
             message=application.message,
-            status=str(application.status) if application.status else "",
+            status=str(application.status.name) if application.status else "",
             applied_at=application.applied_at,
             reviewed_at=application.reviewed_at,
             reviewed_by=reviewer_dto,
