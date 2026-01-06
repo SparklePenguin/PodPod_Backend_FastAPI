@@ -276,6 +276,7 @@ class Container(containers.DeclarativeContainer):
         review_service=review_service,
         like_service=like_service,
         follow_service=follow_service,
+        user_dto_service=user_dto_service,
     )
 
     # Chat Service
@@ -368,6 +369,7 @@ class Container(containers.DeclarativeContainer):
         pod_repo=pod_repository,
         notification_service=pod_notification_service,
         follow_service=follow_service,
+        user_repo=user_repository,
     )
 
     chat_use_case = providers.Factory(

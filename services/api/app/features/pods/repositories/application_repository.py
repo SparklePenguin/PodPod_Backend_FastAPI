@@ -87,6 +87,40 @@ class ApplicationRepository:
         result = await self._session.execute(query)
         return list(result.scalars().all())
 
+    # - MARK: 여러 파티의 신청서 목록 조회 (배치 로딩)
+    async def get_applications_by_pod_ids(
+        self,
+        pod_ids: list[int],
+        status: str | ApplicationStatus | None = None,
+        include_hidden: bool = False,
+    ) -> list[Application]:
+        """여러 파티의 신청서를 한 번에 조회 (배치 로딩)"""
+        if not pod_ids:
+            return []
+
+        query = select(Application).where(Application.pod_id.in_(pod_ids))
+
+        if status:
+            # status를 Enum으로 변환 (문자열인 경우)
+            if isinstance(status, str):
+                try:
+                    status_enum = ApplicationStatus(status.lower())
+                except ValueError:
+                    status_enum = None
+            else:
+                status_enum = status
+            if status_enum:
+                query = query.where(Application.status == status_enum)
+
+        # 숨김 처리된 신청서 제외 (기본값)
+        if not include_hidden:
+            query = query.where(~Application.is_hidden)
+
+        query = query.order_by(Application.applied_at.desc())
+
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
     # - MARK: 사용자의 신청서 목록 조회 (리스트용)
     async def get_applications_by_user_id(
         self, user_id: int, status: str | ApplicationStatus | None = None

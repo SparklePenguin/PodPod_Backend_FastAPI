@@ -3,6 +3,7 @@
 import json
 from typing import List
 
+from app.common.schemas import PageDto
 from app.features.follow.services.follow_service import FollowService
 from app.features.pods.exceptions import (
     InvalidDateException,
@@ -20,12 +21,12 @@ from app.features.pods.models import (
     PodStatus,
     TourSubCategory,
 )
-from app.common.schemas import PageDto
 from app.features.pods.repositories.pod_repository import PodRepository
-from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
+from app.features.pods.schemas import PodDetailDto, PodDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_notification_service import PodNotificationService
 from app.features.pods.services.pod_service import PodService
 from app.features.users.exceptions import UserNotFoundException
+from app.features.users.repositories import UserRepository
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,12 +41,14 @@ class PodUseCase:
         pod_repo: PodRepository,
         notification_service: PodNotificationService,
         follow_service: FollowService,
+        user_repo: UserRepository,
     ):
         self._session = session
         self._pod_service = pod_service
         self._pod_repo = pod_repo
         self._notification_service = notification_service
         self._follow_service = follow_service
+        self._user_repo = user_repo
 
     # MARK: - 파티 생성
     async def create_pod_from_form(
@@ -199,12 +202,16 @@ class PodUseCase:
             raise
 
     # MARK: - 파티 삭제
-    async def delete_pod(self, pod_id: int) -> None:
+    async def delete_pod(self, pod_id: int, current_user_id: int) -> None:
         """파티 삭제 (비즈니스 로직 검증)"""
         # 파티 조회
         pod = await self._pod_repo.get_pod_by_id(pod_id)
         if not pod:
             raise PodNotFoundException(pod_id)
+
+        # 파티장 권한 확인
+        if pod.owner_id != current_user_id:
+            raise NoPodAccessPermissionException(pod_id, current_user_id)
 
         # 서비스 로직 호출
         try:
@@ -219,6 +226,8 @@ class PodUseCase:
         self, pod_id: int, user_id: str | None, current_user_id: int
     ) -> dict:
         """파티 나가기 (비즈니스 로직 검증)"""
+        from app.features.pods.exceptions import PodAccessDeniedException
+
         # user_id 파싱
         if user_id is not None and user_id.strip() != "":
             try:
@@ -233,12 +242,16 @@ class PodUseCase:
         if not pod:
             raise PodNotFoundException(pod_id)
 
+        # 파티장인지 확인
+        if pod.owner_id == target_user_id:
+            raise PodAccessDeniedException(
+                "파티장은 파티 삭제 엔드포인트를 사용해주세요."
+            )
+
         # 파티장이 아닌 경우 멤버인지 확인
-        is_owner = pod.owner_id is not None and pod.owner_id == target_user_id
-        if not is_owner:
-            is_member = await self._pod_repo.is_pod_member(pod_id, target_user_id)
-            if not is_member:
-                raise NoPodAccessPermissionException(pod_id, target_user_id)
+        is_member = await self._pod_repo.is_pod_member(pod_id, target_user_id)
+        if not is_member:
+            raise NoPodAccessPermissionException(pod_id, target_user_id)
 
         # 서비스 로직 호출
         try:
@@ -265,19 +278,18 @@ class PodUseCase:
     # MARK: - 사용자가 개설한 파티 목록 조회
     async def get_user_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PodDetailDto:
+    ) -> PageDto[PodDto]:
         """사용자가 개설한 파티 목록 조회 (비즈니스 로직 검증)"""
-        # 사용자 존재 확인
-        from app.features.users.repositories import UserRepository
 
-        user_repo = UserRepository(self._session)
-        user = await user_repo.get_by_id(user_id)
+        # 사용자 존재 확인
+        user = await self._user_repo.get_by_id(user_id)
         if not user or user.is_del:
             raise UserNotFoundException(user_id)
-            raise UserNotFoundException(user_id)
 
-        # 서비스 로직 호출
-        return await self._pod_service.get_user_pods(user_id, page, size)
+        # 서비스 로직 호출 (목록 조회는 applications, reviews 제외)
+        return await self._pod_service.get_user_pods(
+            user_id, page, size, include_applications=False, include_reviews=False
+        )
 
     # MARK: - 파티 목록 조회 (타입별)
     async def get_pods_by_type(
@@ -288,9 +300,9 @@ class PodUseCase:
         location: str | None = None,
         page: int = 1,
         size: int = 20,
-    ) -> tuple[PageDto[PodDetailDto], str, str]:
+    ) -> tuple[PageDto[PodDto], str, str]:
         """파티 목록 조회 (비즈니스 로직 검증)
-        
+
         Returns:
             tuple[PageDto[PodDetailDto], message_ko, message_en]: 파티 목록과 메시지
         """
@@ -301,51 +313,83 @@ class PodUseCase:
             pods = await self._pod_service.get_trending_pods(
                 user_id, selected_artist_id, page, size
             )
-            return pods, "인기 파티 목록을 조회했습니다.", "Successfully retrieved trending pods."
-        
+            return (
+                pods,
+                "인기 파티 목록을 조회했습니다.",
+                "Successfully retrieved trending pods.",
+            )
+
         elif pod_type == "closing-soon":
             if selected_artist_id is None:
                 raise SelectedArtistIdRequiredException(pod_type)
             pods = await self._pod_service.get_closing_soon_pods(
                 user_id, selected_artist_id, location, page, size
             )
-            return pods, "마감 직전 파티 목록을 조회했습니다.", "Successfully retrieved closing soon pods."
-        
+            return (
+                pods,
+                "마감 직전 파티 목록을 조회했습니다.",
+                "Successfully retrieved closing soon pods.",
+            )
+
         elif pod_type == "history-based":
             if selected_artist_id is None:
                 raise SelectedArtistIdRequiredException(pod_type)
             pods = await self._pod_service.get_history_based_pods(
                 user_id, selected_artist_id, page, size
             )
-            return pods, "우리 만난적 있어요 파티 목록을 조회했습니다.", "Successfully retrieved history-based pods."
-        
+            return (
+                pods,
+                "우리 만난적 있어요 파티 목록을 조회했습니다.",
+                "Successfully retrieved history-based pods.",
+            )
+
         elif pod_type == "popular-category":
             if selected_artist_id is None:
                 raise SelectedArtistIdRequiredException(pod_type)
             pods = await self._pod_service.get_popular_categories_pods(
                 user_id, selected_artist_id, location, page, size
             )
-            return pods, "인기 카테고리 파티 목록을 조회했습니다.", "Successfully retrieved popular category pods."
-        
+            return (
+                pods,
+                "인기 카테고리 파티 목록을 조회했습니다.",
+                "Successfully retrieved popular category pods.",
+            )
+
         # 사용자별 파티 목록 타입들
         elif pod_type == "joined":
             pods = await self._pod_service.get_user_joined_pods(user_id, page, size)
-            return pods, "내가 참여한 파티 목록을 조회했습니다.", "Successfully retrieved my joined pods."
-        
+            return (
+                pods,
+                "내가 참여한 파티 목록을 조회했습니다.",
+                "Successfully retrieved my joined pods.",
+            )
+
         elif pod_type == "liked":
             pods = await self._pod_service.get_user_liked_pods(user_id, page, size)
-            return pods, "내가 저장한 파티 목록을 조회했습니다.", "Successfully retrieved my liked pods."
-        
+            return (
+                pods,
+                "내가 저장한 파티 목록을 조회했습니다.",
+                "Successfully retrieved my liked pods.",
+            )
+
         elif pod_type == "owned":
             pods = await self._pod_service.get_user_pods(user_id, page, size)
-            return pods, "내가 개설한 파티 목록을 조회했습니다.", "Successfully retrieved my owned pods."
-        
+            return (
+                pods,
+                "내가 개설한 파티 목록을 조회했습니다.",
+                "Successfully retrieved my owned pods.",
+            )
+
         elif pod_type == "following":
             pods = await self._follow_service.get_following_pods(
                 user_id=user_id, page=page, size=size
             )
-            return pods, "팔로우하는 사용자의 파티 목록을 조회했습니다.", "Successfully retrieved following users' pods."
-        
+            return (
+                pods,
+                "팔로우하는 사용자의 파티 목록을 조회했습니다.",
+                "Successfully retrieved following users' pods.",
+            )
+
         else:
             raise InvalidPodTypeException(pod_type)
 
@@ -354,7 +398,7 @@ class PodUseCase:
         self,
         user_id: int | None,
         search_request: PodSearchRequest,
-    ) -> PodDetailDto:
+    ) -> PageDto[PodDto]:
         """파티 검색 (비즈니스 로직 검증)"""
 
         # 날짜 검증

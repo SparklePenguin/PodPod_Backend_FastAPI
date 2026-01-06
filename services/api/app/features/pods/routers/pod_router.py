@@ -4,7 +4,7 @@ from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.pod_form import get_pod_form
 from app.deps.providers import get_pod_service, get_pod_use_case
-from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
+from app.features.pods.schemas import PodDetailDto, PodDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_service import PodService
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
@@ -111,7 +111,7 @@ async def get_pod_types():
 # MARK: - 파티 목록 조회 (통합)
 @router.get(
     "",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
+    response_model=BaseResponse[PageDto[PodDto]],
     description="파티 목록 조회 (type: trending, closing-soon, history-based, popular-category, joined, liked, owned, following)",
 )
 async def get_pods_by_type(
@@ -149,7 +149,7 @@ async def get_pods_by_type(
 # MARK: - 사용자가 개설한 파티 목록 조회 (다른 사용자 조회용)
 @router.get(
     "/user",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
+    response_model=BaseResponse[PageDto[PodDto]],
     description="사용자가 개설한 파티 목록 조회",
 )
 async def get_user_pods(
@@ -161,11 +161,11 @@ async def get_user_pods(
         description="조회할 사용자 ID (없으면 현재 로그인한 사용자)",
     ),
     current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """사용자가 개설한 파티 목록 조회"""
     target_user_id = userId if userId is not None else current_user_id
-    user_pods = await pod_service.get_user_pods(target_user_id, page, size)
+    user_pods = await pod_use_case.get_user_pods(target_user_id, page, size)
     return BaseResponse.ok(
         data=user_pods,
         message_ko="사용자가 개설한 파티 목록을 조회했습니다.",
@@ -176,7 +176,7 @@ async def get_user_pods(
 # MARK: - 팟 목록 조회 (검색 포함)
 @router.post(
     "/search",
-    response_model=BaseResponse[PageDto[PodDetailDto]],
+    response_model=BaseResponse[PageDto[PodDto]],
     description="팟 목록 조회",
 )
 async def search_pods(
@@ -243,22 +243,10 @@ async def update_pod(
 async def delete_pod(
     pod_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """파티 삭제 (파티장만 가능)"""
-    # 파티 조회 및 파티장 확인
-    pod = await pod_service._pod_repo.get_pod_by_id(pod_id)
-    if not pod:
-        from app.features.pods.exceptions import PodNotFoundException
-
-        raise PodNotFoundException(pod_id)
-
-    if pod.owner_id != current_user_id:
-        from app.features.pods.exceptions import NoPodAccessPermissionException
-
-        raise NoPodAccessPermissionException(pod_id, current_user_id)
-
-    await pod_service.delete_pod(pod_id)
+    await pod_use_case.delete_pod(pod_id, current_user_id)
     return BaseResponse.ok(http_status=status.HTTP_204_NO_CONTENT)
 
 
@@ -299,26 +287,10 @@ async def delete_pod_member(
         alias="userId",
     ),
     current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """파티 멤버 삭제 (일반 멤버만 가능, 파티장은 파티 삭제 엔드포인트 사용)"""
-    # 파티 조회 및 파티장 확인
-    pod = await pod_service._pod_repo.get_pod_by_id(pod_id)
-    if not pod:
-        from app.features.pods.exceptions import PodNotFoundException
-
-        raise PodNotFoundException(pod_id)
-
-    # user_id가 제공되면 사용, 없으면 현재 사용자 사용
-    target_user_id = int(user_id) if user_id and user_id.strip() else current_user_id
-
-    # 파티장인지 확인
-    if pod.owner_id == target_user_id:
-        from app.features.pods.exceptions import PodAccessDeniedException
-
-        raise PodAccessDeniedException("파티장은 파티 삭제 엔드포인트를 사용해주세요.")
-
-    result = await pod_service.leave_pod(pod_id, user_id, current_user_id)
+    result = await pod_use_case.leave_pod(pod_id, user_id, current_user_id)
     return BaseResponse.ok(
         data=result,
         message_ko="파티에서 성공적으로 나갔습니다.",

@@ -85,6 +85,20 @@ class PodReviewRepository:
         result = await self._session.execute(query)
         return list(result.scalars().all())
 
+    async def get_reviews_by_pod_ids(self, pod_ids: List[int]) -> List[PodReview]:
+        """여러 파티의 후기를 한 번에 조회 (배치 로딩)"""
+        if not pod_ids:
+            return []
+
+        query = (
+            select(PodReview)
+            .options(selectinload(PodReview.pod), selectinload(PodReview.user))
+            .where(PodReview.pod_id.in_(pod_ids))
+            .order_by(desc(PodReview.created_at))
+        )
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
     async def get_reviews_by_user(
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[PodReview], int]:

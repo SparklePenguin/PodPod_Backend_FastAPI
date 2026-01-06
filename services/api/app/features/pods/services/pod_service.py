@@ -32,6 +32,7 @@ from app.features.pods.schemas import (
     PodForm,
     PodImageDto,
 )
+from app.features.pods.schemas.pod_schemas import PodDto
 from app.features.pods.services.application_service import ApplicationService
 from app.features.pods.services.like_service import LikeService
 from app.features.pods.services.pod_notification_service import (
@@ -40,6 +41,7 @@ from app.features.pods.services.pod_notification_service import (
 from app.features.pods.services.review_service import ReviewService
 from app.features.users.exceptions import UserNotFoundException
 from app.features.users.repositories import UserRepository
+from app.features.users.services.user_dto_service import UserDtoService
 from app.features.users.use_cases.user_use_case import UserUseCase
 from app.utils.file_upload import save_upload_file
 from fastapi import HTTPException, UploadFile
@@ -62,6 +64,7 @@ class PodService:
         review_service: ReviewService,
         like_service: LikeService,
         follow_service: FollowService,
+        user_dto_service: UserDtoService,
     ):
         self._session = session
         self._pod_repo = pod_repo
@@ -75,6 +78,7 @@ class PodService:
         self._like_service = like_service
         self._notification_service = notification_service
         self._follow_service = follow_service
+        self._user_dto_service = user_dto_service
 
     # MARK: - 파티 생성 (Form 데이터에서)
     async def create_pod_from_form(
@@ -88,7 +92,7 @@ class PodService:
         # sub_categories를 JSON 문자열에서 리스트로 변환 (필수)
         if not pod_form.sub_categories:
             raise ValueError("sub_categories는 필수입니다.")
-        
+
         try:
             parsed = json.loads(pod_form.sub_categories)
             sub_categories_list = parsed if isinstance(parsed, list) else []
@@ -102,7 +106,7 @@ class PodService:
         # meetingDate(datetime) → date/time 분리
         if not pod_form.meeting_date:
             raise InvalidDateException("meetingDate 필드가 누락되었습니다.")
-        
+
         try:
             # 이미 datetime 객체이므로 UTC로 변환 후 date/time 분리
             dt = pod_form.meeting_date
@@ -217,7 +221,9 @@ class PodService:
         # Pod 모델을 PodDetailDto로 변환 (다른 조회 API들과 동일한 방식)
         if pod:
             # PodDetail과 images, applications, reviews 관계를 다시 로드 (MissingGreenlet 오류 방지)
-            await self._session.refresh(pod, ["detail", "images", "applications", "reviews"])
+            await self._session.refresh(
+                pod, ["detail", "images", "applications", "reviews"]
+            )
             pod_dto = await self._enrich_pod_dto(pod, owner_id)
 
             # 팔로워들에게 파티 생성 알림 전송
@@ -551,7 +557,9 @@ class PodService:
         # 파티 정보 다시 조회하여 DTO로 변환
         updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
         if updated_pod:
-            await self._session.refresh(updated_pod, ["detail", "images", "applications", "reviews"])
+            await self._session.refresh(
+                updated_pod, ["detail", "images", "applications", "reviews"]
+            )
 
             # thumbnail_url이 변경되었고 채팅방이 있으면 채팅방 cover_url 업데이트
             if "thumbnail_url" in update_fields and updated_pod.chat_room_id:
@@ -731,7 +739,7 @@ class PodService:
     # - MARK: 요즘 인기 있는 파티 조회
     async def get_trending_pods(
         self, user_id: int, selected_artist_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """
         요즘 인기 있는 파티 조회
         - 현재 선택된 아티스트 기준
@@ -743,11 +751,10 @@ class PodService:
             user_id, selected_artist_id, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
-        pod_dtos = []
-        for pod in pods:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            pods, user_id, include_applications=False, include_reviews=False
+        )
 
         # TODO: 실제 total_count를 가져오는 로직 추가 필요
         total_count = len(pod_dtos)  # 임시로 현재 페이지 아이템 수 사용
@@ -767,7 +774,7 @@ class PodService:
         location: str | None = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """
         마감 직전 파티 조회
         - 현재 선택된 아티스트 기준
@@ -780,11 +787,10 @@ class PodService:
             user_id, selected_artist_id, location, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
-        pod_dtos = []
-        for pod in pods:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            pods, user_id, include_applications=False, include_reviews=False
+        )
 
         total_count = len(pod_dtos)
 
@@ -798,7 +804,7 @@ class PodService:
     # - MARK: 우리 만난적 있어요 파티 조회
     async def get_history_based_pods(
         self, user_id: int, selected_artist_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """
         우리 만난적 있어요 파티 조회
         - 현재 선택된 아티스트 기준
@@ -810,11 +816,10 @@ class PodService:
             user_id, selected_artist_id, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
-        pod_dtos = []
-        for pod in pods:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            pods, user_id, include_applications=False, include_reviews=False
+        )
 
         total_count = len(pod_dtos)
 
@@ -833,7 +838,7 @@ class PodService:
         location: str | None = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """
         인기 최고 카테고리 파티 조회
         - 현재 선택된 아티스트 기준
@@ -845,11 +850,10 @@ class PodService:
             user_id, selected_artist_id, location, page, size
         )
 
-        # SQLAlchemy 모델을 DTO로 변환 (참여자 수, 좋아요 수 포함)
-        pod_dtos = []
-        for pod in pods:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            pods, user_id, include_applications=False, include_reviews=False
+        )
 
         total_count = len(pod_dtos)
 
@@ -862,28 +866,81 @@ class PodService:
 
     # - MARK: 특정 유저가 개설한 파티 목록 조회
     async def get_user_pods(
-        self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDetailDto]:
+        self,
+        user_id: int,
+        page: int = 1,
+        size: int = 20,
+        include_applications: bool = False,
+        include_reviews: bool = False,
+    ) -> PageDto[PodDto]:
         """특정 유저가 개설한 파티 목록 조회 (비즈니스 로직 검증 포함)"""
+        from collections import defaultdict
+
         # 사용자 존재 확인
         user = await self._user_repo.get_by_id(user_id)
         if not user or user.is_del:
             raise UserNotFoundException(user_id)
+
         try:
+            # 1. 파티 목록 조회 (Pod, Pod.detail, Pod.images만 로딩)
             result = await self._pod_repo.get_user_pods(user_id, page, size)
             pods = result["items"]
             total_count = result["total_count"]
 
+            if not pods:
+                return PageDto.create(
+                    items=[],
+                    page=page,
+                    size=size,
+                    total_count=total_count,
+                )
+
+            # 2. pod_ids 수집
+            pod_ids = [pod.id for pod in pods if pod.id is not None]
+
+            # 3. 배치 로딩 (필요한 경우만)
+            applications = []
+            reviews = []
+
+            if include_applications:
+                applications = await self._application_repo.get_applications_by_pod_ids(
+                    pod_ids
+                )
+
+            if include_reviews:
+                reviews = await self._review_repo.get_reviews_by_pod_ids(pod_ids)
+
+            # 4. 메모리에서 매핑
+            app_map = defaultdict(list)
+            for app in applications:
+                app_map[app.pod_id].append(app)
+
+            review_map = defaultdict(list)
+            for review in reviews:
+                review_map[review.pod_id].append(review)
+
+            # 5. 순수 함수로 조립 (쿼리 없음)
             pod_dtos = []
             for pod in pods:
                 try:
-                    pod_dto = await self._enrich_pod_dto(pod, user_id)
+                    pod_dto = self._convert_pod_to_dto(
+                        pod,
+                        user_id,
+                        applications=app_map.get(pod.id, [])
+                        if include_applications
+                        else [],
+                        reviews=review_map.get(pod.id, []) if include_reviews else [],
+                    )
                     pod_dtos.append(pod_dto)
                 except Exception as e:
                     # 에러 발생 시 해당 파티는 건너뛰고 계속 진행
                     import logging
+
                     logger = logging.getLogger(__name__)
-                    logger.error(f"파티 DTO 변환 실패 (pod_id={pod.id if pod else None}): {str(e)}", exc_info=True)
+                    logger.error(
+                        f"파티 DTO 변환 실패 (pod_id={pod.id if pod else None}): {str(e)}",
+                        exc_info=True,
+                    )
                     continue
 
         except Exception:
@@ -907,7 +964,7 @@ class PodService:
         location: list[str | None] = None,
         page: int = 1,
         size: int = 20,
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """팟 검색 (검증은 use case에서 처리)"""
         result = await self._pod_repo.search_pods(
             query=title or "",
@@ -920,11 +977,10 @@ class PodService:
             size=size,
         )
 
-        # DTO 변환
-        pod_dtos = []
-        for pod in result["items"]:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            result["items"], user_id, include_applications=False, include_reviews=False
+        )
 
         # PageDto 생성
         return PageDto.create(
@@ -937,15 +993,14 @@ class PodService:
     # - MARK: 사용자가 참여한 파티 조회
     async def get_user_joined_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """사용자가 참여한 파티 목록 조회"""
         result = await self._pod_repo.get_user_joined_pods(user_id, page, size)
 
-        # DTO 변환
-        pod_dtos = []
-        for pod in result["items"]:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            result["items"], user_id, include_applications=False, include_reviews=False
+        )
 
         return PageDto.create(
             items=pod_dtos,
@@ -957,16 +1012,14 @@ class PodService:
     # - MARK: 사용자가 좋아요한 파티 조회
     async def get_user_liked_pods(
         self, user_id: int, page: int = 1, size: int = 20
-    ) -> PageDto[PodDetailDto]:
+    ) -> PageDto[PodDto]:
         """사용자가 좋아요한 파티 목록 조회"""
         result = await self._pod_repo.get_user_liked_pods(user_id, page, size)
 
-        # DTO 변환
-        pod_dtos = []
-        for pod in result["items"]:
-            pod_dto = await self._enrich_pod_dto(pod, user_id)
-            pod_dto.is_liked = True  # 좋아요한 파티이므로 항상 True
-            pod_dtos.append(pod_dto)
+        # 배치 로딩 방식으로 DTO 변환 (applications, reviews 제외)
+        pod_dtos = await self._convert_pods_to_dtos_batch(
+            result["items"], user_id, include_applications=False, include_reviews=False
+        )
 
         return PageDto.create(
             items=pod_dtos,
@@ -993,6 +1046,133 @@ class PodService:
         return []
 
     # MARK: - 헬퍼 메서드
+
+    def _convert_pod_to_dto(
+        self,
+        pod: Pod,
+        user_id: int | None = None,
+        applications: list = None,
+        reviews: list = None,
+    ) -> PodDto:
+        """Pod를 PodDto로 변환 (순수 함수, 쿼리 없음)
+
+        Args:
+            pod: Pod 모델
+            user_id: 현재 사용자 ID (개인화 필드용, 현재는 사용하지 않음)
+            applications: 이미 로드된 applications 리스트 (선택, 현재는 사용하지 않음)
+            reviews: 이미 로드된 reviews 리스트 (선택, 현재는 사용하지 않음)
+        """
+        from app.features.pods.schemas import PodDto
+
+        # sub_categories 파싱
+        pod_sub_categories = self._parse_sub_categories_from_storage(pod.sub_categories)
+
+        # datetime 기본값 제공
+        pod_created_at = pod.created_at
+        if pod_created_at is None:
+            pod_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        pod_updated_at = pod.updated_at
+        if pod_updated_at is None:
+            pod_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        # status 변환
+        pod_status = pod.status
+        if pod_status is None:
+            pod_status = PodStatus.RECRUITING
+        elif isinstance(pod_status, str):
+            try:
+                pod_status = PodStatus(pod_status.upper())
+            except ValueError:
+                pod_status = PodStatus.RECRUITING
+
+        # PodDto 생성 (목록 조회용 - 간단한 정보만)
+        return PodDto(
+            id=pod.id or 0,
+            owner_id=pod.owner_id or 0,
+            title=pod.title or "",
+            thumbnail_url=pod.thumbnail_url or "",
+            sub_categories=pod_sub_categories,
+            selected_artist_id=pod.selected_artist_id,
+            capacity=pod.capacity or 0,
+            place=pod.place or "",
+            meeting_date=pod.meeting_date if pod.meeting_date else date.today(),
+            meeting_time=pod.meeting_time if pod.meeting_time else time.min,
+            status=pod_status,
+            is_del=pod.is_del if pod.is_del else False,
+            created_at=pod_created_at,
+            updated_at=pod_updated_at,
+        )
+
+    async def _convert_pods_to_dtos_batch(
+        self,
+        pods: list[Pod],
+        user_id: int | None = None,
+        include_applications: bool = False,
+        include_reviews: bool = False,
+    ) -> list[PodDto]:
+        """여러 Pod를 PodDto로 변환 (배치 로딩 방식)
+
+        Args:
+            pods: Pod 모델 리스트
+            user_id: 현재 사용자 ID
+            include_applications: applications 포함 여부
+            include_reviews: reviews 포함 여부
+        """
+        from collections import defaultdict
+
+        if not pods:
+            return []
+
+        # pod_ids 수집
+        pod_ids = [pod.id for pod in pods if pod.id is not None]
+
+        # 배치 로딩 (필요한 경우만)
+        applications = []
+        reviews = []
+
+        if include_applications:
+            applications = await self._application_repo.get_applications_by_pod_ids(
+                pod_ids
+            )
+
+        if include_reviews:
+            reviews = await self._review_repo.get_reviews_by_pod_ids(pod_ids)
+
+        # 메모리에서 매핑
+        app_map = defaultdict(list)
+        for app in applications:
+            app_map[app.pod_id].append(app)
+
+        review_map = defaultdict(list)
+        for review in reviews:
+            review_map[review.pod_id].append(review)
+
+        # 순수 함수로 조립 (쿼리 없음)
+        pod_dtos = []
+        for pod in pods:
+            try:
+                pod_dto = self._convert_pod_to_dto(
+                    pod,
+                    user_id,
+                    applications=app_map.get(pod.id, [])
+                    if include_applications
+                    else [],
+                    reviews=review_map.get(pod.id, []) if include_reviews else [],
+                )
+                pod_dtos.append(pod_dto)
+            except Exception as e:
+                # 에러 발생 시 해당 파티는 건너뛰고 계속 진행
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(
+                    f"파티 DTO 변환 실패 (pod_id={pod.id if pod else None}): {str(e)}",
+                    exc_info=True,
+                )
+                continue
+
+        return pod_dtos
 
     async def _enrich_pod_dto(
         self, pod: Pod, user_id: int | None = None
@@ -1026,9 +1206,6 @@ class PodService:
         pod_sub_categories = self._parse_sub_categories_from_storage(
             pod_sub_categories_raw
         )
-
-        # status 변환
-        from app.features.pods.models import PodStatus
 
         # PodDetailDto를 수동으로 생성하여 applications 필드 접근 방지
         pod_status = pod.status
@@ -1103,11 +1280,7 @@ class PodService:
                 )
 
                 # UserDto 생성
-                from app.features.users.services.user_dto_service import (
-                    UserDtoService,
-                )
-
-                owner_dto = UserDtoService.create_user_dto(
+                owner_dto = self._user_dto_service.create_user_dto(
                     owner, owner_tendency_type or ""
                 )
                 joined_users.append(owner_dto)
@@ -1127,11 +1300,9 @@ class PodService:
                 )
 
                 # UserDto 생성
-                from app.features.users.services.user_dto_service import (
-                    UserDtoService,
+                user_dto = self._user_dto_service.create_user_dto(
+                    user, tendency_type or ""
                 )
-
-                user_dto = UserDtoService.create_user_dto(user, tendency_type or "")
                 joined_users.append(user_dto)
 
         pod_dto.joined_users = joined_users
@@ -1165,11 +1336,7 @@ class PodService:
                         )
 
                         # UserDto 생성
-                        from app.features.users.services.user_dto_service import (
-                            UserDtoService,
-                        )
-
-                        user_dto = UserDtoService.create_user_dto(
+                        user_dto = self._user_dto_service.create_user_dto(
                             app_user, tendency_type or ""
                         )
 
@@ -1185,9 +1352,7 @@ class PodService:
             return pod_dto
         # Pod에서 applications 가져오기 (lazy loading 방지를 위해 항상 repository 사용)
         # selectinload로 미리 로드되었어도 안전하게 repository를 통해 가져오기
-        applications = await self._application_repo.get_applications_by_pod_id(
-            pod.id
-        )
+        applications = await self._application_repo.get_applications_by_pod_id(pod.id)
 
         application_dtos = []
         for app in applications:
@@ -1204,11 +1369,7 @@ class PodService:
                 )
 
                 # UserDto 생성
-                from app.features.users.services.user_dto_service import (
-                    UserDtoService,
-                )
-
-                user_dto = UserDtoService.create_user_dto(
+                user_dto = self._user_dto_service.create_user_dto(
                     app_user, tendency_type or ""
                 )
 
