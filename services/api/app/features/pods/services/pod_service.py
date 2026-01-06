@@ -1069,11 +1069,11 @@ class PodService:
         # datetime 기본값 제공
         pod_created_at = pod.created_at
         if pod_created_at is None:
-            pod_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            pod_created_at = datetime.now(timezone.utc)
 
         pod_updated_at = pod.updated_at
         if pod_updated_at is None:
-            pod_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            pod_updated_at = datetime.now(timezone.utc)
 
         # status 변환
         pod_status = pod.status
@@ -1195,11 +1195,11 @@ class PodService:
         # datetime 기본값 제공
         pod_created_at = pod.created_at
         if pod_created_at is None:
-            pod_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            pod_created_at = datetime.now(timezone.utc)
 
         pod_updated_at = pod.updated_at
         if pod_updated_at is None:
-            pod_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            pod_updated_at = datetime.now(timezone.utc)
 
         # sub_categories 파싱 (이미 저장된 데이터 변환)
         pod_sub_categories = self._parse_sub_categories_from_storage(

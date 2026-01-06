@@ -1,12 +1,6 @@
 from app.common.schemas.page_dto import PageDto
 from app.features.follow.repositories.follow_pod_repository import FollowPodRepository
 from app.features.follow.services.follow_utils import create_page_dto
-from app.features.pods.models import (
-    AccompanySubCategory,
-    EtcSubCategory,
-    GoodsSubCategory,
-    TourSubCategory,
-)
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import PodDetailDto
@@ -46,7 +40,6 @@ class FollowPodService:
             # 사용자가 좋아요했는지 확인
             is_liked = await self._pod_repo.is_liked_by_user(pod_id, user_id)
 
-
             # PodDetailDto를 수동으로 생성하여 MissingGreenlet 오류 방지
             # 후기 목록 조회
             reviews = await self._review_repo.get_all_reviews_by_pod(pod_id)
@@ -66,7 +59,9 @@ class FollowPodService:
                 import json
 
                 try:
-                    parsed = json.loads(pod_sub_categories) if pod_sub_categories else []
+                    parsed = (
+                        json.loads(pod_sub_categories) if pod_sub_categories else []
+                    )
                     pod_sub_categories = parsed if isinstance(parsed, list) else []
                 except (ValueError, TypeError, json.JSONDecodeError):
                     pod_sub_categories = []
@@ -74,7 +69,7 @@ class FollowPodService:
                 pod_sub_categories = pod_sub_categories
             else:
                 pod_sub_categories = []
-            
+
             # 카테고리 검증은 use case에서 처리 (이미 저장된 데이터는 그대로 표시)
 
             from datetime import datetime, timezone
@@ -95,14 +90,14 @@ class FollowPodService:
 
             pod_created_at = pod.created_at
             if pod_created_at is None:
-                pod_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                pod_created_at = datetime.now(timezone.utc)
             pod_updated_at = pod.updated_at
             if pod_updated_at is None:
-                pod_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                pod_updated_at = datetime.now(timezone.utc)
 
             # PodDetail에서 정보 가져오기
             pod_detail = pod.detail if pod.detail else None
-            
+
             pod_dto = PodDetailDto(
                 id=pod_id,
                 owner_id=pod.owner_id,

@@ -49,7 +49,7 @@ class FollowService:
         if created_at_value is None:
             from datetime import datetime, timezone
 
-            created_at_value = datetime.now(timezone.utc).replace(tzinfo=None)
+            created_at_value = datetime.now(timezone.utc)
 
         follow_info = FollowInfoDto(
             follower_id=follow.follower_id,

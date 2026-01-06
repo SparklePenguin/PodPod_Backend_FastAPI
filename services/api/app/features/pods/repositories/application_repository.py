@@ -32,15 +32,12 @@ class ApplicationRepository:
         if existing_application.scalar_one_or_none() is not None:
             raise ValueError("이미 신청한 파티입니다.")
 
-        # 현재 시간 저장
-        current_time = datetime.now(timezone.utc)
-
         application = Application(
             pod_id=pod_id,
             user_id=user_id,
             message=message,
             status=ApplicationStatus.PENDING,
-            applied_at=current_time,
+            # applied_at은 모델의 default=lambda: datetime.now(timezone.utc)를 사용
         )
         self._session.add(application)
         await self._session.flush()
@@ -264,14 +261,12 @@ class ApplicationRepository:
         if role == "member" and current_member_count >= pod_capacity:
             raise ValueError("파티 정원이 가득 찼습니다")
 
-        # 현재 시간을 datetime으로 저장
-        current_datetime = datetime.now(timezone.utc)
         pod_member = PodMember(
             pod_id=pod_id,
             user_id=user_id,
             role=role,
             message=message,
-            joined_at=current_datetime,
+            # joined_at은 모델의 default=lambda: datetime.now(timezone.utc)를 사용
         )
         self._session.add(pod_member)
 

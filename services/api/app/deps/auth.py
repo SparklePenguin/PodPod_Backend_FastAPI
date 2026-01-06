@@ -1,20 +1,25 @@
+from app.core.config import settings
 from app.core.session import create_access_token, verify_refresh_token
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from app.core.config import settings
-
 security = HTTPBearer()
-refresh_token_header = APIKeyHeader(
-    name="X-Refresh-Token", auto_error=False, description="Refresh Token (Optional)"
-)
+
+
+async def get_refresh_token(
+    x_refresh_token: str | None = Header(
+        None, alias="X-Refresh-Token", description="Refresh Token (Optional)"
+    ),
+) -> str | None:
+    """Refresh Token 헤더에서 추출"""
+    return x_refresh_token
 
 
 async def get_current_user_id(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    refresh_token: str | None = Depends(refresh_token_header),
+    refresh_token: str | None = Depends(get_refresh_token),
 ) -> int:
     """
     Access Token으로 사용자 ID 조회

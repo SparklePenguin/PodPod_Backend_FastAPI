@@ -66,7 +66,7 @@ class BlockUserUseCase:
         created_at_val = (
             block.created_at
             if block.created_at is not None
-            else datetime.now(timezone.utc).replace(tzinfo=None)
+            else datetime.now(timezone.utc)
         )
 
         return BlockInfoDto(

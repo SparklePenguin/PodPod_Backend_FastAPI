@@ -324,11 +324,11 @@ class ReviewService:
 
             review_created_at = review.created_at
             if review_created_at is None:
-                review_created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                review_created_at = datetime.now(timezone.utc)
 
             review_updated_at = review.updated_at
             if review_updated_at is None:
-                review_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                review_updated_at = datetime.now(timezone.utc)
 
             result = PodReviewDto(
                 id=review.id,

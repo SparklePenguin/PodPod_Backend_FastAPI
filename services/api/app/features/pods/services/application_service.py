@@ -2,7 +2,6 @@
 
 from typing import List
 
-from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.pods.models import Application, PodStatus
 from app.features.pods.repositories.application_repository import (
     ApplicationRepository,
@@ -37,9 +36,7 @@ class ApplicationService:
         self._notification_service = notification_service
 
     # MARK: - 헬퍼 메서드
-    def _create_user_dto(
-        self, user: User | None, tendency_type: str = ""
-    ) -> UserDto:
+    def _create_user_dto(self, user: User | None, tendency_type: str = "") -> UserDto:
         """User 모델과 성향 타입으로 UserDto 생성"""
         from app.features.users.services.user_dto_service import UserDtoService
 
@@ -55,13 +52,14 @@ class ApplicationService:
         message = None
         if include_message:
             message = getattr(application, "message", None)
-        
+
         status_str = str(application.status) if application.status else ""
         if not status_str and hasattr(application, "status"):
             status_str = str(application.status) if application.status else ""
-        
+
         return PodApplDto(
             id=application.id or 0,
+            pod_id=application.pod_id or 0,
             user=user_dto,
             status=status_str,
             message=message,
@@ -77,13 +75,13 @@ class ApplicationService:
         """Application 모델과 UserDto로 PodApplDto 생성"""
         return PodApplDto(
             id=application.id or 0,
-            podId=application.pod_id or 0,
+            pod_id=application.pod_id or 0,
             user=user_dto,
             message=application.message,
             status=str(application.status) if application.status else "",
-            appliedAt=application.applied_at,
-            reviewedAt=application.reviewed_at,
-            reviewedBy=reviewer_dto,
+            applied_at=application.applied_at,
+            reviewed_at=application.reviewed_at,
+            reviewed_by=reviewer_dto,
         )
 
     # MARK: - 신청서 생성

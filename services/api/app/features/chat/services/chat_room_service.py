@@ -73,7 +73,7 @@ class ChatRoomService:
         rooms.sort(
             key=lambda r: r.last_message.created_at
             if r.last_message
-            else dt.min.replace(tzinfo=None),
+            else dt.min,
             reverse=True,
         )
 
