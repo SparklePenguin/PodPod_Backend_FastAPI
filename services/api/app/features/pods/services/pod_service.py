@@ -879,8 +879,11 @@ class PodService:
                 try:
                     pod_dto = await self._enrich_pod_dto(pod, user_id)
                     pod_dtos.append(pod_dto)
-                except Exception:
+                except Exception as e:
                     # 에러 발생 시 해당 파티는 건너뛰고 계속 진행
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"파티 DTO 변환 실패 (pod_id={pod.id if pod else None}): {str(e)}", exc_info=True)
                     continue
 
         except Exception:
@@ -1180,13 +1183,11 @@ class PodService:
         # 파티에 들어온 신청서 목록 조회
         if pod.id is None:
             return pod_dto
-        # Pod에서 applications 가져오기
-        if pod.applications:
-            applications = list(pod.applications)
-        else:
-            applications = await self._application_repo.get_applications_by_pod_id(
-                pod.id
-            )
+        # Pod에서 applications 가져오기 (lazy loading 방지를 위해 항상 repository 사용)
+        # selectinload로 미리 로드되었어도 안전하게 repository를 통해 가져오기
+        applications = await self._application_repo.get_applications_by_pod_id(
+            pod.id
+        )
 
         application_dtos = []
         for app in applications:
@@ -1222,11 +1223,8 @@ class PodService:
         # 후기 목록 조회 및 추가
         if pod.id is None:
             return pod_dto
-        # Pod에서 reviews 가져오기
-        if pod.reviews:
-            reviews = list(pod.reviews)
-        else:
-            reviews = await self._review_repo.get_all_reviews_by_pod(pod.id)
+        # Pod에서 reviews 가져오기 (lazy loading 방지를 위해 항상 repository 사용)
+        reviews = await self._review_repo.get_all_reviews_by_pod(pod.id)
 
         review_dtos = []
         for review in reviews:

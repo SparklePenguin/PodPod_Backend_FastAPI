@@ -1079,20 +1079,28 @@ class PodRepository:
         """사용자가 생성한 파티 목록 조회"""
         offset = (page - 1) * size
 
+        # 전체 개수 조회 (별도 쿼리로 분리)
+        count_query = (
+            select(func.count())
+            .select_from(Pod)
+            .where(and_(~Pod.is_del, Pod.owner_id == user_id))
+        )
+        total_result = await self._session.execute(count_query)
+        total_count = total_result.scalar() or 0
+
         # 기본 쿼리
         query = (
             select(Pod)
-            .options(selectinload(Pod.detail), selectinload(Pod.images))
+            .options(
+                selectinload(Pod.detail),
+                selectinload(Pod.images),
+                # applications와 reviews는 _enrich_pod_dto에서 repository를 통해 가져오므로 여기서는 로드하지 않음
+            )
             .where(and_(~Pod.is_del, Pod.owner_id == user_id))
         )
 
         # 정렬 (최신순)
         query = query.order_by(desc(Pod.created_at))
-
-        # 전체 개수 조회
-        count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self._session.execute(count_query)
-        total_count = total_result.scalar()
 
         # 페이지네이션 적용
         query = query.offset(offset).limit(size)
