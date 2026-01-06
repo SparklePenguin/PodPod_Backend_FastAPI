@@ -66,9 +66,7 @@ class ReportUseCase:
         # 차단 여부에 따라 차단 처리
         if should_block:
             # 차단 생성
-            block = await self._block_repo.create_block(reporter_id, reported_user_id)
-            if block:
-                await self._session.refresh(block)
+            await self._block_repo.create_block(reporter_id, reported_user_id)
 
             # 팔로우 관계 삭제 (양방향)
             await self._follow_repo.delete_follow(reporter_id, reported_user_id)
@@ -104,8 +102,6 @@ class ReportUseCase:
             reason=reason,
             blocked=blocked,
         )
-        if report:
-            await self._session.refresh(report)
         return report
 
     # - MARK: 신고 사유 목록 조회
