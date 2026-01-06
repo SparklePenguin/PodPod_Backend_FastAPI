@@ -365,17 +365,16 @@ class PodService:
         # 날짜와 시간 파싱 (meetingDate: UTC datetime → date/time 분리)
         if pod_form.meeting_date is not None:
             try:
-                normalized = pod_form.meeting_date.replace("Z", "+00:00")
-                dt = datetime.fromisoformat(normalized)
+                # 이미 datetime 객체이므로 UTC로 변환 후 date/time 분리
+                dt = pod_form.meeting_date
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=timezone.utc)
-
                 dt_utc = dt.astimezone(timezone.utc)
 
                 pod_update_fields["meeting_date"] = dt_utc.date()
                 pod_update_fields["meeting_time"] = dt_utc.time()
             except (ValueError, AttributeError) as e:
-                raise InvalidDateException(pod_form.meeting_date) from e
+                raise InvalidDateException(str(pod_form.meeting_date)) from e
 
         # 파티 업데이트 실행 (이미지 포함)
         updated_pod = await self.update_pod_with_images(
