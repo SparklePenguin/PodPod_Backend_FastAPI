@@ -17,7 +17,7 @@ from app.features.chat.services.chat_service import ChatService
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
 from fastapi import APIRouter, Depends, Path, Query, status
 
-router = APIRouter()
+router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
 

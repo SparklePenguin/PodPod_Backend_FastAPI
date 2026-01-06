@@ -5,7 +5,7 @@ from app.features.pods.schemas import PodLikeDto
 from app.features.pods.use_cases.like_use_case import LikeUseCase
 from fastapi import APIRouter, Depends, Path
 
-router = APIRouter()
+router = APIRouter(prefix="/pods", tags=["pods"])
 
 
 # MARK: - 좋아요 등록

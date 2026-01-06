@@ -10,7 +10,7 @@ from app.features.follow.services.follow_service import FollowService
 from app.features.pods.schemas import PodDetailDto
 from fastapi import APIRouter, Depends, Path, Query, status
 
-router = APIRouter()
+router = APIRouter(prefix="/follow", tags=["follow"])
 
 
 # - MARK: 사용자 팔로우

@@ -11,7 +11,7 @@ from app.features.reports.schemas import (
 from app.features.reports.use_cases.report_use_case import ReportUseCase
 from fastapi import APIRouter, Depends
 
-router = APIRouter()
+router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 # - MARK: 신고 사유 목록 조회

@@ -5,7 +5,7 @@ from app.features.chat.services.websocket_service import WebSocketService
 from fastapi import APIRouter, Query, WebSocket, status
 from jose import JWTError, jwt
 
-router = APIRouter()
+router = APIRouter(prefix="/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
 

@@ -4,7 +4,7 @@ from app.features.artists.schemas import ArtistDto
 from app.features.artists.services.artist_service import ArtistService
 from fastapi import APIRouter, Depends, Query
 
-router = APIRouter()
+router = APIRouter(prefix="/artists", tags=["artists"])
 
 
 # - MARK: 아티스트 목록 조회

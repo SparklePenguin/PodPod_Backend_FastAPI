@@ -4,7 +4,7 @@ from app.features.artists.schemas import ArtistScheduleDto
 from app.features.artists.services.artist_schedule_service import ArtistScheduleService
 from fastapi import APIRouter, Depends, Query
 
-router = APIRouter()
+router = APIRouter(prefix="/artist/schedules", tags=["artist-schedules"])
 
 
 # - MARK: 아티스트 스케줄 목록 조회

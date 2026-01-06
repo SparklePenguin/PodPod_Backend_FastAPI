@@ -1,11 +1,11 @@
-from app.common.schemas import BaseResponse, PageDto
+from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
 from app.deps.providers import get_block_user_use_case
-from app.features.users.schemas import BlockInfoDto, UserDto
+from app.features.users.schemas import BlockInfoDto
 from app.features.users.use_cases.block_user_use_case import BlockUserUseCase
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, status
 
-router = APIRouter()
+router = APIRouter(prefix="/users/blocks", tags=["users"])
 
 
 # - MARK: 사용자 차단
@@ -25,27 +25,6 @@ async def block_user(
         http_status=status.HTTP_200_OK,
         message_ko="사용자를 차단했습니다. 팔로우 관계도 해제되었습니다.",
         message_en="Successfully blocked the user. Follow relationship also removed.",
-    )
-
-
-# - MARK: 차단된 사용자 목록 조회
-@router.get(
-    "",
-    response_model=BaseResponse[PageDto[UserDto]],
-    description="차단된 사용자 목록 조회 (토큰 필요)",
-)
-async def get_blocked_users(
-    page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
-    size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
-    current_user_id: int = Depends(get_current_user_id),
-    use_case: BlockUserUseCase = Depends(get_block_user_use_case),
-):
-    result = await use_case.get_blocked_users(current_user_id, page, size)
-    return BaseResponse.ok(
-        data=result,
-        http_status=status.HTTP_200_OK,
-        message_ko="차단된 사용자 목록을 조회했습니다.",
-        message_en="Successfully retrieved blocked users list.",
     )
 
 

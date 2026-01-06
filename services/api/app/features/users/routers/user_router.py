@@ -3,6 +3,7 @@ from typing import List
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.providers import (
+    get_block_user_use_case,
     get_follow_service,
     get_user_artist_use_case,
     get_user_use_case,
@@ -19,6 +20,7 @@ from app.features.users.schemas import (
     UserDetailDto,
     UserDto,
 )
+from app.features.users.use_cases.block_user_use_case import BlockUserUseCase
 from app.features.users.use_cases.user_artist_use_case import UserArtistUseCase
 from app.features.users.use_cases.user_use_case import UserUseCase
 from app.utils.file_upload import upload_profile_image
@@ -34,7 +36,7 @@ from fastapi import (
     status,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 # - MARK: 약관 동의
@@ -111,6 +113,13 @@ async def get_user_types():
                 "description_ko": "나를 팔로우하는 사용자 목록",
                 "description_en": "List of users who follow me",
             },
+            {
+                "value": "blocks",
+                "label_ko": "차단된 사용자",
+                "label_en": "Blocked Users",
+                "description_ko": "차단한 사용자 목록",
+                "description_en": "List of blocked users",
+            },
         ]
     }
     return BaseResponse.ok(
@@ -124,18 +133,19 @@ async def get_user_types():
 @router.get(
     "",
     response_model=BaseResponse[PageDto[UserDto]],
-    description="사용자 목록 조회 (type: recommended, followings, followers)",
+    description="사용자 목록 조회 (type: recommended, followings, followers, blocks)",
 )
 async def get_users(
     type: str = Query(
         ...,
-        description="사용자 타입: recommended(추천), followings(팔로우하는), followers(팔로워)",
-        regex="^(recommended|followings|followers)$",
+        description="사용자 타입: recommended(추천), followings(팔로우하는), followers(팔로워), blocks(차단된)",
+        regex="^(recommended|followings|followers|blocks)$",
     ),
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
     current_user_id: int = Depends(get_current_user_id),
     follow_service: FollowService = Depends(get_follow_service),
+    block_user_use_case: BlockUserUseCase = Depends(get_block_user_use_case),
 ):
     """사용자 목록 조회"""
     if type == "recommended":
@@ -159,12 +169,16 @@ async def get_users(
         )
         message_ko = "팔로워 목록을 조회했습니다."
         message_en = "Successfully retrieved followers list."
+    elif type == "blocks":
+        users = await block_user_use_case.get_blocked_users(current_user_id, page, size)
+        message_ko = "차단된 사용자 목록을 조회했습니다."
+        message_en = "Successfully retrieved blocked users list."
     else:
         from fastapi import HTTPException
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid type. Must be one of: recommended, followings, followers",
+            detail="Invalid type. Must be one of: recommended, followings, followers, blocks",
         )
 
     return BaseResponse.ok(data=users, message_ko=message_ko, message_en=message_en)

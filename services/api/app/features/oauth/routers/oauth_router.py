@@ -14,7 +14,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer
 from redis.asyncio import Redis
 
-router = APIRouter()
+router = APIRouter(prefix="/oauth", tags=["oauth"])
 security = HTTPBearer()
 
 

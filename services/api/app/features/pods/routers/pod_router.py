@@ -9,7 +9,7 @@ from app.features.pods.services.pod_service import PodService
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
 
-router = APIRouter(dependencies=[])
+router = APIRouter(prefix="/pods", tags=["pods"])
 
 
 # MARK: - 파티 생성

@@ -12,7 +12,7 @@ from app.features.users.services.random_profile_image_service import (
 )
 from fastapi import APIRouter, Depends, status
 
-router = APIRouter()
+router = APIRouter(prefix="/profile-images", tags=["profile-images"])
 
 
 # - MARK: 랜덤 프로필 이미지 조회

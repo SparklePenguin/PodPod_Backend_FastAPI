@@ -9,7 +9,7 @@ from app.features.tendencies.schemas import (
 from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 from fastapi import APIRouter, Depends
 
-router = APIRouter()
+router = APIRouter(prefix="/surveys", tags=["surveys"])
 
 
 # - MARK: 성향 테스트 설문 조회

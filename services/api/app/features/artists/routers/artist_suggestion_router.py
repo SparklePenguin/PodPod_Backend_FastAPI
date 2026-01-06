@@ -11,7 +11,7 @@ from app.features.artists.services.artist_suggestion_service import (
 )
 from fastapi import APIRouter, Depends, Query
 
-router = APIRouter(tags=["artist-suggestions"])
+router = APIRouter(prefix="/artist-suggestions", tags=["artist-suggestions"])
 
 
 # - MARK: 아티스트 제안 생성

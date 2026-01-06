@@ -76,71 +76,54 @@ from fastapi import APIRouter
 api_router = APIRouter()
 
 # 사용자 관련 라우터 (features/users)
-api_router.include_router(users_router, prefix="/users", tags=["users"])
-api_router.include_router(block_user_router, prefix="/users/blocks", tags=["users"])
-api_router.include_router(
-    user_notification_router,
-    prefix="/users/me/notification-settings",
-    tags=["users"],
-)
+# 구체적인 경로를 먼저 등록해야 함 (FastAPI는 등록 순서대로 매칭)
+api_router.include_router(block_user_router)
+api_router.include_router(users_router)
+api_router.include_router(user_notification_router)
 
 # 인증 관련 라우터 (features/auth)
-api_router.include_router(sessions_router, prefix="/session", tags=["session"])
-api_router.include_router(oauths_router, prefix="/oauth", tags=["oauth"])
+api_router.include_router(sessions_router)
+api_router.include_router(oauths_router)
 
 # 아티스트 관련 라우터 (features/artists)
-api_router.include_router(artists_router, prefix="/artists", tags=["artists"])
-api_router.include_router(
-    schedules_router, prefix="/artist/schedules", tags=["artist-schedules"]
-)
-api_router.include_router(suggestions_router, prefix="/artist-suggestions")
+api_router.include_router(artists_router)
+api_router.include_router(schedules_router)
+api_router.include_router(suggestions_router)
 
 # 성향 테스트 관련 라우터 (features/tendencies)
-api_router.include_router(tendencies_router, prefix="/tendencies", tags=["tendencies"])
-api_router.include_router(surveys_router, prefix="/surveys", tags=["surveys"])
+api_router.include_router(tendencies_router)
+api_router.include_router(surveys_router)
 
 # 파티 관련 라우터 (features/pods)
-api_router.include_router(pods_router, prefix="/pods", tags=["pods"])
-api_router.include_router(pod_likes_router, prefix="/pods", tags=["pods"])
-api_router.include_router(
-    pod_applications_router, prefix="/pods/{pod_id}/applications", tags=["applications"]
-)
-api_router.include_router(
-    applications_router, prefix="/applications", tags=["applications"]
-)
-api_router.include_router(
-    pod_reviews_router, prefix="/pods/{pod_id}/reviews", tags=["reviews"]
-)
-api_router.include_router(reviews_router, prefix="/reviews", tags=["reviews"])
+api_router.include_router(pods_router)
+api_router.include_router(pod_likes_router)
+api_router.include_router(pod_applications_router)
+api_router.include_router(applications_router)
+api_router.include_router(pod_reviews_router)
+api_router.include_router(reviews_router)
 
 # 팔로우 관련 라우터 (features/follow)
-api_router.include_router(follow_router, prefix="/follow", tags=["follow"])
+api_router.include_router(follow_router)
 
 # 알림 관련 라우터 (features/notifications)
-api_router.include_router(
-    notifications_router, prefix="/notifications", tags=["notifications"]
-)
+api_router.include_router(notifications_router)
 
 # 지역 관련 라우터 (features/locations)
-api_router.include_router(locations_router, prefix="/regions", tags=["regions"])
+api_router.include_router(locations_router)
 
 # 신고 관련 라우터 (features/reports)
-api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
+api_router.include_router(reports_router)
 
 # 랜덤 프로필 이미지 라우터 (users)
-api_router.include_router(
-    profile_images_router, prefix="/profile-images", tags=["profile-images"]
-)
+api_router.include_router(profile_images_router)
 
 # 채팅 라우터 (chat)
-api_router.include_router(chat_router, prefix="/chat", tags=["chat"])
+api_router.include_router(chat_router)
+api_router.include_router(chat_websocket_router)
 
 # 시스템 관련 라우터 (system)
-api_router.include_router(health_router, tags=["health"])
+api_router.include_router(health_router)
 
 # 관리자 관련 라우터 (admin)
-api_router.include_router(error_codes_router, prefix="/admin", tags=["admin"])
-api_router.include_router(fcm_router, prefix="/admin", tags=["admin"])
-
-# 채팅 WebSocket 라우터 (chat)
-api_router.include_router(chat_websocket_router, prefix="/chat", tags=["chat"])
+api_router.include_router(error_codes_router)
+api_router.include_router(fcm_router)

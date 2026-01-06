@@ -10,7 +10,7 @@ from app.features.notifications.services.notification_service import (
 )
 from fastapi import APIRouter, Depends, Query
 
-router = APIRouter()
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 # - MARK: 알림 목록 조회

@@ -14,10 +14,10 @@ from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from fastapi import APIRouter, Depends, status
 
 # Pod별 신청서 라우터 (prefix: /pods/{pod_id}/applications)
-pod_applications_router = APIRouter()
+pod_applications_router = APIRouter(prefix="/pods/{pod_id}/applications", tags=["applications"])
 
 # 신청서 개별 라우터 (prefix: /applications)
-applications_router = APIRouter()
+applications_router = APIRouter(prefix="/applications", tags=["applications"])
 
 
 @pod_applications_router.get(

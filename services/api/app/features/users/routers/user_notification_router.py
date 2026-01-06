@@ -10,7 +10,7 @@ from app.features.users.use_cases.user_notification_use_case import (
 )
 from fastapi import APIRouter, Depends, status
 
-router = APIRouter()
+router = APIRouter(prefix="/users/me/notification-settings", tags=["users"])
 
 
 # - MARK: 알림 설정 조회

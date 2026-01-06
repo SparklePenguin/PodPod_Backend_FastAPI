@@ -10,7 +10,7 @@ from app.features.session.use_cases.session_use_case import SessionUseCase
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-router = APIRouter()
+router = APIRouter(prefix="/session", tags=["session"])
 security = HTTPBearer()
 
 

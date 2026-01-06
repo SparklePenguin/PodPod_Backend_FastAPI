@@ -6,7 +6,7 @@ from app.features.locations.schemas import LocationDto
 from app.features.locations.services.location_service import LocationService
 from fastapi import APIRouter, Depends
 
-router = APIRouter()
+router = APIRouter(prefix="/regions", tags=["regions"])
 
 
 # - MARK: 모든 지역 정보 조회

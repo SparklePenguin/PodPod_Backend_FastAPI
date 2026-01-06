@@ -12,10 +12,10 @@ from app.features.pods.use_cases.review_use_case import ReviewUseCase
 from fastapi import APIRouter, Body, Depends, Path, Query, status
 
 # Pod별 후기 라우터 (prefix: /pods/{pod_id}/reviews)
-pod_reviews_router = APIRouter()
+pod_reviews_router = APIRouter(prefix="/pods/{pod_id}/reviews", tags=["reviews"])
 
 # 개별 후기 라우터 (prefix: /reviews)
-reviews_router = APIRouter()
+reviews_router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 
 # MARK: - Pod별 후기 엔드포인트
