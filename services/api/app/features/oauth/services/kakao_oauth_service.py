@@ -50,9 +50,11 @@ class KakaoOAuthService:
 
             if response.status_code != 200:
                 error_response = BaseResponse.error(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    http_status=status.HTTP_401_UNAUTHORIZED,
+                    error_key="KAKAO_TOKEN_REQUEST_FAILED",
                     error_code=20002,
-                    message=response.text,
+                    message_ko=f"카카오 액세스 토큰 요청 실패: {response.text}",
+                    message_en=f"Kakao access token request failed: {response.text}",
                     dev_note=f"액세스 토큰 요청 실패: {str(response.text)}",
                 )
                 raise HTTPException(
@@ -113,5 +115,5 @@ class KakaoOAuthService:
             f"client_id={settings.KAKAO_CLIENT_ID}&"
             f"redirect_uri={settings.KAKAO_REDIRECT_URI}&"
             f"response_type=code&"
-            f"scope=account_email"
+            # f"scope=account_email"
         )

@@ -48,9 +48,11 @@ class NaverOAuthService:
 
             if response.status_code != 200:
                 error_response = BaseResponse.error(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    http_status=status.HTTP_401_UNAUTHORIZED,
+                    error_key="NAVER_TOKEN_REQUEST_FAILED",
                     error_code=20002,
-                    message=response.text,
+                    message_ko=f"네이버 액세스 토큰 요청 실패: {response.text}",
+                    message_en=f"Naver access token request failed: {response.text}",
                     dev_note=f"액세스 토큰 요청 실패: {str(response.text)}",
                 )
                 raise HTTPException(

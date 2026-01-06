@@ -1,6 +1,6 @@
 from app.common.schemas import BaseResponse
-from app.deps.redis import get_redis
 from app.deps.providers import get_oauth_service
+from app.deps.redis import get_redis
 from app.features.auth.schemas import LoginInfoDto
 from app.features.oauth.schemas import (
     AppleLoginRequest,
@@ -9,7 +9,7 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.services.oauth_service import OAuthService
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Form, Query
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer
 from redis.asyncio import Redis
@@ -153,19 +153,34 @@ async def google_login(
     return BaseResponse.ok(data=result)
 
 
-# - MARK: Apple OAuth 콜백
+# - MARK: Apple 로그인 시작
 @router.get(
+    "/apple/login",
+    response_class=RedirectResponse,
+    status_code=307,
+    description="Apple 로그인 시작 - Apple 인증 페이지로 리다이렉트",
+)
+async def apple_login_web(
+    base_url: str | None = Query(None, description="테스트용 Base URL (예: ngrok URL)"),
+    service: OAuthService = Depends(get_oauth_service),
+):
+    apple_auth_url = await service.get_auth_url(OAuthProvider.APPLE, base_url=base_url)
+    return RedirectResponse(url=apple_auth_url)
+
+
+# - MARK: Apple OAuth 콜백
+@router.post(
     "/apple/callback",
     include_in_schema=False,
-    description="Apple OAuth 콜백 처리 (안드로이드 웹뷰 콜백)",
+    description="Apple OAuth 콜백 처리 (form_post)",
 )
 async def apple_callback(
-    code: str | None = Query(None, description="인가 코드"),
-    state: str | None = Query(None, description="상태값"),
-    error: str | None = Query(None, description="에러 코드"),
-    error_description: str | None = Query(None, description="에러 설명"),
-    id_token: str | None = Query(None, description="ID 토큰"),
-    user: str | None = Query(None, description="사용자 정보 (JSON 문자열)"),
+    code: str | None = Form(None, description="인가 코드"),
+    state: str | None = Form(None, description="상태값"),
+    error: str | None = Form(None, description="에러 코드"),
+    error_description: str | None = Form(None, description="에러 설명"),
+    id_token: str | None = Form(None, description="ID 토큰"),
+    user: str | None = Form(None, description="사용자 정보 (JSON 문자열)"),
     service: OAuthService = Depends(get_oauth_service),
 ):
     result = await service.handle_oauth_callback(

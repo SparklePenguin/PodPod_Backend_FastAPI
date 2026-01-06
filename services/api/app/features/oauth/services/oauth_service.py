@@ -315,7 +315,7 @@ class OAuthService:
 
     # - MARK: OAuth 인증 URL 생성
     async def get_auth_url(
-        self, provider: OAuthProvider, redis: Redis | None = None
+        self, provider: OAuthProvider, redis: Redis | None = None, base_url: str | None = None
     ) -> str:
         """OAuth 인증 URL 생성"""
         if provider == OAuthProvider.KAKAO:
@@ -328,5 +328,7 @@ class OAuthService:
                     provider="naver", reason="Redis 연결이 필요합니다."
                 )
             return await self._naver_service.get_auth_url(redis)
+        elif provider == OAuthProvider.APPLE:
+            return self._apple_service.get_auth_url(base_url=base_url)
         else:
             raise OAuthProviderNotSupportedException(provider=provider.value)

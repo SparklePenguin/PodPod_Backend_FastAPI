@@ -28,7 +28,7 @@ async def follow_user(
 
     return BaseResponse.ok(
         data=follow,
-        http_status=status.HTTP_CREATED,
+        http_status=status.HTTP_201_CREATED,
         message_ko="팔로우가 완료되었습니다.",
         message_en="Successfully followed the user.",
     )

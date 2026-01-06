@@ -28,8 +28,8 @@ class AppleOAuthService:
     # - MARK: 애플 사용자 정보 조회
     async def get_apple_user_info(self, request: AppleLoginRequest) -> OAuthUserInfo:
         """애플 ID 토큰으로 사용자 정보 조회"""
-        # 클라이언트에서 제공한 audience 사용
-        audience = request.audience
+        # audience가 제공되지 않으면 기본값(APPLE_CLIENT_ID) 사용
+        audience = request.audience or settings.APPLE_CLIENT_ID
 
         try:
             # Apple ID 토큰 검증
@@ -217,3 +217,27 @@ class AppleOAuthService:
 
         except Exception as e:
             raise ValueError(f"Failed to create Apple client secret: {str(e)}") from e
+
+    # - MARK: Apple 인증 URL 생성
+    def get_auth_url(self, state: str | None = None, base_url: str | None = None) -> str:
+        """Apple 인증 URL 생성"""
+        from urllib.parse import urlencode
+
+        # base_url이 제공되면 동적으로 redirect_uri 생성 (테스트용)
+        if base_url:
+            redirect_uri = f"{base_url}/api/v1/oauth/apple/callback"
+        else:
+            redirect_uri = settings.APPLE_REDIRECT_URI
+
+        params = {
+            "client_id": settings.APPLE_CLIENT_ID,
+            "redirect_uri": redirect_uri,
+            "response_type": "code id_token",
+            "response_mode": "form_post",
+            "scope": "name email",
+        }
+
+        if state:
+            params["state"] = state
+
+        return f"https://appleid.apple.com/auth/authorize?{urlencode(params)}"

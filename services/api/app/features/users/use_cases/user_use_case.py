@@ -82,30 +82,24 @@ class UserUseCase:
         if not auth_provider and email is None:
             raise EmailRequiredException()
 
-        # 이메일 중복 확인 (이메일이 있고, provider도 함께 확인)
+        # 이메일 중복 확인 (같은 이메일 + 같은 provider 조합 확인)
         user_email = email
         if user_email is not None:
-            existing_user = await self._user_repo.get_by_email(user_email)
+            # 같은 이메일 + 같은 provider 조합으로 조회
+            existing_user = await self._user_repo.get_by_email_and_provider(
+                user_email, auth_provider
+            )
             if existing_user:
-                # 같은 provider인지 확인
-                existing_auth_provider = existing_user.auth_provider
-                existing_auth_provider_id = existing_user.auth_provider_id
-
-                if (
-                    auth_provider
-                    and existing_auth_provider == auth_provider
-                    and existing_auth_provider_id == auth_provider_id
-                ):
-                    # 같은 provider의 같은 계정이면 중복 에러
+                # 같은 이메일 + 같은 provider인 경우
+                if auth_provider:
+                    # OAuth 로그인: 같은 provider의 계정이 이미 존재
                     raise SameOAuthProviderExistsException(
                         provider=auth_provider or "unknown"
                     )
-                elif not auth_provider:
-                    # OAuth가 없는 경우(일반 회원가입)에는 이메일 중복 에러
-                    raise EmailAlreadyExistsException(email=user_email)
                 else:
-                    # 다른 OAuth provider인 경우 계속 진행 (새 계정 생성)
-                    pass
+                    # 일반 회원가입: 이메일 중복
+                    raise EmailAlreadyExistsException(email=user_email)
+            # existing_user가 None이면 계속 진행 (새 계정 생성)
 
         # 비밀번호 해싱
         if password is not None:

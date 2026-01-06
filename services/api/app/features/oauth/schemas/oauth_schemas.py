@@ -2,7 +2,7 @@
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ============= OAuth Provider =============
@@ -36,7 +36,7 @@ class KakaoLoginRequest(BaseModel):
         description="FCM 토큰 (푸시 알림용)",
     )
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class GetKakaoTokenRequest(BaseModel):
@@ -67,7 +67,7 @@ class KakaoTokenResponse(BaseModel):
         default=None, alias="fcmToken", description="FCM 토큰 (푸시 알림용)"
     )
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # ============= Google OAuth =============
@@ -79,7 +79,7 @@ class GoogleLoginRequest(BaseModel):
         description="FCM 토큰 (푸시 알림용)",
     )
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class GetGoogleTokenRequest(BaseModel):
@@ -102,7 +102,7 @@ class GoogleTokenResponse(BaseModel):
     id_token: str | None = None
     scope: str | None = None
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # ============= Apple OAuth =============
@@ -116,8 +116,9 @@ class AppleLoginRequest(BaseModel):
     identity_token: str = Field(alias="identityToken")
     authorization_code: str | None = Field(default=None, alias="authorizationCode")
     user: AppleUserInfo | None = Field(default=None)
-    audience: str = Field(
-        description="Apple Client ID (Bundle ID for native app, Service ID for web)"
+    audience: str | None = Field(
+        default=None,
+        description="Apple Client ID (Bundle ID for native app, Service ID for web). 생략 시 서버 기본값 사용",
     )
     fcm_token: str | None = Field(
         default=None,
@@ -125,7 +126,7 @@ class AppleLoginRequest(BaseModel):
         description="FCM 토큰 (푸시 알림용)",
     )
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class AppleTokenResponse(BaseModel):
@@ -159,4 +160,4 @@ class NaverTokenResponse(BaseModel):
     token_type: str
     expires_in: int
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)

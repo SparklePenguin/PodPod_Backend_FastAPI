@@ -18,7 +18,28 @@ class UserRepository:
     # - MARK: 이메일로 사용자 조회
     async def get_by_email(self, email: str) -> User | None:
         result = await self._session.execute(select(User).where(User.email == email))
-        return result.scalar_one_or_none()
+        return result.scalars().first()
+
+    # - MARK: 이메일과 OAuth 프로바이더로 사용자 조회
+    async def get_by_email_and_provider(
+        self, email: str, auth_provider: str | None
+    ) -> User | None:
+        """이메일과 OAuth 제공자로 사용자 조회 (같은 이메일, 다른 제공자 구분용)"""
+        if auth_provider:
+            # OAuth 로그인인 경우: email + provider 조합으로 조회
+            result = await self._session.execute(
+                select(User).where(
+                    and_(User.email == email, User.auth_provider == auth_provider)
+                )
+            )
+        else:
+            # 일반 로그인인 경우: email만으로 조회 (auth_provider가 NULL인 사용자)
+            result = await self._session.execute(
+                select(User).where(
+                    and_(User.email == email, User.auth_provider.is_(None))
+                )
+            )
+        return result.scalars().first()
 
     # - MARK: OAuth 프로바이더 ID로 사용자 조회
     async def get_by_auth_provider_id(
