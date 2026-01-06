@@ -25,6 +25,8 @@ async def get_session():
     async with AsyncSessionLocal() as session:
         try:
             yield session
+            # 요청이 성공적으로 완료되면 커밋
+            await session.commit()
         except Exception:
             await session.rollback()
             raise
