@@ -30,8 +30,8 @@ class PodDto(BaseModel):
     sub_categories: list[str] = Field(
         ..., alias="subCategories", description="서브 카테고리 목록"
     )
-    selected_artist_id: int | None = Field(
-        default=None, alias="selectedArtistId", description="선택된 아티스트 ID"
+    selected_artist_id: int = Field(
+        ..., alias="selectedArtistId", description="선택된 아티스트 ID"
     )
     capacity: int = Field(..., description="최대 인원수")
     place: str = Field(..., alias="meetingPlace", description="만남 장소")
@@ -44,6 +44,12 @@ class PodDto(BaseModel):
     is_del: bool = Field(default=False, alias="isDel", description="삭제 여부")
     created_at: datetime = Field(..., alias="createdAt", description="생성 시간")
     updated_at: datetime = Field(..., alias="updatedAt", description="수정 시간")
+
+    # 개인화 필드
+    is_liked: bool = Field(default=False, alias="isLiked")
+
+    # 통계 및 메타데이터 필드
+    joined_users_count: int = Field(default=0, alias="joinedUsersCount")
 
     model_config = {
         "from_attributes": True,
@@ -68,17 +74,27 @@ class PodDetailDto(BaseModel):
     y: float | None = Field(default=None, description="위도 (latitude)")
     meeting_date: date = Field(..., alias="meetingDate", description="만남 날짜")
     meeting_time: time = Field(..., alias="meetingTime", description="만남 시간")
-    selected_artist_id: int | None = Field(default=None, alias="selectedArtistId")
+    selected_artist_id: int = Field(..., alias="selectedArtistId")
     status: PodStatus = Field(
         default=PodStatus.RECRUITING,
         description="파티 상태 (RECRUITING: 모집중, FULL: 인원 가득참, COMPLETED: 모집 완료, CLOSED: 종료)",
     )
-    is_del: bool = Field(default=False, alias="isDel", description="삭제 여부")
-    chat_room_id: int | None = Field(
-        default=None,
+    chat_room_id: int = Field(
+        ...,
         alias="chatRoomId",
         description="채팅방 ID",
     )
+    is_del: bool = Field(default=False, alias="isDel", description="삭제 여부")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+    # 개인화 필드
+    is_liked: bool = Field(default=False, alias="isLiked")
+
+    # 통계 및 메타데이터 필드
+    joined_users_count: int = Field(default=0, alias="joinedUsersCount")
+    view_count: int = Field(default=0, alias="viewCount")
+    like_count: int = Field(default=0, alias="likeCount")
 
     # 이미지 리스트
     images: List["PodImageDto"] = Field(
@@ -86,8 +102,7 @@ class PodDetailDto(BaseModel):
         description="파티 이미지 목록",
     )
 
-    # 개인화 필드
-    is_liked: bool = Field(default=False, alias="isLiked")
+    # 추후 정리
     my_application: "PodApplDto | None" = Field(
         default=None,
         alias="myApplication",
@@ -97,11 +112,6 @@ class PodDetailDto(BaseModel):
         default_factory=list,
         description="파티에 들어온 신청서 목록",
     )
-
-    # 통계 및 메타데이터 필드
-    view_count: int = Field(default=0, alias="viewCount")
-    joined_users_count: int = Field(default=0, alias="joinedUsersCount")
-    like_count: int = Field(default=0, alias="likeCount")
     joined_users: List[UserDto] = Field(
         default_factory=list,
         alias="joinedUsers",
@@ -111,8 +121,6 @@ class PodDetailDto(BaseModel):
         default_factory=list,
         description="파티 후기 목록",
     )
-    created_at: datetime = Field(alias="createdAt")
-    updated_at: datetime = Field(alias="updatedAt")
 
     model_config = {
         "from_attributes": True,
@@ -167,12 +175,8 @@ class PodSearchRequest(BaseModel):
     sub_category: str | None = Field(
         None, alias="subCategory", description="서브 카테고리"
     )
-    start_date: date | None = Field(
-        None, alias="startDate", description="시작 날짜"
-    )
-    end_date: date | None = Field(
-        None, alias="endDate", description="종료 날짜"
-    )
+    start_date: date | None = Field(None, alias="startDate", description="시작 날짜")
+    end_date: date | None = Field(None, alias="endDate", description="종료 날짜")
     location: List[str | None] = Field(
         None,
         description="지역 리스트 (address 또는 sub_address에 포함)",
@@ -205,7 +209,7 @@ class PodImageDto(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
-    
+
     @classmethod
     def from_pod_image(cls, pod_image) -> "PodImageDto":
         """PodImage 모델에서 PodImageDto 생성 (pod_detail_id를 pod_id로 매핑)"""

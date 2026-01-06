@@ -113,11 +113,11 @@ class Pod(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     selected_artist_id = Column(
-        Integer, ForeignKey("artists.id"), nullable=True, index=True
+        Integer, ForeignKey("artists.id"), nullable=False, index=True
     )
     title = Column(String(100), nullable=False)
     thumbnail_url = Column(String(500), nullable=True)
-    sub_categories = Column(Text, nullable=True)
+    sub_categories = Column(Text, nullable=False)
     capacity = Column(Integer, nullable=False)
     place = Column(String(200), nullable=False)
     meeting_date = Column(Date, nullable=False)
@@ -126,8 +126,8 @@ class Pod(Base):
     is_del = Column(Boolean, default=False)
     chat_room_id = Column(
         Integer,
-        ForeignKey("chat_rooms.id", ondelete="SET NULL"),
-        nullable=True,
+        ForeignKey("chat_rooms.id", ondelete="CASCADE"),
+        nullable=False,
         unique=True,
         index=True,
         comment="채팅방 ID",
