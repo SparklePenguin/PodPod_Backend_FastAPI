@@ -50,6 +50,11 @@ class PodDto(BaseModel):
 
     # 통계 및 메타데이터 필드
     joined_users_count: int = Field(default=0, alias="joinedUsersCount")
+    joined_users: List[UserDto] = Field(
+        default_factory=list,
+        alias="joinedUsers",
+        description="파티에 참여 중인 사용자 목록",
+    )
 
     model_config = {
         "from_attributes": True,
@@ -95,6 +100,7 @@ class PodDetailDto(BaseModel):
     joined_users_count: int = Field(default=0, alias="joinedUsersCount")
     view_count: int = Field(default=0, alias="viewCount")
     like_count: int = Field(default=0, alias="likeCount")
+
 
     # 이미지 리스트
     images: List["PodImageDto"] = Field(
