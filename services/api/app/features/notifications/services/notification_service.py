@@ -201,8 +201,14 @@ class NotificationService:
                 or notification.related_pod.image_url
                 or "",
                 sub_categories=sub_categories_list,
-                meeting_place=notification.related_pod.place or "",
-                meeting_date=meeting_timestamp,
+                selected_artist_id=notification.related_pod.selected_artist_id or 0,
+                capacity=notification.related_pod.capacity or 0,
+                place=notification.related_pod.place or "",
+                meeting_date=notification.related_pod.meeting_date,
+                meeting_time=notification.related_pod.meeting_time,
+                status=notification.related_pod.status,
+                created_at=notification.related_pod.created_at,
+                updated_at=notification.related_pod.updated_at,
             )
 
         # related_id를 int로 변환

@@ -82,6 +82,20 @@ async def mark_all_notifications_as_read(
     return BaseResponse.ok(data=result)
 
 
+# - MARK: 읽은 알림 전체 삭제
+@router.delete(
+    "/read",
+    response_model=BaseResponse[dict],
+    description="읽은 알림 전체 삭제",
+)
+async def delete_all_read_notifications(
+    current_user_id: int = Depends(get_current_user_id),
+    service: NotificationService = Depends(get_notification_service),
+):
+    result = await service.delete_all_read_notifications(current_user_id)
+    return BaseResponse.ok(data=result)
+
+
 # - MARK: 알림 삭제
 @router.delete(
     "/{notification_id}",
@@ -94,18 +108,4 @@ async def delete_notification(
     service: NotificationService = Depends(get_notification_service),
 ):
     result = await service.delete_notification(notification_id, current_user_id)
-    return BaseResponse.ok(data=result)
-
-
-# - MARK: 읽은 알림 전체 삭제
-@router.delete(
-    "/read",
-    response_model=BaseResponse[dict],
-    description="읽은 알림 전체 삭제",
-)
-async def delete_all_read_notifications(
-    current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.delete_all_read_notifications(current_user_id)
     return BaseResponse.ok(data=result)
