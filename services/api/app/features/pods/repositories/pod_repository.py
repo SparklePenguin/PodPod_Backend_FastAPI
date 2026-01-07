@@ -1204,13 +1204,13 @@ class PodRepository:
 
     # - MARK: PodImage 관련
     async def add_pod_image(
-        self, pod_detail_id: int, image_url: str, thumbnail_url: str | None, display_order: int
+        self, pod_id: int, image_url: str, thumbnail_url: str | None, display_order: int
     ):
         """파티 이미지 추가"""
         from app.features.pods.models import PodImage
 
         pod_image = PodImage(
-            pod_detail_id=pod_detail_id,
+            pod_id=pod_id,
             image_url=image_url,
             thumbnail_url=thumbnail_url,
             display_order=display_order,
@@ -1224,7 +1224,7 @@ class PodRepository:
         from app.features.pods.models import PodImage
 
         result = await self._session.execute(
-            select(PodImage).where(PodImage.pod_detail_id == pod_id)
+            select(PodImage).where(PodImage.pod_id == pod_id)
         )
         return result.scalars().all()
 
@@ -1233,7 +1233,7 @@ class PodRepository:
         from app.features.pods.models import PodImage
 
         result = await self._session.execute(
-            select(PodImage).where(PodImage.pod_detail_id == pod_id)
+            select(PodImage).where(PodImage.pod_id == pod_id)
         )
         images = result.scalars().all()
 

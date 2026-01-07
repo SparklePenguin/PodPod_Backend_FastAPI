@@ -18,8 +18,8 @@ async def like_pod(
     user_id: int = Depends(get_current_user_id),
     use_case: LikeUseCase = Depends(get_like_use_case),
 ):
-    result = await use_case.like_pod(pod_id, user_id)
-    return BaseResponse.ok(data=result)
+    await use_case.like_pod(pod_id, user_id)
+    return BaseResponse.ok()
 
 
 # MARK: - 좋아요 취소
@@ -32,8 +32,8 @@ async def unlike_pod(
     user_id: int = Depends(get_current_user_id),
     use_case: LikeUseCase = Depends(get_like_use_case),
 ):
-    result = await use_case.unlike_pod(pod_id, user_id)
-    return BaseResponse.ok(data=result)
+    await use_case.unlike_pod(pod_id, user_id)
+    return BaseResponse.ok()
 
 
 # MARK: - 좋아요 상태

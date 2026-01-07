@@ -155,8 +155,8 @@ class Pod(Base):
     )
     images = relationship(
         "PodImage",
-        primaryjoin="Pod.id == PodImage.pod_detail_id",
-        foreign_keys="[PodImage.pod_detail_id]",
+        primaryjoin="Pod.id == PodImage.pod_id",
+        foreign_keys="[PodImage.pod_id]",
         cascade="all, delete-orphan",
     )
     applications = relationship(
@@ -201,7 +201,7 @@ class PodImage(Base):
     __tablename__ = "pod_images"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    pod_detail_id = Column(
+    pod_id = Column(
         Integer,
         ForeignKey("pod_details.pod_id", ondelete="CASCADE"),
         nullable=False,
@@ -214,14 +214,14 @@ class PodImage(Base):
 
     pod = relationship(
         "Pod",
-        primaryjoin="PodImage.pod_detail_id == Pod.id",
-        foreign_keys=[pod_detail_id],
+        primaryjoin="PodImage.pod_id == Pod.id",
+        foreign_keys=[pod_id],
         viewonly=True,
     )
     # 하위 호환성을 위한 pod_detail 관계 (viewonly)
     pod_detail = relationship(
         "PodDetail",
-        primaryjoin="PodImage.pod_detail_id == PodDetail.pod_id",
+        primaryjoin="PodImage.pod_id == PodDetail.pod_id",
         viewonly=True,
     )
 

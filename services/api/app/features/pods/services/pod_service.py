@@ -210,9 +210,9 @@ class PodService:
                 except ValueError:
                     image_thumbnail_url = image_url
 
-                # PodImage 저장 (pod_detail_id 사용)
+                # PodImage 저장
                 await self._pod_repo.add_pod_image(
-                    pod_detail_id=pod.id,  # pod_detail_id는 pod_id와 동일
+                    pod_id=pod.id,
                     image_url=image_url,
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
@@ -440,7 +440,7 @@ class PodService:
                         # 기존 이미지
                         if order_item.url:
                             await self._pod_repo.add_pod_image(
-                                pod_detail_id=pod_id,
+                                pod_id=pod_id,
                                 image_url=order_item.url,
                                 thumbnail_url=order_item.url,
                                 display_order=index,
@@ -477,7 +477,7 @@ class PodService:
                                 image_thumbnail_url = image_url
 
                             await self._pod_repo.add_pod_image(
-                                pod_detail_id=pod_id,
+                                pod_id=pod_id,
                                 image_url=image_url,
                                 thumbnail_url=image_thumbnail_url,
                                 display_order=index,
@@ -523,7 +523,7 @@ class PodService:
                     image_thumbnail_url = image_url
 
                 await self._pod_repo.add_pod_image(
-                    pod_detail_id=pod_id,
+                    pod_id=pod_id,
                     image_url=image_url,
                     thumbnail_url=image_thumbnail_url,
                     display_order=index,
