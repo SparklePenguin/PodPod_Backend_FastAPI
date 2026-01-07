@@ -32,13 +32,6 @@ from app.features.users.repositories.user_artist_repository import (
 )
 
 # Services
-from app.features.artists.services.artist_schedule_service import (
-    ArtistScheduleService,
-)
-from app.features.artists.services.artist_service import ArtistService
-from app.features.artists.services.artist_suggestion_service import (
-    ArtistSuggestionService,
-)
 from app.features.chat.services.chat_service import ChatService
 from app.features.follow.services.follow_service import FollowService
 from app.features.locations.services.location_service import LocationService
@@ -75,6 +68,21 @@ from app.features.users.services.user_dto_service import UserDtoService
 from app.features.users.services.user_state_service import UserStateService
 
 # Use Cases
+from app.features.artists.use_cases.artist_schedule_use_cases import (
+    GetScheduleByIdUseCase,
+    GetSchedulesUseCase,
+)
+from app.features.artists.use_cases.artist_suggestion_use_cases import (
+    CreateArtistSuggestionUseCase,
+    GetArtistRankingUseCase,
+    GetSuggestionByIdUseCase,
+    GetSuggestionsUseCase,
+    GetSuggestionsByArtistNameUseCase,
+)
+from app.features.artists.use_cases.artist_use_cases import (
+    GetArtistUseCase,
+    GetArtistsUseCase,
+)
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
 from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from app.features.pods.use_cases.like_use_case import LikeUseCase
@@ -161,14 +169,6 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Services (Factory - session or other dependencies)
-    artist_service = providers.Factory(ArtistService, session=session)
-    artist_schedule_service = providers.Factory(
-        ArtistScheduleService, session=session
-    )
-    artist_suggestion_service = providers.Factory(
-        ArtistSuggestionService, session=session
-    )
-
     oauth_service = providers.Factory(OAuthService, session=session)
 
     location_service = providers.Factory(
@@ -291,6 +291,52 @@ class Container(containers.DeclarativeContainer):
             else None
         ),
         fcm_service=fcm_service,
+    )
+
+    # Artist Use Cases
+    get_artist_use_case = providers.Factory(
+        GetArtistUseCase,
+        session=session,
+    )
+
+    get_artists_use_case = providers.Factory(
+        GetArtistsUseCase,
+        session=session,
+    )
+
+    get_schedule_by_id_use_case = providers.Factory(
+        GetScheduleByIdUseCase,
+        session=session,
+    )
+
+    get_schedules_use_case = providers.Factory(
+        GetSchedulesUseCase,
+        session=session,
+    )
+
+    create_artist_suggestion_use_case = providers.Factory(
+        CreateArtistSuggestionUseCase,
+        session=session,
+    )
+
+    get_suggestion_by_id_use_case = providers.Factory(
+        GetSuggestionByIdUseCase,
+        session=session,
+    )
+
+    get_suggestions_use_case = providers.Factory(
+        GetSuggestionsUseCase,
+        session=session,
+    )
+
+    get_artist_ranking_use_case = providers.Factory(
+        GetArtistRankingUseCase,
+        session=session,
+    )
+
+    get_suggestions_by_artist_name_use_case = providers.Factory(
+        GetSuggestionsByArtistNameUseCase,
+        session=session,
     )
 
     user_artist_use_case = providers.Factory(

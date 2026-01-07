@@ -1,7 +1,10 @@
 from app.common.schemas import BaseResponse, PageDto
-from app.deps.providers import get_artist_schedule_service
+from app.deps.providers import get_schedule_by_id_use_case, get_schedules_use_case
 from app.features.artists.schemas import ArtistScheduleDto
-from app.features.artists.services.artist_schedule_service import ArtistScheduleService
+from app.features.artists.use_cases.artist_schedule_use_cases import (
+    GetScheduleByIdUseCase,
+    GetSchedulesUseCase,
+)
 from fastapi import APIRouter, Depends, Query
 
 router = APIRouter(prefix="/artist/schedules", tags=["artist-schedules"])
@@ -19,13 +22,9 @@ async def get_artist_schedules(
     artist_id: int | None = Query(None, description="아티스트 ID 필터"),
     unit_id: int | None = Query(None, description="아티스트 유닛 ID 필터"),
     schedule_type: int | None = Query(None, description="스케줄 유형 필터"),
-    artist_schedule_service: ArtistScheduleService = Depends(
-        get_artist_schedule_service
-    ),
+    use_case: GetSchedulesUseCase = Depends(get_schedules_use_case),
 ):
-    result = await artist_schedule_service.get_schedules(
-        page, size, artist_id, unit_id, schedule_type
-    )
+    result = await use_case.execute(page, size, artist_id, unit_id, schedule_type)
     return BaseResponse.ok(result, message_ko="아티스트 스케줄 목록 조회 성공")
 
 
@@ -37,9 +36,7 @@ async def get_artist_schedules(
 )
 async def get_artist_schedule(
     schedule_id: int,
-    artist_schedule_service: ArtistScheduleService = Depends(
-        get_artist_schedule_service
-    ),
+    use_case: GetScheduleByIdUseCase = Depends(get_schedule_by_id_use_case),
 ):
-    result = await artist_schedule_service.get_schedule_by_id(schedule_id)
+    result = await use_case.execute(schedule_id)
     return BaseResponse.ok(result, message_ko="아티스트 스케줄 상세 조회 성공")

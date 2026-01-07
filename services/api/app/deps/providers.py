@@ -16,32 +16,83 @@ def get_random_profile_image_service():
     return container.random_profile_image_service()
 
 
-def get_artist_service(session: AsyncSession = Depends(get_session)):
-    """Artist Service 생성"""
-    with container.session.override(session):
-        return container.artist_service()
-
-
-def get_artist_schedule_service(
-    session: AsyncSession = Depends(get_session),
-):
-    """Artist Schedule Service 생성"""
-    with container.session.override(session):
-        return container.artist_schedule_service()
-
-
-def get_artist_suggestion_service(
-    session: AsyncSession = Depends(get_session),
-):
-    """Artist Suggestion Service 생성"""
-    with container.session.override(session):
-        return container.artist_suggestion_service()
-
-
 def get_oauth_service(session: AsyncSession = Depends(get_session)):
     """OAuth Service 생성"""
     with container.session.override(session):
         return container.oauth_service()
+
+
+# Artist Use Cases
+def get_artist_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Artist UseCase 생성"""
+    with container.session.override(session):
+        return container.get_artist_use_case()
+
+
+def get_artists_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Artists UseCase 생성"""
+    with container.session.override(session):
+        return container.get_artists_use_case()
+
+
+def get_schedule_by_id_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Schedule By Id UseCase 생성"""
+    with container.session.override(session):
+        return container.get_schedule_by_id_use_case()
+
+
+def get_schedules_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Schedules UseCase 생성"""
+    with container.session.override(session):
+        return container.get_schedules_use_case()
+
+
+def create_artist_suggestion_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Create Artist Suggestion UseCase 생성"""
+    with container.session.override(session):
+        return container.create_artist_suggestion_use_case()
+
+
+def get_suggestion_by_id_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Suggestion By Id UseCase 생성"""
+    with container.session.override(session):
+        return container.get_suggestion_by_id_use_case()
+
+
+def get_suggestions_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Suggestions UseCase 생성"""
+    with container.session.override(session):
+        return container.get_suggestions_use_case()
+
+
+def get_artist_ranking_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Artist Ranking UseCase 생성"""
+    with container.session.override(session):
+        return container.get_artist_ranking_use_case()
+
+
+def get_suggestions_by_artist_name_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """Get Suggestions By Artist Name UseCase 생성"""
+    with container.session.override(session):
+        return container.get_suggestions_by_artist_name_use_case()
 
 
 def get_user_use_case(
