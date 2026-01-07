@@ -1,27 +1,22 @@
 services:
-  # MySQL 데이터베이스 (개발 환경 전용)
-  db:
-    image: mysql:8.0
-    container_name: podpod-mysql-dev
+  # Redis (개발 환경)
+  redis:
+    image: redis:7-alpine
+    container_name: podpod-redis-dev
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: podpod_dev
-      MYSQL_CHARACTER_SET_SERVER: utf8mb4
-      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "6379:6379"
     volumes:
-      - mysql_dev_data:/var/lib/mysql
-      - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
+      - redis_dev_data:/data
     networks:
       - podpod-network
+    command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD}"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 10s
 
   # FastAPI 애플리케이션
   api:
@@ -34,12 +29,15 @@ services:
       # 환경 설정 파일 지정
       CONFIG_FILE: config.dev.yaml
 
-      # 데이터베이스 연결 (도커 컨테이너 내부에서는 서비스명으로 접근)
-      MYSQL_HOST: db
+      # 데이터베이스 연결 (호스트 로컬 MySQL)
+      MYSQL_HOST: host.docker.internal
       MYSQL_PORT: 3306
       MYSQL_DATABASE: podpod_dev
       MYSQL_USER: root
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+      # Redis 연결 (Docker 컨테이너)
+      REDIS_URL: redis://redis:6379/0
 
       # 보안 관련 (Infisical에서 주입된 환경 변수 전달)
       SECRET_KEY: ${SECRET_KEY}
@@ -76,7 +74,7 @@ services:
     networks:
       - podpod-network
     depends_on:
-      db:
+      redis:
         condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
@@ -91,5 +89,5 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_dev_data:
+  redis_dev_data:
     driver: local
