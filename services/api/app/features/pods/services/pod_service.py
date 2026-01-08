@@ -89,10 +89,27 @@ class PodService:
         status: PodStatus = PodStatus.RECRUITING,
     ) -> PodDetailDto:
         """Form 데이터로부터 파티 생성 (검증은 use case에서 처리)"""
-        # sub_categories를 JSON 문자열에서 리스트로 변환 (필수)
+        # 필수 필드 검증
+        if not pod_form.title:
+            raise ValueError("title은 필수입니다.")
+        if not pod_form.description:
+            raise ValueError("description은 필수입니다.")
         if not pod_form.sub_categories:
             raise ValueError("sub_categories는 필수입니다.")
+        if not pod_form.capacity:
+            raise ValueError("capacity는 필수입니다.")
+        if not pod_form.place:
+            raise ValueError("place는 필수입니다.")
+        if not pod_form.address:
+            raise ValueError("address는 필수입니다.")
+        if pod_form.x is None:
+            raise ValueError("x(경도)는 필수입니다.")
+        if pod_form.y is None:
+            raise ValueError("y(위도)는 필수입니다.")
+        if not pod_form.selected_artist_id:
+            raise ValueError("selected_artist_id는 필수입니다.")
 
+        # sub_categories를 JSON 문자열에서 리스트로 변환
         try:
             parsed = json.loads(pod_form.sub_categories)
             sub_categories_list = parsed if isinstance(parsed, list) else []
