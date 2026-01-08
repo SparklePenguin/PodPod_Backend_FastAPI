@@ -183,12 +183,6 @@ class PodDetail(Base):
     sub_address = Column(String(300), nullable=True)
     x = Column(Float, nullable=True, comment="경도 (longitude)")
     y = Column(Float, nullable=True, comment="위도 (latitude)")
-    # chat_channel_url은 deprecated (chat_room_id 사용)
-    chat_channel_url = Column(
-        String(255),
-        nullable=True,
-        comment="채팅방 URL (deprecated - Pod.chat_room_id 사용)",
-    )
 
     # relations
     pod = relationship("Pod", back_populates="detail")
