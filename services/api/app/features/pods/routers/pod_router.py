@@ -2,7 +2,7 @@ from typing import List
 
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.pod_form import get_pod_form
+from app.deps.pod_form import get_pod_form, get_pod_form_for_update
 from app.deps.providers import get_pod_service, get_pod_use_case
 from app.features.pods.schemas import PodDetailDto, PodDto, PodForm, PodSearchRequest
 from app.features.pods.services.pod_service import PodService
@@ -215,7 +215,7 @@ async def get_pod_detail(
 )
 async def update_pod(
     pod_id: int,
-    pod_data: PodForm = Depends(get_pod_form),
+    pod_data: PodForm = Depends(get_pod_form_for_update),
     new_images: list[UploadFile | None] = File(
         None,
         alias="newImages",
