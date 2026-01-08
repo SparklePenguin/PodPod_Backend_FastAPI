@@ -281,6 +281,11 @@ def get_pod_use_case(
         return container.pod_use_case()
 
 
+def get_websocket_service():
+    """WebSocket Service 싱글톤 반환"""
+    return container.websocket_service()
+
+
 def get_chat_service(
     session: AsyncSession = Depends(get_session),
     fcm_service=Depends(get_fcm_service),

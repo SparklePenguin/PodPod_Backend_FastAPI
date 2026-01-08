@@ -43,7 +43,6 @@ class ChatRepository:
         """채팅 메시지 생성 (chat_room_id 기반)"""
         chat_message = ChatMessage(
             chat_room_id=chat_room_id,
-            channel_url=None,  # deprecated
             user_id=user_id,
             message=message,
             message_type=message_type,

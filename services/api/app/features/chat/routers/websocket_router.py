@@ -77,8 +77,10 @@ async def websocket_test_endpoint(
     개발/테스트 목적으로만 사용
     """
     from app.core.database import AsyncSessionLocal
+    from app.deps.providers import get_websocket_service
 
-    websocket_service = WebSocketService()
+    # 싱글톤 WebSocketService 사용
+    websocket_service = get_websocket_service()
 
     # 채널이 없으면 생성
     channel_metadata = await websocket_service.get_channel_metadata(room_id)

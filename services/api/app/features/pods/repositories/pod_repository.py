@@ -214,7 +214,9 @@ class PodRepository:
                 )
 
                 # 채팅방 메타데이터 업데이트
-                chat_room.metadata = simple_pod_dto.model_dump(mode="json", by_alias=True)
+                chat_room.metadata = simple_pod_dto.model_dump(
+                    mode="json", by_alias=True
+                )
                 await self._session.flush()
 
                 print(f"파티 {pod.id} 채팅방 생성 성공: chat_room_id={chat_room.id}")
@@ -275,8 +277,7 @@ class PodRepository:
     async def get_pod_detail_by_pod_id(self, pod_id: int) -> PodDetail | None:
         """PodDetail 조회"""
         result = await self._session.execute(
-            select(PodDetail)
-            .where(PodDetail.pod_id == pod_id)
+            select(PodDetail).where(PodDetail.pod_id == pod_id)
         )
         return result.scalar_one_or_none()
 
@@ -1252,9 +1253,7 @@ class PodRepository:
         """사용자의 모든 파티 조회 기록 삭제"""
         from sqlalchemy import delete
 
-        await self._session.execute(
-            delete(PodView).where(PodView.user_id == user_id)
-        )
+        await self._session.execute(delete(PodView).where(PodView.user_id == user_id))
 
     async def delete_all_members_by_user_id(self, user_id: int) -> None:
         """사용자의 모든 파티 멤버십 삭제"""

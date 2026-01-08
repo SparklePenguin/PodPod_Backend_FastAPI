@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Set
-
-from fastapi import WebSocket, WebSocketDisconnect
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set
 
 from app.features.chat.enums import MessageType
+from fastapi import WebSocket, WebSocketDisconnect
+
+if TYPE_CHECKING:
+    from app.features.chat.schemas.chat_schemas import ChatMessageDto
 
 logger = logging.getLogger(__name__)
 
@@ -271,7 +273,11 @@ class WebSocketService:
         return True
 
     async def send_message(
-        self, room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
+        self,
+        room_id: int,
+        user_id: int,
+        message: str,
+        message_type: MessageType = MessageType.TEXT,
     ) -> bool:
         """메시지 전송"""
         try:
@@ -375,7 +381,7 @@ class WebSocketService:
         message_type: MessageType,
         timestamp: str,
     ) -> None:
-        """채널의 모든 사용자에게 메시지 브로드캐스트"""
+        """채널의 모든 사용자에게 메시지 브로드캐스트 (레거시)"""
         message_data = {
             "type": message_type.value,
             "room_id": room_id,
@@ -383,6 +389,23 @@ class WebSocketService:
             "message": message,
             "timestamp": timestamp,
         }
+        await self.connection_manager.broadcast_to_channel(
+            message_data, room_id, exclude_user_id=None
+        )
+
+    # - MARK: 메시지 브로드캐스트 (DTO 전체)
+    async def broadcast_message_dto(
+        self,
+        room_id: int,
+        message_dto: "ChatMessageDto",
+    ) -> None:
+        """채널의 모든 사용자에게 ChatMessageDto 전체를 브로드캐스트"""
+        # Pydantic 모델을 JSON 직렬화 가능한 dict로 변환 (camelCase alias 사용)
+        message_data = message_dto.model_dump(by_alias=True, mode="json")
+
+        # messageType을 type으로 변경 (중복 제거)
+        message_data["type"] = message_data.pop("messageType", "TEXT")
+
         await self.connection_manager.broadcast_to_channel(
             message_data, room_id, exclude_user_id=None
         )

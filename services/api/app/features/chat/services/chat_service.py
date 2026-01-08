@@ -7,7 +7,6 @@ import logging
 
 from app.core.services.fcm_service import FCMService
 from app.features.chat.enums import MessageType
-from app.features.chat.services.websocket_service import WebSocketService
 from app.features.chat.schemas.chat_schemas import ChatMessageDto, ChatRoomDto
 from app.features.chat.services.chat_message_service import ChatMessageService
 from app.features.chat.services.chat_notification_service import (
@@ -15,6 +14,7 @@ from app.features.chat.services.chat_notification_service import (
 )
 from app.features.chat.services.chat_pod_service import ChatPodService
 from app.features.chat.services.chat_room_service import ChatRoomService
+from app.features.chat.services.websocket_service import WebSocketService
 from app.features.users.repositories import UserRepository
 from fastapi import WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,9 @@ class ChatService:
         self._notification_service = ChatNotificationService(
             session=session,
             fcm_service=fcm_service,
-            connection_manager=websocket_service.get_connection_manager() if websocket_service else None,
+            connection_manager=websocket_service.get_connection_manager()
+            if websocket_service
+            else None,
         )
         self._room_service = ChatRoomService(session=session)
 
@@ -61,7 +63,7 @@ class ChatService:
             message=message,
             message_type=message_type,
         )
-        
+
         # 2. commit은 use_case에서 처리
 
         # 2. 사용자 정보 조회
@@ -75,14 +77,11 @@ class ChatService:
                 room_id
             )
 
-        # 4. WebSocket 브로드캐스트
+        # 4. WebSocket 브로드캐스트 (전체 DTO 전달)
         if self._websocket_service:
-            await self._websocket_service.broadcast_message(
+            await self._websocket_service.broadcast_message_dto(
                 room_id=room_id,
-                user_id=user_id,
-                message=message,
-                message_type=message_type,
-                timestamp=chat_message_dto.created_at.isoformat(),
+                message_dto=chat_message_dto,
             )
 
         # 5. Pod 정보 추출 및 조회
@@ -146,7 +145,9 @@ class ChatService:
         self, chat_room_id: int, page: int = 1, size: int = 50
     ) -> tuple[list[ChatMessageDto], int]:
         """채팅방 ID로 메시지 목록 조회"""
-        return await self._message_service.get_messages_by_room_id(chat_room_id, page, size)
+        return await self._message_service.get_messages_by_room_id(
+            chat_room_id, page, size
+        )
 
     # - MARK: 채팅방 ID로 메시지 전송
     async def send_message_by_room_id(
@@ -164,7 +165,7 @@ class ChatService:
             message=message,
             message_type=message_type,
         )
-        
+
         # 2. commit은 use_case에서 처리
 
         # 3. 사용자 정보 조회
@@ -175,20 +176,17 @@ class ChatService:
         from app.features.chat.repositories.chat_room_repository import (
             ChatRoomRepository,
         )
+
         chat_room_repo = ChatRoomRepository(self._session)
         chat_room = await chat_room_repo.get_chat_room_by_id(chat_room_id)
         if not chat_room:
             return chat_message_dto
 
-        # 5. WebSocket 브로드캐스트 (channel_url 생성)
-        channel_url = f"chat_room_{chat_room_id}"
+        # 5. WebSocket 브로드캐스트 (전체 DTO 전달)
         if self._websocket_service:
-            await self._websocket_service.broadcast_message(
-                channel_url=channel_url,
-                user_id=user_id,
-                message=message,
-                message_type=message_type,
-                timestamp=chat_message_dto.created_at.isoformat(),
+            await self._websocket_service.broadcast_message_dto(
+                room_id=chat_room_id,
+                message_dto=chat_message_dto,
             )
 
         # 6. Pod 정보 조회
@@ -196,13 +194,15 @@ class ChatService:
         pod_title = None
         simple_pod_dict = None
         if pod_id:
-            pod_title_from_db, simple_pod_dict = await self._pod_service.get_pod_info(pod_id)
+            pod_title_from_db, simple_pod_dict = await self._pod_service.get_pod_info(
+                pod_id
+            )
             if pod_title_from_db:
                 pod_title = pod_title_from_db
 
-        # 7. FCM 알림 전송
+        # 6. FCM 알림 전송
         await self._notification_service.send_notifications_to_channel(
-            channel_url=channel_url,
+            room_id=chat_room_id,
             sender_id=user_id,
             sender_name=sender_name,
             message=message,
@@ -221,14 +221,22 @@ class ChatService:
         user_id: int,
     ) -> None:
         """WebSocket 연결 처리 및 메시지 수신 루프"""
+
         async def on_message(message_text: str, message_type: MessageType):
             """메시지 수신 시 처리"""
-            await self.send_message(
-                room_id=room_id,
-                user_id=user_id,
-                message=message_text,
-                message_type=message_type,
-            )
+            try:
+                await self.send_message(
+                    room_id=room_id,
+                    user_id=user_id,
+                    message=message_text,
+                    message_type=message_type,
+                )
+                # WebSocket에서 메시지 전송 시 commit 필요
+                await self._session.commit()
+            except Exception as e:
+                await self._session.rollback()
+                logger.error(f"WebSocket 메시지 전송 실패: {e}", exc_info=True)
+                # 예외가 발생해도 WebSocket 연결 유지
 
         if self._websocket_service:
             await self._websocket_service.handle_websocket_connection(
@@ -237,3 +245,5 @@ class ChatService:
                 user_id=user_id,
                 on_message=on_message,
             )
+        else:
+            logger.error("[WebSocket] websocket_service가 None입니다!")

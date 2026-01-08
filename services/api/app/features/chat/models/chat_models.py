@@ -127,13 +127,6 @@ class ChatMessage(Base):
         index=True,
         comment="채팅방 ID",
     )
-    # channel_url은 deprecated (chat_room_id 사용)
-    channel_url = Column(
-        String(255),
-        nullable=True,
-        index=True,
-        comment="채널 URL (deprecated - chat_room_id 사용)",
-    )
     user_id = Column(
         Integer, ForeignKey("users.id"), nullable=False, index=True, comment="발신자 ID"
     )

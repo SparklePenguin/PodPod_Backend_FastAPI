@@ -279,17 +279,20 @@ class Container(containers.DeclarativeContainer):
         user_dto_service=user_dto_service,
     )
 
+    # WebSocket Service (Singleton)
+    websocket_service = providers.Singleton(
+        lambda: __import__(
+            "app.features.chat.services.websocket_service", fromlist=["WebSocketService"]
+        ).WebSocketService()
+        if settings.USE_WEBSOCKET_CHAT
+        else None
+    )
+
     # Chat Service
     chat_service = providers.Factory(
         ChatService,
         session=session,
-        websocket_service=providers.Callable(
-            lambda: __import__(
-                "app.features.chat.services.websocket_service", fromlist=["WebSocketService"]
-            ).WebSocketService()
-            if settings.USE_WEBSOCKET_CHAT
-            else None
-        ),
+        websocket_service=websocket_service,
         fcm_service=fcm_service,
     )
 

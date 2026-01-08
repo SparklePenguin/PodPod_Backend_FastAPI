@@ -104,7 +104,6 @@ class ChatMessageService:
         """ChatMessage 모델을 DTO로 변환"""
         return ChatMessageDto(
             id=chat_message.id,
-            channel_url=chat_message.channel_url,
             user_id=chat_message.user_id,
             nickname=user.nickname if user else None,
             profile_image=user.profile_image if user else None,
