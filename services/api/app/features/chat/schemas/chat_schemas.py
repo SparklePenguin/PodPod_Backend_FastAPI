@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.features.chat.enums import MessageType
+
 
 class ChatMessageDto(BaseModel):
     """채팅 메시지 응답 DTO"""
@@ -17,7 +19,7 @@ class ChatMessageDto(BaseModel):
         default=None, alias="profileImage", description="발신자 프로필 이미지"
     )
     message: str = Field(description="메시지 내용")
-    message_type: str = Field(alias="messageType", description="메시지 타입")
+    message_type: MessageType = Field(alias="messageType", description="메시지 타입")
     created_at: datetime = Field(alias="createdAt", description="생성 시간")
 
     model_config = {"populate_by_name": True}
@@ -52,10 +54,10 @@ class SendMessageRequest(BaseModel):
     """채팅 메시지 전송 요청 DTO"""
 
     message: str = Field(description="메시지 내용")
-    message_type: str = Field(
-        default="MESG",
+    message_type: MessageType = Field(
+        default=MessageType.TEXT,
         alias="messageType",
-        description="메시지 타입 (MESG, FILE, IMAGE 등)",
+        description="메시지 타입 (TEXT, FILE, IMAGE, SYSTEM)",
     )
 
     model_config = {"populate_by_name": True}

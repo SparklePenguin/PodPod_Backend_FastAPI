@@ -5,10 +5,12 @@
 from datetime import datetime, timezone
 
 from app.core.database import Base
+from app.features.chat.enums import MessageType
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum,
     ForeignKey,
     Integer,
     String,
@@ -137,10 +139,10 @@ class ChatMessage(Base):
     )
     message = Column(Text, nullable=False, comment="메시지 내용")
     message_type = Column(
-        String(20),
+        Enum(MessageType),
         nullable=False,
-        default="MESG",
-        comment="메시지 타입 (MESG, FILE, IMAGE 등)",
+        default=MessageType.TEXT,
+        comment="메시지 타입 (TEXT, FILE, IMAGE 등)",
     )
     created_at = Column(
         DateTime,

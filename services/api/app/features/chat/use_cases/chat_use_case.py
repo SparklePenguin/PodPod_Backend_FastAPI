@@ -2,6 +2,7 @@
 
 import logging
 
+from app.features.chat.enums import MessageType
 from app.features.chat.exceptions import (
     ChatMemberNotFoundException,
     ChatRoomAccessDeniedException,
@@ -35,7 +36,7 @@ class ChatUseCase:
         chat_room_id: int,
         user_id: int,
         message: str,
-        message_type: str = "MESG",
+        message_type: MessageType = MessageType.TEXT,
     ) -> ChatMessageDto:
         """채팅방 ID로 메시지 전송 (비즈니스 로직 검증)"""
         # 채팅방 존재 확인

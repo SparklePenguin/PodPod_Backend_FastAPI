@@ -2,8 +2,9 @@ import logging
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Set
 
-from app.features.chat.exceptions import ChatRoomAccessDeniedException
 from fastapi import WebSocket, WebSocketDisconnect
+
+from app.features.chat.enums import MessageType
 
 logger = logging.getLogger(__name__)
 
@@ -270,12 +271,12 @@ class WebSocketService:
         return True
 
     async def send_message(
-        self, room_id: int, user_id: int, message: str, message_type: str = "MESG"
+        self, room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
     ) -> bool:
         """메시지 전송"""
         try:
             message_data = {
-                "type": message_type,
+                "type": message_type.value,
                 "room_id": room_id,
                 "user_id": user_id,
                 "message": message,
@@ -300,7 +301,7 @@ class WebSocketService:
         websocket: WebSocket,
         room_id: int,
         user_id: int,
-        on_message: Callable[[str, str], None],
+        on_message: Callable[[str, MessageType], None],
     ) -> None:
         """WebSocket 연결 처리 및 메시지 수신 루프"""
         # 채널 메타데이터 확인
@@ -337,7 +338,8 @@ class WebSocketService:
                 # 클라이언트로부터 메시지 수신
                 data = await websocket.receive_json()
 
-                message_type = data.get("type", "MESG")
+                message_type_str = data.get("type", "TEXT")
+                message_type = MessageType(message_type_str)
                 message_text = data.get("message", "")
 
                 if message_text:
@@ -370,12 +372,12 @@ class WebSocketService:
         room_id: int,
         user_id: int,
         message: str,
-        message_type: str,
+        message_type: MessageType,
         timestamp: str,
     ) -> None:
         """채널의 모든 사용자에게 메시지 브로드캐스트"""
         message_data = {
-            "type": message_type,
+            "type": message_type.value,
             "room_id": room_id,
             "user_id": user_id,
             "message": message,

@@ -6,6 +6,7 @@
 import logging
 
 from app.core.services.fcm_service import FCMService
+from app.features.chat.enums import MessageType
 from app.features.chat.services.websocket_service import WebSocketService
 from app.features.chat.schemas.chat_schemas import ChatMessageDto, ChatRoomDto
 from app.features.chat.services.chat_message_service import ChatMessageService
@@ -50,7 +51,7 @@ class ChatService:
         room_id: int,
         user_id: int,
         message: str,
-        message_type: str = "MESG",
+        message_type: MessageType = MessageType.TEXT,
     ) -> ChatMessageDto:
         """메시지 전송 (저장, 브로드캐스트, 알림 전송)"""
         # 1. 메시지 저장
@@ -153,7 +154,7 @@ class ChatService:
         chat_room_id: int,
         user_id: int,
         message: str,
-        message_type: str = "MESG",
+        message_type: MessageType = MessageType.TEXT,
     ) -> ChatMessageDto:
         """채팅방 ID로 메시지 전송 (검증은 use case에서 처리, commit은 use case에서 처리)"""
         # 1. 메시지 저장
@@ -220,7 +221,7 @@ class ChatService:
         user_id: int,
     ) -> None:
         """WebSocket 연결 처리 및 메시지 수신 루프"""
-        async def on_message(message_text: str, message_type: str):
+        async def on_message(message_text: str, message_type: MessageType):
             """메시지 수신 시 처리"""
             await self.send_message(
                 room_id=room_id,

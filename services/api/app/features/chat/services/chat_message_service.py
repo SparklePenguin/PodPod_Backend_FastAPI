@@ -6,6 +6,7 @@
 import logging
 from typing import List
 
+from app.features.chat.enums import MessageType
 from app.features.chat.repositories.chat_repository import ChatRepository
 from app.features.chat.schemas.chat_schemas import ChatMessageDto
 from app.features.users.repositories import UserRepository
@@ -24,7 +25,7 @@ class ChatMessageService:
 
     # - MARK: 메시지 저장
     async def create_message(
-        self, room_id: int, user_id: int, message: str, message_type: str = "MESG"
+        self, room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
     ) -> ChatMessageDto:
         """메시지를 DB에 저장하고 DTO로 반환 (commit은 호출하는 서비스에서 처리)"""
         chat_message = await self._chat_repo.create_message(
@@ -41,7 +42,7 @@ class ChatMessageService:
         return self._to_dto(chat_message, user)
 
     async def create_message_by_room_id(
-        self, chat_room_id: int, user_id: int, message: str, message_type: str = "MESG"
+        self, chat_room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
     ) -> ChatMessageDto:
         """채팅방 ID로 메시지를 DB에 저장하고 DTO로 반환 (commit은 호출하는 서비스에서 처리)"""
         chat_message = await self._chat_repo.create_message_by_room_id(

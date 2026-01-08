@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from typing import List
 
+from app.features.chat.enums import MessageType
 from app.features.chat.models.chat_models import ChatMessage
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +23,7 @@ class ChatRepository:
 
     # - MARK: 메시지 생성
     async def create_message(
-        self, room_id: int, user_id: int, message: str, message_type: str = "MESG"
+        self, room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
     ) -> ChatMessage:
         """채팅 메시지 생성 (room_id 기반)"""
         chat_message = ChatMessage(
@@ -37,7 +38,7 @@ class ChatRepository:
         return chat_message
 
     async def create_message_by_room_id(
-        self, chat_room_id: int, user_id: int, message: str, message_type: str = "MESG"
+        self, chat_room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
     ) -> ChatMessage:
         """채팅 메시지 생성 (chat_room_id 기반)"""
         chat_message = ChatMessage(

@@ -36,7 +36,7 @@ async def websocket_endpoint(
 
     메시지 형식:
     {
-        "type": "MESG",  # 메시지 타입 (MESG, FILE, IMAGE 등)
+        "type": "TEXT",  # 메시지 타입 (TEXT, FILE, IMAGE 등)
         "message": "안녕하세요"
     }
     """
