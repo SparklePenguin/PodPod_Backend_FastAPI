@@ -42,6 +42,7 @@ class PodDto(BaseModel):
         description="파티 상태 (RECRUITING: 모집중, COMPLETED: 모집 완료, CLOSED: 종료, CANCELED: 취소)",
     )
     is_del: bool = Field(default=False, alias="isDel", description="삭제 여부")
+    chat_room_id: int = Field(..., alias="chatRoomId", description="채팅방 ID")
     created_at: datetime = Field(..., alias="createdAt", description="생성 시간")
     updated_at: datetime = Field(..., alias="updatedAt", description="수정 시간")
 

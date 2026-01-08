@@ -256,6 +256,7 @@ class ReviewService:
                     else time_module.min,
                     status=pod.status,
                     is_del=pod.is_del if pod else False,
+                    chat_room_id=pod.chat_room_id if pod and pod.chat_room_id else 0,
                     created_at=pod.created_at
                     if pod and pod.created_at
                     else datetime.now(timezone.utc),
@@ -283,6 +284,7 @@ class ReviewService:
                     meeting_time=time_module.min,
                     status=PodStatus.RECRUITING,
                     is_del=False,
+                    chat_room_id=0,
                     created_at=datetime.now(timezone.utc),
                     updated_at=datetime.now(timezone.utc),
                 )

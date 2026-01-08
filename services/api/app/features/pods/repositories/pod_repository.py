@@ -180,30 +180,12 @@ class PodRepository:
             # 자체 채팅방 생성
             chat_room_repo = ChatRoomRepository(self._session)
 
-            # PodDto를 메타데이터로 저장
-            simple_pod_dto = PodDto(
-                id=getattr(pod, "id"),
-                owner_id=owner_id,
-                title=title,
-                thumbnail_url=thumbnail_url or image_url or "",
-                sub_categories=sub_categories,
-                selected_artist_id=selected_artist_id,
-                capacity=capacity,
-                place=place,
-                meeting_date=meeting_date,
-                meeting_time=meeting_time,
-                status=status,
-                is_del=False,
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-            )
-
-            # 채팅방 생성 (파티장만 참여)
+            # 채팅방 생성 (파티장만 참여) - 메타데이터는 임시로 None
             chat_room = await chat_room_repo.create_chat_room(
                 pod_id=pod.id,
                 name=title,
                 cover_url=thumbnail_url or image_url,
-                metadata=simple_pod_dto.model_dump(mode="json", by_alias=True),
+                metadata=None,  # 임시로 None, 나중에 업데이트
                 owner_id=owner_id,
             )
 
@@ -211,6 +193,30 @@ class PodRepository:
                 # Pod에 chat_room_id 저장
                 pod.chat_room_id = chat_room.id
                 await self._session.flush()
+
+                # 이제 chat_room_id를 포함한 PodDto 생성
+                simple_pod_dto = PodDto(
+                    id=getattr(pod, "id"),
+                    owner_id=owner_id,
+                    title=title,
+                    thumbnail_url=thumbnail_url or image_url or "",
+                    sub_categories=sub_categories,
+                    selected_artist_id=selected_artist_id,
+                    capacity=capacity,
+                    place=place,
+                    meeting_date=meeting_date,
+                    meeting_time=meeting_time,
+                    status=status,
+                    is_del=False,
+                    chat_room_id=chat_room.id,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                )
+
+                # 채팅방 메타데이터 업데이트
+                chat_room.metadata = simple_pod_dto.model_dump(mode="json", by_alias=True)
+                await self._session.flush()
+
                 print(f"파티 {pod.id} 채팅방 생성 성공: chat_room_id={chat_room.id}")
             else:
                 print(f"파티 {pod.id} 채팅방 생성 실패")

@@ -1116,6 +1116,7 @@ class PodService:
             meeting_time=pod.meeting_time if pod.meeting_time else time.min,
             status=pod_status,
             is_del=pod.is_del if pod.is_del else False,
+            chat_room_id=pod.chat_room_id if pod.chat_room_id else 0,
             created_at=pod_created_at,
             updated_at=pod_updated_at,
         )

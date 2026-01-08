@@ -115,6 +115,14 @@ class Pod(Base):
     selected_artist_id = Column(
         Integer, ForeignKey("artists.id"), nullable=False, index=True
     )
+    chat_room_id = Column(
+        Integer,
+        ForeignKey("chat_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+        comment="채팅방 ID",
+    )
     title = Column(String(100), nullable=False)
     thumbnail_url = Column(String(500), nullable=True)
     sub_categories = Column(Text, nullable=False)
@@ -124,14 +132,6 @@ class Pod(Base):
     meeting_time = Column(Time, nullable=False)
     status = Column(SQLEnum(PodStatus), default=PodStatus.RECRUITING, nullable=False)
     is_del = Column(Boolean, default=False)
-    chat_room_id = Column(
-        Integer,
-        ForeignKey("chat_rooms.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-        index=True,
-        comment="채팅방 ID",
-    )
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
