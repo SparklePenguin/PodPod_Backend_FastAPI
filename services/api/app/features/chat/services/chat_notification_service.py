@@ -31,7 +31,7 @@ class ChatNotificationService:
     # - MARK: 채널 멤버에게 FCM 알림 전송
     async def send_notifications_to_channel(
         self,
-        channel_url: str,
+        room_id: int,
         sender_id: int,
         sender_name: str,
         message: str,
@@ -45,7 +45,7 @@ class ChatNotificationService:
             return
 
         # 채널 멤버 조회
-        members = self._connection_manager.get_channel_members(channel_url)
+        members = self._connection_manager.get_channel_members(room_id)
         if not members:
             return
 
@@ -55,14 +55,14 @@ class ChatNotificationService:
                 continue  # 발신자 제외
 
             # 접속 중이면 FCM 전송 안 함
-            if self._connection_manager.is_user_in_channel(channel_url, member_id):
+            if self._connection_manager.is_user_in_channel(room_id, member_id):
                 continue
 
             await self._send_fcm_notification(
                 recipient_id=member_id,
                 sender_name=sender_name,
                 message=message,
-                channel_url=channel_url,
+                room_id=room_id,
                 pod_id=pod_id,
                 pod_title=pod_title,
                 simple_pod_dict=simple_pod_dict,
@@ -74,7 +74,7 @@ class ChatNotificationService:
         recipient_id: int,
         sender_name: str,
         message: str,
-        channel_url: str,
+        room_id: int,
         pod_id: int | None = None,
         pod_title: str = "파티",
         simple_pod_dict: dict | None = None,
@@ -101,8 +101,8 @@ class ChatNotificationService:
             }
             if simple_pod_dict:
                 data["pod"] = json.dumps(simple_pod_dict, ensure_ascii=False)
-            if channel_url:
-                data["channelUrl"] = channel_url
+            if room_id:
+                data["roomId"] = str(room_id)
 
             # FCM 전송
             await self._fcm_service.send_notification(
@@ -116,7 +116,7 @@ class ChatNotificationService:
                 related_pod_id=pod_id,
             )
             logger.info(
-                f"채팅 메시지 FCM 알림 전송: recipient_id={recipient_id}, channel_url={channel_url}"
+                f"채팅 메시지 FCM 알림 전송: recipient_id={recipient_id}, room_id={room_id}"
             )
 
         except Exception as e:

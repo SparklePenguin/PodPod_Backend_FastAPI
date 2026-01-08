@@ -35,7 +35,7 @@ class ChatRoom(Base):
     name = Column(String(100), nullable=False, comment="채팅방 이름")
     cover_url = Column(String(500), nullable=True, comment="채팅방 커버 이미지 URL")
     room_metadata = Column(Text, nullable=True, comment="채팅방 메타데이터 (JSON)")
-    is_active = Column(Boolean, default=True, nullable=False, comment="활성화 여부")
+    is_del = Column(Boolean, default=True, nullable=False, comment="활성화 여부")
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -108,9 +108,7 @@ class ChatMember(Base):
     user = relationship("User", foreign_keys=[user_id])
 
     __table_args__ = (
-        UniqueConstraint(
-            "chat_room_id", "user_id", name="uq_chat_members_room_user"
-        ),
+        UniqueConstraint("chat_room_id", "user_id", name="uq_chat_members_room_user"),
     )
 
 
@@ -152,5 +150,7 @@ class ChatMessage(Base):
     )
 
     # 관계 설정
-    chat_room = relationship("ChatRoom", back_populates="messages", foreign_keys=[chat_room_id])
+    chat_room = relationship(
+        "ChatRoom", back_populates="messages", foreign_keys=[chat_room_id]
+    )
     user = relationship("User", foreign_keys=[user_id])

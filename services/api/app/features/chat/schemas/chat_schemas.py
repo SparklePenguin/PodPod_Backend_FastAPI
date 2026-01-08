@@ -3,7 +3,6 @@
 """
 
 from datetime import datetime
-from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +11,6 @@ class ChatMessageDto(BaseModel):
     """채팅 메시지 응답 DTO"""
 
     id: int = Field(description="메시지 ID")
-    channel_url: str = Field(alias="channelUrl", description="채널 URL")
     user_id: int = Field(alias="userId", description="발신자 ID")
     nickname: str | None = Field(default=None, description="발신자 닉네임")
     profile_image: str | None = Field(
@@ -28,14 +26,14 @@ class ChatMessageDto(BaseModel):
 class ChatRoomDto(BaseModel):
     """채팅방 정보 DTO"""
 
-    channel_url: str = Field(alias="channelUrl", description="채널 URL")
+    id: int | None = Field(default=None, alias="id", description="채팅방 ID")
+    pod_id: int | None = Field(default=None, alias="podId", description="파티 ID")
     name: str = Field(description="채팅방 이름")
     cover_url: str | None = Field(
         default=None, alias="coverUrl", description="커버 이미지 URL"
     )
-    pod_id: int | None = Field(default=None, alias="podId", description="파티 ID")
-    pod_title: str | None = Field(
-        default=None, alias="podTitle", description="파티 제목"
+    metadata: dict | None = Field(
+        default=None, alias="metadata", description="채팅방 메타데이터 (JSON)"
     )
     member_count: int = Field(alias="memberCount", description="멤버 수")
     last_message: ChatMessageDto | None = Field(
@@ -45,15 +43,7 @@ class ChatRoomDto(BaseModel):
         default=0, alias="unreadCount", description="읽지 않은 메시지 수"
     )
     created_at: str = Field(alias="createdAt", description="생성 시간")
-
-    model_config = {"populate_by_name": True}
-
-
-class ChatRoomListDto(BaseModel):
-    """채팅방 목록 응답 DTO"""
-
-    rooms: List[ChatRoomDto] = Field(description="채팅방 목록")
-    total_count: int = Field(alias="totalCount", description="총 개수")
+    updated_at: str = Field(alias="updatedAt", description="수정 시간")
 
     model_config = {"populate_by_name": True}
 

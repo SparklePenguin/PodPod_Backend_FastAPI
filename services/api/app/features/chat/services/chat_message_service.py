@@ -24,11 +24,11 @@ class ChatMessageService:
 
     # - MARK: 메시지 저장
     async def create_message(
-        self, channel_url: str, user_id: int, message: str, message_type: str = "MESG"
+        self, room_id: int, user_id: int, message: str, message_type: str = "MESG"
     ) -> ChatMessageDto:
         """메시지를 DB에 저장하고 DTO로 반환 (commit은 호출하는 서비스에서 처리)"""
         chat_message = await self._chat_repo.create_message(
-            channel_url=channel_url,
+            room_id=room_id,
             user_id=user_id,
             message=message,
             message_type=message_type,

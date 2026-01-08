@@ -143,9 +143,7 @@ class NotificationService:
                 if user_tendency:
                     tendency_type_raw = user_tendency.tendency_type
                     tendency_type = (
-                        str(tendency_type_raw)
-                        if tendency_type_raw is not None
-                        else ""
+                        str(tendency_type_raw) if tendency_type_raw is not None else ""
                     )
             except Exception:
                 tendency_type = ""
@@ -156,7 +154,7 @@ class NotificationService:
                 profile_image=notification.related_user.profile_image,
                 intro=notification.related_user.intro or "",
                 tendency_type=tendency_type,
-                is_following=False,  # TODO: 필요시 조회
+                is_following=False,
             )
 
         # related_pod DTO 생성

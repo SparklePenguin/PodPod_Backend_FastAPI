@@ -47,7 +47,7 @@ class ChatService:
     # - MARK: 메시지 전송
     async def send_message(
         self,
-        channel_url: str,
+        room_id: int,
         user_id: int,
         message: str,
         message_type: str = "MESG",
@@ -55,7 +55,7 @@ class ChatService:
         """메시지 전송 (저장, 브로드캐스트, 알림 전송)"""
         # 1. 메시지 저장
         chat_message_dto = await self._message_service.create_message(
-            channel_url=channel_url,
+            room_id=room_id,
             user_id=user_id,
             message=message,
             message_type=message_type,
@@ -71,13 +71,13 @@ class ChatService:
         channel_metadata = None
         if self._websocket_service:
             channel_metadata = await self._websocket_service.get_channel_metadata(
-                channel_url
+                room_id
             )
 
         # 4. WebSocket 브로드캐스트
         if self._websocket_service:
             await self._websocket_service.broadcast_message(
-                channel_url=channel_url,
+                room_id=room_id,
                 user_id=user_id,
                 message=message,
                 message_type=message_type,
@@ -86,7 +86,7 @@ class ChatService:
 
         # 5. Pod 정보 추출 및 조회
         pod_id, pod_title = self._pod_service.extract_pod_info_from_metadata(
-            channel_metadata, channel_url
+            channel_metadata, room_id
         )
         if pod_id:
             pod_title_from_db, simple_pod_dict = await self._pod_service.get_pod_info(
@@ -99,7 +99,7 @@ class ChatService:
 
         # 6. FCM 알림 전송
         await self._notification_service.send_notifications_to_channel(
-            channel_url=channel_url,
+            room_id=room_id,
             sender_id=user_id,
             sender_name=sender_name,
             message=message,
@@ -216,14 +216,14 @@ class ChatService:
     async def handle_websocket_connection(
         self,
         websocket: WebSocket,
-        channel_url: str,
+        room_id: int,
         user_id: int,
     ) -> None:
         """WebSocket 연결 처리 및 메시지 수신 루프"""
         async def on_message(message_text: str, message_type: str):
             """메시지 수신 시 처리"""
             await self.send_message(
-                channel_url=channel_url,
+                room_id=room_id,
                 user_id=user_id,
                 message=message_text,
                 message_type=message_type,
@@ -232,7 +232,7 @@ class ChatService:
         if self._websocket_service:
             await self._websocket_service.handle_websocket_connection(
                 websocket=websocket,
-                channel_url=channel_url,
+                room_id=room_id,
                 user_id=user_id,
                 on_message=on_message,
             )

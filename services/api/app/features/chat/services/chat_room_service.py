@@ -3,6 +3,7 @@
 채팅방 목록 조회 및 정보 조회 담당
 """
 
+import json
 import logging
 from datetime import datetime as dt
 from typing import List
@@ -44,7 +45,9 @@ class ChatRoomService:
             last_message_model = await self._get_last_message_by_room_id(chat_room.id)
             last_message = None
             if last_message_model:
-                last_message = self._message_service._to_dto(last_message_model, last_message_model.user)
+                last_message = self._message_service._to_dto(
+                    last_message_model, last_message_model.user
+                )
 
             # Pod 정보 조회
             pod_id = chat_room.pod_id
@@ -55,25 +58,40 @@ class ChatRoomService:
             # channel_url 생성 (기존 호환성을 위해)
             channel_url = f"chat_room_{chat_room.id}"
 
+            # metadata 파싱
+            metadata = None
+            if chat_room.room_metadata:
+                try:
+                    metadata = json.loads(chat_room.room_metadata)
+                except (json.JSONDecodeError, TypeError):
+                    metadata = None
+
             rooms.append(
                 ChatRoomDto(
+                    id=chat_room.id,
                     channel_url=channel_url,
                     name=chat_room.name,
                     cover_url=chat_room.cover_url,
+                    metadata=metadata,
                     pod_id=pod_id,
                     pod_title=pod_title,
                     member_count=member_count,
                     last_message=last_message,
-                    unread_count=await self._chat_room_repo.get_unread_count(chat_room.id, user_id),
-                    created_at=chat_room.created_at.isoformat() if chat_room.created_at else "",
+                    unread_count=await self._chat_room_repo.get_unread_count(
+                        chat_room.id, user_id
+                    ),
+                    created_at=chat_room.created_at.isoformat()
+                    if isinstance(chat_room.created_at, dt)
+                    else "",
+                    updated_at=chat_room.updated_at.isoformat()
+                    if isinstance(chat_room.updated_at, dt)
+                    else "",
                 )
             )
 
         # 마지막 메시지 시간 기준으로 정렬
         rooms.sort(
-            key=lambda r: r.last_message.created_at
-            if r.last_message
-            else dt.min,
+            key=lambda r: r.last_message.created_at if r.last_message else dt.min,
             reverse=True,
         )
 
@@ -98,30 +116,41 @@ class ChatRoomService:
         last_message_model = await self._get_last_message_by_room_id(chat_room_id)
         last_message = None
         if last_message_model:
-            last_message = self._message_service._to_dto(last_message_model, last_message_model.user)
+            last_message = self._message_service._to_dto(
+                last_message_model, last_message_model.user
+            )
 
         # Pod 정보 조회
         pod_id = chat_room.pod_id
-        pod_title = None
-        if chat_room.pod:
-            pod_title = chat_room.pod.title
 
         # 읽지 않은 메시지 수 조회
-        unread_count = await self._chat_room_repo.get_unread_count(chat_room_id, user_id)
+        unread_count = await self._chat_room_repo.get_unread_count(
+            chat_room_id, user_id
+        )
 
-        # channel_url 생성 (기존 호환성을 위해)
-        channel_url = f"chat_room_{chat_room_id}"
+        # metadata 파싱
+        metadata = None
+        if chat_room.room_metadata:
+            try:
+                metadata = json.loads(chat_room.room_metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = None
 
         return ChatRoomDto(
-            channel_url=channel_url,
+            id=chat_room.id,
+            pod_id=pod_id,
             name=chat_room.name,
             cover_url=chat_room.cover_url,
-            pod_id=pod_id,
-            pod_title=pod_title,
+            metadata=metadata,
             member_count=member_count,
             last_message=last_message,
             unread_count=unread_count,
-            created_at=chat_room.created_at.isoformat() if chat_room.created_at else "",
+            created_at=chat_room.created_at.isoformat()
+            if isinstance(chat_room.created_at, dt)
+            else "",
+            updated_at=chat_room.updated_at.isoformat()
+            if isinstance(chat_room.updated_at, dt)
+            else "",
         )
 
     # - MARK: 채팅방 나가기

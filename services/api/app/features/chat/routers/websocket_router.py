@@ -22,17 +22,17 @@ async def get_user_id_from_token(token: str) -> int | None:
 
 
 # - MARK: WebSocket 채팅 연결
-@router.websocket("/ws/{channel_url}")
+@router.websocket("/ws/{room_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
-    channel_url: str,
+    room_id: int,
     token: str | None = Query(None),
 ):
     """
     WebSocket 채팅 엔드포인트
 
     사용법:
-    ws://localhost:8000/api/v1/chat/ws/{channel_url}?token={jwt_token}
+    ws://localhost:8000/api/v1/chat/ws/{room_id}?token={jwt_token}
 
     메시지 형식:
     {
@@ -60,16 +60,16 @@ async def websocket_endpoint(
         chat_use_case = get_chat_use_case(session=session)
         await chat_use_case.handle_websocket_connection(
             websocket=websocket,
-            channel_url=channel_url,
+            room_id=room_id,
             user_id=user_id,
         )
 
 
 # - MARK: WebSocket 테스트 연결
-@router.websocket("/ws/{channel_url}/test")
+@router.websocket("/ws/{room_id}/test")
 async def websocket_test_endpoint(
     websocket: WebSocket,
-    channel_url: str,
+    room_id: int,
     user_id: int = Query(..., description="테스트용 사용자 ID"),
 ):
     """
@@ -81,12 +81,12 @@ async def websocket_test_endpoint(
     websocket_service = WebSocketService()
 
     # 채널이 없으면 생성
-    channel_metadata = await websocket_service.get_channel_metadata(channel_url)
+    channel_metadata = await websocket_service.get_channel_metadata(room_id)
     if not channel_metadata:
         await websocket_service.create_channel(
-            channel_url=channel_url,
-            name=f"테스트 채널 {channel_url}",
-            user_ids=[str(user_id)],
+            room_id=room_id,
+            name=f"테스트 채널 {room_id}",
+            user_ids=[user_id],
         )
 
     # Chat UseCase를 통해 WebSocket 연결 처리
@@ -96,6 +96,6 @@ async def websocket_test_endpoint(
         chat_use_case = get_chat_use_case(session=session)
         await chat_use_case.handle_websocket_connection(
             websocket=websocket,
-            channel_url=channel_url,
+            room_id=room_id,
             user_id=user_id,
         )

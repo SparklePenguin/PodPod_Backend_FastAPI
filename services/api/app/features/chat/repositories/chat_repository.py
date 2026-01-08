@@ -22,11 +22,11 @@ class ChatRepository:
 
     # - MARK: 메시지 생성
     async def create_message(
-        self, channel_url: str, user_id: int, message: str, message_type: str = "MESG"
+        self, room_id: int, user_id: int, message: str, message_type: str = "MESG"
     ) -> ChatMessage:
-        """채팅 메시지 생성 (channel_url 기반 - 하위 호환성)"""
+        """채팅 메시지 생성 (room_id 기반)"""
         chat_message = ChatMessage(
-            channel_url=channel_url,
+            chat_room_id=room_id,
             user_id=user_id,
             message=message,
             message_type=message_type,

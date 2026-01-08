@@ -23,7 +23,7 @@ class ChatPodService:
 
     # - MARK: Pod 정보 추출 (채널 메타데이터에서)
     def extract_pod_info_from_metadata(
-        self, channel_metadata: dict | None, channel_url: str
+        self, channel_metadata: dict | None, room_id: int
     ) -> tuple[int | None, str | None]:
         """채널 메타데이터에서 Pod ID와 제목 추출"""
         pod_id = None
@@ -39,14 +39,8 @@ class ChatPodService:
             pod_id = data.get("id")
             pod_title = data.get("title")
 
-        # channel_url에서도 추출 시도 (pod_{pod_id}_chat 형식)
-        if not pod_id and channel_url.startswith("pod_"):
-            try:
-                parts = channel_url.split("_")
-                if len(parts) >= 2:
-                    pod_id = int(parts[1])
-            except (ValueError, IndexError):
-                pass
+        # room_id에서 pod_id 유추 가능 (ChatRoom.pod_id가 있으므로 메타데이터에서 가져오는 게 맞음)
+        # 하지만 메타데이터에 없으면 DB 조회가 필요함 (여기서는 생략)
 
         return pod_id, pod_title
 
