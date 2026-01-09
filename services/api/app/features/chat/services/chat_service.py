@@ -5,6 +5,8 @@
 
 import logging
 
+from redis.asyncio import Redis
+
 from app.core.services.fcm_service import FCMService
 from app.features.chat.enums import MessageType
 from app.features.chat.schemas.chat_schemas import ChatMessageDto, ChatRoomDto
@@ -30,22 +32,25 @@ class ChatService:
         session: AsyncSession,
         websocket_service: WebSocketService | None = None,
         fcm_service: FCMService | None = None,
+        redis: Redis | None = None,
     ):
         self._session = session
+        self._redis = redis
         self._user_repo = UserRepository(session)
 
-        # 하위 서비스 초기화
+        # 하위 서비스 초기화 (Redis 전달)
         self._websocket_service = websocket_service
-        self._message_service = ChatMessageService(session)
+        self._message_service = ChatMessageService(session, redis)
         self._pod_service = ChatPodService(session)
         self._notification_service = ChatNotificationService(
             session=session,
+            redis=redis,
             fcm_service=fcm_service,
             connection_manager=websocket_service.get_connection_manager()
             if websocket_service
             else None,
         )
-        self._room_service = ChatRoomService(session=session)
+        self._room_service = ChatRoomService(session=session, redis=redis)
 
     # - MARK: 메시지 전송
     async def send_message(

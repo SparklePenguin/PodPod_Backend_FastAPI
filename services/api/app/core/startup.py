@@ -54,6 +54,9 @@ async def startup_events():
     # 에러 코드 초기화
     await initialize_error_codes()
 
+    # WebSocketService에 Redis 설정
+    await initialize_websocket_redis()
+
     # 스케줄러 시작
     from app.core.services.scheduler_service import start_scheduler
 
@@ -64,6 +67,24 @@ async def startup_events():
     print("- 1시간마다: 마감 임박 알림")
 
     print("애플리케이션 시작 이벤트 완료")
+
+
+async def initialize_websocket_redis():
+    """WebSocketService 싱글톤에 Redis 설정"""
+    try:
+        from app.core.config import settings
+        from app.deps.redis import get_redis_client
+
+        if settings.USE_WEBSOCKET_CHAT:
+            from app.core.container import container
+
+            websocket_service = container.websocket_service()
+            if websocket_service:
+                redis = await get_redis_client()
+                websocket_service.set_redis(redis)
+                print("WebSocketService에 Redis 설정 완료")
+    except Exception as e:
+        print(f"WebSocketService Redis 설정 실패 (무시됨): {e}")
 
 
 def sync_startup_events():

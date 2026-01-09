@@ -55,9 +55,11 @@ async def websocket_endpoint(
     # Chat UseCase를 통해 WebSocket 연결 처리
     from app.core.database import AsyncSessionLocal
     from app.deps.providers import get_chat_use_case
+    from app.deps.redis import get_redis_client
 
     async with AsyncSessionLocal() as session:
-        chat_use_case = get_chat_use_case(session=session)
+        redis = await get_redis_client()
+        chat_use_case = get_chat_use_case(session=session, redis=redis)
         await chat_use_case.handle_websocket_connection(
             websocket=websocket,
             room_id=room_id,
@@ -93,9 +95,11 @@ async def websocket_test_endpoint(
 
     # Chat UseCase를 통해 WebSocket 연결 처리
     from app.deps.providers import get_chat_use_case
+    from app.deps.redis import get_redis_client
 
     async with AsyncSessionLocal() as session:
-        chat_use_case = get_chat_use_case(session=session)
+        redis = await get_redis_client()
+        chat_use_case = get_chat_use_case(session=session, redis=redis)
         await chat_use_case.handle_websocket_connection(
             websocket=websocket,
             room_id=room_id,

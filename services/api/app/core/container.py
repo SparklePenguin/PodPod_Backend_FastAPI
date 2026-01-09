@@ -1,6 +1,7 @@
 """의존성 주입 컨테이너"""
 
 from dependency_injector import containers, providers
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -107,6 +108,9 @@ class Container(containers.DeclarativeContainer):
 
     # Session Dependency (런타임에 주입됨)
     session = providers.Dependency(instance_of=AsyncSession)
+
+    # Redis Dependency (런타임에 주입됨)
+    redis = providers.Dependency(instance_of=Redis)
 
     # Core Services (Singleton)
     fcm_service = providers.Singleton(FCMService)
@@ -294,6 +298,7 @@ class Container(containers.DeclarativeContainer):
         session=session,
         websocket_service=websocket_service,
         fcm_service=fcm_service,
+        redis=redis,
     )
 
     # Artist Use Cases

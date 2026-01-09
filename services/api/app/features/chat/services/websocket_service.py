@@ -2,11 +2,16 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Set
 
+from redis.asyncio import Redis
+
 from app.features.chat.enums import MessageType
 from fastapi import WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
     from app.features.chat.schemas.chat_schemas import ChatMessageDto
+    from app.features.chat.services.chat_redis_cache_service import (
+        ChatRedisCacheService,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +19,15 @@ logger = logging.getLogger(__name__)
 class ConnectionManager:
     """WebSocket 연결 관리자"""
 
-    def __init__(self):
+    def __init__(self, redis_cache: "ChatRedisCacheService | None" = None):
         # 채널별 연결 관리: {room_id: {user_id: websocket}}
         self.active_connections: Dict[int, Dict[int, WebSocket]] = {}
         # 사용자별 채널 관리: {user_id: {room_id}}
         self.user_channels: Dict[int, Set[int]] = {}
         # 채널 메타데이터: {room_id: {name, members, data, ...}}
         self.channel_metadata: Dict[int, Dict[str, Any]] = {}
+        # Redis 캐시 서비스
+        self._redis_cache = redis_cache
 
     async def connect(self, websocket: WebSocket, room_id: int, user_id: int):
         """WebSocket 연결"""
@@ -35,9 +42,13 @@ class ConnectionManager:
             self.user_channels[user_id] = set()
         self.user_channels[user_id].add(room_id)
 
+        # Redis에 접속 상태 저장
+        if self._redis_cache:
+            await self._redis_cache.set_user_connected(room_id, user_id)
+
         logger.info(f"사용자 {user_id}가 채널 room_id={room_id}에 연결됨")
 
-    def disconnect(self, room_id: int, user_id: int):
+    async def disconnect(self, room_id: int, user_id: int):
         """WebSocket 연결 해제"""
         if room_id in self.active_connections:
             if user_id in self.active_connections[room_id]:
@@ -51,6 +62,10 @@ class ConnectionManager:
             self.user_channels[user_id].discard(room_id)
             if not self.user_channels[user_id]:
                 del self.user_channels[user_id]
+
+        # Redis에서 접속 상태 제거
+        if self._redis_cache:
+            await self._redis_cache.set_user_disconnected(room_id, user_id)
 
         logger.info(f"사용자 {user_id}가 채널 room_id={room_id}에서 연결 해제됨")
 
@@ -94,7 +109,7 @@ class ConnectionManager:
 
         # 연결이 끊어진 사용자 제거
         for user_id in disconnected_users:
-            self.disconnect(room_id, user_id)
+            await self.disconnect(room_id, user_id)
 
     def get_channel_members(self, room_id: int) -> List[int]:
         """채널의 멤버 목록 조회"""
@@ -113,8 +128,26 @@ class ConnectionManager:
 class WebSocketService:
     """WebSocket 기반 채팅 서비스"""
 
-    def __init__(self):
-        self.connection_manager = ConnectionManager()
+    def __init__(self, redis: Redis | None = None):
+        self._redis = redis
+        self._redis_cache: "ChatRedisCacheService | None" = None
+        if redis:
+            from app.features.chat.services.chat_redis_cache_service import (
+                ChatRedisCacheService,
+            )
+
+            self._redis_cache = ChatRedisCacheService(redis)
+        self.connection_manager = ConnectionManager(self._redis_cache)
+
+    def set_redis(self, redis: Redis) -> None:
+        """Redis 클라이언트 설정 (지연 초기화용)"""
+        from app.features.chat.services.chat_redis_cache_service import (
+            ChatRedisCacheService,
+        )
+
+        self._redis = redis
+        self._redis_cache = ChatRedisCacheService(redis)
+        self.connection_manager._redis_cache = self._redis_cache
 
     async def create_channel(
         self,
@@ -215,7 +248,7 @@ class WebSocketService:
 
                 # 연결되어 있으면 연결 해제
                 if self.connection_manager.is_user_in_channel(channel_url, user_id_int):
-                    self.connection_manager.disconnect(channel_url, user_id_int)
+                    await self.connection_manager.disconnect(channel_url, user_id_int)
 
                 logger.info(f"채널 {channel_url}에서 멤버 제거: {user_id}")
                 return True
@@ -235,7 +268,7 @@ class WebSocketService:
                     self.connection_manager.active_connections[channel_url].keys()
                 )
                 for user_id in user_ids:
-                    self.connection_manager.disconnect(channel_url, user_id)
+                    await self.connection_manager.disconnect(channel_url, user_id)
 
             # 메타데이터 삭제
             if channel_url in self.connection_manager.channel_metadata:
@@ -353,7 +386,7 @@ class WebSocketService:
 
         except WebSocketDisconnect:
             # 연결 해제 처리
-            self.connection_manager.disconnect(room_id, user_id)
+            await self.connection_manager.disconnect(room_id, user_id)
 
             # 연결 해제 알림 전송
             await self.connection_manager.broadcast_to_channel(
@@ -369,7 +402,7 @@ class WebSocketService:
 
         except Exception as e:
             logger.error(f"WebSocket 오류: {e}")
-            self.connection_manager.disconnect(room_id, user_id)
+            await self.connection_manager.disconnect(room_id, user_id)
             await websocket.close()
 
     # - MARK: 메시지 브로드캐스트 (timestamp 파라미터 추가)

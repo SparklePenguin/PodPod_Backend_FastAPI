@@ -2,7 +2,9 @@
 
 from app.core.container import container
 from app.core.database import get_session
+from app.deps.redis import get_redis
 from fastapi import Depends
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -289,16 +291,18 @@ def get_websocket_service():
 def get_chat_service(
     session: AsyncSession = Depends(get_session),
     fcm_service=Depends(get_fcm_service),
+    redis: Redis = Depends(get_redis),
 ):
-    """Chat Service 생성 (WebSocket 서비스 포함)"""
-    with container.session.override(session):
+    """Chat Service 생성 (WebSocket 서비스 + Redis 포함)"""
+    with container.session.override(session), container.redis.override(redis):
         return container.chat_service()
 
 
 def get_chat_use_case(
     session: AsyncSession = Depends(get_session),
     chat_service=Depends(get_chat_service),
+    redis: Redis = Depends(get_redis),
 ):
     """Chat UseCase 생성"""
-    with container.session.override(session):
+    with container.session.override(session), container.redis.override(redis):
         return container.chat_use_case()

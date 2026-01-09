@@ -163,6 +163,19 @@ class ApplicationService:
                         user_id=application_user_id,
                         role="member",
                     )
+
+                    # Redis 캐시에도 멤버 추가
+                    try:
+                        from app.deps.redis import get_redis_client
+                        from app.features.chat.services.chat_redis_cache_service import (
+                            ChatRedisCacheService,
+                        )
+
+                        redis = await get_redis_client()
+                        redis_cache = ChatRedisCacheService(redis)
+                        await redis_cache.add_member(pod.chat_room_id, application_user_id)
+                    except Exception:
+                        pass  # Redis 실패해도 DB는 성공했으므로 무시
             except Exception:
                 pass
 

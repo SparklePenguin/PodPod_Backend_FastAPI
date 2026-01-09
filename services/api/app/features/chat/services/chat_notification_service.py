@@ -5,8 +5,13 @@ FCM 알림 전송 담당
 
 import json
 import logging
+from typing import List
+
+from redis.asyncio import Redis
 
 from app.core.services.fcm_service import FCMService
+from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
+from app.features.chat.services.chat_redis_cache_service import ChatRedisCacheService
 from app.features.chat.services.websocket_service import ConnectionManager
 from app.features.users.repositories import UserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,11 +25,15 @@ class ChatNotificationService:
     def __init__(
         self,
         session: AsyncSession,
+        redis: Redis | None = None,
         fcm_service: FCMService | None = None,
         connection_manager: ConnectionManager | None = None,
     ):
         self._session = session
+        self._redis = redis
         self._user_repo = UserRepository(session)
+        self._chat_room_repo = ChatRoomRepository(session)
+        self._redis_cache = ChatRedisCacheService(redis) if redis else None
         self._fcm_service = fcm_service or FCMService()
         self._connection_manager = connection_manager
 
@@ -40,22 +49,18 @@ class ChatNotificationService:
         simple_pod_dict: dict | None = None,
     ) -> None:
         """채널의 모든 멤버에게 FCM 알림 전송 (접속 중이면 제외)"""
-        if not self._connection_manager:
-            logger.warning("ConnectionManager가 없어 FCM 알림을 전송할 수 없습니다.")
-            return
-
-        # 채널 멤버 조회
-        members = self._connection_manager.get_channel_members(room_id)
-        if not members:
+        # 채팅방 멤버 조회 (Redis 우선, 없으면 DB)
+        member_ids = await self._get_members_with_cache(room_id)
+        if not member_ids:
             return
 
         # 각 멤버에게 알림 전송
-        for member_id in members:
+        for member_id in member_ids:
             if member_id == sender_id:
                 continue  # 발신자 제외
 
-            # 접속 중이면 FCM 전송 안 함
-            if self._connection_manager.is_user_in_channel(room_id, member_id):
+            # 접속 중이면 FCM 전송 안 함 (Redis 우선)
+            if await self._is_user_connected(room_id, member_id):
                 continue
 
             await self._send_fcm_notification(
@@ -121,3 +126,36 @@ class ChatNotificationService:
 
         except Exception as e:
             logger.error(f"FCM 알림 전송 실패: recipient_id={recipient_id}, error={e}")
+
+    # - MARK: Redis 캐시를 활용한 멤버 조회
+    async def _get_members_with_cache(self, room_id: int) -> List[int]:
+        """채팅방 멤버 조회 (Redis 우선, 없으면 DB 조회 후 캐시)"""
+        # Redis에서 먼저 조회
+        if self._redis_cache:
+            cached_members = await self._redis_cache.get_members(room_id)
+            if cached_members is not None:
+                return list(cached_members)
+
+        # DB에서 조회
+        chat_members = await self._chat_room_repo.get_active_members(room_id)
+        member_ids = [m.user_id for m in chat_members]
+
+        # Redis에 캐시
+        if self._redis_cache and member_ids:
+            await self._redis_cache.set_members(room_id, member_ids)
+
+        return member_ids
+
+    # - MARK: 사용자 접속 상태 확인
+    async def _is_user_connected(self, room_id: int, user_id: int) -> bool:
+        """사용자가 채팅방에 접속 중인지 확인 (Redis 우선, 없으면 ConnectionManager)"""
+        # Redis에서 먼저 확인
+        if self._redis_cache:
+            if await self._redis_cache.is_user_connected(room_id, user_id):
+                return True
+
+        # ConnectionManager에서도 확인 (fallback)
+        if self._connection_manager:
+            return self._connection_manager.is_user_in_channel(room_id, user_id)
+
+        return False
