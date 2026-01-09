@@ -1,6 +1,6 @@
 """Pod 관련 스키마들"""
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 from typing import TYPE_CHECKING, List
 
 from app.features.pods.models.pod_models import (
@@ -10,6 +10,7 @@ from app.features.users.schemas import UserDto
 from pydantic import (
     BaseModel,
     Field,
+    field_validator,
 )
 
 if TYPE_CHECKING:
@@ -162,6 +163,26 @@ class PodForm(BaseModel):
         alias="imageOrders",
         description="이미지 순서 JSON 문자열 (기존: {type: 'existing', url: '...'}, 신규: {type: 'new', fileIndex: 0})",
     )
+
+    @field_validator("meeting_date", mode="before")
+    @classmethod
+    def ensure_utc_timezone(cls, v: datetime | str | None) -> datetime | None:
+        """타임존 확인 및 UTC 변환"""
+        if v is None:
+            return None
+
+        # 문자열인 경우 datetime으로 파싱
+        if isinstance(v, str):
+            v = datetime.fromisoformat(v.replace("Z", "+00:00"))
+
+        # 타임존이 없으면 UTC로 가정
+        if v.tzinfo is None:
+            v = v.replace(tzinfo=timezone.utc)
+        else:
+            # 타임존이 있으면 UTC로 변환
+            v = v.astimezone(timezone.utc)
+
+        return v
 
     model_config = {
         "from_attributes": True,
