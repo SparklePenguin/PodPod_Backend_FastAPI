@@ -214,8 +214,9 @@ class PodRepository:
                 )
 
                 # 채팅방 메타데이터 업데이트
-                chat_room.metadata = simple_pod_dto.model_dump(
-                    mode="json", by_alias=True
+                chat_room.room_metadata = json.dumps(
+                    simple_pod_dto.model_dump(mode="json", by_alias=True),
+                    ensure_ascii=False,
                 )
                 await self._session.flush()
 

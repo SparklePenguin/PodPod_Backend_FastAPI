@@ -49,6 +49,7 @@ class PodDto(BaseModel):
 
     # 개인화 필드
     is_liked: bool = Field(default=False, alias="isLiked")
+    is_reviewed: bool = Field(default=False, alias="isReviewed", description="리뷰 작성 여부")
 
     # 통계 및 메타데이터 필드
     joined_users_count: int = Field(default=0, alias="joinedUsersCount")
@@ -97,12 +98,12 @@ class PodDetailDto(BaseModel):
 
     # 개인화 필드
     is_liked: bool = Field(default=False, alias="isLiked")
+    is_reviewed: bool = Field(default=False, alias="isReviewed", description="리뷰 작성 여부")
 
     # 통계 및 메타데이터 필드
     joined_users_count: int = Field(default=0, alias="joinedUsersCount")
     view_count: int = Field(default=0, alias="viewCount")
     like_count: int = Field(default=0, alias="likeCount")
-
 
     # 이미지 리스트
     images: List["PodImageDto"] = Field(
@@ -110,12 +111,6 @@ class PodDetailDto(BaseModel):
         description="파티 이미지 목록",
     )
 
-    # 추후 정리
-    my_application: "PodApplDto | None" = Field(
-        default=None,
-        alias="myApplication",
-        description="현재 사용자의 신청서 정보",
-    )
     applications: List["PodApplDto"] = Field(
         default_factory=list,
         description="파티에 들어온 신청서 목록",

@@ -1259,7 +1259,6 @@ class PodService:
             updated_at=pod_updated_at,
             # 기본값 설정
             is_liked=False,
-            my_application=None,
             applications=[],
             view_count=0,
             joined_users_count=0,
@@ -1327,42 +1326,11 @@ class PodService:
         # 사용자 정보가 있으면 개인화 필드 설정
         if user_id and pod.id is not None:
             pod_dto.is_liked = await self._pod_repo.is_liked_by_user(pod.id, user_id)
-
-            # 사용자의 신청서 정보 조회
-            user_applications = (
-                await self._application_repo.get_applications_by_user_id(user_id)
+            # 리뷰 작성 여부 확인
+            existing_review = await self._review_repo.get_review_by_pod_and_user(
+                pod.id, user_id
             )
-            user_application = (
-                next(
-                    (app for app in user_applications if app.pod_id == pod.id),
-                    None,
-                )
-                if pod.id is not None
-                else None
-            )
-
-            if user_application:
-                # 신청한 사용자 정보 조회
-                if user_application.user_id is not None:
-                    app_user = await self._user_repo.get_by_id(user_application.user_id)
-
-                    if app_user:
-                        # 성향 타입 조회
-                        tendency_type = await self._user_repo.get_user_tendency_type(
-                            user_application.user_id
-                        )
-
-                        # UserDto 생성
-                        user_dto = self._user_dto_service.create_user_dto(
-                            app_user, tendency_type or ""
-                        )
-
-                        # PodApplDto 생성
-                        pod_dto.my_application = (
-                            self._application_service._create_pod_appl_dto(
-                                user_application, user_dto, include_message=True
-                            )
-                        )
+            pod_dto.is_reviewed = existing_review is not None
 
         # 파티에 들어온 신청서 목록 조회
         if pod.id is None:

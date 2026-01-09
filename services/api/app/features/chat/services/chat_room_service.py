@@ -55,9 +55,6 @@ class ChatRoomService:
             if chat_room.pod:
                 pod_title = chat_room.pod.title
 
-            # channel_url 생성 (기존 호환성을 위해)
-            channel_url = f"chat_room_{chat_room.id}"
-
             # metadata 파싱
             metadata = None
             if chat_room.room_metadata:
@@ -69,7 +66,6 @@ class ChatRoomService:
             rooms.append(
                 ChatRoomDto(
                     id=chat_room.id,
-                    channel_url=channel_url,
                     name=chat_room.name,
                     cover_url=chat_room.cover_url,
                     metadata=metadata,
