@@ -180,6 +180,7 @@ async def apple_login_web(
 @router.post(
     "/apple/callback",
     include_in_schema=False,
+    response_model=None,
     description="Apple OAuth 콜백 처리 (form_post)",
 )
 async def apple_callback(

@@ -44,7 +44,6 @@ class ChatPodService:
             pod_title = data.get("title")
 
         # room_id에서 pod_id 유추 가능 (ChatRoom.pod_id가 있으므로 메타데이터에서 가져오는 게 맞음)
-        # 하지만 메타데이터에 없으면 DB 조회가 필요함 (여기서는 생략)
 
         return pod_id, pod_title
 
@@ -74,7 +73,7 @@ class ChatPodService:
                 id=pod.id,
                 owner_id=pod.owner_id,
                 title=pod.title,
-                thumbnail_url=pod.thumbnail_url or pod.image_url or "",
+                thumbnail_url=pod.thumbnail_url or "",
                 sub_categories=sub_categories,
                 meeting_place=pod.place,
                 meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),

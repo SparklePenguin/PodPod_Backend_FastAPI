@@ -7,13 +7,12 @@ import json
 import logging
 from typing import List
 
-from redis.asyncio import Redis
-
 from app.core.services.fcm_service import FCMService
 from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.chat.services.chat_redis_cache_service import ChatRedisCacheService
 from app.features.chat.services.websocket_service import ConnectionManager
 from app.features.users.repositories import UserRepository
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)

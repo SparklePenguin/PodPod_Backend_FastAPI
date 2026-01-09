@@ -8,9 +8,8 @@ import logging
 from datetime import datetime
 from typing import List, Set
 
-from redis.asyncio import Redis
-
 from app.features.chat.schemas.chat_schemas import ChatMessageDto, MessageType
+from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +148,9 @@ class ChatRedisCacheService:
                 await self._redis.delete(key)
                 await self._redis.sadd(key, *[str(uid) for uid in user_ids])
                 await self._redis.expire(key, MEMBER_TTL)
-            logger.debug(f"Redis 멤버 목록 설정: room_id={room_id}, count={len(user_ids)}")
+            logger.debug(
+                f"Redis 멤버 목록 설정: room_id={room_id}, count={len(user_ids)}"
+            )
         except Exception as e:
             logger.error(f"Redis 멤버 목록 설정 실패: {e}")
 
@@ -192,7 +193,9 @@ class ChatRedisCacheService:
         try:
             key = self._connected_users_key(room_id)
             await self._redis.srem(key, str(user_id))
-            logger.debug(f"Redis 사용자 접속 해제: room_id={room_id}, user_id={user_id}")
+            logger.debug(
+                f"Redis 사용자 접속 해제: room_id={room_id}, user_id={user_id}"
+            )
         except Exception as e:
             logger.error(f"Redis 사용자 접속 해제 설정 실패: {e}")
 
@@ -237,7 +240,9 @@ class ChatRedisCacheService:
                 await self._redis.delete(key)
                 await self._redis.sadd(key, *[str(rid) for rid in room_ids])
                 await self._redis.expire(key, MEMBER_TTL)
-            logger.debug(f"Redis 사용자 채팅방 설정: user_id={user_id}, count={len(room_ids)}")
+            logger.debug(
+                f"Redis 사용자 채팅방 설정: user_id={user_id}, count={len(room_ids)}"
+            )
         except Exception as e:
             logger.error(f"Redis 사용자 채팅방 설정 실패: {e}")
 

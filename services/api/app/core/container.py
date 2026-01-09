@@ -38,8 +38,7 @@ from app.features.auth.services import AuthService
 from app.features.chat.services.chat_message_service import ChatMessageService
 from app.features.chat.services.chat_notification_service import ChatNotificationService
 from app.features.chat.services.chat_pod_service import ChatPodService
-from app.features.chat.services.chat_room_service import ChatRoomService
-from app.features.chat.services.chat_service import ChatService
+
 from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.locations.use_cases.location_use_case import LocationUseCase
 from app.features.notifications.services.notification_dto_service import (
@@ -90,6 +89,7 @@ from app.features.artists.use_cases.artist_use_cases import (
     GetArtistUseCase,
     GetArtistsUseCase,
 )
+from app.features.chat.use_cases.chat_room_use_case import ChatRoomUseCase
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
 from app.features.notifications.use_cases.notification_use_case import NotificationUseCase
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
@@ -318,13 +318,6 @@ class Container(containers.DeclarativeContainer):
         pod_repo=pod_repository,
     )
 
-    chat_room_service = providers.Factory(
-        ChatRoomService,
-        chat_room_repo=chat_room_repository,
-        chat_repo=chat_repository,
-        redis=redis,
-    )
-
     chat_notification_service = providers.Factory(
         ChatNotificationService,
         session=session,
@@ -338,23 +331,22 @@ class Container(containers.DeclarativeContainer):
         ),
     )
 
-    chat_service = providers.Factory(
-        ChatService,
+    chat_room_use_case = providers.Factory(
+        ChatRoomUseCase,
+        session=session,
+        chat_room_repo=chat_room_repository,
+        chat_repo=chat_repository,
+        redis=redis,
+    )
+
+    chat_use_case = providers.Factory(
+        ChatUseCase,
         session=session,
         user_repo=user_repository,
         chat_room_repo=chat_room_repository,
         message_service=chat_message_service,
         pod_service=chat_pod_service,
         notification_service=chat_notification_service,
-        room_service=chat_room_service,
-        websocket_service=websocket_service,
-    )
-
-    chat_use_case = providers.Factory(
-        ChatUseCase,
-        session=session,
-        chat_service=chat_service,
-        chat_room_repo=chat_room_repository,
         websocket_service=websocket_service,
     )
 

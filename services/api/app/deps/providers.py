@@ -266,15 +266,6 @@ def get_websocket_service():
     return container.websocket_service()
 
 
-def get_chat_service(
-    session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
-):
-    """Chat Service 생성 (WebSocket 서비스 + Redis 포함)"""
-    with container.session.override(session), container.redis.override(redis):
-        return container.chat_service()
-
-
 def get_chat_use_case(
     session: AsyncSession = Depends(get_session),
     redis: Redis = Depends(get_redis),
@@ -282,3 +273,12 @@ def get_chat_use_case(
     """Chat UseCase 생성"""
     with container.session.override(session), container.redis.override(redis):
         return container.chat_use_case()
+
+
+def get_chat_room_use_case(
+    session: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis),
+):
+    """ChatRoom UseCase 생성"""
+    with container.session.override(session), container.redis.override(redis):
+        return container.chat_room_use_case()

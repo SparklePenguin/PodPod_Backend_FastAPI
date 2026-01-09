@@ -9,9 +9,12 @@ from typing import List
 from redis.asyncio import Redis
 
 from app.features.chat.enums import MessageType
+from app.features.chat.models import ChatMessage
 from app.features.chat.repositories.chat_repository import ChatRepository
 from app.features.chat.schemas.chat_schemas import ChatMessageDto
 from app.features.chat.services.chat_redis_cache_service import ChatRedisCacheService
+from app.features.chat.services.message_dto_service import MessageDtoService
+from app.features.users.models import User
 from app.features.users.repositories import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -123,14 +126,8 @@ class ChatMessageService:
         return self._to_dto(last_message_model, last_message_model.user)
 
     # - MARK: DTO 변환
-    def _to_dto(self, chat_message, user) -> ChatMessageDto:
+    def _to_dto(
+        self, chat_message: ChatMessage, user: User | None
+    ) -> ChatMessageDto:
         """ChatMessage 모델을 DTO로 변환"""
-        return ChatMessageDto(
-            id=chat_message.id,
-            user_id=chat_message.user_id,
-            nickname=user.nickname if user else None,
-            profile_image=user.profile_image if user else None,
-            message=chat_message.message,
-            message_type=chat_message.message_type,
-            created_at=chat_message.created_at,
-        )
+        return MessageDtoService.convert_to_dto(chat_message, user)

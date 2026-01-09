@@ -7,13 +7,13 @@ from app.features.chat.services.chat_notification_service import (
     ChatNotificationService,
 )
 from app.features.chat.services.chat_pod_service import ChatPodService
-from app.features.chat.services.chat_room_service import ChatRoomService
-from app.features.chat.services.chat_service import ChatService
+from app.features.chat.services.chat_room_dto_service import ChatRoomDtoService
+from app.features.chat.services.message_dto_service import MessageDtoService
 
 __all__ = [
-    "ChatService",
     "ChatMessageService",
     "ChatNotificationService",
     "ChatPodService",
-    "ChatRoomService",
+    "ChatRoomDtoService",
+    "MessageDtoService",
 ]

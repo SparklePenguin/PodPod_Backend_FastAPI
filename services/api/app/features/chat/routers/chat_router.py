@@ -6,13 +6,13 @@ import logging
 
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.providers import get_chat_service, get_chat_use_case
+from app.deps.providers import get_chat_room_use_case, get_chat_use_case
 from app.features.chat.schemas.chat_schemas import (
     ChatMessageDto,
     ChatRoomDto,
     SendMessageRequest,
 )
-from app.features.chat.services.chat_service import ChatService
+from app.features.chat.use_cases.chat_room_use_case import ChatRoomUseCase
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
 from fastapi import APIRouter, Depends, Path, Query, status
 
@@ -30,10 +30,10 @@ async def get_chat_rooms(
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(50, ge=1, le=100, description="페이지 크기"),
     current_user_id: int = Depends(get_current_user_id),
-    service: ChatService = Depends(get_chat_service),
+    use_case: ChatRoomUseCase = Depends(get_chat_room_use_case),
 ):
     """사용자가 참여한 채팅방 목록 조회"""
-    rooms = await service.get_user_chat_rooms(current_user_id)
+    rooms = await use_case.get_user_chat_rooms(current_user_id)
     return BaseResponse.ok(
         data=PageDto.create(items=rooms, page=page, size=size, total_count=len(rooms)),
         http_status=status.HTTP_200_OK,
@@ -49,7 +49,7 @@ async def get_chat_rooms(
 async def get_chat_room(
     room_id: int = Path(..., description="채팅방 ID"),
     current_user_id: int = Depends(get_current_user_id),
-    use_case: ChatUseCase = Depends(get_chat_use_case),
+    use_case: ChatRoomUseCase = Depends(get_chat_room_use_case),
 ):
     """채팅방 상세 정보 조회"""
     room = await use_case.get_chat_room_detail(room_id, current_user_id)
@@ -109,7 +109,7 @@ async def send_message(
 async def mark_chat_room_as_read(
     room_id: int = Path(..., description="채팅방 ID"),
     current_user_id: int = Depends(get_current_user_id),
-    use_case: ChatUseCase = Depends(get_chat_use_case),
+    use_case: ChatRoomUseCase = Depends(get_chat_room_use_case),
 ):
     """채팅방 읽음 처리"""
     await use_case.mark_as_read(room_id, current_user_id)

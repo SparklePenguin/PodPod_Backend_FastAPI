@@ -29,6 +29,9 @@ from app.features.pods.repositories.like_repository import PodLikeRepository
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import PodDetailDto
+from app.features.pods.services.pod_dto_service import PodDtoService
+from app.features.pods.services.review_dto_service import ReviewDtoService
+from app.features.users.repositories import UserRepository
 from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,6 +49,7 @@ class FollowUseCase:
         self._pod_repo = PodRepository(session)
         self._like_repo = PodLikeRepository(session)
         self._review_repo = PodReviewRepository(session)
+        self._user_repo = UserRepository(session)
         self._follow_notification_service = FollowNotificationService(
             session, fcm_service
         )
@@ -226,9 +230,6 @@ class FollowUseCase:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> PageDto[PodDetailDto]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
-        from app.features.pods.services.pod_dto_service import PodDtoService
-        from app.features.pods.services.review_dto_service import ReviewDtoService
-
         pods, total_count = await self._follow_pod_repo.get_following_pods(
             user_id, page, size
         )
