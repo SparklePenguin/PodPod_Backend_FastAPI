@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from app.features.notifications.models import Notification
 from app.features.notifications.schemas import (
-    NotificationResponse,
+    NotificationDto,
     get_notification_main_type,
 )
 from app.features.pods.services.pod_dto_service import PodDtoService
@@ -70,7 +70,7 @@ class NotificationDtoService:
 
     async def convert_to_notification_response(
         self, notification: Notification
-    ) -> NotificationResponse:
+    ) -> NotificationDto:
         """알림 모델을 NotificationResponse DTO로 변환"""
         # related_user DTO 생성
         related_user_dto = await self._create_related_user_dto(notification)
@@ -81,7 +81,7 @@ class NotificationDtoService:
         # related_id를 int로 변환
         related_id_int = self._parse_related_id(notification.related_id)
 
-        return NotificationResponse(
+        return NotificationDto(
             id=notification.id,
             title=notification.title,
             body=notification.body,

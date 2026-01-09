@@ -2,7 +2,7 @@ from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.providers import get_notification_use_case
 from app.features.notifications.schemas import (
-    NotificationResponse,
+    NotificationDto,
     NotificationUnreadCountResponse,
 )
 from app.features.notifications.use_cases.notification_use_case import (
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 # - MARK: 알림 목록 조회
 @router.get(
     "",
-    response_model=BaseResponse[PageDto[NotificationResponse]],
+    response_model=BaseResponse[PageDto[NotificationDto]],
     description="알림 목록 조회 (페이지네이션 지원)",
 )
 async def get_notifications(
@@ -28,7 +28,7 @@ async def get_notifications(
     ),
     current_user_id: int = Depends(get_current_user_id),
     use_case: NotificationUseCase = Depends(get_notification_use_case),
-) -> BaseResponse[PageDto[NotificationResponse]]:
+) -> BaseResponse[PageDto[NotificationDto]]:
     result = await use_case.get_notifications(
         user_id=current_user_id,
         page=page,
@@ -56,14 +56,14 @@ async def get_unread_count(
 # - MARK: 알림 읽음 처리
 @router.put(
     "/{notification_id}",
-    response_model=BaseResponse[NotificationResponse],
+    response_model=BaseResponse[NotificationDto],
     description="알림 읽음 처리",
 )
 async def mark_notification_as_read(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
     use_case: NotificationUseCase = Depends(get_notification_use_case),
-) -> BaseResponse[NotificationResponse]:
+) -> BaseResponse[NotificationDto]:
     notification = await use_case.mark_as_read(notification_id, current_user_id)
     return BaseResponse.ok(data=notification)
 

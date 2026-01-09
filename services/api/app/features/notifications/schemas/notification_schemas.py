@@ -294,7 +294,7 @@ def to_upper_camel_case(snake_str: str) -> str:
 
 
 # ============= Response Schemas =============
-class NotificationResponse(NotificationBase):
+class NotificationDto(NotificationBase):
     """알림 응답 스키마"""
 
     id: int = Field()
@@ -339,4 +339,4 @@ class NotificationUnreadCountResponse(BaseModel):
 
 
 # Forward reference 해결을 위해 PodDto import 후 모델 재빌드
-NotificationResponse.model_rebuild()
+NotificationDto.model_rebuild()

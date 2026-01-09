@@ -1,20 +1,20 @@
 """Notifications feature schemas"""
 
 from .notification_schemas import (
-    FollowNotiSubType,
     FollowNotificationType,
+    FollowNotiSubType,
     NotificationCategory,
-    NotificationResponse,
-    NotificationUnreadCountResponse,
+    NotificationDto,
     NotificationType,
-    PodNotiSubType,
+    NotificationUnreadCountResponse,
     PodNotificationType,
-    PodStatusNotiSubType,
+    PodNotiSubType,
     PodStatusNotificationType,
-    RecommendNotiSubType,
+    PodStatusNotiSubType,
     RecommendNotificationType,
-    ReviewNotiSubType,
+    RecommendNotiSubType,
     ReviewNotificationType,
+    ReviewNotiSubType,
     get_notification_category,
     get_notification_main_type,
 )
@@ -36,7 +36,7 @@ __all__ = [
     "ReviewNotificationType",
     "FollowNotificationType",
     # Responses
-    "NotificationResponse",
+    "NotificationDto",
     "NotificationUnreadCountResponse",
     # Utils
     "get_notification_category",

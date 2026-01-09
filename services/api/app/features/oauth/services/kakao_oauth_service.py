@@ -1,7 +1,6 @@
 """카카오 OAuth 서비스"""
 
 import httpx
-
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas import (

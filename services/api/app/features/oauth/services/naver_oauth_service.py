@@ -4,9 +4,6 @@ import secrets
 from typing import Any, Dict
 
 import httpx
-from fastapi import HTTPException, status
-from redis.asyncio import Redis
-
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.core.session import save_oauth_state
@@ -15,6 +12,8 @@ from app.features.oauth.schemas import (
     NaverTokenResponse,
     OAuthUserInfo,
 )
+from fastapi import HTTPException, status
+from redis.asyncio import Redis
 
 
 class NaverOAuthService:

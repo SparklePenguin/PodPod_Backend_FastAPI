@@ -52,7 +52,6 @@ from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
 from app.features.oauth.services.naver_oauth_service import NaverOAuthService
-from app.features.oauth.services.oauth_service import OAuthService
 from app.features.pods.services.application_notification_service import (
     ApplicationNotificationService,
 )
@@ -293,9 +292,10 @@ class Container(containers.DeclarativeContainer):
         user_dto_service=user_dto_service,
     )
 
-    # OAuth Service & Use Case
-    oauth_service = providers.Factory(
-        OAuthService,
+    # OAuth Use Case
+    oauth_use_case = providers.Factory(
+        OAuthUseCase,
+        session=session,
         user_repo=user_repository,
         user_use_case=user_use_case,
         auth_service=auth_service,
@@ -303,12 +303,6 @@ class Container(containers.DeclarativeContainer):
         google_service=google_oauth_service,
         apple_service=apple_oauth_service,
         naver_service=naver_oauth_service,
-    )
-
-    oauth_use_case = providers.Factory(
-        OAuthUseCase,
-        session=session,
-        oauth_service=oauth_service,
     )
 
     # WebSocket Service (Singleton)

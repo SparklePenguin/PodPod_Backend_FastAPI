@@ -1,9 +1,6 @@
 """Notification Service - 알림 비즈니스 로직"""
 
-import math
 from typing import TYPE_CHECKING
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import PageDto
 from app.features.notifications.exceptions import NotificationNotFoundException
@@ -11,12 +8,13 @@ from app.features.notifications.repositories.notification_repository import (
     NotificationRepository,
 )
 from app.features.notifications.schemas import (
-    NotificationResponse,
+    NotificationDto,
     NotificationUnreadCountResponse,
 )
 from app.features.notifications.services.notification_dto_service import (
     NotificationDtoService,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 if TYPE_CHECKING:
     from app.features.tendencies.repositories.tendency_repository import (
@@ -54,7 +52,7 @@ class NotificationService:
         size: int = 20,
         unread_only: bool = False,
         category: str | None = None,
-    ) -> PageDto[NotificationResponse]:
+    ) -> PageDto[NotificationDto]:
         """사용자의 알림 목록 조회"""
         skip = (page - 1) * size
 
@@ -75,9 +73,6 @@ class NotificationService:
             user_id=user_id, unread_only=unread_only, category=category_upper
         )
 
-        # 총 페이지 수 계산
-        total_pages = math.ceil(total_count / size) if total_count > 0 else 0
-
         # DTO 변환
         notification_dtos = []
         for n in notifications:
@@ -86,14 +81,11 @@ class NotificationService:
             )
             notification_dtos.append(notification_dto)
 
-        return PageDto[NotificationResponse](
+        return PageDto.create(
             items=notification_dtos,
-            current_page=page,
+            page=page,
             size=size,
             total_count=total_count,
-            total_pages=total_pages,
-            has_next=page < total_pages,
-            has_prev=page > 1,
         )
 
     # - MARK: 읽지 않은 알림 개수 조회
@@ -103,9 +95,7 @@ class NotificationService:
         return NotificationUnreadCountResponse(unread_count=unread_count)
 
     # - MARK: 알림 읽음 처리
-    async def mark_as_read(
-        self, notification_id: int, user_id: int
-    ) -> NotificationResponse:
+    async def mark_as_read(self, notification_id: int, user_id: int) -> NotificationDto:
         """특정 알림을 읽음 처리"""
         notification = await self._notification_repo.mark_as_read(
             notification_id, user_id

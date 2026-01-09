@@ -7,9 +7,6 @@ from typing import Any, Dict
 from urllib.parse import urlencode
 
 import httpx
-from jose import JWTError, jwt
-from jose.exceptions import JWTClaimsError
-
 from app.core.config import settings
 from app.features.oauth.schemas import (
     AppleLoginRequest,
@@ -17,6 +14,8 @@ from app.features.oauth.schemas import (
     OAuthUserInfo,
 )
 from fastapi import HTTPException, status
+from jose import JWTError, jwt
+from jose.exceptions import JWTClaimsError
 
 
 class AppleOAuthService:
