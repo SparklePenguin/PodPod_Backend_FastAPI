@@ -45,9 +45,6 @@ from app.features.locations.use_cases.location_use_case import LocationUseCase
 from app.features.notifications.services.notification_dto_service import (
     NotificationDtoService,
 )
-from app.features.notifications.services.notification_service import (
-    NotificationService,
-)
 from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
@@ -214,18 +211,12 @@ class Container(containers.DeclarativeContainer):
         tendency_repo=tendency_repository,
     )
 
-    notification_service = providers.Factory(
-        NotificationService,
+    notification_use_case = providers.Factory(
+        NotificationUseCase,
         session=session,
         notification_repo=notification_repository,
         tendency_repo=tendency_repository,
         dto_service=notification_dto_service,
-    )
-
-    notification_use_case = providers.Factory(
-        NotificationUseCase,
-        session=session,
-        notification_service=notification_service,
     )
 
     like_notification_service = providers.Factory(

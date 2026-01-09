@@ -1,5 +1,6 @@
 """Notification DTO Service - 알림 DTO 변환 로직"""
 
+from datetime import time
 from typing import TYPE_CHECKING
 
 from app.features.notifications.models import Notification
@@ -8,7 +9,7 @@ from app.features.notifications.schemas import (
     get_notification_main_type,
 )
 from app.features.pods.services.pod_dto_service import PodDtoService
-from app.features.users.models import UserNotificationSettings
+from app.features.users.models import User, UserNotificationSettings
 from app.features.users.schemas import UserDto, UserNotificationSettingsDto
 
 if TYPE_CHECKING:
@@ -35,8 +36,8 @@ class NotificationDtoService:
         settings: UserNotificationSettings,
     ) -> UserNotificationSettingsDto:
         """알림 설정 모델을 DTO로 변환"""
-        do_not_disturb_start_value = settings.do_not_disturb_start
-        do_not_disturb_end_value = settings.do_not_disturb_end
+        do_not_disturb_start_value: time | None = settings.do_not_disturb_start
+        do_not_disturb_end_value: time | None = settings.do_not_disturb_end
 
         return UserNotificationSettingsDto(
             id=settings.id,
@@ -100,7 +101,8 @@ class NotificationDtoService:
         self, notification: Notification
     ) -> UserDto | None:
         """알림의 관련 사용자 DTO 생성"""
-        if not notification.related_user:
+        related_user: User | None = notification.related_user
+        if not related_user:
             return None
 
         # 사용자의 성향 정보 조회
@@ -108,7 +110,7 @@ class NotificationDtoService:
         if self._tendency_repo:
             try:
                 user_tendency = await self._tendency_repo.get_user_tendency_result(
-                    notification.related_user.id
+                    related_user.id
                 )
                 if user_tendency:
                     tendency_type_raw = user_tendency.tendency_type
@@ -119,10 +121,10 @@ class NotificationDtoService:
                 tendency_type = ""
 
         return UserDto(
-            id=notification.related_user.id,
-            nickname=notification.related_user.nickname,
-            profile_image=notification.related_user.profile_image,
-            intro=notification.related_user.intro or "",
+            id=related_user.id,
+            nickname=related_user.nickname,
+            profile_image=related_user.profile_image,
+            intro=related_user.intro or "",
             tendency_type=tendency_type,
             is_following=False,
         )
