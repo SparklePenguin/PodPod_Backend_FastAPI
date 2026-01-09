@@ -1,9 +1,15 @@
+"""애플 OAuth 서비스"""
+
 import base64
 import logging
 import time
 from typing import Any, Dict
+from urllib.parse import urlencode
 
 import httpx
+from jose import JWTError, jwt
+from jose.exceptions import JWTClaimsError
+
 from app.core.config import settings
 from app.features.oauth.schemas import (
     AppleLoginRequest,
@@ -11,16 +17,13 @@ from app.features.oauth.schemas import (
     OAuthUserInfo,
 )
 from fastapi import HTTPException, status
-from jose import JWTError, jwt
-from jose.exceptions import JWTClaimsError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AppleOAuthService:
-    """애플 OAuth 서비스"""
+    """애플 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._apple_public_keys_url = "https://appleid.apple.com/auth/keys"
         self._apple_token_url = "https://appleid.apple.com/auth/token"
         self._apple_issuer = "https://appleid.apple.com"
@@ -219,10 +222,10 @@ class AppleOAuthService:
             raise ValueError(f"Failed to create Apple client secret: {str(e)}") from e
 
     # - MARK: Apple 인증 URL 생성
-    def get_auth_url(self, state: str | None = None, base_url: str | None = None) -> str:
+    def get_auth_url(
+        self, state: str | None = None, base_url: str | None = None
+    ) -> str:
         """Apple 인증 URL 생성"""
-        from urllib.parse import urlencode
-
         # base_url이 제공되면 동적으로 redirect_uri 생성 (테스트용)
         if base_url:
             redirect_uri = f"{base_url}/api/v1/oauth/apple/callback"

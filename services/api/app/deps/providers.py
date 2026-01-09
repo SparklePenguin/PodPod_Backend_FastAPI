@@ -18,12 +18,6 @@ def get_random_profile_image_service():
     return container.random_profile_image_service()
 
 
-def get_oauth_service(session: AsyncSession = Depends(get_session)):
-    """OAuth Service 생성"""
-    with container.session.override(session):
-        return container.oauth_service()
-
-
 # Artist Use Cases
 def get_artist_use_case(
     session: AsyncSession = Depends(get_session),
@@ -161,17 +155,26 @@ def get_location_use_case(
         return container.location_use_case()
 
 
-def get_notification_service(
+# Notification UseCase
+def get_notification_use_case(
     session: AsyncSession = Depends(get_session),
 ):
-    """Notification Service 생성"""
+    """Notification UseCase 생성"""
     with container.session.override(session):
-        return container.notification_service()
+        return container.notification_use_case()
+
+
+# OAuth UseCase
+def get_oauth_use_case(
+    session: AsyncSession = Depends(get_session),
+):
+    """OAuth UseCase 생성"""
+    with container.session.override(session):
+        return container.oauth_use_case()
 
 
 def get_like_notification_service(
     session: AsyncSession = Depends(get_session),
-    fcm_service=Depends(get_fcm_service),
 ):
     """Like Notification Service 생성"""
     with container.session.override(session):
@@ -180,7 +183,6 @@ def get_like_notification_service(
 
 def get_review_notification_service(
     session: AsyncSession = Depends(get_session),
-    fcm_service=Depends(get_fcm_service),
 ):
     """Review Notification Service 생성"""
     with container.session.override(session):
@@ -197,7 +199,6 @@ def get_review_dto_service(
 
 def get_application_notification_service(
     session: AsyncSession = Depends(get_session),
-    fcm_service=Depends(get_fcm_service),
 ):
     """Application Notification Service 생성"""
     with container.session.override(session):
@@ -214,7 +215,6 @@ def get_application_dto_service(
 
 def get_application_use_case(
     session: AsyncSession = Depends(get_session),
-    notification_service=Depends(get_application_notification_service),
 ):
     """Application UseCase 생성"""
     with container.session.override(session):
@@ -223,7 +223,6 @@ def get_application_use_case(
 
 def get_like_use_case(
     session: AsyncSession = Depends(get_session),
-    notification_service=Depends(get_like_notification_service),
 ):
     """Like UseCase 생성"""
     with container.session.override(session):
@@ -232,7 +231,6 @@ def get_like_use_case(
 
 def get_review_use_case(
     session: AsyncSession = Depends(get_session),
-    notification_service=Depends(get_review_notification_service),
 ):
     """Review UseCase 생성"""
     with container.session.override(session):
@@ -241,7 +239,6 @@ def get_review_use_case(
 
 def get_follow_use_case(
     session: AsyncSession = Depends(get_session),
-    fcm_service=Depends(get_fcm_service),
 ):
     """Follow UseCase 생성"""
     with container.session.override(session):
@@ -250,8 +247,6 @@ def get_follow_use_case(
 
 def get_pod_query_use_case(
     session: AsyncSession = Depends(get_session),
-    follow_use_case=Depends(get_follow_use_case),
-    fcm_service=Depends(get_fcm_service),
 ):
     """Pod Query UseCase 생성"""
     with container.session.override(session):
@@ -260,8 +255,6 @@ def get_pod_query_use_case(
 
 def get_pod_use_case(
     session: AsyncSession = Depends(get_session),
-    follow_use_case=Depends(get_follow_use_case),
-    fcm_service=Depends(get_fcm_service),
 ):
     """Pod UseCase 생성"""
     with container.session.override(session):
@@ -275,7 +268,6 @@ def get_websocket_service():
 
 def get_chat_service(
     session: AsyncSession = Depends(get_session),
-    fcm_service=Depends(get_fcm_service),
     redis: Redis = Depends(get_redis),
 ):
     """Chat Service 생성 (WebSocket 서비스 + Redis 포함)"""
@@ -285,7 +277,6 @@ def get_chat_service(
 
 def get_chat_use_case(
     session: AsyncSession = Depends(get_session),
-    chat_service=Depends(get_chat_service),
     redis: Redis = Depends(get_redis),
 ):
     """Chat UseCase 생성"""

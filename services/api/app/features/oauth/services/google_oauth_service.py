@@ -1,7 +1,13 @@
+"""구글 OAuth 서비스"""
+
 import asyncio
+from typing import Any, Dict
+from urllib.parse import urlencode
+
 import httpx
 from google.auth.transport import requests
 from google.oauth2 import id_token
+
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas import (
@@ -10,14 +16,13 @@ from app.features.oauth.schemas import (
     OAuthUserInfo,
 )
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class GoogleOAuthService:
-    """구글 OAuth 서비스"""
+    """구글 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._google_token_url = "https://oauth2.googleapis.com/token"
         self._google_user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
 
@@ -95,8 +100,6 @@ class GoogleOAuthService:
     # - MARK: 구글 사용자 정보 조회
     async def get_google_user_info(self, access_token: str) -> OAuthUserInfo:
         """구글 액세스 토큰으로 사용자 정보 조회"""
-        from typing import Any, Dict
-
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
@@ -131,8 +134,6 @@ class GoogleOAuthService:
     # - MARK: 구글 인증 URL 생성
     def get_auth_url(self) -> str:
         """구글 인증 URL 생성"""
-        from urllib.parse import urlencode
-
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,

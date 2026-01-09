@@ -13,7 +13,6 @@ from app.features.chat.repositories.chat_repository import ChatRepository
 from app.features.chat.schemas.chat_schemas import ChatMessageDto
 from app.features.chat.services.chat_redis_cache_service import ChatRedisCacheService
 from app.features.users.repositories import UserRepository
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +20,29 @@ logger = logging.getLogger(__name__)
 class ChatMessageService:
     """채팅 메시지 서비스 - 메시지 저장 및 조회 담당"""
 
-    def __init__(self, session: AsyncSession, redis: Redis | None = None):
-        self._session = session
-        self._chat_repo = ChatRepository(session)
-        self._user_repo = UserRepository(session)
+    def __init__(
+        self,
+        chat_repo: ChatRepository,
+        user_repo: UserRepository,
+        redis: Redis | None = None,
+    ) -> None:
+        """
+        Args:
+            chat_repo: 채팅 레포지토리
+            user_repo: 사용자 레포지토리
+            redis: Redis 클라이언트 (선택적)
+        """
+        self._chat_repo = chat_repo
+        self._user_repo = user_repo
         self._redis_cache = ChatRedisCacheService(redis) if redis else None
 
     # - MARK: 메시지 저장
     async def create_message(
-        self, room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
+        self,
+        room_id: int,
+        user_id: int,
+        message: str,
+        message_type: MessageType = MessageType.TEXT,
     ) -> ChatMessageDto:
         """메시지를 DB에 저장하고 DTO로 반환 (commit은 호출하는 서비스에서 처리)"""
         chat_message = await self._chat_repo.create_message(
@@ -46,7 +59,11 @@ class ChatMessageService:
         return self._to_dto(chat_message, user)
 
     async def create_message_by_room_id(
-        self, chat_room_id: int, user_id: int, message: str, message_type: MessageType = MessageType.TEXT
+        self,
+        chat_room_id: int,
+        user_id: int,
+        message: str,
+        message_type: MessageType = MessageType.TEXT,
     ) -> ChatMessageDto:
         """채팅방 ID로 메시지를 DB에 저장하고 DTO로 반환 (commit은 호출하는 서비스에서 처리)"""
         chat_message = await self._chat_repo.create_message_by_room_id(
@@ -78,9 +95,7 @@ class ChatMessageService:
         )
 
         # DTO 변환 (user는 이미 eager load됨)
-        message_dtos = [
-            self._to_dto(msg, msg.user) for msg in messages
-        ]
+        message_dtos = [self._to_dto(msg, msg.user) for msg in messages]
 
         return message_dtos, total_count
 
@@ -93,9 +108,7 @@ class ChatMessageService:
         )
 
         # DTO 변환 (user는 이미 eager load됨)
-        message_dtos = [
-            self._to_dto(msg, msg.user) for msg in messages
-        ]
+        message_dtos = [self._to_dto(msg, msg.user) for msg in messages]
 
         return message_dtos, total_count
 

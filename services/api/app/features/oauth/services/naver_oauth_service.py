@@ -1,11 +1,15 @@
-"""Naver OAuth service"""
+"""Naver OAuth 서비스"""
+
+import secrets
+from typing import Any, Dict
 
 import httpx
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from redis.asyncio import Redis
 
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
+from app.core.session import save_oauth_state
 from app.features.oauth.schemas import (
     GetNaverTokenRequest,
     NaverTokenResponse,
@@ -14,10 +18,10 @@ from app.features.oauth.schemas import (
 
 
 class NaverOAuthService:
-    """네이버 OAuth 서비스"""
+    """네이버 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._naver_token_url = "https://nid.naver.com/oauth2.0/token"
         self._naver_user_info_url = "https://openapi.naver.com/v1/nid/me"
 
@@ -80,7 +84,7 @@ class NaverOAuthService:
                         detail=f"Failed to get Naver user info: {response.text}",
                     )
 
-                user_info = response.json()
+                user_info: Dict[str, Any] = response.json()
                 print(f"🔍 DEBUG - Naver user info response: {user_info}")
 
                 # 네이버는 response.response 안에 실제 데이터가 있음
@@ -102,12 +106,8 @@ class NaverOAuthService:
                 ) from e
 
     # - MARK: 네이버 인증 URL 생성
-    async def get_auth_url(self, redis) -> str:
+    async def get_auth_url(self, redis: Redis) -> str:
         """네이버 인증 URL 생성"""
-        import secrets
-
-        from app.core.session import save_oauth_state
-
         # CSRF 방지용 state 값 생성
         state = secrets.token_urlsafe(16)
 

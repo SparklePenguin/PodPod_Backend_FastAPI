@@ -1,29 +1,50 @@
-import json
+"""Notification Service - 알림 비즈니스 로직"""
+
 import math
+from typing import TYPE_CHECKING
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schemas import PageDto
+from app.features.notifications.exceptions import NotificationNotFoundException
 from app.features.notifications.repositories.notification_repository import (
     NotificationRepository,
 )
 from app.features.notifications.schemas import (
     NotificationResponse,
     NotificationUnreadCountResponse,
-    get_notification_main_type,
 )
-from app.features.pods.schemas import PodDto
-from app.features.pods.services.pod_dto_service import PodDtoService
-from app.features.tendencies.repositories.tendency_repository import TendencyRepository
-from app.features.users.schemas import UserDto
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.features.notifications.services.notification_dto_service import (
+    NotificationDtoService,
+)
+
+if TYPE_CHECKING:
+    from app.features.tendencies.repositories.tendency_repository import (
+        TendencyRepository,
+    )
 
 
 class NotificationService:
     """알림 Service"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self,
+        session: AsyncSession,
+        notification_repo: NotificationRepository,
+        tendency_repo: "TendencyRepository",
+        dto_service: NotificationDtoService,
+    ) -> None:
+        """
+        Args:
+            session: 데이터베이스 세션
+            notification_repo: 알림 레포지토리
+            tendency_repo: 성향 레포지토리
+            dto_service: 알림 DTO 변환 서비스
+        """
         self._session = session
-        self._notification_repo = NotificationRepository(session)
-        self._tendency_repo = TendencyRepository(session)
+        self._notification_repo = notification_repo
+        self._tendency_repo = tendency_repo
+        self._dto_service = dto_service
 
     # - MARK: 알림 목록 조회
     async def get_notifications(
@@ -60,7 +81,9 @@ class NotificationService:
         # DTO 변환
         notification_dtos = []
         for n in notifications:
-            notification_dto = await self._convert_to_notification_response(n)
+            notification_dto = await self._dto_service.convert_to_notification_response(
+                n
+            )
             notification_dtos.append(notification_dto)
 
         return PageDto[NotificationResponse](
@@ -89,118 +112,34 @@ class NotificationService:
         )
 
         if not notification:
-            from app.features.notifications.exceptions import (
-                NotificationNotFoundException,
-            )
-
             raise NotificationNotFoundException(notification_id)
 
-        return await self._convert_to_notification_response(notification)
+        return await self._dto_service.convert_to_notification_response(notification)
 
     # - MARK: 모든 알림 읽음 처리
-    async def mark_all_as_read(self, user_id: int) -> dict:
+    async def mark_all_as_read(self, user_id: int) -> dict[str, int]:
         """사용자의 모든 알림을 읽음 처리"""
         updated_count = await self._notification_repo.mark_all_as_read(user_id)
         return {"updatedCount": updated_count}
 
     # - MARK: 알림 삭제
-    async def delete_notification(self, notification_id: int, user_id: int) -> dict:
+    async def delete_notification(
+        self, notification_id: int, user_id: int
+    ) -> dict[str, bool]:
         """특정 알림 삭제"""
         success = await self._notification_repo.delete_notification(
             notification_id, user_id
         )
 
         if not success:
-            from app.features.notifications.exceptions import (
-                NotificationNotFoundException,
-            )
-
             raise NotificationNotFoundException(notification_id)
 
         return {"success": True}
 
     # - MARK: 읽은 알림 전체 삭제
-    async def delete_all_read_notifications(self, user_id: int) -> dict:
+    async def delete_all_read_notifications(self, user_id: int) -> dict[str, int]:
         """읽은 알림 전체 삭제"""
         deleted_count = await self._notification_repo.delete_all_read_notifications(
             user_id
         )
         return {"deletedCount": deleted_count}
-
-    # - MARK: 알림 모델을 DTO로 변환
-    async def _convert_to_notification_response(
-        self, notification
-    ) -> NotificationResponse:
-        """알림 모델을 NotificationResponse DTO로 변환"""
-        # related_user DTO 생성
-        related_user_dto = None
-        if notification.related_user:
-            # 사용자의 성향 정보 조회
-            tendency_type = ""
-            try:
-                user_tendency = await self._tendency_repo.get_user_tendency_result(
-                    notification.related_user.id
-                )
-                if user_tendency:
-                    tendency_type_raw = user_tendency.tendency_type
-                    tendency_type = (
-                        str(tendency_type_raw) if tendency_type_raw is not None else ""
-                    )
-            except Exception:
-                tendency_type = ""
-
-            related_user_dto = UserDto(
-                id=notification.related_user.id,
-                nickname=notification.related_user.nickname,
-                profile_image=notification.related_user.profile_image,
-                intro=notification.related_user.intro or "",
-                tendency_type=tendency_type,
-                is_following=False,
-            )
-
-        # related_pod DTO 생성
-        related_pod_dto = None
-        if notification.related_pod:
-            from datetime import datetime, timezone
-
-            # meeting_date와 meeting_time을 하나의 timestamp로 변환
-            meeting_timestamp = 0
-            if (
-                notification.related_pod.meeting_date
-                and notification.related_pod.meeting_time
-            ):
-                try:
-                    dt = datetime.combine(
-                        notification.related_pod.meeting_date,
-                        notification.related_pod.meeting_time,
-                        tzinfo=timezone.utc,
-                    )
-                    meeting_timestamp = int(dt.timestamp() * 1000)  # milliseconds
-                except (ValueError, TypeError, AttributeError):
-                    meeting_timestamp = 0
-
-            # PodDtoService를 사용하여 변환
-            related_pod_dto = PodDtoService.convert_to_dto(notification.related_pod)
-
-        # related_id를 int로 변환
-        related_id_int: int | None = None
-        if notification.related_id is not None:
-            try:
-                related_id_int = int(notification.related_id)
-            except (ValueError, TypeError):
-                related_id_int = None
-
-        return NotificationResponse(
-            id=notification.id,
-            title=notification.title,
-            body=notification.body,
-            type=get_notification_main_type(notification.notification_type),
-            value=notification.notification_value,
-            related_id=related_id_int,
-            category=notification.category,
-            is_read=notification.is_read,
-            read_at=notification.read_at,
-            created_at=notification.created_at,
-            related_user=related_user_dto,
-            related_pod=related_pod_dto,
-        )

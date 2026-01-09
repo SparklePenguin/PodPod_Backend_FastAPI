@@ -25,16 +25,26 @@ class ChatNotificationService:
     def __init__(
         self,
         session: AsyncSession,
+        user_repo: UserRepository,
+        chat_room_repo: ChatRoomRepository,
+        fcm_service: FCMService,
         redis: Redis | None = None,
-        fcm_service: FCMService | None = None,
         connection_manager: ConnectionManager | None = None,
-    ):
+    ) -> None:
+        """
+        Args:
+            session: 데이터베이스 세션
+            user_repo: 사용자 레포지토리
+            chat_room_repo: 채팅방 레포지토리
+            fcm_service: FCM 서비스
+            redis: Redis 클라이언트 (선택적)
+            connection_manager: WebSocket 연결 관리자 (선택적)
+        """
         self._session = session
-        self._redis = redis
-        self._user_repo = UserRepository(session)
-        self._chat_room_repo = ChatRoomRepository(session)
+        self._user_repo = user_repo
+        self._chat_room_repo = chat_room_repo
         self._redis_cache = ChatRedisCacheService(redis) if redis else None
-        self._fcm_service = fcm_service or FCMService()
+        self._fcm_service = fcm_service
         self._connection_manager = connection_manager
 
     # - MARK: 채널 멤버에게 FCM 알림 전송

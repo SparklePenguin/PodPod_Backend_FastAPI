@@ -1,4 +1,7 @@
+"""카카오 OAuth 서비스"""
+
 import httpx
+
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas import (
@@ -7,14 +10,13 @@ from app.features.oauth.schemas import (
     OAuthUserInfo,
 )
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class KakaoOAuthService:
-    """카카오 OAuth 서비스"""
+    """카카오 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._redirect_uri = settings.KAKAO_REDIRECT_URI
         self._client_id = settings.KAKAO_CLIENT_ID
         self._client_secret = settings.KAKAO_CLIENT_SECRET

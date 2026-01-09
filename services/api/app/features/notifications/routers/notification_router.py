@@ -1,12 +1,12 @@
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.providers import get_notification_service
+from app.deps.providers import get_notification_use_case
 from app.features.notifications.schemas import (
     NotificationResponse,
     NotificationUnreadCountResponse,
 )
-from app.features.notifications.services.notification_service import (
-    NotificationService,
+from app.features.notifications.use_cases.notification_use_case import (
+    NotificationUseCase,
 )
 from fastapi import APIRouter, Depends, Query
 
@@ -27,9 +27,9 @@ async def get_notifications(
         None, description="카테고리 필터 (pod, community, notice)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.get_notifications(
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[PageDto[NotificationResponse]]:
+    result = await use_case.get_notifications(
         user_id=current_user_id,
         page=page,
         size=size,
@@ -47,9 +47,9 @@ async def get_notifications(
 )
 async def get_unread_count(
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.get_unread_count(current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[NotificationUnreadCountResponse]:
+    result = await use_case.get_unread_count(current_user_id)
     return BaseResponse.ok(data=result)
 
 
@@ -62,9 +62,9 @@ async def get_unread_count(
 async def mark_notification_as_read(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    notification = await service.mark_as_read(notification_id, current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[NotificationResponse]:
+    notification = await use_case.mark_as_read(notification_id, current_user_id)
     return BaseResponse.ok(data=notification)
 
 
@@ -76,9 +76,9 @@ async def mark_notification_as_read(
 )
 async def mark_all_notifications_as_read(
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.mark_all_as_read(current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[dict[str, int]]:
+    result = await use_case.mark_all_as_read(current_user_id)
     return BaseResponse.ok(data=result)
 
 
@@ -90,9 +90,9 @@ async def mark_all_notifications_as_read(
 )
 async def delete_all_read_notifications(
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.delete_all_read_notifications(current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[dict[str, int]]:
+    result = await use_case.delete_all_read_notifications(current_user_id)
     return BaseResponse.ok(data=result)
 
 
@@ -105,7 +105,7 @@ async def delete_all_read_notifications(
 async def delete_notification(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.delete_notification(notification_id, current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[dict[str, bool]]:
+    result = await use_case.delete_notification(notification_id, current_user_id)
     return BaseResponse.ok(data=result)

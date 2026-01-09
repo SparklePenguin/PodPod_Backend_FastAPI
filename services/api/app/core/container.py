@@ -9,6 +9,7 @@ from app.core.services.fcm_service import FCMService
 
 # Repositories
 from app.features.artists.repositories.artist_repository import ArtistRepository
+from app.features.chat.repositories.chat_repository import ChatRepository
 from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.notifications.repositories.notification_repository import (
@@ -33,6 +34,11 @@ from app.features.users.repositories.user_artist_repository import (
 )
 
 # Services
+from app.features.auth.services import AuthService
+from app.features.chat.services.chat_message_service import ChatMessageService
+from app.features.chat.services.chat_notification_service import ChatNotificationService
+from app.features.chat.services.chat_pod_service import ChatPodService
+from app.features.chat.services.chat_room_service import ChatRoomService
 from app.features.chat.services.chat_service import ChatService
 from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.locations.use_cases.location_use_case import LocationUseCase
@@ -42,6 +48,10 @@ from app.features.notifications.services.notification_dto_service import (
 from app.features.notifications.services.notification_service import (
     NotificationService,
 )
+from app.features.oauth.services.apple_oauth_service import AppleOAuthService
+from app.features.oauth.services.google_oauth_service import GoogleOAuthService
+from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
+from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.oauth.services.oauth_service import OAuthService
 from app.features.pods.services.application_notification_service import (
     ApplicationNotificationService,
@@ -85,6 +95,8 @@ from app.features.artists.use_cases.artist_use_cases import (
     GetArtistsUseCase,
 )
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
+from app.features.notifications.use_cases.notification_use_case import NotificationUseCase
+from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
 from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from app.features.pods.use_cases.like_use_case import LikeUseCase
 from app.features.pods.use_cases.pod_query_use_case import PodQueryUseCase
@@ -120,8 +132,13 @@ class Container(containers.DeclarativeContainer):
     # DTO & Calculation Services (Singleton - stateless)
     user_dto_service = providers.Singleton(UserDtoService)
     user_state_service = providers.Singleton(UserStateService)
-    notification_dto_service = providers.Singleton(NotificationDtoService)
     tendency_calculation_service = providers.Singleton(TendencyCalculationService)
+
+    # OAuth Provider Services (Singleton - stateless)
+    kakao_oauth_service = providers.Singleton(KakaoOAuthService)
+    google_oauth_service = providers.Singleton(GoogleOAuthService)
+    apple_oauth_service = providers.Singleton(AppleOAuthService)
+    naver_oauth_service = providers.Singleton(NaverOAuthService)
 
     # Repositories (Factory - session dependent)
     user_repository = providers.Factory(UserRepository, session=session)
@@ -173,17 +190,19 @@ class Container(containers.DeclarativeContainer):
         ChatRoomRepository, session=session
     )
 
-    # Services (Factory - session or other dependencies)
-    oauth_service = providers.Factory(OAuthService, session=session)
+    chat_repository = providers.Factory(
+        ChatRepository, session=session
+    )
 
+    # Auth Service
+    auth_service = providers.Factory(AuthService, session=session)
+
+    # Location Use Case
     location_use_case = providers.Factory(
         LocationUseCase, session=session
     )
 
-    notification_service = providers.Factory(
-        NotificationService, session=session
-    )
-
+    # Follow Use Case
     follow_use_case = providers.Factory(
         FollowUseCase,
         session=session,
@@ -191,6 +210,25 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Notification Services
+    notification_dto_service = providers.Factory(
+        NotificationDtoService,
+        tendency_repo=tendency_repository,
+    )
+
+    notification_service = providers.Factory(
+        NotificationService,
+        session=session,
+        notification_repo=notification_repository,
+        tendency_repo=tendency_repository,
+        dto_service=notification_dto_service,
+    )
+
+    notification_use_case = providers.Factory(
+        NotificationUseCase,
+        session=session,
+        notification_service=notification_service,
+    )
+
     like_notification_service = providers.Factory(
         LikeNotificationService,
         session=session,
@@ -237,7 +275,7 @@ class Container(containers.DeclarativeContainer):
         user_repo=user_repository,
     )
 
-    # Use Cases
+    # User Use Case
     user_use_case = providers.Factory(
         UserUseCase,
         session=session,
@@ -255,6 +293,24 @@ class Container(containers.DeclarativeContainer):
         user_dto_service=user_dto_service,
     )
 
+    # OAuth Service & Use Case
+    oauth_service = providers.Factory(
+        OAuthService,
+        user_repo=user_repository,
+        user_use_case=user_use_case,
+        auth_service=auth_service,
+        kakao_service=kakao_oauth_service,
+        google_service=google_oauth_service,
+        apple_service=apple_oauth_service,
+        naver_service=naver_oauth_service,
+    )
+
+    oauth_use_case = providers.Factory(
+        OAuthUseCase,
+        session=session,
+        oauth_service=oauth_service,
+    )
+
     # WebSocket Service (Singleton)
     websocket_service = providers.Singleton(
         lambda: __import__(
@@ -264,13 +320,57 @@ class Container(containers.DeclarativeContainer):
         else None
     )
 
-    # Chat Service
+    # Chat Services
+    chat_message_service = providers.Factory(
+        ChatMessageService,
+        chat_repo=chat_repository,
+        user_repo=user_repository,
+        redis=redis,
+    )
+
+    chat_pod_service = providers.Factory(
+        ChatPodService,
+        pod_repo=pod_repository,
+    )
+
+    chat_room_service = providers.Factory(
+        ChatRoomService,
+        chat_room_repo=chat_room_repository,
+        chat_repo=chat_repository,
+        redis=redis,
+    )
+
+    chat_notification_service = providers.Factory(
+        ChatNotificationService,
+        session=session,
+        user_repo=user_repository,
+        chat_room_repo=chat_room_repository,
+        fcm_service=fcm_service,
+        redis=redis,
+        connection_manager=providers.Callable(
+            lambda ws: ws.get_connection_manager() if ws else None,
+            websocket_service,
+        ),
+    )
+
     chat_service = providers.Factory(
         ChatService,
         session=session,
+        user_repo=user_repository,
+        chat_room_repo=chat_room_repository,
+        message_service=chat_message_service,
+        pod_service=chat_pod_service,
+        notification_service=chat_notification_service,
+        room_service=chat_room_service,
         websocket_service=websocket_service,
-        fcm_service=fcm_service,
-        redis=redis,
+    )
+
+    chat_use_case = providers.Factory(
+        ChatUseCase,
+        session=session,
+        chat_service=chat_service,
+        chat_room_repo=chat_room_repository,
+        websocket_service=websocket_service,
     )
 
     # Artist Use Cases
@@ -417,13 +517,6 @@ class Container(containers.DeclarativeContainer):
         enrichment_service=pod_enrichment_service,
         notification_service=pod_notification_service,
         follow_use_case=follow_use_case,
-    )
-
-    chat_use_case = providers.Factory(
-        ChatUseCase,
-        session=session,
-        chat_service=chat_service,
-        chat_room_repo=chat_room_repository,
     )
 
 

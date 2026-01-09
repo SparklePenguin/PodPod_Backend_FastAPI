@@ -5,10 +5,10 @@
 
 import logging
 
-from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.services.fcm_service import FCMService
 from app.features.chat.enums import MessageType
+from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.chat.schemas.chat_schemas import ChatMessageDto, ChatRoomDto
 from app.features.chat.services.chat_message_service import ChatMessageService
 from app.features.chat.services.chat_notification_service import (
@@ -19,7 +19,6 @@ from app.features.chat.services.chat_room_service import ChatRoomService
 from app.features.chat.services.websocket_service import WebSocketService
 from app.features.users.repositories import UserRepository
 from fastapi import WebSocket
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -30,27 +29,33 @@ class ChatService:
     def __init__(
         self,
         session: AsyncSession,
+        user_repo: UserRepository,
+        chat_room_repo: ChatRoomRepository,
+        message_service: ChatMessageService,
+        pod_service: ChatPodService,
+        notification_service: ChatNotificationService,
+        room_service: ChatRoomService,
         websocket_service: WebSocketService | None = None,
-        fcm_service: FCMService | None = None,
-        redis: Redis | None = None,
-    ):
+    ) -> None:
+        """
+        Args:
+            session: 데이터베이스 세션
+            user_repo: 사용자 레포지토리
+            chat_room_repo: 채팅방 레포지토리
+            message_service: 채팅 메시지 서비스
+            pod_service: Pod 서비스
+            notification_service: 알림 서비스
+            room_service: 채팅방 서비스
+            websocket_service: WebSocket 서비스 (선택적)
+        """
         self._session = session
-        self._redis = redis
-        self._user_repo = UserRepository(session)
-
-        # 하위 서비스 초기화 (Redis 전달)
+        self._user_repo = user_repo
+        self._chat_room_repo = chat_room_repo
         self._websocket_service = websocket_service
-        self._message_service = ChatMessageService(session, redis)
-        self._pod_service = ChatPodService(session)
-        self._notification_service = ChatNotificationService(
-            session=session,
-            redis=redis,
-            fcm_service=fcm_service,
-            connection_manager=websocket_service.get_connection_manager()
-            if websocket_service
-            else None,
-        )
-        self._room_service = ChatRoomService(session=session, redis=redis)
+        self._message_service = message_service
+        self._pod_service = pod_service
+        self._notification_service = notification_service
+        self._room_service = room_service
 
     # - MARK: 메시지 전송
     async def send_message(
@@ -90,7 +95,7 @@ class ChatService:
             )
 
         # 5. Pod 정보 추출 및 조회
-        pod_id, pod_title = self._pod_service.extract_pod_info_from_metadata(
+        pod_id, pod_title = ChatPodService.extract_pod_info_from_metadata(
             channel_metadata, room_id
         )
         if pod_id:
@@ -124,7 +129,7 @@ class ChatService:
         return await self._message_service.get_messages(channel_url, page, size)
 
     # - MARK: 사용자의 채팅방 목록 조회
-    async def get_user_chat_rooms(self, user_id: int) -> list:
+    async def get_user_chat_rooms(self, user_id: int) -> list[ChatRoomDto]:
         """사용자가 참여한 채팅방 목록 조회"""
         return await self._room_service.get_user_chat_rooms(user_id)
 
@@ -135,8 +140,7 @@ class ChatService:
         """채팅방 상세 정보 조회"""
         return await self._room_service.get_chat_room_detail(chat_room_id, user_id)
 
-    # - MARK: 채팅방 나가기
-# - MARK: 읽음 처리
+    # - MARK: 읽음 처리
     async def mark_as_read(self, chat_room_id: int, user_id: int) -> bool:
         """채팅방 읽음 처리"""
         return await self._room_service.mark_as_read(chat_room_id, user_id)
@@ -174,12 +178,7 @@ class ChatService:
         sender_name = user.nickname or "알 수 없음" if user else "알 수 없음"
 
         # 4. 채팅방 정보 조회
-        from app.features.chat.repositories.chat_room_repository import (
-            ChatRoomRepository,
-        )
-
-        chat_room_repo = ChatRoomRepository(self._session)
-        chat_room = await chat_room_repo.get_chat_room_by_id(chat_room_id)
+        chat_room = await self._chat_room_repo.get_chat_room_by_id(chat_room_id)
         if not chat_room:
             return chat_message_dto
 
@@ -223,7 +222,7 @@ class ChatService:
     ) -> None:
         """WebSocket 연결 처리 및 메시지 수신 루프"""
 
-        async def on_message(message_text: str, message_type: MessageType):
+        async def on_message(message_text: str, message_type: MessageType) -> None:
             """메시지 수신 시 처리"""
             try:
                 await self.send_message(
@@ -248,3 +247,8 @@ class ChatService:
             )
         else:
             logger.error("[WebSocket] websocket_service가 None입니다!")
+
+    # - MARK: WebSocket 서비스 접근자
+    def get_websocket_service(self) -> WebSocketService | None:
+        """WebSocket 서비스 반환 (외부에서 접근 필요 시)"""
+        return self._websocket_service

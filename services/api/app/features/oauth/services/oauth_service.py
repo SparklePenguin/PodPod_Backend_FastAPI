@@ -1,7 +1,14 @@
+"""OAuth 통합 서비스"""
+
+from typing import TYPE_CHECKING
+
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
+from redis.asyncio import Redis
+
 from app.core.config import settings
 from app.core.session import verify_oauth_state
 from app.features.auth.schemas import LoginInfoDto
-from app.features.auth.services import AuthService
 from app.features.oauth.exceptions import (
     OAuthAuthenticationFailedException,
     OAuthProviderNotSupportedException,
@@ -21,78 +28,47 @@ from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
 from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.users.repositories import UserRepository
-from app.features.users.use_cases.user_use_case import UserUseCase
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from app.features.auth.services import AuthService
+    from app.features.users.use_cases.user_use_case import UserUseCase
 
 
 class OAuthService:
     """OAuth 통합 서비스"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
-        self._user_repo = UserRepository(session)
-        from app.core.services.fcm_service import FCMService
-        from app.features.follow.repositories.follow_repository import FollowRepository
-        from app.features.follow.use_cases.follow_use_case import FollowUseCase
-        from app.features.pods.repositories.application_repository import (
-            ApplicationRepository,
-        )
-        from app.features.notifications.repositories.notification_repository import (
-            NotificationRepository,
-        )
-        from app.features.pods.repositories.like_repository import PodLikeRepository
-        from app.features.pods.repositories.pod_repository import PodRepository
-        from app.features.tendencies.repositories.tendency_repository import (
-            TendencyRepository,
-        )
-        from app.features.users.repositories.user_artist_repository import (
-            UserArtistRepository,
-        )
-        from app.features.users.repositories.user_notification_repository import (
-            UserNotificationRepository,
-        )
-        from app.features.users.services.user_dto_service import UserDtoService
-        from app.features.users.services.user_state_service import UserStateService
-
-        user_repo = UserRepository(session)
-        user_artist_repo = UserArtistRepository(session)
-        fcm_service = FCMService()
-        follow_use_case = FollowUseCase(session, fcm_service=fcm_service)
-        follow_repo = FollowRepository(session)
-        pod_application_repo = ApplicationRepository(session)
-        pod_repo = PodRepository(session)
-        pod_like_repo = PodLikeRepository(session)
-        notification_repo = NotificationRepository(session)
-        user_notification_repo = UserNotificationRepository(session)
-        tendency_repo = TendencyRepository(session)
-        user_state_service = UserStateService()
-        user_dto_service = UserDtoService()
-        self._user_use_case = UserUseCase(
-            session=session,
-            user_repo=user_repo,
-            user_artist_repo=user_artist_repo,
-            follow_use_case=follow_use_case,
-            follow_repo=follow_repo,
-            pod_application_repo=pod_application_repo,
-            pod_repo=pod_repo,
-            pod_like_repo=pod_like_repo,
-            notification_repo=notification_repo,
-            user_notification_repo=user_notification_repo,
-            tendency_repo=tendency_repo,
-            user_state_service=user_state_service,
-            user_dto_service=user_dto_service,
-        )
-        self._auth_service = AuthService(session)
-        self._kakao_service = KakaoOAuthService(session)
-        self._google_service = GoogleOAuthService(session)
-        self._apple_service = AppleOAuthService(session)
-        self._naver_service = NaverOAuthService(session)
+    def __init__(
+        self,
+        user_repo: UserRepository,
+        user_use_case: "UserUseCase",
+        auth_service: "AuthService",
+        kakao_service: KakaoOAuthService,
+        google_service: GoogleOAuthService,
+        apple_service: AppleOAuthService,
+        naver_service: NaverOAuthService,
+    ) -> None:
+        """
+        Args:
+            user_repo: 사용자 레포지토리
+            user_use_case: 사용자 유스케이스
+            auth_service: 인증 서비스
+            kakao_service: 카카오 OAuth 서비스
+            google_service: 구글 OAuth 서비스
+            apple_service: 애플 OAuth 서비스
+            naver_service: 네이버 OAuth 서비스
+        """
+        self._user_repo = user_repo
+        self._user_use_case = user_use_case
+        self._auth_service = auth_service
+        self._kakao_service = kakao_service
+        self._google_service = google_service
+        self._apple_service = apple_service
+        self._naver_service = naver_service
 
     # - MARK: 구글 토큰 로그인
-    async def sign_in_with_google(self, request: GoogleLoginRequest):
+    async def sign_in_with_google(
+        self, request: GoogleLoginRequest
+    ) -> LoginInfoDto:
         """Google 로그인 처리"""
         # Google ID 토큰 검증 및 사용자 정보 추출
         oauth_user_info = await self._google_service.verify_google_id_token(
@@ -159,46 +135,12 @@ class OAuthService:
         """통합 OAuth 콜백 처리"""
         # Apple 케이스 처리
         if provider == OAuthProvider.APPLE:
-            # user 파라미터를 dict로 변환 (JSON 문자열인 경우)
-            user_dict = None
-            if user:
-                try:
-                    import json
-
-                    user_json = json.loads(user)
-                    if user_json:
-                        user_dict = AppleUserInfo(**user_json)
-                except (json.JSONDecodeError, Exception):
-                    user_dict = None
-            # 에러 처리
-            if error:
-                raise OAuthAuthenticationFailedException(
-                    provider="apple",
-                    reason=error_description or "Apple authentication failed",
-                )
-
-            # Authorization Code가 없는 경우
-            if not code:
-                raise OAuthAuthenticationFailedException(
-                    provider="apple", reason="Authorization code is required"
-                )
-
-            # ID Token이 없는 경우
-            if not id_token:
-                raise OAuthTokenInvalidException(provider="apple")
-
-            # Apple 로그인 처리
-            sign_in_response = await self.sign_in_with_apple(
-                AppleLoginRequest(
-                    identity_token=id_token, authorization_code=code, user=user_dict
-                )
-            )
-
-            # Android Deep Link로 리다이렉트
-            return RedirectResponse(
-                url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
-                "#Intent;package=sparkle_penguin.podpod;"
-                f"scheme={settings.APPLE_SCHEME};end"
+            return await self._handle_apple_callback(
+                code=code,
+                error=error,
+                error_description=error_description,
+                id_token=id_token,
+                user=user,
             )
 
         # 1. State 검증 (Naver만)
@@ -230,30 +172,7 @@ class OAuthService:
             )
 
         # 4. 토큰 요청
-        if provider == OAuthProvider.KAKAO:
-            token_response = await self._kakao_service.get_kakao_token(code=code)
-            oauth_user_info = await self._kakao_service.get_kakao_user_info(
-                token_response.access_token
-            )
-        elif provider == OAuthProvider.NAVER:
-            # naver_service는 구현 필요
-            # token_response = await self.naver_service.get_naver_token(
-            #     code=code, state=state
-            # )
-            # oauth_user_info = await self.naver_service.get_naver_user_info(
-            #     token_response.access_token
-            # )
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="Naver OAuth는 아직 구현되지 않았습니다.",
-            )
-        elif provider == OAuthProvider.GOOGLE:
-            token_response = await self._google_service.get_google_token(code=code)
-            oauth_user_info = await self._google_service.get_google_user_info(
-                token_response.access_token
-            )
-        else:
-            raise OAuthProviderNotSupportedException(provider=provider.value)
+        oauth_user_info = await self._get_oauth_user_info_by_code(provider, code, state)
 
         # 5. OAuth 로그인 처리
         return await self.handle_oauth_login(
@@ -261,6 +180,80 @@ class OAuthService:
             oauth_provider_id=str(oauth_user_info.id),
             oauth_user_info=oauth_user_info,
         )
+
+    async def _handle_apple_callback(
+        self,
+        code: str | None,
+        error: str | None,
+        error_description: str | None,
+        id_token: str | None,
+        user: str | None,
+    ) -> RedirectResponse:
+        """Apple OAuth 콜백 처리"""
+        import json
+
+        # user 파라미터를 dict로 변환 (JSON 문자열인 경우)
+        user_dict = None
+        if user:
+            try:
+                user_json = json.loads(user)
+                if user_json:
+                    user_dict = AppleUserInfo(**user_json)
+            except (json.JSONDecodeError, Exception):
+                user_dict = None
+
+        # 에러 처리
+        if error:
+            raise OAuthAuthenticationFailedException(
+                provider="apple",
+                reason=error_description or "Apple authentication failed",
+            )
+
+        # Authorization Code가 없는 경우
+        if not code:
+            raise OAuthAuthenticationFailedException(
+                provider="apple", reason="Authorization code is required"
+            )
+
+        # ID Token이 없는 경우
+        if not id_token:
+            raise OAuthTokenInvalidException(provider="apple")
+
+        # Apple 로그인 처리
+        sign_in_response = await self.sign_in_with_apple(
+            AppleLoginRequest(
+                identity_token=id_token, authorization_code=code, user=user_dict
+            )
+        )
+
+        # Android Deep Link로 리다이렉트
+        return RedirectResponse(
+            url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
+            "#Intent;package=sparkle_penguin.podpod;"
+            f"scheme={settings.APPLE_SCHEME};end"
+        )
+
+    async def _get_oauth_user_info_by_code(
+        self, provider: OAuthProvider, code: str, state: str | None
+    ) -> OAuthUserInfo:
+        """인가 코드로 OAuth 사용자 정보 조회"""
+        if provider == OAuthProvider.KAKAO:
+            token_response = await self._kakao_service.get_kakao_token(code=code)
+            return await self._kakao_service.get_kakao_user_info(
+                token_response.access_token
+            )
+        elif provider == OAuthProvider.NAVER:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Naver OAuth는 아직 구현되지 않았습니다.",
+            )
+        elif provider == OAuthProvider.GOOGLE:
+            token_response = await self._google_service.get_google_token(code=code)
+            return await self._google_service.get_google_user_info(
+                token_response.access_token
+            )
+        else:
+            raise OAuthProviderNotSupportedException(provider=provider.value)
 
     # - MARK: 통합 OAuth 로그인
     async def handle_oauth_login(
@@ -279,7 +272,7 @@ class OAuthService:
         if user:
             # User 모델에서 user_id 가져오기 (commit 전에 저장)
             user_id = user.id
-            
+
             # 소프트 삭제된 경우 복구
             if user.is_del:
                 await self._user_use_case.restore_user(user, oauth_user_info)
@@ -315,7 +308,10 @@ class OAuthService:
 
     # - MARK: OAuth 인증 URL 생성
     async def get_auth_url(
-        self, provider: OAuthProvider, redis: Redis | None = None, base_url: str | None = None
+        self,
+        provider: OAuthProvider,
+        redis: Redis | None = None,
+        base_url: str | None = None,
     ) -> str:
         """OAuth 인증 URL 생성"""
         if provider == OAuthProvider.KAKAO:

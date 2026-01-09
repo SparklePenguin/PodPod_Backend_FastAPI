@@ -7,8 +7,6 @@ import json
 import logging
 from datetime import datetime, time, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.schemas import PodDto
 from app.features.pods.services.pod_dto_service import PodDtoService
@@ -19,13 +17,17 @@ logger = logging.getLogger(__name__)
 class ChatPodService:
     """채팅 Pod 서비스 - Pod 정보 조회 및 변환 담당"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
-        self._pod_repo = PodRepository(session)
+    def __init__(self, pod_repo: PodRepository) -> None:
+        """
+        Args:
+            pod_repo: Pod 레포지토리
+        """
+        self._pod_repo = pod_repo
 
     # - MARK: Pod 정보 추출 (채널 메타데이터에서)
+    @staticmethod
     def extract_pod_info_from_metadata(
-        self, channel_metadata: dict | None, room_id: int
+        channel_metadata: dict | None, room_id: int
     ) -> tuple[int | None, str | None]:
         """채널 메타데이터에서 Pod ID와 제목 추출"""
         pod_id = None
@@ -55,7 +57,7 @@ class ChatPodService:
                 return None, None
 
             # PodDto 변환
-            def _convert_to_timestamp(meeting_date, meeting_time):
+            def _convert_to_timestamp(meeting_date, meeting_time) -> int:
                 if meeting_date is None:
                     return 0
                 if meeting_time is None:

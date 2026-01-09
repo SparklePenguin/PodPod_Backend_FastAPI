@@ -13,9 +13,7 @@ from redis.asyncio import Redis
 from app.features.chat.repositories.chat_repository import ChatRepository
 from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
 from app.features.chat.schemas.chat_schemas import ChatMessageDto, ChatRoomDto
-from app.features.chat.services.chat_message_service import ChatMessageService
 from app.features.chat.services.chat_redis_cache_service import ChatRedisCacheService
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +23,18 @@ class ChatRoomService:
 
     def __init__(
         self,
-        session: AsyncSession,
+        chat_room_repo: ChatRoomRepository,
+        chat_repo: ChatRepository,
         redis: Redis | None = None,
-    ):
-        self._session = session
-        self._redis = redis
-        self._chat_room_repo = ChatRoomRepository(session)
-        self._chat_repo = ChatRepository(session)
-        self._message_service = ChatMessageService(session, redis)
+    ) -> None:
+        """
+        Args:
+            chat_room_repo: 채팅방 레포지토리
+            chat_repo: 채팅 레포지토리
+            redis: Redis 클라이언트 (선택적)
+        """
+        self._chat_room_repo = chat_room_repo
+        self._chat_repo = chat_repo
         self._redis_cache = ChatRedisCacheService(redis) if redis else None
 
     # - MARK: 사용자의 채팅방 목록 조회
@@ -143,8 +145,7 @@ class ChatRoomService:
             else "",
         )
 
-    # - MARK: 채팅방 나가기
-# - MARK: 채팅방 멤버 추가
+    # - MARK: 채팅방 멤버 추가
     async def add_member(
         self, chat_room_id: int, user_id: int, role: str = "member"
     ) -> None:
@@ -156,9 +157,10 @@ class ChatRoomService:
             await self._redis_cache.add_member(chat_room_id, user_id)
 
     # - MARK: 읽음 처리
-    async def mark_as_read(self, chat_room_id: int, user_id: int) -> None:
+    async def mark_as_read(self, chat_room_id: int, user_id: int) -> bool:
         """채팅방 읽음 처리 (검증은 use case에서 처리, commit은 use case에서 처리)"""
         await self._chat_room_repo.update_last_read_at(chat_room_id, user_id)
+        return True
 
     # - MARK: 채팅방의 마지막 메시지 조회
     async def _get_last_message_by_room_id(self, chat_room_id: int):
@@ -182,8 +184,18 @@ class ChatRoomService:
             return None
 
         # DTO 변환
-        last_message = self._message_service._to_dto(
-            last_message_model, last_message_model.user
+        last_message = ChatMessageDto(
+            id=last_message_model.id,
+            user_id=last_message_model.user_id,
+            nickname=last_message_model.user.nickname
+            if last_message_model.user
+            else None,
+            profile_image=last_message_model.user.profile_image
+            if last_message_model.user
+            else None,
+            message=last_message_model.message,
+            message_type=last_message_model.message_type,
+            created_at=last_message_model.created_at,
         )
 
         # Redis에 캐시
