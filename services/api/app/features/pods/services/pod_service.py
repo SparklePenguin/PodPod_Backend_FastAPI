@@ -7,7 +7,7 @@ from pathlib import Path
 from app.common.schemas import PageDto
 from app.core.config import settings
 from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
-from app.features.follow.services.follow_service import FollowService
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.pods.exceptions import (
     InvalidDateException,
     InvalidImageException,
@@ -63,7 +63,7 @@ class PodService:
         notification_service: PodNotificationService,
         review_service: ReviewService,
         like_service: LikeService,
-        follow_service: FollowService,
+        follow_use_case: FollowUseCase,
         user_dto_service: UserDtoService,
     ):
         self._session = session
@@ -77,7 +77,7 @@ class PodService:
         self._review_service = review_service
         self._like_service = like_service
         self._notification_service = notification_service
-        self._follow_service = follow_service
+        self._follow_use_case = follow_use_case
         self._user_dto_service = user_dto_service
 
     # MARK: - 파티 생성 (Form 데이터에서)
@@ -246,7 +246,7 @@ class PodService:
             # 팔로워들에게 파티 생성 알림 전송
             try:
                 pod_id_value = pod.id
-                await self._follow_service.send_followed_user_pod_created_notification(
+                await self._follow_use_case.send_followed_user_pod_created_notification(
                     owner_id, pod_id_value
                 )
             except Exception:

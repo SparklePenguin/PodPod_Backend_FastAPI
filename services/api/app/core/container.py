@@ -34,8 +34,8 @@ from app.features.users.repositories.user_artist_repository import (
 
 # Services
 from app.features.chat.services.chat_service import ChatService
-from app.features.follow.services.follow_service import FollowService
-from app.features.locations.services.location_service import LocationService
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
+from app.features.locations.use_cases.location_use_case import LocationUseCase
 from app.features.notifications.services.notification_dto_service import (
     NotificationDtoService,
 )
@@ -175,16 +175,16 @@ class Container(containers.DeclarativeContainer):
     # Services (Factory - session or other dependencies)
     oauth_service = providers.Factory(OAuthService, session=session)
 
-    location_service = providers.Factory(
-        LocationService, session=session
+    location_use_case = providers.Factory(
+        LocationUseCase, session=session
     )
 
     notification_service = providers.Factory(
         NotificationService, session=session
     )
 
-    follow_service = providers.Factory(
-        FollowService,
+    follow_use_case = providers.Factory(
+        FollowUseCase,
         session=session,
         fcm_service=fcm_service,
     )
@@ -254,7 +254,7 @@ class Container(containers.DeclarativeContainer):
         session=session,
         user_repo=user_repository,
         user_artist_repo=user_artist_repository,
-        follow_service=follow_service,
+        follow_use_case=follow_use_case,
         follow_repo=follow_repository,
         pod_application_repo=application_repository,
         pod_repo=pod_repository,
@@ -279,7 +279,7 @@ class Container(containers.DeclarativeContainer):
         notification_service=pod_notification_service,
         review_service=review_service,
         like_service=like_service,
-        follow_service=follow_service,
+        follow_use_case=follow_use_case,
         user_dto_service=user_dto_service,
     )
 
@@ -422,7 +422,7 @@ class Container(containers.DeclarativeContainer):
         pod_service=pod_service,
         pod_repo=pod_repository,
         notification_service=pod_notification_service,
-        follow_service=follow_service,
+        follow_use_case=follow_use_case,
         user_repo=user_repository,
     )
 

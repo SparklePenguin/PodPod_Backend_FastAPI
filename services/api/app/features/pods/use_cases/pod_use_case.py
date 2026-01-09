@@ -4,7 +4,7 @@ import json
 from typing import List
 
 from app.common.schemas import PageDto
-from app.features.follow.services.follow_service import FollowService
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.pods.exceptions import (
     InvalidDateException,
     InvalidPodStatusException,
@@ -40,14 +40,14 @@ class PodUseCase:
         pod_service: PodService,
         pod_repo: PodRepository,
         notification_service: PodNotificationService,
-        follow_service: FollowService,
+        follow_use_case: FollowUseCase,
         user_repo: UserRepository,
     ):
         self._session = session
         self._pod_service = pod_service
         self._pod_repo = pod_repo
         self._notification_service = notification_service
-        self._follow_service = follow_service
+        self._follow_use_case = follow_use_case
         self._user_repo = user_repo
 
     # MARK: - 파티 생성
@@ -87,7 +87,7 @@ class PodUseCase:
             # 팔로워들에게 파티 생성 알림 전송
             if result and result.id:
                 try:
-                    await self._follow_service.send_followed_user_pod_created_notification(
+                    await self._follow_use_case.send_followed_user_pod_created_notification(
                         owner_id, result.id
                     )
                 except Exception:
@@ -381,7 +381,7 @@ class PodUseCase:
             )
 
         elif pod_type == "following":
-            pods = await self._follow_service.get_following_pods(
+            pods = await self._follow_use_case.get_following_pods(
                 user_id=user_id, page=page, size=size
             )
             return (

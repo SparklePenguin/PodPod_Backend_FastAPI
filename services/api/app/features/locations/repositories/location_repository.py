@@ -29,25 +29,23 @@ class LocationRepository:
         )
         return result.scalar_one_or_none()
 
-    # - MARK: 지역 정보 생성
+    # - MARK: 지역 정보 생성 (커밋 없음)
     async def create_location(
         self, main_location: str, sub_locations: List[str]
     ) -> Location:
-        """지역 정보 생성"""
+        """지역 정보 생성 (커밋은 use_case에서 처리)"""
         location = Location(
             main_location=main_location,
             sub_locations=json.dumps(sub_locations, ensure_ascii=False),
         )
         self._session.add(location)
-        await self._session.commit()
-        await self._session.refresh(location)
         return location
 
-    # - MARK: 지역 정보 수정
+    # - MARK: 지역 정보 수정 (커밋 없음)
     async def update_location(
         self, location_id: int, main_location: str, sub_locations: List[str]
     ) -> Location | None:
-        """지역 정보 수정"""
+        """지역 정보 수정 (커밋은 use_case에서 처리)"""
         await self._session.execute(
             update(Location)
             .where(Location.id == location_id)
@@ -56,7 +54,6 @@ class LocationRepository:
                 sub_locations=json.dumps(sub_locations, ensure_ascii=False),
             )
         )
-        await self._session.commit()
         return await self.get_location_by_id(location_id)
 
     # - MARK: 지역 정보 ID로 조회
@@ -67,15 +64,14 @@ class LocationRepository:
         )
         return result.scalar_one_or_none()
 
-    # - MARK: 지역 정보 삭제
+    # - MARK: 지역 정보 삭제 (커밋 없음)
     async def delete_location(self, location_id: int) -> bool:
-        """지역 정보 삭제"""
+        """지역 정보 삭제 (커밋은 use_case에서 처리)"""
         location = await self.get_location_by_id(location_id)
         if not location:
             return False
 
         await self._session.delete(location)
-        await self._session.commit()
         return True
 
     # - MARK: 파티 주소 조회
@@ -86,6 +82,6 @@ class LocationRepository:
         result = await self._session.execute(
             select(PodDetail.address, PodDetail.sub_address)
             .join(Pod, Pod.id == PodDetail.pod_id)
-            .where(Pod.is_del == False)
+            .where(~Pod.is_del)
         )
         return result.fetchall()

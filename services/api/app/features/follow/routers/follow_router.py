@@ -1,12 +1,12 @@
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.providers import get_follow_service
+from app.deps.providers import get_follow_use_case
 from app.features.follow.schemas import (
     FollowInfoDto,
     FollowRequest,
     FollowStatsDto,
 )
-from app.features.follow.services.follow_service import FollowService
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from fastapi import APIRouter, Depends, Path, status
 
 router = APIRouter(prefix="/follow", tags=["follow"])
@@ -19,12 +19,11 @@ router = APIRouter(prefix="/follow", tags=["follow"])
 async def follow_user(
     request: FollowRequest,
     current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
 ):
-    follow = await follow_service.follow_user(
+    follow = await follow_use_case.follow_user(
         follower_id=current_user_id, following_id=request.following_id
     )
-
     return BaseResponse.ok(
         data=follow,
         http_status=status.HTTP_201_CREATED,
@@ -42,12 +41,11 @@ async def follow_user(
 async def unfollow_user(
     following_id: int = Path(..., description="팔로우 취소할 사용자 ID"),
     current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
 ):
-    await follow_service.unfollow_user(
+    await follow_use_case.unfollow_user(
         follower_id=current_user_id, following_id=following_id
     )
-
     return BaseResponse.ok(
         data=True,
         http_status=status.HTTP_200_OK,
@@ -65,12 +63,11 @@ async def unfollow_user(
 async def get_follow_stats(
     user_id: int = Path(..., description="사용자 ID"),
     current_user_id: int | None = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
 ):
-    stats = await follow_service.get_follow_stats(
+    stats = await follow_use_case.get_follow_stats(
         user_id=user_id, current_user_id=current_user_id
     )
-
     return BaseResponse.ok(
         data=stats,
         http_status=status.HTTP_200_OK,

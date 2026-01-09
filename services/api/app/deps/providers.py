@@ -153,12 +153,12 @@ def get_report_use_case(
         return container.report_use_case()
 
 
-def get_location_service(
+def get_location_use_case(
     session: AsyncSession = Depends(get_session),
 ):
-    """Location Service 생성"""
+    """Location UseCase 생성"""
     with container.session.override(session):
-        return container.location_service()
+        return container.location_use_case()
 
 
 def get_notification_service(
@@ -250,20 +250,20 @@ def get_review_use_case(
         return container.review_use_case()
 
 
-def get_follow_service(
+def get_follow_use_case(
     session: AsyncSession = Depends(get_session),
     fcm_service=Depends(get_fcm_service),
 ):
-    """Follow Service 생성"""
+    """Follow UseCase 생성"""
     with container.session.override(session):
-        return container.follow_service()
+        return container.follow_use_case()
 
 
 def get_pod_service(
     session: AsyncSession = Depends(get_session),
     review_service=Depends(get_review_service),
     like_service=Depends(get_like_service),
-    follow_service=Depends(get_follow_service),
+    follow_use_case=Depends(get_follow_use_case),
     fcm_service=Depends(get_fcm_service),
     application_service=Depends(get_application_service),
 ):
@@ -275,7 +275,7 @@ def get_pod_service(
 def get_pod_use_case(
     session: AsyncSession = Depends(get_session),
     pod_service=Depends(get_pod_service),
-    follow_service=Depends(get_follow_service),
+    follow_use_case=Depends(get_follow_use_case),
     fcm_service=Depends(get_fcm_service),
 ):
     """Pod UseCase 생성"""

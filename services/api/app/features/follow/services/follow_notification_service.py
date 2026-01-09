@@ -66,6 +66,7 @@ class FollowNotificationService:
         try:
             # 팔로우한 사용자 정보 조회
             from app.features.users.repositories import UserRepository
+
             user_repo = UserRepository(self._session)
             follower = await user_repo.get_by_id(follower_id)
 
@@ -79,7 +80,9 @@ class FollowNotificationService:
                 return
 
             # 팔로우받은 사용자의 FCM 토큰 확인
-            following_fcm_token = following.detail.fcm_token if following.detail else None
+            following_fcm_token = (
+                following.detail.fcm_token if following.detail else None
+            )
             follower_nickname = follower.nickname or ""
 
             if following_fcm_token:
@@ -119,6 +122,7 @@ class FollowNotificationService:
 
             # 파티 생성자 정보 조회
             from app.features.users.repositories import UserRepository
+
             user_repo = UserRepository(self._session)
             pod_owner = await user_repo.get_by_id(pod_owner_id)
             if not pod_owner:
@@ -145,7 +149,9 @@ class FollowNotificationService:
                     if follower_user.id is None:
                         continue
                     follower_user_id = follower_user.id
-                    follower_fcm_token = follower_user.detail.fcm_token if follower_user.detail else None
+                    follower_fcm_token = (
+                        follower_user.detail.fcm_token if follower_user.detail else None
+                    )
 
                     if follower_fcm_token:
                         await self._fcm_service.send_followed_user_created_pod(

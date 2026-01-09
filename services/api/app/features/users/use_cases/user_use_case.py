@@ -2,7 +2,7 @@
 
 from app.core.security import get_password_hash
 from app.features.follow.repositories.follow_repository import FollowRepository
-from app.features.follow.services.follow_service import FollowService
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.notifications.repositories.notification_repository import (
     NotificationRepository,
 )
@@ -40,7 +40,7 @@ class UserUseCase:
         session: AsyncSession,
         user_repo: UserRepository,
         user_artist_repo: UserArtistRepository,
-        follow_service: FollowService,
+        follow_use_case: FollowUseCase,
         follow_repo: FollowRepository,
         pod_application_repo: ApplicationRepository,
         pod_repo: PodRepository,
@@ -54,7 +54,7 @@ class UserUseCase:
         self._session = session
         self._user_repo = user_repo
         self._user_artist_repo = user_artist_repo
-        self._follow_service = follow_service
+        self._follow_use_case = follow_use_case
         self._follow_repo = follow_repo
         self._pod_application_repo = pod_application_repo
         self._pod_repo = pod_repo
@@ -360,12 +360,12 @@ class UserUseCase:
 
             if current_user_id and current_user_id != user.id:
                 # 다른 사용자 정보 조회 시: 팔로우 여부 포함
-                follow_stats = await self._follow_service.get_follow_stats(
+                follow_stats = await self._follow_use_case.get_follow_stats(
                     user.id, current_user_id
                 )
             else:
                 # 본인 정보 조회 시: 팔로우 여부 없이 통계만
-                follow_stats = await self._follow_service.get_follow_stats(
+                follow_stats = await self._follow_use_case.get_follow_stats(
                     user.id, None
                 )
         except (Exception, ValueError):

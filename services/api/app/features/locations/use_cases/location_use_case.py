@@ -1,3 +1,5 @@
+"""Location Use Case - 비즈니스 로직 처리"""
+
 import json
 from collections import defaultdict
 from typing import List
@@ -7,8 +9,8 @@ from app.features.locations.schemas import LocationDto
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class LocationService:
-    """지역 정보 Service"""
+class LocationUseCase:
+    """지역 정보 Use Case"""
 
     def __init__(self, session: AsyncSession):
         self._session = session
@@ -20,17 +22,9 @@ class LocationService:
         locations = await self._location_repo.get_all_locations()
 
         # 일반 지역 정보
-        all_locations = []
-        for location in locations:
-            sub_locations_str = location.sub_locations or "[]"
-            sub_locations = json.loads(sub_locations_str)
-            all_locations.append(
-                LocationDto(
-                    id=location.id,
-                    main_location=location.main_location,
-                    sub_locations=sub_locations,
-                )
-            )
+        all_locations = [
+            self._to_dto(location) for location in locations
+        ]
 
         # 인기 지역 정보
         popular_locations = await self.get_popular_locations()
@@ -46,9 +40,7 @@ class LocationService:
         ]
 
         # 인기 지역을 맨 앞에 추가
-        combined_locations = popular_locations + filtered_all_locations
-
-        return combined_locations
+        return popular_locations + filtered_all_locations
 
     # - MARK: 주요 지역으로 지역 정보 조회
     async def get_location_by_main_location(
@@ -62,12 +54,7 @@ class LocationService:
         if not location:
             return None
 
-        sub_locations = json.loads(location.sub_locations or "[]")
-        return LocationDto(
-            id=location.id,
-            main_location=location.main_location,
-            sub_locations=sub_locations,
-        )
+        return self._to_dto(location)
 
     # - MARK: 지역 정보 생성
     async def create_location(
@@ -77,13 +64,10 @@ class LocationService:
         location = await self._location_repo.create_location(
             main_location, sub_locations
         )
+        await self._session.commit()
+        await self._session.refresh(location)
 
-        sub_locations_list = json.loads(location.sub_locations or "[]")
-        return LocationDto(
-            id=location.id,
-            main_location=location.main_location,
-            sub_locations=sub_locations_list,
-        )
+        return self._to_dto(location)
 
     # - MARK: 지역 정보 수정
     async def update_location(
@@ -93,21 +77,20 @@ class LocationService:
         location = await self._location_repo.update_location(
             location_id, main_location, sub_locations
         )
+        await self._session.commit()
 
         if not location:
             return None
 
-        sub_locations_list = json.loads(location.sub_locations or "[]")
-        return LocationDto(
-            id=location.id,
-            main_location=location.main_location,
-            sub_locations=sub_locations_list,
-        )
+        await self._session.refresh(location)
+        return self._to_dto(location)
 
     # - MARK: 지역 정보 삭제
     async def delete_location(self, location_id: int) -> bool:
         """지역 정보 삭제"""
-        return await self._location_repo.delete_location(location_id)
+        result = await self._location_repo.delete_location(location_id)
+        await self._session.commit()
+        return result
 
     # - MARK: 인기 지역 조회
     async def get_popular_locations(self) -> List[LocationDto]:
@@ -136,10 +119,10 @@ class LocationService:
                         part = part.strip()
                         if part and part in full_address:
                             location_counts[location.main_location] += 1
-                            break  # 한 지역에서 매칭되면 다른 sub_location은 확인하지 않음
+                            break
                     else:
-                        continue  # break가 실행되지 않았으면 계속
-                    break  # 내부 for문에서 break가 실행되었으면 외부 for문도 break
+                        continue
+                    break
 
         # 카운트 기준으로 정렬하여 상위 10개 선택
         sorted_locations = sorted(
@@ -148,18 +131,20 @@ class LocationService:
 
         # LocationDto 형태로 변환
         popular_locations = []
-        for main_location, count in sorted_locations:
-            # 해당 main_location의 sub_locations 찾기
+        for main_location, _ in sorted_locations:
             for location in locations:
                 if location.main_location == main_location:
-                    sub_locations = json.loads(location.sub_locations or "[]")
-                    popular_locations.append(
-                        LocationDto(
-                            id=location.id,
-                            main_location=main_location,
-                            sub_locations=sub_locations,
-                        )
-                    )
+                    popular_locations.append(self._to_dto(location))
                     break
 
         return popular_locations
+
+    # - MARK: Location -> LocationDto 변환
+    def _to_dto(self, location) -> LocationDto:
+        """Location 모델을 LocationDto로 변환"""
+        sub_locations = json.loads(location.sub_locations or "[]")
+        return LocationDto(
+            id=location.id,
+            main_location=location.main_location,
+            sub_locations=sub_locations,
+        )

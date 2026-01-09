@@ -36,7 +36,7 @@ class OAuthService:
         self._user_repo = UserRepository(session)
         from app.core.services.fcm_service import FCMService
         from app.features.follow.repositories.follow_repository import FollowRepository
-        from app.features.follow.services.follow_service import FollowService
+        from app.features.follow.use_cases.follow_use_case import FollowUseCase
         from app.features.pods.repositories.application_repository import (
             ApplicationRepository,
         )
@@ -60,7 +60,7 @@ class OAuthService:
         user_repo = UserRepository(session)
         user_artist_repo = UserArtistRepository(session)
         fcm_service = FCMService()
-        follow_service = FollowService(session, fcm_service=fcm_service)
+        follow_use_case = FollowUseCase(session, fcm_service=fcm_service)
         follow_repo = FollowRepository(session)
         pod_application_repo = ApplicationRepository(session)
         pod_repo = PodRepository(session)
@@ -74,7 +74,7 @@ class OAuthService:
             session=session,
             user_repo=user_repo,
             user_artist_repo=user_artist_repo,
-            follow_service=follow_service,
+            follow_use_case=follow_use_case,
             follow_repo=follow_repo,
             pod_application_repo=pod_application_repo,
             pod_repo=pod_repo,

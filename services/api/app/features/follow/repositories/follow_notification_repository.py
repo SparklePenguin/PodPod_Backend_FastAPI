@@ -19,20 +19,14 @@ class FollowNotificationRepository:
             return None
         return bool(getattr(follow, "notification_enabled", False))
 
-    # - MARK: 알림 설정 상태 변경
+    # - MARK: 알림 설정 상태 변경 (커밋 없음)
     async def update_notification_status(
         self, follower_id: int, following_id: int, notification_enabled: bool
-    ) -> bool:
-        """특정 팔로우 관계의 알림 설정 상태 변경"""
-        try:
-            follow = await self._follow_repo.get_follow(follower_id, following_id)
-            if not follow:
-                return False
+    ):
+        """특정 팔로우 관계의 알림 설정 상태 변경 (커밋은 use_case에서 처리)"""
+        follow = await self._follow_repo.get_follow(follower_id, following_id)
+        if not follow:
+            return None
 
-            setattr(follow, "notification_enabled", notification_enabled)
-            await self._session.commit()
-            await self._session.refresh(follow)
-            return True
-        except Exception:
-            await self._session.rollback()
-            return False
+        setattr(follow, "notification_enabled", notification_enabled)
+        return follow

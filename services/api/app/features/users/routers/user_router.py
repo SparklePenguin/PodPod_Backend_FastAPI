@@ -4,14 +4,14 @@ from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.providers import (
     get_block_user_use_case,
-    get_follow_service,
+    get_follow_use_case,
     get_user_artist_use_case,
     get_user_use_case,
 )
 from app.features.artists.schemas import ArtistDto
 from app.features.auth.schemas import SignUpRequest
 from app.features.follow.exceptions import FollowNotFoundException
-from app.features.follow.services.follow_service import FollowService
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.users.exceptions import ImageUploadException
 from app.features.users.schemas import (
     AcceptTermsRequest,
@@ -144,24 +144,24 @@ async def get_users(
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
     current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
     block_user_use_case: BlockUserUseCase = Depends(get_block_user_use_case),
 ):
     """사용자 목록 조회"""
     if type == "recommended":
-        users = await follow_service.get_recommended_users(
+        users = await follow_use_case.get_recommended_users(
             user_id=current_user_id, page=page, size=size
         )
         message_ko = "추천 유저 목록을 조회했습니다."
         message_en = "Successfully retrieved recommended users."
     elif type == "followings":
-        users = await follow_service.get_following_list(
+        users = await follow_use_case.get_following_list(
             user_id=current_user_id, page=page, size=size
         )
         message_ko = "팔로우 목록을 조회했습니다."
         message_en = "Successfully retrieved following list."
     elif type == "followers":
-        users = await follow_service.get_followers_list(
+        users = await follow_use_case.get_followers_list(
             user_id=current_user_id,
             current_user_id=current_user_id,
             page=page,
@@ -334,10 +334,10 @@ async def delete_my_account(
 async def get_following_mute_status(
     following_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
 ):
     """팔로우한 사용자의 알림 음소거 설정 조회"""
-    notification_status = await follow_service.get_notification_status(
+    notification_status = await follow_use_case.get_notification_status(
         follower_id=current_user_id, following_id=following_id
     )
 
@@ -364,7 +364,7 @@ async def update_following_mute_status(
     following_id: int,
     request: dict = Body(..., description="음소거 설정 요청"),
     current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
 ):
     """팔로우한 사용자의 알림 음소거 설정 변경"""
     muted = request.get("muted", False)
@@ -372,7 +372,7 @@ async def update_following_mute_status(
     # muted가 true면 notification_enabled는 false
     notification_enabled = not muted
 
-    notification_status = await follow_service.update_notification_status(
+    notification_status = await follow_use_case.update_notification_status(
         follower_id=current_user_id,
         following_id=following_id,
         notification_enabled=notification_enabled,
