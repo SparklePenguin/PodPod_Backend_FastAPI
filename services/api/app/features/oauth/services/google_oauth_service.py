@@ -5,9 +5,6 @@ from typing import Any, Dict
 from urllib.parse import urlencode
 
 import httpx
-from google.auth.transport import requests
-from google.oauth2 import id_token
-
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas import (
@@ -16,6 +13,8 @@ from app.features.oauth.schemas import (
     OAuthUserInfo,
 )
 from fastapi import HTTPException, status
+from google.auth.transport import requests
+from google.oauth2 import id_token
 
 
 class GoogleOAuthService:
@@ -72,7 +71,7 @@ class GoogleOAuthService:
         """구글 ID 토큰 검증 및 사용자 정보 추출"""
         try:
             # ID 토큰 검증 (동기 함수를 비동기로 실행)
-            idinfo = await asyncio.to_thread(
+            idinfo: Dict[str, Any] = await asyncio.to_thread(
                 id_token.verify_oauth2_token,
                 id_token_str,
                 requests.Request(),
