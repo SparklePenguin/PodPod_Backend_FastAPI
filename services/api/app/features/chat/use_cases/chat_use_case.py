@@ -82,27 +82,7 @@ class ChatUseCase:
         return await self._chat_service.get_chat_room_detail(chat_room_id, user_id)
 
     # MARK: - 채팅방 나가기
-    async def leave_chat_room(self, chat_room_id: int, user_id: int) -> None:
-        """채팅방 나가기 (비즈니스 로직 검증)"""
-        # 채팅방 존재 확인
-        chat_room = await self._chat_room_repo.get_chat_room_by_id(chat_room_id)
-        if not chat_room:
-            raise ChatRoomNotFoundException(chat_room_id)
-
-        # 사용자가 멤버인지 확인
-        member = await self._chat_room_repo.get_member(chat_room_id, user_id)
-        if not member or member.left_at:
-            raise ChatMemberNotFoundException(chat_room_id, user_id)
-
-        # 서비스 로직 호출
-        try:
-            await self._chat_service.leave_chat_room(chat_room_id, user_id)
-            await self._session.commit()
-        except Exception:
-            await self._session.rollback()
-            raise
-
-    # MARK: - 읽음 처리
+# MARK: - 읽음 처리
     async def mark_as_read(self, chat_room_id: int, user_id: int) -> None:
         """채팅방 읽음 처리 (비즈니스 로직 검증)"""
         # 채팅방 존재 확인

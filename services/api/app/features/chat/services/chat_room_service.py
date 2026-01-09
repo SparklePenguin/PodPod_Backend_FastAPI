@@ -148,15 +148,7 @@ class ChatRoomService:
         )
 
     # - MARK: 채팅방 나가기
-    async def leave_chat_room(self, chat_room_id: int, user_id: int) -> None:
-        """채팅방 나가기 (검증은 use case에서 처리, commit은 use case에서 처리)"""
-        await self._chat_room_repo.remove_member(chat_room_id, user_id)
-
-        # Redis에서도 멤버 제거
-        if self._redis_cache:
-            await self._redis_cache.remove_member(chat_room_id, user_id)
-
-    # - MARK: 채팅방 멤버 추가
+# - MARK: 채팅방 멤버 추가
     async def add_member(
         self, chat_room_id: int, user_id: int, role: str = "member"
     ) -> None:

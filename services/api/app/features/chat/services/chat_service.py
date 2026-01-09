@@ -136,11 +136,7 @@ class ChatService:
         return await self._room_service.get_chat_room_detail(chat_room_id, user_id)
 
     # - MARK: 채팅방 나가기
-    async def leave_chat_room(self, chat_room_id: int, user_id: int) -> bool:
-        """채팅방 나가기"""
-        return await self._room_service.leave_chat_room(chat_room_id, user_id)
-
-    # - MARK: 읽음 처리
+# - MARK: 읽음 처리
     async def mark_as_read(self, chat_room_id: int, user_id: int) -> bool:
         """채팅방 읽음 처리"""
         return await self._room_service.mark_as_read(chat_room_id, user_id)

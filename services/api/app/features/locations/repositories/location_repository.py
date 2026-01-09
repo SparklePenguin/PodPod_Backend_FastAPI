@@ -80,8 +80,12 @@ class LocationRepository:
 
     # - MARK: 파티 주소 조회
     async def get_pod_addresses(self) -> List[Tuple[str, str | None]]:
-        """모든 활성 파티의 address, sub_address 조회"""
+        """모든 활성 파티의 address, sub_address 조회 (PodDetail에서)"""
+        from app.features.pods.models import PodDetail
+
         result = await self._session.execute(
-            select(Pod.address, Pod.sub_address).where(Pod.is_active)
+            select(PodDetail.address, PodDetail.sub_address)
+            .join(Pod, Pod.id == PodDetail.pod_id)
+            .where(Pod.is_del == False)
         )
         return result.fetchall()

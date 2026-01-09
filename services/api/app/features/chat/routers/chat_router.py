@@ -100,23 +100,6 @@ async def send_message(
 
 
 # - MARK: 채팅방 나가기
-@router.delete(
-    "/rooms/{room_id}/members",
-    response_model=BaseResponse[dict],
-    description="채팅방 나가기",
-)
-async def leave_chat_room(
-    room_id: int = Path(..., description="채팅방 ID"),
-    current_user_id: int = Depends(get_current_user_id),
-    use_case: ChatUseCase = Depends(get_chat_use_case),
-):
-    """채팅방 나가기"""
-    await use_case.leave_chat_room(room_id, current_user_id)
-    return BaseResponse.ok(
-        data={"success": True}, http_status=status.HTTP_200_OK
-    )
-
-
 # - MARK: 읽음 처리
 @router.put(
     "/rooms/{room_id}/read",
