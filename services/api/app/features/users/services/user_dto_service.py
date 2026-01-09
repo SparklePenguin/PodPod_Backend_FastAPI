@@ -17,25 +17,31 @@ class UserDtoService:
 
     @staticmethod
     def create_user_dto(
-        user: User | None, tendency_type: str = "", is_following: bool = False
+        user: User | None, tendency_type: str | None = None, is_following: bool = False
     ) -> UserDto:
-        """User 모델과 성향 타입으로 UserDto 생성 (재사용 가능)"""
+        """User 모델로 UserDto 생성 (재사용 가능)
+        
+        tendency_type이 None인 경우 user.tendency_type 사용
+        """
         if not user:
             return UserDto(
                 id=0,
                 nickname="",
                 profile_image="",
                 intro="",
-                tendency_type=tendency_type,
+                tendency_type=tendency_type or "",
                 is_following=is_following,
             )
+
+        # tendency_type이 None이면 user.tendency_type 사용
+        final_tendency_type = tendency_type if tendency_type is not None else (user.tendency_type or "")
 
         return UserDto(
             id=user.id or 0,
             nickname=user.nickname or "",
             profile_image=user.profile_image or "",
             intro=user.intro or "",
-            tendency_type=tendency_type,
+            tendency_type=final_tendency_type,
             is_following=is_following,
         )
 
@@ -52,14 +58,15 @@ class UserDtoService:
         # 기본 사용자 정보
         # created_at과 updated_at은 항상 값이 있어야 하므로 None 체크
         now = datetime.datetime.now(timezone.utc)
+        detail = user.detail
         user_data = {
             "id": user.id,
-            "email": user.email,
-            "username": user.username,
+            "email": detail.email if detail else None,
+            "username": detail.username if detail else None,
             "nickname": user.nickname,
             "profile_image": user.profile_image,
             "intro": user.intro,
-            "terms_accepted": user.terms_accepted,
+            "terms_accepted": detail.terms_accepted if detail else False,
             "created_at": user.created_at if user.created_at is not None else now,
             "updated_at": user.updated_at if user.updated_at is not None else now,
         }

@@ -44,10 +44,10 @@ class LikeNotificationService:
 
                 owner = await self._user_repo.get_by_id(pod.owner_id)
 
-                if owner and owner.fcm_token:
+                if owner and owner.detail and owner.detail.fcm_token:
                     # 좋아요 달성 알림 전송
                     await self._fcm_service.send_pod_likes_threshold(
-                        token=owner.fcm_token,
+                        token=owner.detail.fcm_token,
                         party_name=pod.title or "",
                         pod_id=pod_id,
                         db=self._session,

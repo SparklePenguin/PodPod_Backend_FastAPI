@@ -49,9 +49,9 @@ class ReviewNotificationService:
             # 파티장에게만 알림 전송 (리뷰 작성자가 파티장이 아닌 경우)
             if owner.id is not None and owner.id != reviewer_id:
                 try:
-                    if owner.fcm_token:
+                    if owner.detail and owner.detail.fcm_token:
                         await self._fcm_service.send_review_created(
-                            token=owner.fcm_token,
+                            token=owner.detail.fcm_token,
                             nickname=reviewer.nickname or "",
                             party_name=pod.title or "",
                             review_id=review_id,
@@ -79,9 +79,9 @@ class ReviewNotificationService:
                     continue
 
                 try:
-                    if participant.fcm_token:
+                    if participant.detail and participant.detail.fcm_token:
                         await self._fcm_service.send_review_others_created(
-                            token=participant.fcm_token,
+                            token=participant.detail.fcm_token,
                             nickname=reviewer_nickname,
                             review_id=review_id,
                             pod_id=pod_id,

@@ -79,7 +79,7 @@ class FollowNotificationService:
                 return
 
             # 팔로우받은 사용자의 FCM 토큰 확인
-            following_fcm_token = following.fcm_token
+            following_fcm_token = following.detail.fcm_token if following.detail else None
             follower_nickname = follower.nickname or ""
 
             if following_fcm_token:
@@ -145,7 +145,7 @@ class FollowNotificationService:
                     if follower_user.id is None:
                         continue
                     follower_user_id = follower_user.id
-                    follower_fcm_token = follower_user.fcm_token
+                    follower_fcm_token = follower_user.detail.fcm_token if follower_user.detail else None
 
                     if follower_fcm_token:
                         await self._fcm_service.send_followed_user_created_pod(

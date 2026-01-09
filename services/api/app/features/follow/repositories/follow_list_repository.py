@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import List, Tuple
 
 from app.features.follow.models import Follow
-from app.features.tendencies.models import UserTendencyResult
 from app.features.users.models import User, UserBlock
 from sqlalchemy import and_, desc, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,16 +20,17 @@ class FollowListRepository:
         """팔로우하는 사용자 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로우하는 사용자 목록 조회 (성향 타입 포함, 자기 자신 제외)
+        # 팔로우하는 사용자 목록 조회 (자기 자신 및 닉네임 없는 유저 제외)
         query = (
-            select(User, Follow.created_at, UserTendencyResult.tendency_type)
+            select(User, Follow.created_at, User.tendency_type)
             .join(Follow, User.id == Follow.following_id)
-            .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
             .where(
                 and_(
                     Follow.follower_id == user_id,
                     Follow.following_id != user_id,  # 자기 자신 제외
                     Follow.is_active,  # 활성화된 팔로우만
+                    User.nickname.isnot(None),  # 닉네임 없는 유저 제외
+                    User.is_del == False,  # 삭제된 유저 제외
                     ~exists(
                         select(UserBlock.id).where(
                             and_(
@@ -98,16 +98,17 @@ class FollowListRepository:
         """팔로워 목록 조회"""
         offset = (page - 1) * size
 
-        # 팔로워 목록 조회 (성향 타입 포함, 자기 자신 제외)
+        # 팔로워 목록 조회 (자기 자신 및 닉네임 없는 유저 제외)
         query = (
-            select(User, Follow.created_at, UserTendencyResult.tendency_type)
+            select(User, Follow.created_at, User.tendency_type)
             .join(Follow, User.id == Follow.follower_id)
-            .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
             .where(
                 and_(
                     Follow.following_id == user_id,
                     Follow.follower_id != user_id,  # 자기 자신 제외
                     Follow.is_active,
+                    User.nickname.isnot(None),  # 닉네임 없는 유저 제외
+                    User.is_del == False,  # 삭제된 유저 제외
                     ~exists(
                         select(UserBlock.id).where(
                             and_(
@@ -191,11 +192,12 @@ class FollowListRepository:
         )
 
         query = (
-            select(User, UserTendencyResult.tendency_type)
-            .outerjoin(UserTendencyResult, User.id == UserTendencyResult.user_id)
+            select(User, User.tendency_type)
             .where(
                 and_(
                     User.id != user_id,  # 자기 자신 제외
+                    User.nickname.isnot(None),  # 닉네임 없는 유저 제외
+                    User.is_del == False,  # 삭제된 유저 제외
                     User.id.notin_(following_subquery),  # 이미 팔로우한 사용자 제외
                     User.id.notin_(blocked_by_me_subquery),  # 내가 차단한 사용자 제외
                     User.id.notin_(blocked_me_subquery),  # 나를 차단한 사용자 제외

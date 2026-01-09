@@ -7,6 +7,7 @@ from .user_block_models import (
 from .user_models import (
     PreferredArtist,
     User,
+    UserDetail,
     UserState,
 )
 from .user_notification_models import (
@@ -16,6 +17,7 @@ from .user_notification_models import (
 __all__ = [
     # User 기본
     "User",
+    "UserDetail",
     "UserState",
     "PreferredArtist",
     # User Block & Report

@@ -18,6 +18,8 @@ from app.features.tendencies.schemas.tendency_schemas import TendencyInfoDto
 from app.features.tendencies.services.tendency_calculation_service import (
     TendencyCalculationService,
 )
+from app.features.users.models import User
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -129,6 +131,11 @@ class TendencyUseCase:
     ) -> UserTendencyResultDto:
         """사용자의 성향 테스트 결과 저장 (기존 결과가 있으면 업데이트, 없으면 생성)"""
         existing_result = await self._tendency_repo.get_user_tendency_result(user_id)
+
+        # User 테이블의 tendency_type 업데이트
+        await self._session.execute(
+            update(User).where(User.id == user_id).values(tendency_type=tendency_type)
+        )
 
         if existing_result:
             # 기존 결과 업데이트

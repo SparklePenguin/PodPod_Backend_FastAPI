@@ -88,7 +88,7 @@ class ChatNotificationService:
         try:
             # 수신자 정보 조회
             recipient = await self._user_repo.get_by_id(recipient_id)
-            if not recipient or not recipient.fcm_token:
+            if not recipient or not recipient.detail or not recipient.detail.fcm_token:
                 return
 
             # 알림 제목: 파티 이름
@@ -111,7 +111,7 @@ class ChatNotificationService:
 
             # FCM 전송
             await self._fcm_service.send_notification(
-                token=recipient.fcm_token,
+                token=recipient.detail.fcm_token,
                 title=title,
                 body=body,
                 data=data,

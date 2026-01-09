@@ -24,14 +24,11 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(
-        String(50), index=True, nullable=True
-    )  # 소셜 로그인의 경우 nullable
-    email = Column(String(100), index=True, nullable=True)
     nickname = Column(String(50), nullable=True)
     intro = Column(String(200), nullable=True)
-    hashed_password = Column(String(255), nullable=True)  # 소셜 로그인의 경우 nullable
     profile_image = Column(String(500))  # 프로필 이미지 URL
+    tendency_type = Column(String(50), nullable=True)  # 덕메 성향 타입
+    hashed_password = Column(String(255), nullable=True)  # 소셜 로그인의 경우 nullable
     state = Column(
         SQLEnum(UserState), default=UserState.PREFERRED_ARTISTS
     )  # 사용자 온보딩 상태
@@ -50,13 +47,8 @@ class User(Base):
         String(100), unique=True, index=True, nullable=True
     )  # 소셜 제공자의 고유 ID
 
-    # FCM 토큰 (푸시 알림용)
-    fcm_token = Column(String(500), nullable=True)  # Firebase Cloud Messaging 토큰
-
-    # 약관 동의
-    terms_accepted = Column(Boolean, default=False, nullable=False)  # 약관 동의 여부
-
     # 관계 설정
+    detail = relationship("UserDetail", back_populates="user", uselist=False)
     preferred_artists = relationship("PreferredArtist", back_populates="user")
     notification_settings = relationship(
         "UserNotificationSettings", back_populates="user", uselist=False
@@ -97,3 +89,31 @@ class PreferredArtist(Base):
 
     user = relationship("User", back_populates="preferred_artists")
     artist = relationship("Artist", back_populates="preferred_artists")
+
+
+class UserDetail(Base):
+    """사용자 상세 정보 모델 (리스트 조회 시 제외)"""
+
+    __tablename__ = "user_details"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True
+    )
+
+    # 리스트에서 안 쓰는 정보
+    username = Column(String(50), nullable=True)
+    email = Column(String(100), nullable=True)
+
+    # 설정/토큰
+    fcm_token = Column(String(500), nullable=True)  # Firebase Cloud Messaging 토큰
+    terms_accepted = Column(Boolean, default=False, nullable=False)  # 약관 동의 여부
+
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # 관계 설정
+    user = relationship("User", back_populates="detail")

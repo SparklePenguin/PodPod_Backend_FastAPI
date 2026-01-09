@@ -31,11 +31,12 @@ class PodNotificationService:
                     participant.id is not None
                     and pod.owner_id is not None
                     and participant.id != pod.owner_id
-                    and participant.fcm_token
+                    and participant.detail
+                    and participant.detail.fcm_token
                 ):
                     try:
                         await self._fcm_service.send_pod_updated(
-                            token=participant.fcm_token,
+                            token=participant.detail.fcm_token,
                             party_name=pod.title or "",
                             pod_id=pod_id,
                             db=self._session,
@@ -69,9 +70,9 @@ class PodNotificationService:
                     ):
                         continue
                     try:
-                        if participant.fcm_token:
+                        if participant.detail and participant.detail.fcm_token:
                             await self._fcm_service.send_pod_confirmed(
-                                token=participant.fcm_token,
+                                token=participant.detail.fcm_token,
                                 party_name=pod.title or "",
                                 pod_id=pod_id,
                                 db=self._session,
@@ -92,9 +93,9 @@ class PodNotificationService:
                     ):
                         continue
                     try:
-                        if participant.fcm_token:
+                        if participant.detail and participant.detail.fcm_token:
                             await self._fcm_service.send_pod_canceled(
-                                token=participant.fcm_token,
+                                token=participant.detail.fcm_token,
                                 party_name=pod.title or "",
                                 pod_id=pod_id,
                                 db=self._session,
@@ -108,9 +109,9 @@ class PodNotificationService:
                 # 파티 완료 알림
                 for participant in participants:
                     try:
-                        if participant.fcm_token and participant.id is not None:
+                        if participant.detail and participant.detail.fcm_token and participant.id is not None:
                             await self._fcm_service.send_pod_completed(
-                                token=participant.fcm_token,
+                                token=participant.detail.fcm_token,
                                 party_name=pod.title or "",
                                 pod_id=pod_id,
                                 db=self._session,
