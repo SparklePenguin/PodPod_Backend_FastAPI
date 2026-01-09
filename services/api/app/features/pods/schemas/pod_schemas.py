@@ -232,6 +232,18 @@ class PodImageDto(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
+    
+    @classmethod
+    def from_pod_image(cls, pod_image) -> "PodImageDto":
+        """PodImage 모델에서 PodImageDto 생성 (pod_detail_id를 pod_id로 매핑)"""
+        return cls(
+            id=pod_image.id,
+            pod_id=pod_image.pod_detail_id,  # pod_detail_id를 pod_id로 매핑
+            image_url=pod_image.image_url,
+            thumbnail_url=pod_image.thumbnail_url,
+            display_order=pod_image.display_order,
+            created_at=pod_image.created_at,
+        )
 
     @classmethod
     def from_pod_image(cls, pod_image) -> "PodImageDto":

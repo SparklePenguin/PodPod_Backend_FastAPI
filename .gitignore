@@ -366,3 +366,5 @@ prometheus.log
 
 # Dependencies markers
 scripts/.setup
+
+logs/*
