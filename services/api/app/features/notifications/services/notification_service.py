@@ -11,6 +11,7 @@ from app.features.notifications.schemas import (
     get_notification_main_type,
 )
 from app.features.pods.schemas import PodDto
+from app.features.pods.services.pod_dto_service import PodDtoService
 from app.features.tendencies.repositories.tendency_repository import TendencyRepository
 from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -178,36 +179,8 @@ class NotificationService:
                 except (ValueError, TypeError, AttributeError):
                     meeting_timestamp = 0
 
-            # sub_categories를 문자열에서 리스트로 파싱
-            sub_categories_list = []
-            if notification.related_pod.sub_categories:
-                try:
-                    if isinstance(notification.related_pod.sub_categories, list):
-                        sub_categories_list = notification.related_pod.sub_categories
-                    else:
-                        sub_categories_list = json.loads(
-                            notification.related_pod.sub_categories
-                        )
-                except (json.JSONDecodeError, TypeError, AttributeError):
-                    sub_categories_list = []
-
-            related_pod_dto = PodDto(
-                id=notification.related_pod.id,
-                owner_id=notification.related_pod.owner_id,
-                title=notification.related_pod.title,
-                thumbnail_url=notification.related_pod.thumbnail_url
-                or notification.related_pod.image_url
-                or "",
-                sub_categories=sub_categories_list,
-                selected_artist_id=notification.related_pod.selected_artist_id or 0,
-                capacity=notification.related_pod.capacity or 0,
-                place=notification.related_pod.place or "",
-                meeting_date=notification.related_pod.meeting_date,
-                meeting_time=notification.related_pod.meeting_time,
-                status=notification.related_pod.status,
-                created_at=notification.related_pod.created_at,
-                updated_at=notification.related_pod.updated_at,
-            )
+            # PodDtoService를 사용하여 변환
+            related_pod_dto = PodDtoService.convert_to_dto(notification.related_pod)
 
         # related_id를 int로 변환
         related_id_int: int | None = None

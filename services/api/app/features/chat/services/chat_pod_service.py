@@ -7,9 +7,11 @@ import json
 import logging
 from datetime import datetime, time, timezone
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.schemas import PodDto
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.features.pods.services.pod_dto_service import PodDtoService
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +66,7 @@ class ChatPodService:
                     )
                 return int(dt.timestamp() * 1000)
 
-            sub_categories = []
-            if pod.sub_categories:
-                try:
-                    sub_categories = json.loads(pod.sub_categories)
-                except (json.JSONDecodeError, TypeError):
-                    sub_categories = []
+            sub_categories = PodDtoService.parse_sub_categories(pod.sub_categories)
 
             simple_pod = PodDto(
                 id=pod.id,

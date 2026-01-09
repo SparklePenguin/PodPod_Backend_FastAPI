@@ -12,7 +12,7 @@ from app.features.pods.models import (
     PodView,
     get_subcategories_by_main_category,
 )
-from app.features.pods.schemas import PodDto
+from app.features.pods.services.pod_dto_service import PodDtoService
 from app.features.users.models import User, UserBlock
 from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -150,7 +150,6 @@ class PodRepository:
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         """파티 생성 후 자체 채팅방도 함께 생성"""
-        from datetime import datetime
 
         from app.features.chat.repositories.chat_room_repository import (
             ChatRoomRepository,
@@ -194,24 +193,8 @@ class PodRepository:
                 pod.chat_room_id = chat_room.id
                 await self._session.flush()
 
-                # 이제 chat_room_id를 포함한 PodDto 생성
-                simple_pod_dto = PodDto(
-                    id=getattr(pod, "id"),
-                    owner_id=owner_id,
-                    title=title,
-                    thumbnail_url=thumbnail_url or image_url or "",
-                    sub_categories=sub_categories,
-                    selected_artist_id=selected_artist_id,
-                    capacity=capacity,
-                    place=place,
-                    meeting_date=meeting_date,
-                    meeting_time=meeting_time,
-                    status=status,
-                    is_del=False,
-                    chat_room_id=chat_room.id,
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc),
-                )
+                # PodDtoService를 사용하여 변환
+                simple_pod_dto = PodDtoService.convert_to_dto(pod)
 
                 # 채팅방 메타데이터 업데이트
                 chat_room.room_metadata = json.dumps(

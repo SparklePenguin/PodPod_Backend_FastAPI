@@ -11,7 +11,7 @@ from app.core.session import (
 )
 from app.features.auth.schemas import CredentialDto, LoginInfoDto
 from app.features.session.repositories import SessionRepository
-from app.features.users.exceptions import UserNotFoundException
+from app.features.session.schemas import LoginRequest
 from app.features.users.schemas import UserDetailDto
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ class SessionUseCase:
         self._session_repo = session_repo
 
     # - MARK: 이메일 로그인
-    async def login(self, login_data) -> LoginInfoDto:
+    async def login(self, login_data: LoginRequest) -> LoginInfoDto:
         """이메일 로그인"""
         # 이메일로 사용자 찾기
         user = await self._session_repo.get_user_by_email(login_data.email)
@@ -90,7 +90,10 @@ class SessionUseCase:
 
     # - MARK: 로그아웃
     async def logout(
-        self, access_token: str, refresh_token: str | None = None, user_id: int | None = None
+        self,
+        access_token: str,
+        refresh_token: str | None = None,
+        user_id: int | None = None,
     ) -> None:
         """로그아웃 (토큰 무효화 및 FCM 토큰 삭제)"""
         # 액세스 토큰을 블랙리스트에 추가하여 무효화 (TTL: 30분)

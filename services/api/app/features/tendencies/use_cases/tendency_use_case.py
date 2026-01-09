@@ -14,10 +14,10 @@ from app.features.tendencies.schemas import (
     TendencySurveyDto,
     UserTendencyResultDto,
 )
-from app.features.tendencies.schemas.tendency_schemas import TendencyInfoDto
 from app.features.tendencies.services.tendency_calculation_service import (
     TendencyCalculationService,
 )
+from app.features.tendencies.services.tendency_dto_service import TendencyDtoService
 from app.features.users.models import User
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,14 +71,7 @@ class TendencyUseCase:
         return TendencyDto(
             type=calculation_result["tendency_type"],
             description=description,
-            tendency_info=TendencyInfoDto(
-                main_type=tendency_info_dict.get("mainType", ""),
-                sub_type=tendency_info_dict.get("subType", ""),
-                speech_bubbles=tendency_info_dict.get("speechBubbles", []),
-                one_line_descriptions=tendency_info_dict.get("oneLineDescriptions", []),
-                detailed_description=tendency_info_dict.get("detailedDescription", ""),
-                keywords=tendency_info_dict.get("keywords", []),
-            ),
+            tendency_info=TendencyDtoService.convert_to_info_dto(tendency_info_dict),
         )
 
     # - MARK: 모든 성향 테스트 결과 조회

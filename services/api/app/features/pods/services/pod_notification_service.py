@@ -1,8 +1,7 @@
 """Pod 알림 서비스"""
 
 from app.core.services.fcm_service import FCMService
-from app.features.pods.models import Pod
-from app.features.pods.models import PodStatus
+from app.features.pods.models import Pod, PodStatus
 from app.features.pods.repositories.pod_repository import PodRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -109,7 +108,11 @@ class PodNotificationService:
                 # 파티 완료 알림
                 for participant in participants:
                     try:
-                        if participant.detail and participant.detail.fcm_token and participant.id is not None:
+                        if (
+                            participant.detail
+                            and participant.detail.fcm_token
+                            and participant.id is not None
+                        ):
                             await self._fcm_service.send_pod_completed(
                                 token=participant.detail.fcm_token,
                                 party_name=pod.title or "",

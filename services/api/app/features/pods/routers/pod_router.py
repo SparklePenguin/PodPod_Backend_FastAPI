@@ -3,9 +3,9 @@ from typing import List
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
 from app.deps.pod_form import get_pod_form, get_pod_form_for_update
-from app.deps.providers import get_pod_service, get_pod_use_case
+from app.deps.providers import get_pod_query_use_case, get_pod_use_case
 from app.features.pods.schemas import PodDetailDto, PodDto, PodForm, PodSearchRequest
-from app.features.pods.services.pod_service import PodService
+from app.features.pods.use_cases.pod_query_use_case import PodQueryUseCase
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
 
@@ -22,10 +22,10 @@ async def create_pod(
     pod_data: PodForm = Depends(get_pod_form),
     images: List[UploadFile] = File(..., description="파티 이미지 리스트"),
     user_id: int = Depends(get_current_user_id),
-    service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """파티 생성"""
-    pod = await service.create_pod_from_form(
+    pod = await pod_use_case.create_pod_from_form(
         owner_id=user_id,
         pod_form=pod_data,
         images=images,
@@ -132,10 +132,10 @@ async def get_pods_by_type(
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
     current_user_id: int = Depends(get_current_user_id),
-    pod_use_case: PodUseCase = Depends(get_pod_use_case),
+    pod_query_use_case: PodQueryUseCase = Depends(get_pod_query_use_case),
 ):
     """파티 목록 조회"""
-    pods, message_ko, message_en = await pod_use_case.get_pods_by_type(
+    pods, message_ko, message_en = await pod_query_use_case.get_pods_by_type(
         user_id=current_user_id,
         pod_type=type,
         selected_artist_id=selected_artist_id,
@@ -161,11 +161,11 @@ async def get_user_pods(
         description="조회할 사용자 ID (없으면 현재 로그인한 사용자)",
     ),
     current_user_id: int = Depends(get_current_user_id),
-    pod_use_case: PodUseCase = Depends(get_pod_use_case),
+    pod_query_use_case: PodQueryUseCase = Depends(get_pod_query_use_case),
 ):
     """사용자가 개설한 파티 목록 조회"""
     target_user_id = userId if userId is not None else current_user_id
-    user_pods = await pod_use_case.get_user_pods(target_user_id, page, size)
+    user_pods = await pod_query_use_case.get_user_pods_with_validation(target_user_id, page, size)
     return BaseResponse.ok(
         data=user_pods,
         message_ko="사용자가 개설한 파티 목록을 조회했습니다.",
@@ -182,12 +182,19 @@ async def get_user_pods(
 async def search_pods(
     search_request: PodSearchRequest,
     current_user_id: int = Depends(get_current_user_id),
-    pod_use_case: PodUseCase = Depends(get_pod_use_case),
+    pod_query_use_case: PodQueryUseCase = Depends(get_pod_query_use_case),
 ):
     """팟 목록을 조회합니다."""
-    result = await pod_use_case.search_pods(
+    result = await pod_query_use_case.search_pods_with_validation(
         user_id=current_user_id,
-        search_request=search_request,
+        title=search_request.title,
+        main_category=search_request.main_category,
+        sub_category=search_request.sub_category,
+        start_date=search_request.start_date,
+        end_date=search_request.end_date,
+        location=search_request.location,
+        page=search_request.page or 1,
+        size=search_request.size or 20,
     )
     return BaseResponse.ok(data=result, message_ko="팟 목록 조회 성공")
 
@@ -200,10 +207,10 @@ async def search_pods(
 )
 async def get_pod_detail(
     pod_id: int,
-    pod_service: PodService = Depends(get_pod_service),
+    pod_query_use_case: PodQueryUseCase = Depends(get_pod_query_use_case),
     user_id: int | None = Depends(get_current_user_id),
 ):
-    pod = await pod_service.get_pod_detail(pod_id, user_id)
+    pod = await pod_query_use_case.get_pod_detail(pod_id, user_id)
     return BaseResponse.ok(data=pod)
 
 
@@ -222,10 +229,10 @@ async def update_pod(
         description="새로 업로드할 이미지 파일 리스트",
     ),
     current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """파티 수정"""
-    updated_pod = await pod_service.update_pod_from_form(
+    updated_pod = await pod_use_case.update_pod_from_form(
         pod_id=pod_id,
         current_user_id=current_user_id,
         pod_form=pod_data,
@@ -260,11 +267,11 @@ async def update_pod_status(
     pod_id: int,
     request: dict = Body(..., description="상태 업데이트 요청"),
     current_user_id: int = Depends(get_current_user_id),
-    pod_service: PodService = Depends(get_pod_service),
+    pod_use_case: PodUseCase = Depends(get_pod_use_case),
 ):
     """파티 상태 업데이트"""
     status_value = request.get("status")
-    updated_pod = await pod_service.update_pod_status_by_owner(
+    updated_pod = await pod_use_case.update_pod_status_by_owner(
         pod_id, status_value, current_user_id
     )
     return BaseResponse.ok(

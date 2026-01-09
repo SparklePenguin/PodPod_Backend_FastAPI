@@ -46,19 +46,19 @@ from app.features.oauth.services.oauth_service import OAuthService
 from app.features.pods.services.application_notification_service import (
     ApplicationNotificationService,
 )
-from app.features.pods.services.application_service import ApplicationService
+from app.features.pods.services.application_dto_service import ApplicationDtoService
 from app.features.pods.services.like_notification_service import (
     LikeNotificationService,
 )
-from app.features.pods.services.like_service import LikeService
+
+from app.features.pods.services.pod_enrichment_service import PodEnrichmentService
 from app.features.pods.services.pod_notification_service import (
     PodNotificationService,
 )
-from app.features.pods.services.pod_service import PodService
 from app.features.pods.services.review_notification_service import (
     ReviewNotificationService,
 )
-from app.features.pods.services.review_service import ReviewService
+from app.features.pods.services.review_dto_service import ReviewDtoService
 from app.features.tendencies.services.tendency_calculation_service import (
     TendencyCalculationService,
 )
@@ -87,6 +87,7 @@ from app.features.artists.use_cases.artist_use_cases import (
 from app.features.chat.use_cases.chat_use_case import ChatUseCase
 from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from app.features.pods.use_cases.like_use_case import LikeUseCase
+from app.features.pods.use_cases.pod_query_use_case import PodQueryUseCase
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from app.features.pods.use_cases.review_use_case import ReviewUseCase
 from app.features.reports.use_cases.report_use_case import ReportUseCase
@@ -224,31 +225,19 @@ class Container(containers.DeclarativeContainer):
     )
 
     # Pod Services
-    like_service = providers.Factory(
-        LikeService,
+    review_dto_service = providers.Factory(
+        ReviewDtoService,
         session=session,
-        like_repo=pod_like_repository,
-        notification_service=like_notification_service,
-    )
-
-    review_service = providers.Factory(
-        ReviewService,
-        session=session,
-        review_repo=pod_review_repository,
         user_repo=user_repository,
-        notification_service=review_notification_service,
     )
 
-    application_service = providers.Factory(
-        ApplicationService,
+    application_dto_service = providers.Factory(
+        ApplicationDtoService,
         session=session,
-        pod_repo=pod_repository,
-        application_repo=application_repository,
         user_repo=user_repository,
-        notification_service=application_notification_service,
     )
 
-    # Use Cases (pod_service보다 먼저 정의 필요)
+    # Use Cases
     user_use_case = providers.Factory(
         UserUseCase,
         session=session,
@@ -263,23 +252,6 @@ class Container(containers.DeclarativeContainer):
         user_notification_repo=user_notification_repository,
         tendency_repo=tendency_repository,
         user_state_service=user_state_service,
-        user_dto_service=user_dto_service,
-    )
-
-    pod_service = providers.Factory(
-        PodService,
-        session=session,
-        pod_repo=pod_repository,
-        application_repo=application_repository,
-        review_repo=pod_review_repository,
-        like_repo=pod_like_repository,
-        user_repo=user_repository,
-        application_service=application_service,
-        user_use_case=user_use_case,  # Use the defined user_use_case provider
-        notification_service=pod_notification_service,
-        review_service=review_service,
-        like_service=like_service,
-        follow_use_case=follow_use_case,
         user_dto_service=user_dto_service,
     )
 
@@ -395,35 +367,56 @@ class Container(containers.DeclarativeContainer):
     application_use_case = providers.Factory(
         ApplicationUseCase,
         session=session,
-        application_service=application_service,
         pod_repo=pod_repository,
         application_repo=application_repository,
+        user_repo=user_repository,
+        notification_service=application_notification_service,
     )
 
     like_use_case = providers.Factory(
         LikeUseCase,
         session=session,
-        like_service=like_service,
-        pod_repo=pod_repository,
         like_repo=pod_like_repository,
+        pod_repo=pod_repository,
+        notification_service=like_notification_service,
     )
 
     review_use_case = providers.Factory(
         ReviewUseCase,
         session=session,
-        review_service=review_service,
-        pod_repo=pod_repository,
         review_repo=pod_review_repository,
+        pod_repo=pod_repository,
+        user_repo=user_repository,
+        notification_service=review_notification_service,
+    )
+
+    pod_enrichment_service = providers.Factory(
+        PodEnrichmentService,
+        pod_repo=pod_repository,
+        application_repo=application_repository,
+        review_repo=pod_review_repository,
+        like_repo=pod_like_repository,
+        user_repo=user_repository,
+        application_dto_service=application_dto_service,
+        review_dto_service=review_dto_service,
+    )
+
+    pod_query_use_case = providers.Factory(
+        PodQueryUseCase,
+        session=session,
+        pod_repo=pod_repository,
+        user_repo=user_repository,
+        enrichment_service=pod_enrichment_service,
+        follow_use_case=follow_use_case,
     )
 
     pod_use_case = providers.Factory(
         PodUseCase,
         session=session,
-        pod_service=pod_service,
         pod_repo=pod_repository,
+        enrichment_service=pod_enrichment_service,
         notification_service=pod_notification_service,
         follow_use_case=follow_use_case,
-        user_repo=user_repository,
     )
 
     chat_use_case = providers.Factory(

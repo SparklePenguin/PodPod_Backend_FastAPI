@@ -1,7 +1,5 @@
 """Follow Use Case - 비즈니스 로직 처리"""
 
-from datetime import datetime, timezone
-
 from app.common.schemas import PageDto
 from app.core.services.fcm_service import FCMService
 from app.features.follow.exceptions import (
@@ -27,12 +25,10 @@ from app.features.follow.services.follow_dto_service import FollowDtoService
 from app.features.follow.services.follow_notification_service import (
     FollowNotificationService,
 )
-from app.features.pods.models import PodStatus
 from app.features.pods.repositories.like_repository import PodLikeRepository
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.repositories.review_repository import PodReviewRepository
 from app.features.pods.schemas import PodDetailDto
-from app.features.pods.services.review_service import ReviewService
 from app.features.users.schemas import UserDto
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -230,107 +226,41 @@ class FollowUseCase:
         self, user_id: int, page: int = 1, size: int = 20
     ) -> PageDto[PodDetailDto]:
         """팔로우하는 사용자가 만든 파티 목록 조회"""
+        from app.features.pods.services.pod_dto_service import PodDtoService
+        from app.features.pods.services.review_dto_service import ReviewDtoService
+
         pods, total_count = await self._follow_pod_repo.get_following_pods(
             user_id, page, size
         )
 
+        review_dto_service = ReviewDtoService(self._session, self._user_repo)
+
         pod_dtos = []
         for pod in pods:
-            if pod.id is None:
+            if pod.id is None or pod.owner_id is None:
                 continue
             pod_id = pod.id
 
-            # 각 파티의 참여자 수와 좋아요 수 계산
-            joined_users_count = await self._pod_repo.get_joined_users_count(pod_id)
-            like_count = await self._like_repo.like_count(pod_id)
-            view_count = await self._pod_repo.get_view_count(pod_id)
+            # 기본 PodDetailDto 생성
+            pod_dto = PodDtoService.convert_to_detail_dto(pod)
+
+            # 통계 필드 설정
+            pod_dto.joined_users_count = await self._pod_repo.get_joined_users_count(
+                pod_id
+            )
+            pod_dto.like_count = await self._like_repo.like_count(pod_id)
+            pod_dto.view_count = await self._pod_repo.get_view_count(pod_id)
 
             # 사용자가 좋아요했는지 확인
-            is_liked = await self._pod_repo.is_liked_by_user(pod_id, user_id)
+            pod_dto.is_liked = await self._pod_repo.is_liked_by_user(pod_id, user_id)
 
             # 후기 목록 조회
             reviews = await self._review_repo.get_all_reviews_by_pod(pod_id)
-            review_service = ReviewService(self._session)
             review_dtos = []
             for review in reviews:
-                review_dto = await review_service._convert_to_dto(review)
+                review_dto = await review_dto_service.convert_to_dto(review)
                 review_dtos.append(review_dto)
-
-            # Pod 속성 추출
-            pod_sub_categories = pod.sub_categories
-
-            # sub_categories가 문자열인 경우 파싱
-            if pod_sub_categories is None:
-                pod_sub_categories = []
-            elif isinstance(pod_sub_categories, str):
-                import json
-
-                try:
-                    parsed = (
-                        json.loads(pod_sub_categories) if pod_sub_categories else []
-                    )
-                    pod_sub_categories = parsed if isinstance(parsed, list) else []
-                except (ValueError, TypeError, json.JSONDecodeError):
-                    pod_sub_categories = []
-            elif isinstance(pod_sub_categories, list):
-                pod_sub_categories = pod_sub_categories
-            else:
-                pod_sub_categories = []
-
-            if pod.owner_id is None:
-                continue
-
-            pod_status_enum = pod.status
-            if pod_status_enum is None:
-                pod_status_enum = PodStatus.RECRUITING
-            elif isinstance(pod_status_enum, str):
-                try:
-                    pod_status_enum = PodStatus(pod_status_enum.upper())
-                except ValueError:
-                    pod_status_enum = PodStatus.RECRUITING
-
-            pod_created_at = pod.created_at
-            if pod_created_at is None:
-                pod_created_at = datetime.now(timezone.utc)
-            pod_updated_at = pod.updated_at
-            if pod_updated_at is None:
-                pod_updated_at = datetime.now(timezone.utc)
-
-            # PodDetail에서 정보 가져오기
-            pod_detail = pod.detail if pod.detail else None
-
-            pod_dto = PodDetailDto(
-                id=pod_id,
-                owner_id=pod.owner_id,
-                title=pod.title or "",
-                description=pod_detail.description if pod_detail else "",
-                image_url=pod_detail.image_url if pod_detail else None,
-                thumbnail_url=pod.thumbnail_url,
-                sub_categories=pod_sub_categories,
-                capacity=pod.capacity or 0,
-                place=pod.place or "",
-                address=pod_detail.address if pod_detail else "",
-                sub_address=pod_detail.sub_address if pod_detail else None,
-                x=pod_detail.x if pod_detail else None,
-                y=pod_detail.y if pod_detail else None,
-                meeting_date=pod.meeting_date if pod.meeting_date else None,
-                meeting_time=pod.meeting_time if pod.meeting_time else None,
-                selected_artist_id=pod.selected_artist_id,
-                status=pod_status_enum,
-                is_del=pod.is_del if pod.is_del else False,
-                chat_room_id=pod.chat_room_id,
-                images=[],
-                created_at=pod_created_at,
-                updated_at=pod_updated_at,
-                is_liked=is_liked,
-                my_application=None,
-                applications=[],
-                view_count=view_count,
-                joined_users_count=joined_users_count,
-                like_count=like_count,
-                joined_users=[],
-                reviews=review_dtos,
-            )
+            pod_dto.reviews = review_dtos
 
             pod_dtos.append(pod_dto)
 

@@ -1,5 +1,4 @@
 """Block User Use Case - 사용자 차단 관련 비즈니스 로직 처리"""
-
 from datetime import datetime, timezone
 
 from app.common.schemas import PageDto
@@ -95,7 +94,7 @@ class BlockUserUseCase:
         )
 
         users = []
-        for user, blocked_at in blocked_data:
+        for user in blocked_data:
             # 성향 타입 조회
             if user.id is None:
                 continue

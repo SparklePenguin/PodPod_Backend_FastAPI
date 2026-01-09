@@ -5,7 +5,7 @@ from datetime import timezone
 from typing import TYPE_CHECKING
 
 from app.features.follow.schemas import FollowStatsDto
-from app.features.users.models import User
+from app.features.users.models import User, UserDetail
 from app.features.users.schemas import UserDto
 
 if TYPE_CHECKING:
@@ -20,21 +20,29 @@ class UserDtoService:
         user: User | None, tendency_type: str | None = None, is_following: bool = False
     ) -> UserDto:
         """User 모델로 UserDto 생성 (재사용 가능)
-        
+
         tendency_type이 None인 경우 user.tendency_type 사용
+
+        Note:
+            user가 None인 경우 빈 UserDto를 반환합니다.
+            이는 탈퇴한 사용자, 삭제된 데이터 등을 안전하게 처리하기 위함입니다.
+            클라이언트는 id=0을 "삭제된 사용자"로 처리해야 합니다.
         """
         if not user:
+            # 탈퇴/삭제된 사용자를 위한 기본값
             return UserDto(
                 id=0,
-                nickname="",
+                nickname="알 수 없음",
                 profile_image="",
                 intro="",
                 tendency_type=tendency_type or "",
-                is_following=is_following,
+                is_following=False,
             )
 
         # tendency_type이 None이면 user.tendency_type 사용
-        final_tendency_type = tendency_type if tendency_type is not None else (user.tendency_type or "")
+        final_tendency_type = (
+            tendency_type if tendency_type is not None else (user.tendency_type or "")
+        )
 
         return UserDto(
             id=user.id or 0,
@@ -58,7 +66,7 @@ class UserDtoService:
         # 기본 사용자 정보
         # created_at과 updated_at은 항상 값이 있어야 하므로 None 체크
         now = datetime.datetime.now(timezone.utc)
-        detail = user.detail
+        detail: UserDetail | None = user.detail
         user_data = {
             "id": user.id,
             "email": detail.email if detail else None,

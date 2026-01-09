@@ -187,22 +187,12 @@ def get_review_notification_service(
         return container.review_notification_service()
 
 
-def get_review_service(
+def get_review_dto_service(
     session: AsyncSession = Depends(get_session),
-    notification_service=Depends(get_review_notification_service),
 ):
-    """Review Service 생성"""
+    """Review DTO Service 생성"""
     with container.session.override(session):
-        return container.review_service()
-
-
-def get_like_service(
-    session: AsyncSession = Depends(get_session),
-    notification_service=Depends(get_like_notification_service),
-):
-    """Like Service 생성"""
-    with container.session.override(session):
-        return container.like_service()
+        return container.review_dto_service()
 
 
 def get_application_notification_service(
@@ -214,18 +204,17 @@ def get_application_notification_service(
         return container.application_notification_service()
 
 
-def get_application_service(
+def get_application_dto_service(
     session: AsyncSession = Depends(get_session),
-    notification_service=Depends(get_application_notification_service),
 ):
-    """Application Service 생성"""
+    """Application DTO Service 생성"""
     with container.session.override(session):
-        return container.application_service()
+        return container.application_dto_service()
 
 
 def get_application_use_case(
     session: AsyncSession = Depends(get_session),
-    application_service=Depends(get_application_service),
+    notification_service=Depends(get_application_notification_service),
 ):
     """Application UseCase 생성"""
     with container.session.override(session):
@@ -234,7 +223,7 @@ def get_application_use_case(
 
 def get_like_use_case(
     session: AsyncSession = Depends(get_session),
-    like_service=Depends(get_like_service),
+    notification_service=Depends(get_like_notification_service),
 ):
     """Like UseCase 생성"""
     with container.session.override(session):
@@ -243,7 +232,7 @@ def get_like_use_case(
 
 def get_review_use_case(
     session: AsyncSession = Depends(get_session),
-    review_service=Depends(get_review_service),
+    notification_service=Depends(get_review_notification_service),
 ):
     """Review UseCase 생성"""
     with container.session.override(session):
@@ -259,22 +248,18 @@ def get_follow_use_case(
         return container.follow_use_case()
 
 
-def get_pod_service(
+def get_pod_query_use_case(
     session: AsyncSession = Depends(get_session),
-    review_service=Depends(get_review_service),
-    like_service=Depends(get_like_service),
     follow_use_case=Depends(get_follow_use_case),
     fcm_service=Depends(get_fcm_service),
-    application_service=Depends(get_application_service),
 ):
-    """Pod Service 생성"""
+    """Pod Query UseCase 생성"""
     with container.session.override(session):
-        return container.pod_service()
+        return container.pod_query_use_case()
 
 
 def get_pod_use_case(
     session: AsyncSession = Depends(get_session),
-    pod_service=Depends(get_pod_service),
     follow_use_case=Depends(get_follow_use_case),
     fcm_service=Depends(get_fcm_service),
 ):
