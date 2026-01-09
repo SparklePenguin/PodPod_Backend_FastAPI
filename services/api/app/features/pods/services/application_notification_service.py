@@ -1,6 +1,7 @@
 """Application 알림 서비스"""
 
 from app.core.services.fcm_service import FCMService
+from app.features.pods.models import Pod
 from app.features.pods.repositories.like_repository import PodLikeRepository
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.users.repositories import UserRepository
@@ -100,7 +101,7 @@ class ApplicationNotificationService:
             pass
 
     # MARK: - 정원 가득 참 알림
-    async def send_capacity_full_notification(self, pod_id: int, pod) -> None:
+    async def send_capacity_full_notification(self, pod_id: int, pod: Pod) -> None:
         """파티 정원이 가득 찬 경우 파티장에게 알림 전송"""
         try:
             if pod.owner_id is None:
@@ -166,7 +167,7 @@ class ApplicationNotificationService:
             pass
 
     # MARK: - 좋아요한 파티에 자리 생김 알림
-    async def send_spot_opened_notifications(self, pod_id: int, pod) -> None:
+    async def send_spot_opened_notifications(self, pod_id: int, pod: Pod | None) -> None:
         """파티에 자리가 생겼을 때 좋아요한 사용자들에게 알림 전송"""
         try:
             if not pod:
