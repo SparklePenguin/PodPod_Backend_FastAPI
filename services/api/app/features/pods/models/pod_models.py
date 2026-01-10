@@ -113,25 +113,25 @@ class Pod(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     selected_artist_id = Column(
-        Integer, ForeignKey("artists.id"), nullable=True, index=True
+        Integer, ForeignKey("artists.id"), nullable=False, index=True
+    )
+    chat_room_id = Column(
+        Integer,
+        ForeignKey("chat_rooms.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+        comment="채팅방 ID",
     )
     title = Column(String(100), nullable=False)
     thumbnail_url = Column(String(500), nullable=True)
-    sub_categories = Column(Text, nullable=True)
+    sub_categories = Column(Text, nullable=False)
     capacity = Column(Integer, nullable=False)
     place = Column(String(200), nullable=False)
     meeting_date = Column(Date, nullable=False)
     meeting_time = Column(Time, nullable=False)
     status = Column(SQLEnum(PodStatus), default=PodStatus.RECRUITING, nullable=False)
     is_del = Column(Boolean, default=False)
-    chat_room_id = Column(
-        Integer,
-        ForeignKey("chat_rooms.id", ondelete="SET NULL"),
-        nullable=True,
-        unique=True,
-        index=True,
-        comment="채팅방 ID",
-    )
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
@@ -155,8 +155,8 @@ class Pod(Base):
     )
     images = relationship(
         "PodImage",
-        primaryjoin="Pod.id == PodImage.pod_detail_id",
-        foreign_keys="[PodImage.pod_detail_id]",
+        primaryjoin="Pod.id == PodImage.pod_id",
+        foreign_keys="[PodImage.pod_id]",
         cascade="all, delete-orphan",
     )
     applications = relationship(
@@ -183,12 +183,6 @@ class PodDetail(Base):
     sub_address = Column(String(300), nullable=True)
     x = Column(Float, nullable=True, comment="경도 (longitude)")
     y = Column(Float, nullable=True, comment="위도 (latitude)")
-    # chat_channel_url은 deprecated (chat_room_id 사용)
-    chat_channel_url = Column(
-        String(255),
-        nullable=True,
-        comment="채팅방 URL (deprecated - Pod.chat_room_id 사용)",
-    )
 
     # relations
     pod = relationship("Pod", back_populates="detail")
@@ -201,7 +195,7 @@ class PodImage(Base):
     __tablename__ = "pod_images"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    pod_detail_id = Column(
+    pod_id = Column(
         Integer,
         ForeignKey("pod_details.pod_id", ondelete="CASCADE"),
         nullable=False,
@@ -214,14 +208,14 @@ class PodImage(Base):
 
     pod = relationship(
         "Pod",
-        primaryjoin="PodImage.pod_detail_id == Pod.id",
-        foreign_keys=[pod_detail_id],
+        primaryjoin="PodImage.pod_id == Pod.id",
+        foreign_keys=[pod_id],
         viewonly=True,
     )
     # 하위 호환성을 위한 pod_detail 관계 (viewonly)
     pod_detail = relationship(
         "PodDetail",
-        primaryjoin="PodImage.pod_detail_id == PodDetail.pod_id",
+        primaryjoin="PodImage.pod_id == PodDetail.pod_id",
         viewonly=True,
     )
 

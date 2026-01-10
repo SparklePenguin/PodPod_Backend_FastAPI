@@ -2,7 +2,7 @@
 
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 from jose import ExpiredSignatureError, JWTError, jwt
@@ -91,7 +91,7 @@ async def create_refresh_token(
     user_id: int, expires_delta: timedelta | None = None
 ) -> str:
     """리프레시 토큰 생성 및 Redis에 저장"""
-    expire = datetime.utcnow() + (
+    expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=_DEFAULT_REFRESH_TOKEN_EXPIRE_MINUTES)
     )
     jti = str(uuid.uuid4())
@@ -137,7 +137,7 @@ async def revoke_refresh_token(token: str):
 
 def create_access_token(user_id: int, expires_delta: timedelta | None = None) -> str:
     """액세스 토큰 생성"""
-    expire = datetime.utcnow() + (
+    expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=_DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     payload = _TokenPayload(

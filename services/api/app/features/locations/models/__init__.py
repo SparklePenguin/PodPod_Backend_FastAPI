@@ -1,5 +1,5 @@
 """Locations feature models"""
 
-from .location import Location
+from .location_models import Location
 
 __all__ = ["Location"]

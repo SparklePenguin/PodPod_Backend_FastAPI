@@ -1,24 +1,28 @@
+"""애플 OAuth 서비스"""
+
 import base64
 import logging
 import time
 from typing import Any, Dict
+from urllib.parse import urlencode
 
 import httpx
 from app.core.config import settings
-from app.features.oauth.schemas.apple_login_request import AppleLoginRequest
-from app.features.oauth.schemas.apple_token_response import AppleTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    AppleLoginRequest,
+    AppleTokenResponse,
+    OAuthUserInfo,
+)
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from jose.exceptions import JWTClaimsError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AppleOAuthService:
-    """애플 OAuth 서비스"""
+    """애플 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._apple_public_keys_url = "https://appleid.apple.com/auth/keys"
         self._apple_token_url = "https://appleid.apple.com/auth/token"
         self._apple_issuer = "https://appleid.apple.com"
@@ -26,8 +30,8 @@ class AppleOAuthService:
     # - MARK: 애플 사용자 정보 조회
     async def get_apple_user_info(self, request: AppleLoginRequest) -> OAuthUserInfo:
         """애플 ID 토큰으로 사용자 정보 조회"""
-        # 클라이언트에서 제공한 audience 사용
-        audience = request.audience
+        # audience가 제공되지 않으면 기본값(APPLE_CLIENT_ID) 사용
+        audience = request.audience or settings.APPLE_CLIENT_ID
 
         try:
             # Apple ID 토큰 검증
@@ -215,3 +219,27 @@ class AppleOAuthService:
 
         except Exception as e:
             raise ValueError(f"Failed to create Apple client secret: {str(e)}") from e
+
+    # - MARK: Apple 인증 URL 생성
+    def get_auth_url(
+        self, state: str | None = None, base_url: str | None = None
+    ) -> str:
+        """Apple 인증 URL 생성"""
+        # base_url이 제공되면 동적으로 redirect_uri 생성 (테스트용)
+        if base_url:
+            redirect_uri = f"{base_url}/api/v1/oauth/apple/callback"
+        else:
+            redirect_uri = settings.APPLE_REDIRECT_URI
+
+        params = {
+            "client_id": settings.APPLE_CLIENT_ID,
+            "redirect_uri": redirect_uri,
+            "response_type": "code id_token",
+            "response_mode": "form_post",
+            "scope": "name email",
+        }
+
+        if state:
+            params["state"] = state
+
+        return f"https://appleid.apple.com/auth/authorize?{urlencode(params)}"

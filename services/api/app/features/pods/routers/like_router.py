@@ -1,11 +1,11 @@
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_like_use_case
+from app.deps.providers import get_like_use_case
 from app.features.pods.schemas import PodLikeDto
 from app.features.pods.use_cases.like_use_case import LikeUseCase
 from fastapi import APIRouter, Depends, Path
 
-router = APIRouter()
+router = APIRouter(prefix="/pods", tags=["pods"])
 
 
 # MARK: - 좋아요 등록
@@ -18,8 +18,8 @@ async def like_pod(
     user_id: int = Depends(get_current_user_id),
     use_case: LikeUseCase = Depends(get_like_use_case),
 ):
-    result = await use_case.like_pod(pod_id, user_id)
-    return BaseResponse.ok(data=result)
+    await use_case.like_pod(pod_id, user_id)
+    return BaseResponse.ok()
 
 
 # MARK: - 좋아요 취소
@@ -32,8 +32,8 @@ async def unlike_pod(
     user_id: int = Depends(get_current_user_id),
     use_case: LikeUseCase = Depends(get_like_use_case),
 ):
-    result = await use_case.unlike_pod(pod_id, user_id)
-    return BaseResponse.ok(data=result)
+    await use_case.unlike_pod(pod_id, user_id)
+    return BaseResponse.ok()
 
 
 # MARK: - 좋아요 상태

@@ -1,21 +1,26 @@
-"""Naver OAuth service"""
+"""Naver OAuth 서비스"""
+
+import secrets
+from typing import Any, Dict
 
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
-from app.features.oauth.schemas.get_naver_token_request import GetNaverTokenRequest
-from app.features.oauth.schemas.naver_token_response import NaverTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.core.session import save_oauth_state
+from app.features.oauth.schemas import (
+    GetNaverTokenRequest,
+    NaverTokenResponse,
+    OAuthUserInfo,
+)
+from fastapi import HTTPException, status
+from redis.asyncio import Redis
 
 
 class NaverOAuthService:
-    """네이버 OAuth 서비스"""
+    """네이버 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._naver_token_url = "https://nid.naver.com/oauth2.0/token"
         self._naver_user_info_url = "https://openapi.naver.com/v1/nid/me"
 
@@ -46,9 +51,11 @@ class NaverOAuthService:
 
             if response.status_code != 200:
                 error_response = BaseResponse.error(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    http_status=status.HTTP_401_UNAUTHORIZED,
+                    error_key="NAVER_TOKEN_REQUEST_FAILED",
                     error_code=20002,
-                    message=response.text,
+                    message_ko=f"네이버 액세스 토큰 요청 실패: {response.text}",
+                    message_en=f"Naver access token request failed: {response.text}",
                     dev_note=f"액세스 토큰 요청 실패: {str(response.text)}",
                 )
                 raise HTTPException(
@@ -76,7 +83,7 @@ class NaverOAuthService:
                         detail=f"Failed to get Naver user info: {response.text}",
                     )
 
-                user_info = response.json()
+                user_info: Dict[str, Any] = response.json()
                 print(f"🔍 DEBUG - Naver user info response: {user_info}")
 
                 # 네이버는 response.response 안에 실제 데이터가 있음
@@ -98,12 +105,8 @@ class NaverOAuthService:
                 ) from e
 
     # - MARK: 네이버 인증 URL 생성
-    async def get_auth_url(self, redis) -> str:
+    async def get_auth_url(self, redis: Redis) -> str:
         """네이버 인증 URL 생성"""
-        import secrets
-
-        from app.core.session import save_oauth_state
-
         # CSRF 방지용 state 값 생성
         state = secrets.token_urlsafe(16)
 

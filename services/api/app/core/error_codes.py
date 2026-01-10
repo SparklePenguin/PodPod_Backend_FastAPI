@@ -257,7 +257,6 @@ def raise_error(
         detail.update(additional_data)
 
     # HTTP 상태 코드는 에러 코드에서 가져와야 하는데, 현재 구조에서는 없으므로 기본값 사용
-    # TODO: 에러 코드에 http_status 필드 추가 필요
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,  # 임시로 BAD_REQUEST 사용
         detail=detail,

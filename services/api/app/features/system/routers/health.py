@@ -3,7 +3,7 @@ Health Check Router
 시스템 상태 확인 엔드포인트
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.common.schemas import BaseResponse
 from app.core.database import get_session
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter()
+router = APIRouter(tags=["health"])
 
 
 class HealthCheckDto(BaseModel):
@@ -50,7 +50,7 @@ async def health_check(db: AsyncSession = Depends(get_session)):
 
     health_data = HealthCheckDto(
         status="healthy" if db_status == "connected" else "unhealthy",
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         database=db_status,
         version=settings.APP_VERSION,
     )

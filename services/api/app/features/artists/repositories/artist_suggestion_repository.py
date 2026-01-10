@@ -9,21 +9,19 @@ class ArtistSuggestionRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    # - MARK: 아티스트 제안 생성
-    async def create_suggestion(
+    # - MARK: 아티스트 제안 생성 (커밋 없이)
+    async def create_suggestion_without_commit(
         self,
         artist_name: str,
         reason: str | None = None,
         email: str | None = None,
         user_id: int | None = None,
     ) -> ArtistSuggestion:
-        """아티스트 제안 생성"""
+        """아티스트 제안 생성 (커밋 로직 제외)"""
         suggestion = ArtistSuggestion(
             artist_name=artist_name, reason=reason, email=email, user_id=user_id
         )
         self._session.add(suggestion)
-        await self._session.commit()
-        await self._session.refresh(suggestion)
         return suggestion
 
     # - MARK: ID로 제안 조회

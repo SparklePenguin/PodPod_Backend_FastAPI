@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from app.features.artists.models.artist_schedule import ArtistSchedule
+from app.features.artists.models import ArtistSchedule
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload

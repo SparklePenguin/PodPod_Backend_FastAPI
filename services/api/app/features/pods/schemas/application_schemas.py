@@ -9,19 +9,19 @@ from pydantic import BaseModel, Field
 # - MARK: Pod Application DTO
 class PodApplDto(BaseModel):
     id: int = Field(description="신청서 ID")
-    podId: int = Field(alias="podId", description="파티 ID")
+    pod_id: int = Field(alias="podId", description="파티 ID")
     user: UserDto = Field(description="신청자 정보")
     message: str | None = Field(default=None, description="참여 신청 메시지")
     status: str = Field(
         description="신청 상태 (pending, approved, rejected)",
     )
-    appliedAt: datetime = Field(alias="appliedAt", description="신청 시간")
-    reviewedAt: datetime | None = Field(
+    applied_at: datetime = Field(alias="appliedAt", description="신청 시간")
+    reviewed_at: datetime | None = Field(
         default=None,
         alias="reviewedAt",
         description="검토 시간",
     )
-    reviewedBy: UserDto | None = Field(
+    reviewed_by: UserDto | None = Field(
         default=None, alias="reviewedBy", description="검토자 정보"
     )
 

@@ -15,6 +15,7 @@ sys.path.insert(0, str(services_api_path))
 # 모든 모델을 한 곳에서 import (메타데이터 등록을 위해 필요)
 import app.models  # noqa: E402, F401
 from alembic import context  # type: ignore  # noqa: E402
+from app.core.config import settings  # noqa: E402
 from app.core.database import Base  # noqa: E402
 from sqlalchemy import engine_from_config, pool  # noqa: E402
 
@@ -71,12 +72,13 @@ def run_migrations_online() -> None:
     # MySQL용 동기 엔진 생성
     configuration = config.get_section(config.config_ini_section, {})
 
-    # 환경변수에서 MySQL 설정 가져오기 (./migrate.sh을 통해 주입됨)
-    mysql_user: str = os.getenv("MYSQL_USER", "root")
-    mysql_password = os.getenv("MYSQL_PASSWORD")
-    mysql_host: str = os.getenv("MYSQL_HOST", "localhost")
-    mysql_port: int = int(os.getenv("MYSQL_PORT", "3306"))
-    mysql_database: str = os.getenv("MYSQL_DATABASE", "podpod")
+    # config.py의 settings에서 MySQL 설정 가져오기 (환경변수보다 우선)
+    # 환경변수가 설정되어 있으면 환경변수를 사용, 없으면 settings 사용
+    mysql_user: str = os.getenv("MYSQL_USER") or settings.MYSQL_USER
+    mysql_password = os.getenv("MYSQL_PASSWORD") or settings.MYSQL_PASSWORD
+    mysql_host: str = os.getenv("MYSQL_HOST") or settings.MYSQL_HOST
+    mysql_port: int = int(os.getenv("MYSQL_PORT") or str(settings.MYSQL_PORT))
+    mysql_database: str = os.getenv("MYSQL_DATABASE") or settings.MYSQL_DATABASE
 
     # 필수 환경변수 검증
     if not mysql_password:

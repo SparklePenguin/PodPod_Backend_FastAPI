@@ -1,29 +1,31 @@
 """Pod Use Case - 비즈니스 로직 처리"""
 
 import json
-from typing import List
+from datetime import date, time, timezone
+from pathlib import Path
 
-from app.features.follow.services.follow_service import FollowService
+from app.core.config import settings
+from app.features.chat.repositories.chat_room_repository import ChatRoomRepository
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.pods.exceptions import (
     InvalidDateException,
     InvalidPodStatusException,
     MissingStatusException,
     NoPodAccessPermissionException,
+    PodAccessDeniedException,
     PodNotFoundException,
+    PodUpdateFailedException,
 )
-from app.features.pods.models import (
-    AccompanySubCategory,
-    EtcSubCategory,
-    GoodsSubCategory,
-    PodStatus,
-    TourSubCategory,
-)
+from app.features.pods.models import PodStatus
 from app.features.pods.repositories.pod_repository import PodRepository
-from app.features.pods.schemas import PodDetailDto, PodForm, PodSearchRequest
+from app.features.pods.schemas import ImageOrderDto, PodDetailDto, PodForm
+from app.features.pods.services.pod_category_service import PodCategoryService
+from app.features.pods.services.pod_enrichment_service import PodEnrichmentService
+from app.features.pods.services.pod_image_service import PodImageService
 from app.features.pods.services.pod_notification_service import PodNotificationService
-from app.features.pods.services.pod_service import PodService
-from app.features.users.exceptions import UserNotFoundException
-from fastapi import UploadFile
+from app.features.pods.services.pod_validation_service import PodValidationService
+from app.utils.file_upload import save_upload_file
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -33,16 +35,18 @@ class PodUseCase:
     def __init__(
         self,
         session: AsyncSession,
-        pod_service: PodService,
         pod_repo: PodRepository,
+        enrichment_service: PodEnrichmentService,
         notification_service: PodNotificationService,
-        follow_service: FollowService,
+        follow_use_case: FollowUseCase,
     ):
         self._session = session
-        self._pod_service = pod_service
         self._pod_repo = pod_repo
+        self._enrichment_service = enrichment_service
         self._notification_service = notification_service
-        self._follow_service = follow_service
+        self._follow_use_case = follow_use_case
+        # 서비스 초기화
+        self._image_service = PodImageService(pod_repo)
 
     # MARK: - 파티 생성
     async def create_pod_from_form(
@@ -52,40 +56,70 @@ class PodUseCase:
         images: list[UploadFile],
         status: PodStatus = PodStatus.RECRUITING,
     ) -> PodDetailDto:
-        """Form 데이터로부터 파티 생성 (비즈니스 로직 검증)"""
+        """Form 데이터로부터 파티 생성"""
         # sub_categories 파싱 및 변환
-        pod_form.sub_categories = self._parse_sub_categories(pod_form.sub_categories)
+        pod_form.sub_categories = PodCategoryService.parse_to_string(
+            pod_form.sub_categories
+        )
 
         # 필수 필드 검증
-        self._validate_for_create(pod_form)
+        PodValidationService.validate_for_create(pod_form)
 
-        # sub_categories 검증 및 필터링 (use case에서 처리)
+        # sub_categories 검증 및 필터링
+        sub_categories_list: list[str] = []
         if pod_form.sub_categories:
-            sub_categories_list = self._get_sub_categories_list(pod_form.sub_categories)
+            sub_categories_list = PodCategoryService.parse_to_list(
+                pod_form.sub_categories
+            )
             if sub_categories_list:
-                validated_categories = self._validate_and_filter_categories(
+                validated_categories = PodCategoryService.validate_and_filter(
                     sub_categories_list
                 )
-                # 검증된 카테고리로 업데이트
-                pod_form.sub_categories = json.dumps(validated_categories)
+                sub_categories_list = validated_categories
 
-        # 서비스 로직 호출
+        # meetingDate(datetime) → date/time 분리
+        if not pod_form.meeting_date:
+            raise InvalidDateException("meetingDate 필드가 누락되었습니다.")
+
         try:
-            result = await self._pod_service.create_pod_from_form(
+            dt = pod_form.meeting_date
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            dt_utc = dt.astimezone(timezone.utc)
+            parsed_meeting_date: date = dt_utc.date()
+            parsed_meeting_time: time = dt_utc.time()
+        except (ValueError, AttributeError) as e:
+            raise InvalidDateException(str(pod_form.meeting_date)) from e
+
+        try:
+            result = await self._create_pod(
                 owner_id=owner_id,
-                pod_form=pod_form,
+                title=pod_form.title or "",
+                description=pod_form.description,
+                sub_categories=sub_categories_list,
+                capacity=pod_form.capacity or 0,
+                place=pod_form.place or "",
+                address=pod_form.address or "",
+                sub_address=pod_form.sub_address,
+                x=pod_form.x,
+                y=pod_form.y,
+                meeting_date=parsed_meeting_date,
+                meeting_time=parsed_meeting_time,
+                selected_artist_id=pod_form.selected_artist_id or 0,
                 images=images,
                 status=status,
             )
 
+            if result is None:
+                raise PodUpdateFailedException(0)
+
             # 팔로워들에게 파티 생성 알림 전송
-            if result and result.id:
+            if result.id:
                 try:
-                    await self._follow_service.send_followed_user_pod_created_notification(
+                    await self._follow_use_case.send_followed_user_pod_created_notification(
                         owner_id, result.id
                     )
                 except Exception:
-                    # 알림 전송 실패는 무시하고 계속 진행
                     pass
 
             await self._session.commit()
@@ -94,15 +128,103 @@ class PodUseCase:
             await self._session.rollback()
             raise
 
+    async def _create_pod(
+        self,
+        owner_id: int,
+        title: str,
+        description: str | None,
+        sub_categories: list[str] | None,
+        capacity: int,
+        place: str,
+        address: str,
+        sub_address: str | None,
+        x: float | None,
+        y: float | None,
+        meeting_date: date,
+        meeting_time: time,
+        selected_artist_id: int,
+        images: list[UploadFile | None] | None = None,
+        status: PodStatus = PodStatus.RECRUITING,
+    ) -> PodDetailDto | None:
+        """파티 생성 내부 로직"""
+        thumbnail_url = None
+
+        # 첫 번째 이미지로 thumbnail_url 생성
+        if images:
+            first_image = images[0]
+            try:
+                thumbnail_url = await self._image_service.create_thumbnail_from_image(
+                    first_image
+                )
+            except ValueError:
+                pods_images_dir = Path(settings.UPLOADS_DIR) / "pods" / "images"
+                thumbnail_url = await save_upload_file(
+                    first_image, str(pods_images_dir)
+                )
+
+        # 파티 생성 (채팅방 포함)
+        pod = await self._pod_repo.create_pod_with_chat(
+            owner_id=owner_id,
+            title=title,
+            description=description,
+            image_url=None,
+            thumbnail_url=thumbnail_url,
+            sub_categories=sub_categories,
+            capacity=capacity,
+            place=place,
+            address=address,
+            sub_address=sub_address,
+            meeting_date=meeting_date,
+            meeting_time=meeting_time,
+            selected_artist_id=selected_artist_id,
+            x=x,
+            y=y,
+            status=status,
+        )
+
+        if not pod:
+            raise PodNotFoundException(0)
+
+        # 여러 이미지 저장
+        if images:
+            pods_images_dir = Path(settings.UPLOADS_DIR) / "pods" / "images"
+            for index, image in enumerate(images):
+                image_url = await save_upload_file(image, str(pods_images_dir))
+
+                # 각 이미지의 썸네일 생성
+                image_thumbnail_url = None
+                try:
+                    image_thumbnail_url = (
+                        await self._image_service.create_thumbnail_from_image(image)
+                    )
+                except ValueError:
+                    image_thumbnail_url = image_url
+
+                # PodImage 저장
+                await self._pod_repo.add_pod_image(
+                    pod_id=pod.id,
+                    image_url=image_url,
+                    thumbnail_url=image_thumbnail_url,
+                    display_order=index,
+                )
+
+        # Pod 모델을 PodDetailDto로 변환
+        if pod:
+            await self._session.refresh(
+                pod, ["detail", "images", "applications", "reviews"]
+            )
+            return await self._enrichment_service.enrich(pod, owner_id)
+        return None
+
     # MARK: - 파티 수정
     async def update_pod_from_form(
         self,
         pod_id: int,
         current_user_id: int,
         pod_form: PodForm,
-        new_images: list[UploadFile | None] = None,
+        new_images: list[UploadFile | None] | None = None,
     ) -> PodDetailDto:
-        """Form 데이터로부터 파티 수정 (비즈니스 로직 검증)"""
+        """Form 데이터로부터 파티 수정"""
         # 파티 존재 확인
         pod = await self._pod_repo.get_pod_by_id(pod_id)
         if not pod:
@@ -113,99 +235,331 @@ class PodUseCase:
             raise NoPodAccessPermissionException(pod_id, current_user_id)
 
         # sub_categories 파싱 및 변환
-        pod_form.sub_categories = self._parse_sub_categories(pod_form.sub_categories)
+        pod_form.sub_categories = PodCategoryService.parse_to_string(
+            pod_form.sub_categories
+        )
 
-        # sub_categories 검증 및 필터링 (제공된 경우에만, use case에서 처리)
+        # sub_categories 검증 및 필터링
         if pod_form.sub_categories:
-            sub_categories_list = self._get_sub_categories_list(pod_form.sub_categories)
+            sub_categories_list = PodCategoryService.parse_to_list(
+                pod_form.sub_categories
+            )
             if sub_categories_list:
-                validated_categories = self._validate_and_filter_categories(
+                validated_categories = PodCategoryService.validate_and_filter(
                     sub_categories_list
                 )
-                # 검증된 카테고리로 업데이트
                 pod_form.sub_categories = json.dumps(validated_categories)
 
-        # 서비스 로직 호출
+        # 업데이트할 필드들 준비
+        pod_update_fields: dict = {}
+        pod_detail_update_fields: dict = {}
+
+        if pod_form.title is not None:
+            pod_update_fields["title"] = pod_form.title
+        if pod_form.description is not None:
+            pod_detail_update_fields["description"] = pod_form.description
+        if pod_form.sub_categories is not None:
+            try:
+                parsed = json.loads(pod_form.sub_categories)
+                if isinstance(parsed, list):
+                    pod_update_fields["sub_categories"] = parsed
+            except Exception:
+                pass
+        if pod_form.capacity is not None:
+            pod_update_fields["capacity"] = pod_form.capacity
+        if pod_form.place is not None:
+            pod_update_fields["place"] = pod_form.place
+        if pod_form.address is not None:
+            pod_detail_update_fields["address"] = pod_form.address
+        if pod_form.sub_address is not None:
+            pod_detail_update_fields["sub_address"] = pod_form.sub_address
+        if pod_form.x is not None:
+            pod_detail_update_fields["x"] = pod_form.x
+        if pod_form.y is not None:
+            pod_detail_update_fields["y"] = pod_form.y
+        if pod_form.selected_artist_id is not None:
+            pod_update_fields["selected_artist_id"] = pod_form.selected_artist_id
+
+        # 날짜와 시간 파싱
+        if pod_form.meeting_date is not None:
+            try:
+                dt = pod_form.meeting_date
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                dt_utc = dt.astimezone(timezone.utc)
+                pod_update_fields["meeting_date"] = dt_utc.date()
+                pod_update_fields["meeting_time"] = dt_utc.time()
+            except (ValueError, AttributeError) as e:
+                raise InvalidDateException(str(pod_form.meeting_date)) from e
+
         try:
-            result = await self._pod_service.update_pod_from_form(
+            result = await self._update_pod_with_images(
                 pod_id=pod_id,
                 current_user_id=current_user_id,
-                pod_form=pod_form,
+                update_fields=pod_update_fields,
+                pod_detail_update_fields=pod_detail_update_fields,
+                image_orders=pod_form.image_orders,
                 new_images=new_images,
             )
 
+            if result is None:
+                raise PodUpdateFailedException(pod_id)
+
             # 알림 전송
-            if result:
-                updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
-                if updated_pod:
-                    await self._notification_service.send_pod_update_notification(
-                        pod_id, updated_pod
-                    )
+            updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
+            if updated_pod:
+                await self._notification_service.send_pod_update_notification(
+                    pod_id, updated_pod
+                )
 
             await self._session.commit()
             return result
         except Exception:
             await self._session.rollback()
             raise
+
+    async def _update_pod_with_images(
+        self,
+        pod_id: int,
+        current_user_id: int,
+        update_fields: dict,
+        pod_detail_update_fields: dict | None = None,
+        image_orders: str | None = None,
+        new_images: list[UploadFile | None] | None = None,
+    ) -> PodDetailDto | None:
+        """파티 수정 내부 로직 (이미지 관리 포함)"""
+        pod = await self._pod_repo.get_pod_by_id(pod_id)
+        if not pod:
+            return None
+
+        if pod.owner_id != current_user_id:
+            raise PodAccessDeniedException(pod_id, current_user_id)
+
+        # 이미지 순서 처리
+        if image_orders is not None and image_orders.strip():
+            try:
+                order_data = json.loads(image_orders)
+                image_order_objects = [
+                    ImageOrderDto.model_validate(item) for item in order_data
+                ]
+
+                # 기존 이미지 모두 삭제
+                await self._image_service.delete_pod_images(pod_id)
+
+                # 새 이미지들을 딕셔너리로 매핑
+                new_images_dict: dict = {}
+                if new_images:
+                    for i, img in enumerate(new_images):
+                        new_images_dict[i] = img
+
+                thumbnail_url = None
+
+                # 순서대로 이미지 처리
+                for index, order_item in enumerate(image_order_objects):
+                    if order_item.type == "existing":
+                        if order_item.url:
+                            await self._pod_repo.add_pod_image(
+                                pod_id=pod_id,
+                                image_url=order_item.url,
+                                thumbnail_url=order_item.url,
+                                display_order=index,
+                            )
+                            if index == 0:
+                                thumbnail_url = order_item.url
+
+                    elif order_item.type == "new":
+                        if (
+                            order_item.file_index is not None
+                            and order_item.file_index in new_images_dict
+                        ):
+                            image = new_images_dict[order_item.file_index]
+                            pods_images_dir = (
+                                Path(settings.UPLOADS_DIR) / "pods" / "images"
+                            )
+                            image_url = await save_upload_file(
+                                image, str(pods_images_dir)
+                            )
+
+                            image_thumbnail_url = None
+                            try:
+                                image_thumbnail_url = await self._image_service.create_thumbnail_from_image(
+                                    image
+                                )
+                            except ValueError:
+                                image_thumbnail_url = image_url
+
+                            await self._pod_repo.add_pod_image(
+                                pod_id=pod_id,
+                                image_url=image_url,
+                                thumbnail_url=image_thumbnail_url,
+                                display_order=index,
+                            )
+
+                            if index == 0:
+                                thumbnail_url = image_thumbnail_url
+
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "error_code": "BAD_REQUEST",
+                        "code": 4000,
+                        "message": "이미지 순서 데이터가 올바르지 않습니다.",
+                    },
+                ) from e
+
+            if thumbnail_url:
+                update_fields["thumbnail_url"] = thumbnail_url
+
+        # 새 이미지만 있는 경우 (image_orders 없이)
+        elif new_images:
+            await self._image_service.delete_pod_images(pod_id)
+            thumbnail_url = None
+
+            for index, image in enumerate(new_images):
+                pods_images_dir = Path(settings.UPLOADS_DIR) / "pods" / "images"
+                image_url = await save_upload_file(image, str(pods_images_dir))
+
+                image_thumbnail_url = None
+                try:
+                    image_thumbnail_url = (
+                        await self._image_service.create_thumbnail_from_image(image)
+                    )
+                except ValueError:
+                    image_thumbnail_url = image_url
+
+                await self._pod_repo.add_pod_image(
+                    pod_id=pod_id,
+                    image_url=image_url,
+                    thumbnail_url=image_thumbnail_url,
+                    display_order=index,
+                )
+
+                if index == 0:
+                    thumbnail_url = image_thumbnail_url
+
+            if thumbnail_url:
+                update_fields["thumbnail_url"] = thumbnail_url
+
+        # Pod 기본 정보 업데이트
+        if update_fields:
+            if "sub_categories" in update_fields and isinstance(
+                update_fields["sub_categories"], list
+            ):
+                update_fields["sub_categories"] = json.dumps(
+                    update_fields["sub_categories"], ensure_ascii=False
+                )
+            await self._pod_repo.update_pod(pod_id, **update_fields)
+
+        # PodDetail 업데이트
+        if pod_detail_update_fields:
+            await self._pod_repo.update_pod_detail(pod_id, **pod_detail_update_fields)
+
+        # 파티 정보 다시 조회하여 DTO로 변환
+        updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
+        if updated_pod:
+            await self._session.refresh(
+                updated_pod, ["detail", "images", "applications", "reviews"]
+            )
+
+            # thumbnail_url이 변경되었고 채팅방이 있으면 채팅방 cover_url 업데이트
+            if "thumbnail_url" in update_fields and updated_pod.chat_room_id:
+                try:
+                    chat_room_repo = ChatRoomRepository(self._session)
+                    await chat_room_repo.update_cover_url(
+                        chat_room_id=updated_pod.chat_room_id,
+                        cover_url=updated_pod.thumbnail_url or "",
+                    )
+                except Exception:
+                    pass
+
+            return await self._enrichment_service.enrich(updated_pod, current_user_id)
+
+        return None
 
     # MARK: - 파티 상태 업데이트
     async def update_pod_status_by_owner(
         self, pod_id: int, status_value: str | None, user_id: int
     ) -> PodDetailDto:
-        """파티장이 파티 상태를 변경 (비즈니스 로직 검증)"""
-        # status 필드 검증
+        """파티장이 파티 상태를 변경"""
         if status_value is None:
             raise MissingStatusException()
 
-        # 상태 값 검증
         try:
             status = PodStatus(status_value.upper())
         except ValueError:
             raise InvalidPodStatusException(status_value)
 
-        # 파티 조회
         pod = await self._pod_repo.get_pod_by_id(pod_id)
         if not pod:
             raise PodNotFoundException(pod_id)
 
-        # 파티장 권한 확인
         if pod.owner_id is None or pod.owner_id != user_id:
             raise NoPodAccessPermissionException(pod_id, user_id)
 
         # 이미 같은 상태인지 확인
         if pod.status == status:
-            return await self._pod_service._convert_pod_to_dto(pod, user_id)
+            return await self._enrichment_service.enrich(pod, user_id)
 
-        # 서비스 로직 호출
         try:
-            result = await self._pod_service.update_pod_status_by_owner(
-                pod_id, status, user_id
-            )
+            # 파티 상태 업데이트
+            await self._pod_repo.update_pod_status(pod_id, status)
+
+            # 업데이트된 파티 정보 반환
+            updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
+            if not updated_pod:
+                raise PodNotFoundException(pod_id)
 
             # 알림 전송
-            updated_pod = await self._pod_repo.get_pod_by_id(pod_id)
-            if updated_pod:
-                await self._notification_service.send_pod_status_update_notification(
-                    pod_id, updated_pod, status
-                )
+            await self._notification_service.send_pod_status_update_notification(
+                pod_id, updated_pod, status
+            )
 
             await self._session.commit()
-            return result
+            return await self._enrichment_service.enrich(updated_pod, user_id)
         except Exception:
             await self._session.rollback()
             raise
 
     # MARK: - 파티 삭제
-    async def delete_pod(self, pod_id: int) -> None:
-        """파티 삭제 (비즈니스 로직 검증)"""
-        # 파티 조회
+    async def delete_pod(self, pod_id: int, current_user_id: int) -> None:
+        """파티 삭제"""
         pod = await self._pod_repo.get_pod_by_id(pod_id)
         if not pod:
             raise PodNotFoundException(pod_id)
 
-        # 서비스 로직 호출
+        if pod.owner_id != current_user_id:
+            raise NoPodAccessPermissionException(pod_id, current_user_id)
+
         try:
-            await self._pod_service.delete_pod(pod_id)
+            # 모든 멤버 조회
+            all_members = await self._pod_repo.get_pod_members(pod_id)
+            member_ids = [member.user_id for member in all_members]
+
+            # 채팅방에서 모든 멤버 제거
+            if pod.chat_room_id:
+                try:
+                    chat_room_repo = ChatRoomRepository(self._session)
+                    for member_id in member_ids:
+                        await chat_room_repo.remove_member(pod.chat_room_id, member_id)
+                    if pod.owner_id is not None:
+                        await chat_room_repo.remove_member(
+                            pod.chat_room_id, pod.owner_id
+                        )
+                except Exception:
+                    pass
+
+            # 파티장만 데이터베이스에서 제거
+            if pod.owner_id is not None:
+                await self._pod_repo.remove_pod_member(pod_id, pod.owner_id)
+
+            # 파티 상태를 CANCELED로 변경
+            await self._pod_repo.update_pod_status(pod_id, PodStatus.CANCELED)
+
+            # 파티 비활성화 (소프트 삭제)
+            if pod:
+                setattr(pod, "is_del", True)
+
             await self._session.commit()
         except Exception:
             await self._session.rollback()
@@ -215,7 +569,7 @@ class PodUseCase:
     async def leave_pod(
         self, pod_id: int, user_id: str | None, current_user_id: int
     ) -> dict:
-        """파티 나가기 (비즈니스 로직 검증)"""
+        """파티 나가기"""
         # user_id 파싱
         if user_id is not None and user_id.strip() != "":
             try:
@@ -225,178 +579,42 @@ class PodUseCase:
         else:
             target_user_id = current_user_id
 
-        # 파티 조회
         pod = await self._pod_repo.get_pod_by_id(pod_id)
         if not pod:
             raise PodNotFoundException(pod_id)
 
-        # 파티장이 아닌 경우 멤버인지 확인
-        is_owner = pod.owner_id is not None and pod.owner_id == target_user_id
-        if not is_owner:
-            is_member = await self._pod_repo.is_pod_member(pod_id, target_user_id)
-            if not is_member:
-                raise NoPodAccessPermissionException(pod_id, target_user_id)
+        # 파티장인지 확인
+        if pod.owner_id == target_user_id:
+            raise PodAccessDeniedException(
+                "파티장은 파티 삭제 엔드포인트를 사용해주세요."
+            )
 
-        # 서비스 로직 호출
+        # 멤버인지 확인
+        is_member = await self._pod_repo.is_pod_member(pod_id, target_user_id)
+        if not is_member:
+            raise NoPodAccessPermissionException(pod_id, target_user_id)
+
         try:
-            result = await self._pod_service.leave_pod(pod_id, user_id, current_user_id)
+            # 채팅방에서 제거
+            if pod.chat_room_id:
+                try:
+                    chat_room_repo = ChatRoomRepository(self._session)
+                    await chat_room_repo.remove_member(pod.chat_room_id, target_user_id)
+                except Exception:
+                    pass
+
+            # 데이터베이스에서 멤버 제거
+            await self._pod_repo.remove_pod_member(pod_id, target_user_id)
+
+            pod_status_value = pod.status.value if pod.status else ""
+
             await self._session.commit()
-            return result
+            return {
+                "left": True,
+                "is_owner": False,
+                "members_removed": 1,
+                "pod_status": pod_status_value,
+            }
         except Exception:
             await self._session.rollback()
             raise
-
-    # MARK: - 파티 상세 조회
-    async def get_pod_detail(
-        self, pod_id: int, user_id: int | None = None
-    ) -> PodDetailDto:
-        """파티 상세 조회 (비즈니스 로직 검증)"""
-        # 파티 존재 확인
-        pod = await self._pod_repo.get_pod_by_id(pod_id)
-        if not pod:
-            raise PodNotFoundException(pod_id)
-
-        # 서비스 로직 호출
-        return await self._pod_service.get_pod_detail(pod_id, user_id)
-
-    # MARK: - 사용자가 개설한 파티 목록 조회
-    async def get_user_pods(
-        self, user_id: int, page: int = 1, size: int = 20
-    ) -> PodDetailDto:
-        """사용자가 개설한 파티 목록 조회 (비즈니스 로직 검증)"""
-        from app.features.users.services.user_service import UserService
-
-        # 사용자 존재 확인
-        user_service = UserService(self._session)
-        try:
-            await user_service.get_user(user_id)
-        except UserNotFoundException:
-            raise
-        except Exception:
-            # 다른 예외는 UserNotFoundException으로 변환
-            raise UserNotFoundException(user_id)
-
-        # 서비스 로직 호출
-        return await self._pod_service.get_user_pods(user_id, page, size)
-
-    # MARK: - 파티 검색
-    async def search_pods(
-        self,
-        user_id: int | None,
-        search_request: PodSearchRequest,
-    ) -> PodDetailDto:
-        """파티 검색 (비즈니스 로직 검증)"""
-
-        # 날짜 검증
-        if (
-            search_request.start_date
-            and search_request.end_date
-            and search_request.start_date > search_request.end_date
-        ):
-            raise InvalidDateException("시작 날짜가 종료 날짜보다 늦습니다.")
-
-        # 서비스 로직 호출
-        return await self._pod_service.search_pods(
-            user_id=user_id,
-            title=search_request.title,
-            main_category=search_request.main_category,
-            sub_category=search_request.sub_category,
-            start_date=search_request.start_date,
-            end_date=search_request.end_date,
-            location=search_request.location,
-            page=search_request.page or 1,
-            size=search_request.size or 20,
-        )
-
-    # MARK: - 헬퍼 메서드
-    def _validate_for_create(self, pod_form) -> None:
-        """생성 시 필수 필드 검증"""
-        required_fields = {
-            "title": pod_form.title,
-            "sub_categories": pod_form.sub_categories,
-            "capacity": pod_form.capacity,
-            "place": pod_form.place,
-            "address": pod_form.address,
-            "meeting_date": pod_form.meeting_date,
-            "selected_artist_id": pod_form.selected_artist_id,
-        }
-
-        missing_fields = [
-            field for field, value in required_fields.items() if value is None
-        ]
-
-        if missing_fields:
-            raise ValueError(f"필수 필드가 누락되었습니다: {', '.join(missing_fields)}")
-
-        # sub_categories가 빈 배열이면 안됨
-        sub_categories_list = self._get_sub_categories_list(pod_form.sub_categories)
-        if not sub_categories_list or sub_categories_list == []:
-            raise ValueError("서브 카테고리는 필수입니다")
-
-    def _get_sub_categories_list(self, sub_categories: str | None) -> list[str] | None:
-        """sub_categories를 JSON 문자열에서 리스트로 변환 (Optional)"""
-        if sub_categories is None:
-            return None
-        try:
-            parsed = json.loads(sub_categories)
-            return parsed if isinstance(parsed, list) else None
-        except Exception:
-            return None
-
-    def _parse_sub_categories(self, v) -> str | None:
-        """sub_categories를 문자열로 변환 (리스트면 JSON 문자열로)"""
-        if v is None:
-            return None
-        if isinstance(v, str):
-            # JSON 형식 검증
-            try:
-                parsed = json.loads(v)
-                if not isinstance(parsed, list):
-                    return None
-                if parsed == []:
-                    return None
-                return v
-            except (json.JSONDecodeError, ValueError):
-                return None
-        elif isinstance(v, list):
-            if not v:
-                return None
-            return json.dumps(v)
-        return None
-
-    # MARK: - 카테고리 검증 및 필터링 (비즈니스 로직)
-    def _validate_and_filter_categories(self, categories: List[str]) -> List[str]:
-        """서브 카테고리 검증 및 필터링 (유효하지 않은 카테고리는 필터링하고 경고 출력)"""
-        if not categories:
-            return []
-
-        # 모든 유효한 카테고리 키들을 수집
-        valid_categories = set()
-        valid_categories.update([cat.name for cat in AccompanySubCategory])
-        valid_categories.update([cat.name for cat in GoodsSubCategory])
-        valid_categories.update([cat.name for cat in TourSubCategory])
-        valid_categories.update([cat.name for cat in EtcSubCategory])
-
-        # 유효한 카테고리만 필터링
-        valid_sub_categories = [cat for cat in categories if cat in valid_categories]
-
-        # 유효하지 않은 카테고리가 있으면 로그만 남기고 필터링된 결과 반환
-        invalid_categories = [cat for cat in categories if cat not in valid_categories]
-        if invalid_categories:
-            # 카테고리를 그룹별로 정리
-            goods_categories = [cat.name for cat in GoodsSubCategory]
-            accompany_categories = [cat.name for cat in AccompanySubCategory]
-            tour_categories = [cat.name for cat in TourSubCategory]
-            etc_categories = [cat.name for cat in EtcSubCategory]
-
-            print(
-                f"""⚠️ 유효하지 않은 카테고리가 필터링되었습니다: {", ".join(invalid_categories)}
-
-사용 가능한 카테고리:
-📦 굿즈: {", ".join(goods_categories)}
-👥 동행: {", ".join(accompany_categories)}
-🗺️ 투어: {", ".join(tour_categories)}
-📋 기타: {", ".join(etc_categories)}"""
-            )
-
-        return valid_sub_categories

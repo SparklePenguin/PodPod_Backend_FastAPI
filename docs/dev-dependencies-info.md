@@ -7,6 +7,13 @@
 - 설치: `brew install mysql`
 - 시작: `brew services start mysql`
 
+### Redis
+- 세션 및 캐시 관리
+- 용도: 리프레시 토큰 저장, OAuth state 관리, 토큰 블랙리스트
+- 설치: `brew install redis`
+- 시작: `brew services start redis`
+- 상태 확인: `redis-cli ping` (응답: PONG)
+
 ### Infisical
 - 환경 변수 관리 도구
 - 설치: `brew install infisical/get-cli/infisical`

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter()
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 # 알림 타입 Enum

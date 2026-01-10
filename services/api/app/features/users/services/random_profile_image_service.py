@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List
 
 from app.core.config import settings
-from app.features.users.schemas.random_profile_image import RandomProfileImageDto
+from app.features.users.schemas import RandomProfileImageDto
 
 
 class RandomProfileImageService:

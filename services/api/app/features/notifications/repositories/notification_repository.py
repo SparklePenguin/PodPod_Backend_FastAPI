@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List
 
-from app.features.notifications.models.notification import Notification
+from app.features.notifications.models.notification_models import Notification
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -124,7 +124,7 @@ class NotificationRepository:
 
         if not notification.is_read:
             notification.is_read = True
-            notification.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            notification.read_at = datetime.now(timezone.utc)
             await self._session.commit()
             # refresh는 관계를 무효화할 수 있으므로, 관계를 다시 로드하기 위해 다시 쿼리
             query = select(Notification).where(Notification.id == notification_id)
@@ -144,7 +144,7 @@ class NotificationRepository:
             update(Notification)
             .where(Notification.user_id == user_id, Notification.is_read.is_(False))
             .values(
-                is_read=True, read_at=datetime.now(timezone.utc).replace(tzinfo=None)
+                is_read=True, read_at=datetime.now(timezone.utc)
             )
         )
 
@@ -174,3 +174,13 @@ class NotificationRepository:
         result = await self._session.execute(stmt)
         await self._session.commit()
         return result.rowcount
+
+    # - MARK: 사용자 관련 알림 삭제
+    async def delete_all_by_user_id(self, user_id: int) -> None:
+        """사용자 ID와 관련된 모든 알림 삭제 (user_id와 related_user_id 모두)"""
+        await self._session.execute(
+            delete(Notification).where(
+                (Notification.user_id == user_id)
+                | (Notification.related_user_id == user_id)
+            )
+        )

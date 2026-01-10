@@ -1,18 +1,21 @@
+"""카카오 OAuth 서비스"""
+
 import httpx
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
-from app.features.oauth.schemas.get_kakao_token_request import GetKakaoTokenRequest
-from app.features.oauth.schemas.kakao_token_response import KakaoTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    GetKakaoTokenRequest,
+    KakaoTokenResponse,
+    OAuthUserInfo,
+)
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class KakaoOAuthService:
-    """카카오 OAuth 서비스"""
+    """카카오 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._redirect_uri = settings.KAKAO_REDIRECT_URI
         self._client_id = settings.KAKAO_CLIENT_ID
         self._client_secret = settings.KAKAO_CLIENT_SECRET
@@ -48,9 +51,11 @@ class KakaoOAuthService:
 
             if response.status_code != 200:
                 error_response = BaseResponse.error(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    http_status=status.HTTP_401_UNAUTHORIZED,
+                    error_key="KAKAO_TOKEN_REQUEST_FAILED",
                     error_code=20002,
-                    message=response.text,
+                    message_ko=f"카카오 액세스 토큰 요청 실패: {response.text}",
+                    message_en=f"Kakao access token request failed: {response.text}",
                     dev_note=f"액세스 토큰 요청 실패: {str(response.text)}",
                 )
                 raise HTTPException(
@@ -111,5 +116,5 @@ class KakaoOAuthService:
             f"client_id={settings.KAKAO_CLIENT_ID}&"
             f"redirect_uri={settings.KAKAO_REDIRECT_URI}&"
             f"response_type=code&"
-            f"scope=account_email"
+            # f"scope=account_email"
         )

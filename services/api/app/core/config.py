@@ -81,9 +81,7 @@ class Settings(BaseSettings):
 
     # MARK: - Chat Service
 
-    USE_WEBSOCKET_CHAT: bool = False  # True면 WebSocket 사용, False면 Sendbird 사용
-    SENDBIRD_APP_ID: str | None = None
-    SENDBIRD_API_TOKEN: str | None = None
+    USE_WEBSOCKET_CHAT: bool = True  # WebSocket 사용
 
     # MARK: - OAuth (Infisical)
     # Note: REDIRECT_URI는 base_url을 사용해 자동 생성됩니다 (@property 참고)
@@ -198,10 +196,6 @@ class Settings(BaseSettings):
         # JWT
         kwargs.setdefault("secret_key", os.getenv("SECRET_KEY", "your-secret-key-here"))
 
-        # Sendbird
-        kwargs.setdefault("SENDBIRD_APP_ID", os.getenv("SENDBIRD_APP_ID"))
-        kwargs.setdefault("SENDBIRD_API_TOKEN", os.getenv("SENDBIRD_API_TOKEN"))
-
         # OAuth (Infisical)
         kwargs.setdefault("KAKAO_CLIENT_ID", os.getenv("KAKAO_CLIENT_ID"))
         kwargs.setdefault("KAKAO_CLIENT_SECRET", os.getenv("KAKAO_CLIENT_SECRET"))
@@ -290,22 +284,22 @@ class Settings(BaseSettings):
     @property
     def KAKAO_REDIRECT_URI(self) -> str:
         """카카오 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/kakao/callback"
+        return f"{self.base_url}/api/v1/oauth/kakao/callback"
 
     @property
     def NAVER_REDIRECT_URI(self) -> str:
         """네이버 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/naver/callback"
+        return f"{self.base_url}/api/v1/oauth/naver/callback"
 
     @property
     def GOOGLE_REDIRECT_URI(self) -> str:
         """구글 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/google/callback"
+        return f"{self.base_url}/api/v1/oauth/google/callback"
 
     @property
     def APPLE_REDIRECT_URI(self) -> str:
         """애플 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/apple/callback"
+        return f"{self.base_url}/api/v1/oauth/apple/callback"
 
     # MARK: - OAuth URLs (상수)
 

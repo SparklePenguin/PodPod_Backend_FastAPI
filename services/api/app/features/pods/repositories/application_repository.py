@@ -32,15 +32,12 @@ class ApplicationRepository:
         if existing_application.scalar_one_or_none() is not None:
             raise ValueError("이미 신청한 파티입니다.")
 
-        # 현재 시간 저장
-        current_time = datetime.now(timezone.utc)
-
         application = Application(
             pod_id=pod_id,
             user_id=user_id,
             message=message,
             status=ApplicationStatus.PENDING,
-            applied_at=current_time,
+            # applied_at은 모델의 default=lambda: datetime.now(timezone.utc)를 사용
         )
         self._session.add(application)
         await self._session.flush()
@@ -81,6 +78,40 @@ class ApplicationRepository:
             query = query.where(~Application.is_hidden)
 
         # 차단된 유저의 신청서 필터링 제거 (모든 신청서 표시)
+
+        query = query.order_by(Application.applied_at.desc())
+
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
+    # - MARK: 여러 파티의 신청서 목록 조회 (배치 로딩)
+    async def get_applications_by_pod_ids(
+        self,
+        pod_ids: list[int],
+        status: str | ApplicationStatus | None = None,
+        include_hidden: bool = False,
+    ) -> list[Application]:
+        """여러 파티의 신청서를 한 번에 조회 (배치 로딩)"""
+        if not pod_ids:
+            return []
+
+        query = select(Application).where(Application.pod_id.in_(pod_ids))
+
+        if status:
+            # status를 Enum으로 변환 (문자열인 경우)
+            if isinstance(status, str):
+                try:
+                    status_enum = ApplicationStatus(status.lower())
+                except ValueError:
+                    status_enum = None
+            else:
+                status_enum = status
+            if status_enum:
+                query = query.where(Application.status == status_enum)
+
+        # 숨김 처리된 신청서 제외 (기본값)
+        if not include_hidden:
+            query = query.where(~Application.is_hidden)
 
         query = query.order_by(Application.applied_at.desc())
 
@@ -230,14 +261,12 @@ class ApplicationRepository:
         if role == "member" and current_member_count >= pod_capacity:
             raise ValueError("파티 정원이 가득 찼습니다")
 
-        # 현재 시간을 datetime으로 저장
-        current_datetime = datetime.now(timezone.utc)
         pod_member = PodMember(
             pod_id=pod_id,
             user_id=user_id,
             role=role,
             message=message,
-            joined_at=current_datetime,
+            # joined_at은 모델의 default=lambda: datetime.now(timezone.utc)를 사용
         )
         self._session.add(pod_member)
 

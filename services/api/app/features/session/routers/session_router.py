@@ -1,16 +1,16 @@
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_session_service
+from app.deps.providers import get_session_use_case
 from app.features.session.schemas import (
     LoginRequest,
     LogoutRequest,
     TokenRefreshRequest,
 )
-from app.features.session.services.session_service import SessionService
+from app.features.session.use_cases.session_use_case import SessionUseCase
 from fastapi import APIRouter, Depends, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-router = APIRouter()
+router = APIRouter(prefix="/session", tags=["session"])
 security = HTTPBearer()
 
 
@@ -22,9 +22,9 @@ security = HTTPBearer()
 )
 async def create_session(
     login_data: LoginRequest,
-    service: SessionService = Depends(get_session_service),
+    use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    result = await service.login(login_data)
+    result = await use_case.login(login_data)
     return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
 
@@ -39,9 +39,9 @@ async def delete_session(
     logout_data: LogoutRequest,
     current_user_id: int = Depends(get_current_user_id),
     token: HTTPAuthorizationCredentials = Depends(security),
-    service: SessionService = Depends(get_session_service),
+    use_case: SessionUseCase = Depends(get_session_use_case),
 ):
-    await service.logout(
+    await use_case.logout(
         access_token=token.credentials,
         refresh_token=logout_data.refresh_token,
         user_id=current_user_id,
@@ -53,7 +53,7 @@ async def delete_session(
 @router.put("", response_model=BaseResponse[dict], description="토큰 갱신")
 async def refresh_session(
     refresh_data: TokenRefreshRequest,
-    service: SessionService = Depends(get_session_service),
+    use_case: SessionUseCase = Depends(get_session_use_case),
 ):
     from app.core.session import (
         TokenBlacklistedError,
@@ -63,7 +63,7 @@ async def refresh_session(
     )
 
     try:
-        credential = await service.refresh_token(refresh_data.refresh_token)
+        credential = await use_case.refresh_token(refresh_data.refresh_token)
         return BaseResponse.ok(data=credential.model_dump(by_alias=True))
     except (
         TokenExpiredError,

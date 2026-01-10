@@ -1,6 +1,7 @@
 """Application 알림 서비스"""
 
 from app.core.services.fcm_service import FCMService
+from app.features.pods.models import Pod
 from app.features.pods.repositories.like_repository import PodLikeRepository
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.users.repositories import UserRepository
@@ -32,11 +33,11 @@ class ApplicationNotificationService:
         try:
             # 파티장 정보 조회
             owner = await self._user_repo.get_by_id(owner_id)
-            if not owner or not owner.fcm_token:
+            if not owner or not owner.detail or not owner.detail.fcm_token:
                 return
 
             await self._fcm_service.send_pod_join_request(
-                token=owner.fcm_token,
+                token=owner.detail.fcm_token,
                 nickname=applicant_nickname,
                 pod_id=pod_id,
                 db=self._session,
@@ -58,11 +59,11 @@ class ApplicationNotificationService:
         """신청자에게 신청서 승인 알림 전송"""
         try:
             user = await self._user_repo.get_by_id(user_id)
-            if not user or not user.fcm_token:
+            if not user or not user.detail or not user.detail.fcm_token:
                 return
 
             await self._fcm_service.send_pod_request_approved(
-                token=user.fcm_token,
+                token=user.detail.fcm_token,
                 party_name=pod_title,
                 pod_id=pod_id,
                 db=self._session,
@@ -84,11 +85,11 @@ class ApplicationNotificationService:
         """신청자에게 신청서 거절 알림 전송"""
         try:
             user = await self._user_repo.get_by_id(user_id)
-            if not user or not user.fcm_token:
+            if not user or not user.detail or not user.detail.fcm_token:
                 return
 
             await self._fcm_service.send_pod_request_rejected(
-                token=user.fcm_token,
+                token=user.detail.fcm_token,
                 party_name=pod_title,
                 pod_id=pod_id,
                 db=self._session,
@@ -100,18 +101,18 @@ class ApplicationNotificationService:
             pass
 
     # MARK: - 정원 가득 참 알림
-    async def send_capacity_full_notification(self, pod_id: int, pod) -> None:
+    async def send_capacity_full_notification(self, pod_id: int, pod: Pod) -> None:
         """파티 정원이 가득 찬 경우 파티장에게 알림 전송"""
         try:
             if pod.owner_id is None:
                 return
 
             owner = await self._user_repo.get_by_id(pod.owner_id)
-            if not owner or not owner.fcm_token:
+            if not owner or not owner.detail or not owner.detail.fcm_token:
                 return
 
             await self._fcm_service.send_pod_capacity_full(
-                token=owner.fcm_token,
+                token=owner.detail.fcm_token,
                 party_name=pod.title or "",
                 pod_id=pod_id,
                 db=self._session,
@@ -150,9 +151,9 @@ class ApplicationNotificationService:
                     continue
 
                 try:
-                    if participant.fcm_token and participant.id:
+                    if participant.detail and participant.detail.fcm_token and participant.id:
                         await self._fcm_service.send_pod_new_member(
-                            token=participant.fcm_token,
+                            token=participant.detail.fcm_token,
                             nickname=new_member_nickname,
                             party_name=pod_title,
                             pod_id=pod_id,
@@ -166,7 +167,7 @@ class ApplicationNotificationService:
             pass
 
     # MARK: - 좋아요한 파티에 자리 생김 알림
-    async def send_spot_opened_notifications(self, pod_id: int, pod) -> None:
+    async def send_spot_opened_notifications(self, pod_id: int, pod: Pod | None) -> None:
         """파티에 자리가 생겼을 때 좋아요한 사용자들에게 알림 전송"""
         try:
             if not pod:
@@ -178,9 +179,9 @@ class ApplicationNotificationService:
 
             for user in liked_users:
                 try:
-                    if user.fcm_token:
+                    if user.detail and user.detail.fcm_token:
                         await self._fcm_service.send_saved_pod_spot_opened(
-                            token=user.fcm_token,
+                            token=user.detail.fcm_token,
                             party_name=pod.title or "",
                             pod_id=pod_id,
                             db=self._session,

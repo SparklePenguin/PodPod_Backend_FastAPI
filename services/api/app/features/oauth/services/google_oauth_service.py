@@ -1,21 +1,27 @@
+"""구글 OAuth 서비스"""
+
 import asyncio
+from typing import Any, Dict
+from urllib.parse import urlencode
+
 import httpx
-from google.auth.transport import requests
-from google.oauth2 import id_token
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
-from app.features.oauth.schemas.get_google_token_request import GetGoogleTokenRequest
-from app.features.oauth.schemas.google_token_response import GoogleTokenResponse
-from app.features.oauth.schemas.oauth_user_info import OAuthUserInfo
+from app.features.oauth.schemas import (
+    GetGoogleTokenRequest,
+    GoogleTokenResponse,
+    OAuthUserInfo,
+)
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from google.auth.transport import requests
+from google.oauth2 import id_token
 
 
 class GoogleOAuthService:
-    """구글 OAuth 서비스"""
+    """구글 OAuth 서비스 (Stateless)"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
+    def __init__(self) -> None:
+        """서비스 초기화"""
         self._google_token_url = "https://oauth2.googleapis.com/token"
         self._google_user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
 
@@ -46,9 +52,11 @@ class GoogleOAuthService:
 
             if response.status_code != 200:
                 error_response = BaseResponse.error(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    http_status=status.HTTP_401_UNAUTHORIZED,
+                    error_key="GOOGLE_TOKEN_REQUEST_FAILED",
                     error_code=20002,
-                    message=response.text,
+                    message_ko=f"구글 액세스 토큰 요청 실패: {response.text}",
+                    message_en=f"Google access token request failed: {response.text}",
                     dev_note=f"액세스 토큰 요청 실패: {str(response.text)}",
                 )
                 raise HTTPException(
@@ -63,7 +71,7 @@ class GoogleOAuthService:
         """구글 ID 토큰 검증 및 사용자 정보 추출"""
         try:
             # ID 토큰 검증 (동기 함수를 비동기로 실행)
-            idinfo = await asyncio.to_thread(
+            idinfo: Dict[str, Any] = await asyncio.to_thread(
                 id_token.verify_oauth2_token,
                 id_token_str,
                 requests.Request(),
@@ -91,8 +99,6 @@ class GoogleOAuthService:
     # - MARK: 구글 사용자 정보 조회
     async def get_google_user_info(self, access_token: str) -> OAuthUserInfo:
         """구글 액세스 토큰으로 사용자 정보 조회"""
-        from typing import Any, Dict
-
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(
@@ -127,8 +133,6 @@ class GoogleOAuthService:
     # - MARK: 구글 인증 URL 생성
     def get_auth_url(self) -> str:
         """구글 인증 URL 생성"""
-        from urllib.parse import urlencode
-
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,

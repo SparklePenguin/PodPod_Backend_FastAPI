@@ -12,9 +12,9 @@ class BlockUserRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    # - MARK: 차단 생성
+    # - MARK: 차단 생성 (커밋 없음)
     async def create_block(self, blocker_id: int, blocked_id: int) -> UserBlock | None:
-        """사용자 차단 생성"""
+        """사용자 차단 생성 (커밋은 use_case에서 처리)"""
         try:
             # 자기 자신을 차단하는지 확인
             if blocker_id == blocked_id:
@@ -27,23 +27,20 @@ class BlockUserRepository:
 
             block = UserBlock(blocker_id=blocker_id, blocked_id=blocked_id)
             self._session.add(block)
-            await self._session.commit()
-            await self._session.refresh(block)
             return block
         except Exception:
             await self._session.rollback()
             return None
 
-    # - MARK: 차단 해제
+    # - MARK: 차단 해제 (커밋 없음)
     async def delete_block(self, blocker_id: int, blocked_id: int) -> bool:
-        """사용자 차단 해제"""
+        """사용자 차단 해제 (커밋은 use_case에서 처리)"""
         try:
             block = await self.get_block(blocker_id, blocked_id)
             if not block:
                 return False
 
             await self._session.delete(block)
-            await self._session.commit()
             return True
         except Exception:
             await self._session.rollback()

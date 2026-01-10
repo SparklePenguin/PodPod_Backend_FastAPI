@@ -4,7 +4,7 @@ from typing import List
 
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_application_use_case
+from app.deps.providers import get_application_use_case
 from app.features.pods.schemas import (
     ApplyToPodRequest,
     PodApplDto,
@@ -14,10 +14,10 @@ from app.features.pods.use_cases.application_use_case import ApplicationUseCase
 from fastapi import APIRouter, Depends, status
 
 # Pod별 신청서 라우터 (prefix: /pods/{pod_id}/applications)
-pod_applications_router = APIRouter()
+pod_applications_router = APIRouter(prefix="/pods/{pod_id}/applications", tags=["applications"])
 
 # 신청서 개별 라우터 (prefix: /applications)
-applications_router = APIRouter()
+applications_router = APIRouter(prefix="/applications", tags=["applications"])
 
 
 @pod_applications_router.get(

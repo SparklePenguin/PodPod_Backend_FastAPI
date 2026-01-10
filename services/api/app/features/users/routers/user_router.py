@@ -2,14 +2,16 @@ from typing import List
 
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import (
-    get_follow_service,
-    get_user_artist_service,
-    get_user_service,
+from app.deps.providers import (
+    get_block_user_use_case,
+    get_follow_use_case,
+    get_user_artist_use_case,
+    get_user_use_case,
 )
 from app.features.artists.schemas import ArtistDto
-from app.features.auth.schemas.sign_up_request import SignUpRequest
-from app.features.follow.services.follow_service import FollowService
+from app.features.auth.schemas import SignUpRequest
+from app.features.follow.exceptions import FollowNotFoundException
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.users.exceptions import ImageUploadException
 from app.features.users.schemas import (
     AcceptTermsRequest,
@@ -18,11 +20,13 @@ from app.features.users.schemas import (
     UserDetailDto,
     UserDto,
 )
-from app.features.users.services.user_artist_service import UserArtistService
-from app.features.users.services.user_service import UserService
+from app.features.users.use_cases.block_user_use_case import BlockUserUseCase
+from app.features.users.use_cases.user_artist_use_case import UserArtistUseCase
+from app.features.users.use_cases.user_use_case import UserUseCase
 from app.utils.file_upload import upload_profile_image
 from fastapi import (
     APIRouter,
+    Body,
     Depends,
     File,
     Form,
@@ -32,7 +36,7 @@ from fastapi import (
     status,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 # - MARK: 약관 동의
@@ -44,9 +48,9 @@ router = APIRouter()
 async def accept_terms(
     request: AcceptTermsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
-    result = await service.accept_terms(current_user_id, request.terms_accepted)
+    result = await use_case.accept_terms(current_user_id, request.terms_accepted)
     return BaseResponse.ok(
         data=result,
         message_ko="약관 동의가 완료되었습니다.",
@@ -63,9 +67,9 @@ async def accept_terms(
 )
 async def create_user(
     user_data: SignUpRequest,
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
-    result = await service.create_user(
+    result = await use_case.create_user(
         email=user_data.email,
         name=user_data.username,
         nickname=user_data.nickname,
@@ -109,6 +113,13 @@ async def get_user_types():
                 "description_ko": "나를 팔로우하는 사용자 목록",
                 "description_en": "List of users who follow me",
             },
+            {
+                "value": "blocks",
+                "label_ko": "차단된 사용자",
+                "label_en": "Blocked Users",
+                "description_ko": "차단한 사용자 목록",
+                "description_en": "List of blocked users",
+            },
         ]
     }
     return BaseResponse.ok(
@@ -122,45 +133,54 @@ async def get_user_types():
 @router.get(
     "",
     response_model=BaseResponse[PageDto[UserDto]],
-    description="사용자 목록 조회 (type: recommended, followings, followers)",
+    description="사용자 목록 조회 (type: recommended, followings, followers, blocks)",
 )
 async def get_users(
     type: str = Query(
         ...,
-        description="사용자 타입: recommended(추천), followings(팔로우하는), followers(팔로워)",
-        regex="^(recommended|followings|followers)$",
+        description="사용자 타입: recommended(추천), followings(팔로우하는), followers(팔로워), blocks(차단된)",
+        regex="^(recommended|followings|followers|blocks)$",
     ),
     page: int = Query(1, ge=1, description="페이지 번호 (1부터 시작)"),
     size: int = Query(20, ge=1, le=100, description="페이지 크기 (1~100)"),
     current_user_id: int = Depends(get_current_user_id),
-    follow_service: FollowService = Depends(get_follow_service),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
+    block_user_use_case: BlockUserUseCase = Depends(get_block_user_use_case),
 ):
     """사용자 목록 조회"""
     if type == "recommended":
-        users = await follow_service.get_recommended_users(
+        users = await follow_use_case.get_recommended_users(
             user_id=current_user_id, page=page, size=size
         )
         message_ko = "추천 유저 목록을 조회했습니다."
         message_en = "Successfully retrieved recommended users."
     elif type == "followings":
-        users = await follow_service.get_following_list(
+        users = await follow_use_case.get_following_list(
             user_id=current_user_id, page=page, size=size
         )
         message_ko = "팔로우 목록을 조회했습니다."
         message_en = "Successfully retrieved following list."
     elif type == "followers":
-        users = await follow_service.get_followers_list(
-            user_id=current_user_id, current_user_id=current_user_id, page=page, size=size
+        users = await follow_use_case.get_followers_list(
+            user_id=current_user_id,
+            current_user_id=current_user_id,
+            page=page,
+            size=size,
         )
         message_ko = "팔로워 목록을 조회했습니다."
         message_en = "Successfully retrieved followers list."
+    elif type == "blocks":
+        users = await block_user_use_case.get_blocked_users(current_user_id, page, size)
+        message_ko = "차단된 사용자 목록을 조회했습니다."
+        message_en = "Successfully retrieved blocked users list."
     else:
         from fastapi import HTTPException
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid type. Must be one of: recommended, followings, followers",
+            detail="Invalid type. Must be one of: recommended, followings, followers, blocks",
         )
-    
+
     return BaseResponse.ok(data=users, message_ko=message_ko, message_en=message_en)
 
 
@@ -172,10 +192,10 @@ async def get_users(
 )
 async def get_my_info(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """본인 정보 조회"""
-    user = await service.get_user(current_user_id)
+    user = await use_case.get_user(current_user_id)
     return BaseResponse.ok(data=user)
 
 
@@ -187,9 +207,9 @@ async def get_my_info(
 )
 async def get_user_preferred_artists(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserArtistService = Depends(get_user_artist_service),
+    use_case: UserArtistUseCase = Depends(get_user_artist_use_case),
 ):
-    artists = await service.get_preferred_artists(current_user_id)
+    artists = await use_case.get_preferred_artists(current_user_id)
     return BaseResponse.ok(data=artists)
 
 
@@ -202,9 +222,9 @@ async def get_user_preferred_artists(
 async def update_user_preferred_artists(
     artists_data: UpdatePreferredArtistsRequest,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserArtistService = Depends(get_user_artist_service),
+    use_case: UserArtistUseCase = Depends(get_user_artist_use_case),
 ):
-    artists = await service.update_preferred_artists(
+    artists = await use_case.update_preferred_artists(
         current_user_id, artists_data.artist_ids
     )
     return BaseResponse.ok(data={"artists": artists})
@@ -219,9 +239,9 @@ async def update_user_preferred_artists(
 async def update_fcm_token(
     fcm_token: str = Query(..., alias="fcmToken", description="FCM 토큰"),
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
-    user = await service.update_fcm_token(current_user_id, fcm_token)
+    user = await use_case.update_fcm_token(current_user_id, fcm_token)
 
     return BaseResponse.ok(
         data=user,
@@ -239,10 +259,10 @@ async def update_fcm_token(
 async def get_user_info(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """다른 사용자 정보 조회 (팔로우 통계 포함)"""
-    user = await service.get_user_with_follow_stats(user_id, current_user_id)
+    user = await use_case.get_user_with_follow_stats(user_id, current_user_id)
     return BaseResponse.ok(data=user)
 
 
@@ -258,7 +278,7 @@ async def update_user_profile(
     profile_image_path: str | None = Form(None, alias="profileImagePath"),
     image: UploadFile | None = File(None),
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     # 이미지 처리: 파일 업로드 또는 경로 지정
     profile_image_url = None
@@ -279,7 +299,7 @@ async def update_user_profile(
     profile_data = UpdateProfileRequest(
         nickname=nickname, intro=intro, profile_image=profile_image_url
     )
-    user = await service.update_profile(current_user_id, profile_data)
+    user = await use_case.update_profile(current_user_id, profile_data)
     return BaseResponse.ok(data=user)
 
 
@@ -290,11 +310,11 @@ async def update_user_profile(
 )
 async def delete_my_account(
     current_user_id: int = Depends(get_current_user_id),
-    service: UserService = Depends(get_user_service),
+    use_case: UserUseCase = Depends(get_user_use_case),
 ):
     """본인 계정 삭제"""
     try:
-        await service.delete_user(current_user_id)
+        await use_case.delete_user(current_user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         # 사용자가 존재하지 않는 경우에도 204 No Content 반환
@@ -303,3 +323,66 @@ async def delete_my_account(
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         # 다른 오류는 그대로 전파
         raise e
+
+
+# - MARK: 팔로우한 사용자 알림 음소거 설정 조회
+@router.get(
+    "/me/followings/{following_id}/mute",
+    response_model=BaseResponse[dict],
+    description="팔로우한 사용자의 알림 음소거 설정 조회",
+)
+async def get_following_mute_status(
+    following_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
+):
+    """팔로우한 사용자의 알림 음소거 설정 조회"""
+    notification_status = await follow_use_case.get_notification_status(
+        follower_id=current_user_id, following_id=following_id
+    )
+
+    if not notification_status:
+        raise FollowNotFoundException(current_user_id, following_id)
+
+    # notification_enabled가 false면 muted는 true
+    muted = not notification_status.notification_enabled
+
+    return BaseResponse.ok(
+        data={"muted": muted},
+        message_ko="알림 음소거 설정을 조회했습니다.",
+        message_en="Successfully retrieved mute status.",
+    )
+
+
+# - MARK: 팔로우한 사용자 알림 음소거 설정 변경
+@router.put(
+    "/me/followings/{following_id}/mute",
+    response_model=BaseResponse[dict],
+    description="팔로우한 사용자의 알림 음소거 설정 변경",
+)
+async def update_following_mute_status(
+    following_id: int,
+    request: dict = Body(..., description="음소거 설정 요청"),
+    current_user_id: int = Depends(get_current_user_id),
+    follow_use_case: FollowUseCase = Depends(get_follow_use_case),
+):
+    """팔로우한 사용자의 알림 음소거 설정 변경"""
+    muted = request.get("muted", False)
+
+    # muted가 true면 notification_enabled는 false
+    notification_enabled = not muted
+
+    notification_status = await follow_use_case.update_notification_status(
+        follower_id=current_user_id,
+        following_id=following_id,
+        notification_enabled=notification_enabled,
+    )
+
+    if not notification_status:
+        raise FollowNotFoundException(current_user_id, following_id)
+
+    return BaseResponse.ok(
+        data={"muted": muted},
+        message_ko="알림 음소거 설정이 변경되었습니다.",
+        message_en="Successfully updated mute status.",
+    )

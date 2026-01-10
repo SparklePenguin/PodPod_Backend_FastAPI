@@ -12,7 +12,7 @@ from app.features.pods.models import (
     PodView,
     get_subcategories_by_main_category,
 )
-from app.features.pods.schemas import PodDto
+from app.features.pods.services.pod_dto_service import PodDtoService
 from app.features.users.models import User, UserBlock
 from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -150,7 +150,6 @@ class PodRepository:
         status: PodStatus = PodStatus.RECRUITING,
     ) -> Pod:
         """파티 생성 후 자체 채팅방도 함께 생성"""
-        from datetime import datetime
 
         from app.features.chat.repositories.chat_room_repository import (
             ChatRoomRepository,
@@ -180,30 +179,12 @@ class PodRepository:
             # 자체 채팅방 생성
             chat_room_repo = ChatRoomRepository(self._session)
 
-            # PodDto를 메타데이터로 저장
-            simple_pod_dto = PodDto(
-                id=getattr(pod, "id"),
-                owner_id=owner_id,
-                title=title,
-                thumbnail_url=thumbnail_url or image_url or "",
-                sub_categories=sub_categories,
-                selected_artist_id=selected_artist_id,
-                capacity=capacity,
-                place=place,
-                meeting_date=meeting_date,
-                meeting_time=meeting_time,
-                status=status,
-                is_del=False,
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-            )
-
-            # 채팅방 생성 (파티장만 참여)
+            # 채팅방 생성 (파티장만 참여) - 메타데이터는 임시로 None
             chat_room = await chat_room_repo.create_chat_room(
                 pod_id=pod.id,
                 name=title,
                 cover_url=thumbnail_url or image_url,
-                metadata=simple_pod_dto.model_dump(mode="json", by_alias=True),
+                metadata=None,  # 임시로 None, 나중에 업데이트
                 owner_id=owner_id,
             )
 
@@ -211,6 +192,17 @@ class PodRepository:
                 # Pod에 chat_room_id 저장
                 pod.chat_room_id = chat_room.id
                 await self._session.flush()
+
+                # PodDtoService를 사용하여 변환
+                simple_pod_dto = PodDtoService.convert_to_dto(pod)
+
+                # 채팅방 메타데이터 업데이트
+                chat_room.room_metadata = json.dumps(
+                    simple_pod_dto.model_dump(mode="json", by_alias=True),
+                    ensure_ascii=False,
+                )
+                await self._session.flush()
+
                 print(f"파티 {pod.id} 채팅방 생성 성공: chat_room_id={chat_room.id}")
             else:
                 print(f"파티 {pod.id} 채팅방 생성 실패")
@@ -225,7 +217,7 @@ class PodRepository:
 
     async def get_pods_with_chat_channels(self) -> List[Pod]:
         """채팅방이 있는 모든 파티 조회"""
-        from app.features.chat.models.chat_room import ChatRoom
+        from app.features.chat.models.chat_models import ChatRoom
 
         result = await self._session.execute(
             select(Pod)
@@ -269,8 +261,7 @@ class PodRepository:
     async def get_pod_detail_by_pod_id(self, pod_id: int) -> PodDetail | None:
         """PodDetail 조회"""
         result = await self._session.execute(
-            select(PodDetail)
-            .where(PodDetail.pod_id == pod_id)
+            select(PodDetail).where(PodDetail.pod_id == pod_id)
         )
         return result.scalar_one_or_none()
 
@@ -1079,20 +1070,28 @@ class PodRepository:
         """사용자가 생성한 파티 목록 조회"""
         offset = (page - 1) * size
 
+        # 전체 개수 조회 (별도 쿼리로 분리)
+        count_query = (
+            select(func.count())
+            .select_from(Pod)
+            .where(and_(~Pod.is_del, Pod.owner_id == user_id))
+        )
+        total_result = await self._session.execute(count_query)
+        total_count = total_result.scalar() or 0
+
         # 기본 쿼리
         query = (
             select(Pod)
-            .options(selectinload(Pod.detail), selectinload(Pod.images))
+            .options(
+                selectinload(Pod.detail),
+                selectinload(Pod.images),
+                # applications와 reviews는 _enrich_pod_dto에서 repository를 통해 가져오므로 여기서는 로드하지 않음
+            )
             .where(and_(~Pod.is_del, Pod.owner_id == user_id))
         )
 
         # 정렬 (최신순)
         query = query.order_by(desc(Pod.created_at))
-
-        # 전체 개수 조회
-        count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self._session.execute(count_query)
-        total_count = total_result.scalar()
 
         # 페이지네이션 적용
         query = query.offset(offset).limit(size)
@@ -1195,12 +1194,28 @@ class PodRepository:
         return False
 
     # - MARK: PodImage 관련
+    async def add_pod_image(
+        self, pod_id: int, image_url: str, thumbnail_url: str | None, display_order: int
+    ):
+        """파티 이미지 추가"""
+        from app.features.pods.models import PodImage
+
+        pod_image = PodImage(
+            pod_id=pod_id,
+            image_url=image_url,
+            thumbnail_url=thumbnail_url,
+            display_order=display_order,
+        )
+        self._session.add(pod_image)
+        await self._session.flush()
+        return pod_image
+
     async def get_pod_images(self, pod_id: int):
         """파티의 모든 이미지 조회"""
         from app.features.pods.models import PodImage
 
         result = await self._session.execute(
-            select(PodImage).where(PodImage.pod_detail_id == pod_id)
+            select(PodImage).where(PodImage.pod_id == pod_id)
         )
         return result.scalars().all()
 
@@ -1209,10 +1224,45 @@ class PodRepository:
         from app.features.pods.models import PodImage
 
         result = await self._session.execute(
-            select(PodImage).where(PodImage.pod_detail_id == pod_id)
+            select(PodImage).where(PodImage.pod_id == pod_id)
         )
         images = result.scalars().all()
 
         for image in images:
             await self._session.delete(image)
         await self._session.flush()
+
+    # - MARK: 사용자 관련 삭제 메서드
+    async def delete_all_views_by_user_id(self, user_id: int) -> None:
+        """사용자의 모든 파티 조회 기록 삭제"""
+        from sqlalchemy import delete
+
+        await self._session.execute(delete(PodView).where(PodView.user_id == user_id))
+
+    async def delete_all_members_by_user_id(self, user_id: int) -> None:
+        """사용자의 모든 파티 멤버십 삭제"""
+        from sqlalchemy import delete
+
+        await self._session.execute(
+            delete(PodMember).where(PodMember.user_id == user_id)
+        )
+
+    async def get_pods_by_owner_id(self, owner_id: int) -> List[Pod]:
+        """파티장 ID로 파티 목록 조회"""
+        result = await self._session.execute(
+            select(Pod).where(Pod.owner_id == owner_id)
+        )
+        return list(result.scalars().all())
+
+    async def cancel_pods_by_owner_id(self, owner_id: int) -> None:
+        """파티장인 파티들을 CANCELED 상태로 변경"""
+        pods = await self.get_pods_by_owner_id(owner_id)
+        for pod in pods:
+            if pod:
+                status_value = (
+                    PodStatus.CANCELED.value
+                    if hasattr(PodStatus.CANCELED, "value")
+                    else str(PodStatus.CANCELED)
+                )
+                pod.status = status_value
+                pod.is_del = False

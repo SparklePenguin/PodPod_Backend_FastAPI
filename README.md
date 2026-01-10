@@ -32,6 +32,7 @@ PodPod_Backend_FastAPI/
 
 - **Framework**: FastAPI
 - **Database**: MySQL
+- **Cache/Session**: Redis
 - **ORM**: SQLAlchemy
 - **Authentication**: JWT, OAuth (Google, Apple, Kakao, Naver)
 - **Package Manager**: uv

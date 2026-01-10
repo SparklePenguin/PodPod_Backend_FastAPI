@@ -22,9 +22,9 @@ class UserNotificationRepository:
         )
         return result.scalar_one_or_none()
 
-    # - MARK: 기본 알림 설정 생성
+    # - MARK: 기본 알림 설정 생성 (커밋 없음)
     async def create_default_settings(self, user_id: int) -> UserNotificationSettings:
-        """기본 알림 설정 생성"""
+        """기본 알림 설정 생성 (커밋은 use_case/service에서 처리)"""
         settings = UserNotificationSettings(
             user_id=user_id,
             notice_enabled=True,
@@ -35,15 +35,13 @@ class UserNotificationRepository:
             do_not_disturb_enabled=False,
         )
         self._session.add(settings)
-        await self._session.commit()
-        await self._session.refresh(settings)
         return settings
 
-    # - MARK: 알림 설정 업데이트
+    # - MARK: 알림 설정 업데이트 (커밋 없음)
     async def update_settings(
         self, user_id: int, update_data: UpdateUserNotificationSettingsRequest
     ) -> UserNotificationSettings | None:
-        """알림 설정 업데이트"""
+        """알림 설정 업데이트 (커밋은 use_case/service에서 처리)"""
         settings = await self.get_by_user_id(user_id)
         if not settings:
             return None
@@ -82,8 +80,6 @@ class UserNotificationRepository:
                 else:
                     setattr(settings, db_field, value)
 
-        await self._session.commit()
-        await self._session.refresh(settings)
         return settings
 
     # - MARK: 알림 전송 여부 확인
@@ -106,3 +102,14 @@ class UserNotificationRepository:
             return True
 
         return bool(category_mapping[notification_category])
+
+    # - MARK: 사용자 알림 설정 삭제
+    async def delete_by_user_id(self, user_id: int) -> None:
+        """사용자 ID로 알림 설정 삭제"""
+        from sqlalchemy import delete
+
+        await self._session.execute(
+            delete(UserNotificationSettings).where(
+                UserNotificationSettings.user_id == user_id
+            )
+        )

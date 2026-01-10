@@ -9,7 +9,7 @@ from datetime import datetime, time, timezone
 
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.pods.schemas import PodDto
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.features.pods.services.pod_dto_service import PodDtoService
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +17,17 @@ logger = logging.getLogger(__name__)
 class ChatPodService:
     """채팅 Pod 서비스 - Pod 정보 조회 및 변환 담당"""
 
-    def __init__(self, session: AsyncSession):
-        self._session = session
-        self._pod_repo = PodRepository(session)
+    def __init__(self, pod_repo: PodRepository) -> None:
+        """
+        Args:
+            pod_repo: Pod 레포지토리
+        """
+        self._pod_repo = pod_repo
 
     # - MARK: Pod 정보 추출 (채널 메타데이터에서)
+    @staticmethod
     def extract_pod_info_from_metadata(
-        self, channel_metadata: dict | None, channel_url: str
+        channel_metadata: dict | None, room_id: int
     ) -> tuple[int | None, str | None]:
         """채널 메타데이터에서 Pod ID와 제목 추출"""
         pod_id = None
@@ -39,14 +43,7 @@ class ChatPodService:
             pod_id = data.get("id")
             pod_title = data.get("title")
 
-        # channel_url에서도 추출 시도 (pod_{pod_id}_chat 형식)
-        if not pod_id and channel_url.startswith("pod_"):
-            try:
-                parts = channel_url.split("_")
-                if len(parts) >= 2:
-                    pod_id = int(parts[1])
-            except (ValueError, IndexError):
-                pass
+        # room_id에서 pod_id 유추 가능 (ChatRoom.pod_id가 있으므로 메타데이터에서 가져오는 게 맞음)
 
         return pod_id, pod_title
 
@@ -59,7 +56,7 @@ class ChatPodService:
                 return None, None
 
             # PodDto 변환
-            def _convert_to_timestamp(meeting_date, meeting_time):
+            def _convert_to_timestamp(meeting_date, meeting_time) -> int:
                 if meeting_date is None:
                     return 0
                 if meeting_time is None:
@@ -70,18 +67,13 @@ class ChatPodService:
                     )
                 return int(dt.timestamp() * 1000)
 
-            sub_categories = []
-            if pod.sub_categories:
-                try:
-                    sub_categories = json.loads(pod.sub_categories)
-                except (json.JSONDecodeError, TypeError):
-                    sub_categories = []
+            sub_categories = PodDtoService.parse_sub_categories(pod.sub_categories)
 
             simple_pod = PodDto(
                 id=pod.id,
                 owner_id=pod.owner_id,
                 title=pod.title,
-                thumbnail_url=pod.thumbnail_url or pod.image_url or "",
+                thumbnail_url=pod.thumbnail_url or "",
                 sub_categories=sub_categories,
                 meeting_place=pod.place,
                 meeting_date=_convert_to_timestamp(pod.meeting_date, pod.meeting_time),

@@ -19,7 +19,7 @@ class SessionRepository:
         """ID로 사용자 조회"""
         return await self._user_repo.get_by_id(user_id)
 
-    # - MARK: FCM 토큰 업데이트
+    # - MARK: FCM 토큰 업데이트 (커밋 없음)
     async def update_fcm_token(self, user_id: int, fcm_token: str | None) -> None:
-        """사용자의 FCM 토큰 업데이트"""
+        """사용자의 FCM 토큰 업데이트 (커밋은 use_case에서 처리)"""
         await self._user_repo.update_fcm_token(user_id, fcm_token)

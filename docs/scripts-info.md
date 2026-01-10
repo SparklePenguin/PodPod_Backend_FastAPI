@@ -7,7 +7,9 @@
 ./scripts/setup-dependencies.sh
 ```
 - pyenv, Python, uv 설치
+- Infisical CLI 설치
 - MySQL 클라이언트 설치
+- Redis 설치
 - Docker 설치 확인
 
 ### Python 패키지 설치/업데이트
@@ -29,7 +31,9 @@
 ```bash
 ./scripts/start-dev.sh
 ```
-Docker Compose로 전체 스택 실행 (API, DB, Redis, Monitoring)
+Docker Compose로 전체 스택 실행 (API, Redis)
+- MySQL: 호스트 로컬 사용 (host.docker.internal)
+- Redis: Docker 컨테이너 (6379 포트)
 
 ### 스테이징/프로덕션
 ```bash

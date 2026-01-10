@@ -1,37 +1,44 @@
 """Notifications feature schemas"""
 
-from .follow_noti_sub_type import FollowNotiSubType, FollowNotificationType
-from .notification_category import NotificationCategory, get_notification_category
-from .notification_response import NotificationResponse
-from .notification_unread_count_response import NotificationUnreadCountResponse
-from .notification_type import NotificationType
-from .notification_utils import get_notification_main_type
-from .pod_noti_sub_type import PodNotiSubType, PodNotificationType
-from .pod_status_noti_sub_type import (
-    PodStatusNotiSubType,
+from .notification_schemas import (
+    FollowNotificationType,
+    FollowNotiSubType,
+    NotificationCategory,
+    NotificationDto,
+    NotificationType,
+    NotificationUnreadCountResponse,
+    PodNotificationType,
+    PodNotiSubType,
     PodStatusNotificationType,
-)
-from .recommend_noti_sub_type import (
-    RecommendNotiSubType,
+    PodStatusNotiSubType,
     RecommendNotificationType,
+    RecommendNotiSubType,
+    ReviewNotificationType,
+    ReviewNotiSubType,
+    get_notification_category,
+    get_notification_main_type,
 )
-from .review_noti_sub_type import ReviewNotiSubType, ReviewNotificationType
 
 __all__ = [
-    "FollowNotiSubType",
-    "FollowNotificationType",
-    "NotificationCategory",
-    "NotificationResponse",
+    # Notification Types
     "NotificationType",
-    "NotificationUnreadCountResponse",
+    "NotificationCategory",
+    # Notification Sub Types
     "PodNotiSubType",
-    "PodNotificationType",
     "PodStatusNotiSubType",
-    "PodStatusNotificationType",
     "RecommendNotiSubType",
-    "RecommendNotificationType",
     "ReviewNotiSubType",
+    "FollowNotiSubType",
+    # Legacy Names (하위 호환성)
+    "PodNotificationType",
+    "PodStatusNotificationType",
+    "RecommendNotificationType",
     "ReviewNotificationType",
+    "FollowNotificationType",
+    # Responses
+    "NotificationDto",
+    "NotificationUnreadCountResponse",
+    # Utils
     "get_notification_category",
     "get_notification_main_type",
 ]
