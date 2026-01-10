@@ -35,7 +35,7 @@ async def initialize_websocket_redis():
         if settings.USE_WEBSOCKET_CHAT:
             from app.core.container import container
 
-            websocket_service = container.websocket_service()
+            websocket_service = container.core.websocket_service()
             if websocket_service:
                 redis = await get_redis_client()
                 websocket_service.set_redis(redis)
