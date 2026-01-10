@@ -1,31 +1,4 @@
 services:
-  # Redis (프로덕션 환경)
-  redis:
-    image: redis:7-alpine
-    container_name: podpod-redis-prod
-    restart: always
-    ports:
-      - "6381:6379"
-    volumes:
-      - redis_prod_data:/data
-    networks:
-      - podpod-network-prod
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-
   # FastAPI 애플리케이션 (프로덕션 환경)
   api:
     image: ${DOCKER_USERNAME}/podpod-backend:prod-latest
@@ -39,9 +12,6 @@ services:
       MYSQL_HOST: host.docker.internal
       MYSQL_DATABASE: podpod
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
-      # Redis 연결 (Docker 컨테이너)
-      REDIS_URL: redis://redis:6379/0
 
       # 보안 관련
       SECRET_KEY: ${SECRET_KEY}
@@ -60,10 +30,6 @@ services:
       SENDBIRD_APP_ID: ${SENDBIRD_APP_ID}
       SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN}
 
-      # Google Sheets
-      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
-      GOOGLE_SHEETS_CREDENTIALS: ${GOOGLE_SHEETS_CREDENTIALS}
-
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
     ports:
@@ -73,9 +39,6 @@ services:
       - /Users/Shared/Projects/PodPod/logs/prod:/Users/Shared/Projects/PodPod/logs/prod  # 프로덕션 로그 파일
     networks:
       - podpod-network-prod
-    depends_on:
-      redis:
-        condition: service_healthy
     # 프로덕션에서는 worker 수를 증가시켜 성능 향상
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
     healthcheck:
@@ -97,7 +60,3 @@ services:
 networks:
   podpod-network-prod:
     driver: bridge
-
-volumes:
-  redis_prod_data:
-    driver: local

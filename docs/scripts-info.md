@@ -7,9 +7,7 @@
 ./scripts/setup-dependencies.sh
 ```
 - pyenv, Python, uv 설치
-- Infisical CLI 설치
 - MySQL 클라이언트 설치
-- Redis 설치
 - Docker 설치 확인
 
 ### Python 패키지 설치/업데이트
@@ -31,9 +29,7 @@
 ```bash
 ./scripts/start-dev.sh
 ```
-Docker Compose로 전체 스택 실행 (API, Redis)
-- MySQL: 호스트 로컬 사용 (host.docker.internal)
-- Redis: Docker 컨테이너 (6379 포트)
+Docker Compose로 전체 스택 실행 (API, DB, Redis, Monitoring)
 
 ### 스테이징/프로덕션
 ```bash
@@ -72,3 +68,29 @@ Grafana, Prometheus 시작
 ```bash
 ./scripts/push-image.sh
 ```
+
+## API 스크립트
+
+### 에러 코드 Google Sheets 동기화
+```bash
+cd services/api
+python scripts/sync_error_codes_to_sheet.py
+```
+
+`errors.json`과 Google Sheets 간 에러 코드를 동기화합니다.
+
+**사전 요구사항:**
+- Infisical CLI 설치 및 로그인 (`infisical login`)
+- `/google-sheet` 경로에 다음 시크릿 설정:
+  - `GOOGLE_SHEETS_ID`: 스프레드시트 ID
+  - `GOOGLE_SERVICE_ACCOUNT_KEY`: 서비스 계정 JSON 키
+
+**기능:**
+- 도메인별 시트 자동 생성 (없는 경우)
+- JSON → Sheets 업로드
+- Sheets → JSON 다운로드 (역동기화)
+- 도메인별 에러 코드 범위:
+  - common: 0xxx, auth: 1xxx, oauth: 2xxx
+  - users: 3xxx, pods: 4xxx, artists: 5xxx
+  - tendencies: 6xxx, chat: 7xxx, follow: 8xxx
+  - notifications: 9xxx, reports: 10xxx

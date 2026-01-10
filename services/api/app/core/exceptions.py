@@ -1,13 +1,12 @@
 import logging
 from typing import Union
 
-from fastapi import Request
+from fastapi import Request, status
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.common.schemas import BaseResponse
-from fastapi import status
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ class DomainException(BusinessException):
             override_status_code: HTTP 상태 코드 오버라이드 (선택)
             override_dev_note: 개발자 노트 오버라이드 (선택)
         """
-        from app.core.error_codes import get_error_info
+        from app.core.errors import get_error_info
 
         self.error_key = error_key
         self.format_params = format_params or {}
@@ -117,10 +116,43 @@ class DomainException(BusinessException):
         self.error_code_num = error_code_num
 
 
+def _get_error_key_from_http_exception(
+    status_code: int, detail: str | None
+) -> str | None:
+    """
+    HTTP 상태 코드와 detail 메시지로 errors.json의 에러 키 매핑
+
+    Returns:
+        errors.json에 정의된 에러 키 또는 None
+    """
+    detail_lower = (detail or "").lower()
+
+    # 인증 관련 에러 (HTTPBearer 등에서 발생)
+    if status_code == 403 and "not authenticated" in detail_lower:
+        return "AUTHENTICATION_REQUIRED"
+    if status_code == 401:
+        if "expired" in detail_lower:
+            return "TOKEN_EXPIRED"
+        if "invalid" in detail_lower:
+            return "INVALID_TOKEN"
+        return "AUTHENTICATION_REQUIRED"
+
+    # 일반 HTTP 상태 코드 매핑
+    status_to_error_key = {
+        400: "BAD_REQUEST",
+        404: "NOT_FOUND",
+        500: "INTERNAL_SERVER_ERROR",
+    }
+
+    return status_to_error_key.get(status_code)
+
+
 async def http_exception_handler(
     request: Request, exc: Union[HTTPException, StarletteHTTPException]
 ):
     """HTTPException 처리 → BaseResponse 패턴으로 응답"""
+    from app.core.errors import get_error_info
+
     logger.error(f"HTTP Exception: {exc.status_code} - {exc.detail}")
 
     # HTTPException의 detail이 이미 BaseResponse 형태인지 확인
@@ -134,17 +166,45 @@ async def http_exception_handler(
             message_en=exc.detail.get("messageEn", str(exc.detail)),
             dev_note=exc.detail.get("devNote", "HTTP error occurred"),
         )
-    else:
-        # 일반적인 HTTPException의 경우 BaseResponse 형태로 변환
-        response = BaseResponse(
-            data=None,
-            error_key="HTTP_ERROR",
-            error_code=exc.status_code,
-            http_status=exc.status_code,
-            message_ko=str(exc.detail),
-            message_en=str(exc.detail),
-            dev_note="HTTP error occurred",
+        return JSONResponse(
+            status_code=exc.status_code, content=response.model_dump(by_alias=True)
         )
+
+    # errors.json에서 매핑된 에러 키 찾기
+    error_key = _get_error_key_from_http_exception(
+        exc.status_code, str(exc.detail) if exc.detail else None
+    )
+
+    if error_key:
+        try:
+            error_info = get_error_info(error_key)
+            response = BaseResponse(
+                data=None,
+                error_key=error_key,
+                error_code=error_info.code,
+                http_status=error_info.http_status,
+                message_ko=error_info.message_ko,
+                message_en=error_info.message_en,
+                dev_note=error_info.dev_note,
+            )
+            return JSONResponse(
+                status_code=error_info.http_status,
+                content=response.model_dump(by_alias=True),
+            )
+        except ValueError:
+            # errors.json에 해당 키가 없으면 기본 처리로 폴백
+            pass
+
+    # 매핑되지 않은 HTTPException은 기본 형태로 변환
+    response = BaseResponse(
+        data=None,
+        error_key="HTTP_ERROR",
+        error_code=exc.status_code,
+        http_status=exc.status_code,
+        message_ko=str(exc.detail),
+        message_en=str(exc.detail),
+        dev_note="HTTP error occurred",
+    )
 
     return JSONResponse(
         status_code=exc.status_code, content=response.model_dump(by_alias=True)
@@ -207,7 +267,8 @@ async def value_error_handler(request: Request, exc: ValueError):
         dev_note="Request validation failed",
     )
     return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST, content=response.model_dump(by_alias=True)
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=response.model_dump(by_alias=True),
     )
 
 

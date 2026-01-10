@@ -1,23 +1,4 @@
 services:
-  # Redis (스테이징 환경)
-  redis:
-    image: redis:7-alpine
-    container_name: podpod-redis-stg
-    restart: unless-stopped
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_stg_data:/data
-    networks:
-      - podpod-network-stg
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   # FastAPI 애플리케이션 (스테이징 환경)
   api:
     image: ${DOCKER_USERNAME}/podpod-backend:stg-latest
@@ -31,9 +12,6 @@ services:
       MYSQL_HOST: host.docker.internal
       MYSQL_DATABASE: podpod_staging
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
-      # Redis 연결 (Docker 컨테이너)
-      REDIS_URL: redis://redis:6379/0
 
       # 보안 관련
       SECRET_KEY: ${SECRET_KEY}
@@ -52,10 +30,6 @@ services:
       SENDBIRD_APP_ID: ${SENDBIRD_APP_ID}
       SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN}
 
-      # Google Sheets
-      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
-      GOOGLE_SHEETS_CREDENTIALS: ${GOOGLE_SHEETS_CREDENTIALS}
-
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
     ports:
@@ -65,9 +39,6 @@ services:
       - /Users/Shared/Projects/PodPod/logs/stg:/Users/Shared/Projects/PodPod/logs/stg  # 스테이징 로그 파일
     networks:
       - podpod-network-stg
-    depends_on:
-      redis:
-        condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -79,7 +50,3 @@ services:
 networks:
   podpod-network-stg:
     driver: bridge
-
-volumes:
-  redis_stg_data:
-    driver: local
