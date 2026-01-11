@@ -327,7 +327,6 @@ pyrightconfig.json
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
 pyvenv.cfg
 pip-selfcheck.json
 
@@ -355,16 +354,15 @@ pip-selfcheck.json
 .vscode
 
 # Uploaded files
-services/api/uploads/
-# 예외: dev 환경의 artists와 profile_random_images는 Git에 포함
+services/api/uploads/*
+
+# 중간 디렉토리는 다시 포함
+!services/api/uploads/dev/
 !services/api/uploads/dev/artists/
 !services/api/uploads/dev/profile_random_images/
 
 # Prometheus
 data/
 prometheus.log
-
-# Dependencies markers
-scripts/.setup
 
 logs/*
