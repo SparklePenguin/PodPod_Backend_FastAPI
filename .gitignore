@@ -368,3 +368,4 @@ prometheus.log
 scripts/.setup
 
 logs/*
+*.log.*

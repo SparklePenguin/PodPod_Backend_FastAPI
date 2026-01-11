@@ -1,0 +1,323 @@
+{
+  "pod": {
+    "POD_JOIN_REQUEST": {
+      "code": 1001,
+      "message_template": "[nickname]님이 모임에 참여를 요청했어요. 확인해 보세요!",
+      "placeholders": [
+        "nickname"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "owner",
+      "description_ko": "파티 참여 요청 알림",
+      "description_en": "Pod join request notification",
+      "dev_note": "파티장에게 전송"
+    },
+    "POD_REQUEST_APPROVED": {
+      "code": 1002,
+      "message_template": "👋 [party_name] 참여가 확정되었어요! 채팅방에서 인사 나눠보세요.",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "requester",
+      "description_ko": "파티 참여 요청 승인 알림",
+      "description_en": "Pod join request approved notification",
+      "dev_note": "요청자에게 전송"
+    },
+    "POD_REQUEST_REJECTED": {
+      "code": 1003,
+      "message_template": "😢 아쉽게도 [party_name] 참여가 어렵게 되었어요. 다른 모임도 둘러보세요.",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "requester",
+      "description_ko": "파티 참여 요청 거절 알림",
+      "description_en": "Pod join request rejected notification",
+      "dev_note": "요청자에게 전송"
+    },
+    "POD_NEW_MEMBER": {
+      "code": 1004,
+      "message_template": "👋 새로운 파티원 [nickname]님이 [party_name] 모임에 함께하게 되었어요!",
+      "placeholders": [
+        "nickname",
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "existing_members",
+      "description_ko": "새 멤버 참여 알림",
+      "description_en": "New member joined notification",
+      "dev_note": "기존 파티원들에게 전송"
+    },
+    "POD_UPDATED": {
+      "code": 1005,
+      "message_template": "🛠️ [party_name] 모임 정보가 변경되었어요. 지금 확인해 보세요.",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "all_members",
+      "description_ko": "파티 정보 수정 알림",
+      "description_en": "Pod updated notification",
+      "dev_note": "파티장 및 파티원에게 전송"
+    },
+    "POD_CONFIRMED": {
+      "code": 1006,
+      "message_template": "✅ 모임이 드디어 확정! [party_name]에 함께할 준비 되셨죠?",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "members",
+      "description_ko": "파티 확정 알림",
+      "description_en": "Pod confirmed notification",
+      "dev_note": "파티원에게 전송"
+    },
+    "POD_CANCELED": {
+      "code": 1007,
+      "message_template": "😢 [party_name] 모임이 취소되었어요.",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "members",
+      "description_ko": "파티 취소 알림",
+      "description_en": "Pod canceled notification",
+      "dev_note": "파티원에게 전송"
+    },
+    "POD_START_SOON": {
+      "code": 1008,
+      "message_template": "⏰ [party_name] 모임이 한 시간 뒤 시작돼요. 준비되셨나요?",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "all_participants",
+      "description_ko": "파티 시작 1시간 전 알림",
+      "description_en": "Pod starting soon notification",
+      "dev_note": "스케줄러 리마인더 - 확정된 파티 참여자에게 전송"
+    },
+    "POD_LOW_ATTENDANCE": {
+      "code": 1009,
+      "message_template": "😢 [party_name] 오늘 파티가 확정되지 않으면 취소돼요. 시간이 더 필요하다면 일정을 수정할 수 있어요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "owner",
+      "description_ko": "파티 마감 24시간 전 인원 부족 알림",
+      "description_en": "Low attendance reminder notification",
+      "dev_note": "스케줄러 리마인더 - 모집 중인 파티 파티장에게 전송"
+    },
+    "POD_CANCELED_SOON": {
+      "code": 1010,
+      "message_template": "😢 [party_name] 팟티가 곧 취소돼요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "category": "POD",
+      "target": "owner",
+      "description_ko": "파티 취소 임박 알림",
+      "description_en": "Pod cancellation warning notification",
+      "dev_note": "스케줄러 리마인더 - 1시간 이내 시작하는 모집 중 파티 파티장에게 전송"
+    }
+  },
+  "pod_status": {
+    "POD_LIKES_THRESHOLD": {
+      "code": 2001,
+      "message_template": "🎉 [party_name] 모임에 좋아요가 10개 이상 쌓였어요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD_STATUS",
+      "category": "POD",
+      "target": "owner",
+      "description_ko": "좋아요 10개 달성 알림",
+      "description_en": "10 likes threshold notification",
+      "dev_note": "파티장에게 전송"
+    },
+    "POD_VIEWS_THRESHOLD": {
+      "code": 2002,
+      "message_template": "🔥 [party_name]에 관심이 몰리고 있어요. 인기 모임이 될지도 몰라요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD_STATUS",
+      "category": "POD",
+      "target": "owner",
+      "description_ko": "조회수 10회 달성 알림",
+      "description_en": "10 views threshold notification",
+      "dev_note": "파티장에게 전송"
+    },
+    "POD_COMPLETED": {
+      "code": 2003,
+      "message_template": "🎉 [party_name] 모임이 완료되었습니다! 즐거운 시간 보내셨나요?",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD_STATUS",
+      "category": "POD",
+      "target": "participants",
+      "description_ko": "파티 완료 알림",
+      "description_en": "Pod completed notification",
+      "dev_note": "참여자들에게 전송"
+    },
+    "POD_CAPACITY_FULL": {
+      "code": 2004,
+      "message_template": "👋 [party_name] 참여 인원이 모두 모였어요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "POD_STATUS",
+      "category": "POD",
+      "target": "owner",
+      "description_ko": "파티 정원 가득 참 알림",
+      "description_en": "Pod capacity full notification",
+      "dev_note": "파티장에게 전송"
+    }
+  },
+  "recommend": {
+    "SAVED_POD_DEADLINE": {
+      "code": 3001,
+      "message_template": "🚨 [party_name] 곧 마감돼요! 신청 놓칠지도 몰라요 😥",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "RECOMMEND",
+      "category": "POD",
+      "target": "liked_users",
+      "description_ko": "좋아요한 파티 마감 임박 알림",
+      "description_en": "Saved pod deadline notification",
+      "dev_note": "스케줄러 리마인더 - 좋아요한 사용자에게 전송"
+    },
+    "SAVED_POD_SPOT_OPENED": {
+      "code": 3002,
+      "message_template": "🎉 [party_name]에 자리가 생겼어요! 지금 신청해 보세요.",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "RECOMMEND",
+      "category": "POD",
+      "target": "liked_users",
+      "description_ko": "좋아요한 파티 자리 생김 알림",
+      "description_en": "Saved pod spot opened notification",
+      "dev_note": "좋아요한 사용자에게 전송"
+    }
+  },
+  "review": {
+    "REVIEW_CREATED": {
+      "code": 4001,
+      "message_template": "📝 [nickname]님이 [party_name]에 대한 리뷰를 남겼어요!",
+      "placeholders": [
+        "nickname",
+        "party_name"
+      ],
+      "related_id_key": "review_id",
+      "notification_type": "REVIEW",
+      "category": "COMMUNITY",
+      "target": "pod_owner",
+      "description_ko": "리뷰 등록 알림",
+      "description_en": "Review created notification",
+      "dev_note": "파티장에게 전송"
+    },
+    "REVIEW_REMINDER_DAY": {
+      "code": 4002,
+      "message_template": "😊 오늘 [party_name] 어떠셨나요? 소중한 리뷰를 남겨보세요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "REVIEW",
+      "category": "COMMUNITY",
+      "target": "participants",
+      "description_ko": "리뷰 작성 유도 알림 (1일 후)",
+      "description_en": "Review reminder 1 day after",
+      "dev_note": "스케줄러 리마인더 - 모든 참여자에게 전송"
+    },
+    "REVIEW_REMINDER_WEEK": {
+      "code": 4003,
+      "message_template": "💭 [party_name] 후기가 궁금해요. 어땠는지 들려주세요!",
+      "placeholders": [
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "REVIEW",
+      "category": "COMMUNITY",
+      "target": "non_reviewers",
+      "description_ko": "리뷰 리마인드 알림 (1주일 후)",
+      "description_en": "Review reminder 1 week after",
+      "dev_note": "스케줄러 리마인더 - 리뷰 미작성 참여자에게 전송 (파티장 제외)"
+    },
+    "REVIEW_OTHERS_CREATED": {
+      "code": 4004,
+      "message_template": "👀 같은 모임에 참여한 [nickname]님의 후기가 도착했어요!",
+      "placeholders": [
+        "nickname"
+      ],
+      "related_id_key": "review_id",
+      "notification_type": "REVIEW",
+      "category": "COMMUNITY",
+      "target": "other_participants",
+      "description_ko": "다른 참여자 리뷰 작성 알림",
+      "description_en": "Other participant review created notification",
+      "dev_note": "같은 파티 다른 참여자들에게 전송"
+    }
+  },
+  "follow": {
+    "FOLLOWED_BY_USER": {
+      "code": 5001,
+      "message_template": "👋 [nickname]님이 당신을 팔로우했어요! 새로운 만남을 기대해 볼까요?",
+      "placeholders": [
+        "nickname"
+      ],
+      "related_id_key": "follow_user_id",
+      "notification_type": "FOLLOW",
+      "category": "COMMUNITY",
+      "target": "followed_user",
+      "description_ko": "팔로우 알림",
+      "description_en": "Followed by user notification",
+      "dev_note": "팔로우된 사용자에게 전송"
+    },
+    "FOLLOWED_USER_CREATED_POD": {
+      "code": 5002,
+      "message_template": "🎉 [nickname]님이 새로운 모임 [party_name]을 만들었어요!",
+      "placeholders": [
+        "nickname",
+        "party_name"
+      ],
+      "related_id_key": "pod_id",
+      "notification_type": "FOLLOW",
+      "category": "COMMUNITY",
+      "target": "followers",
+      "description_ko": "팔로우한 유저 파티 생성 알림",
+      "description_en": "Followed user created pod notification",
+      "dev_note": "팔로워들에게 전송"
+    }
+  }
+}
