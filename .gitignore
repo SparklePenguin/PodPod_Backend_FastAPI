@@ -327,8 +327,6 @@ pyrightconfig.json
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
-!services/api/scripts/
 pyvenv.cfg
 pip-selfcheck.json
 
@@ -357,6 +355,7 @@ pip-selfcheck.json
 
 # Uploaded files
 services/api/uploads/
+
 # 예외: dev 환경의 artists와 profile_random_images는 Git에 포함
 !services/api/uploads/dev/artists/
 !services/api/uploads/dev/profile_random_images/
