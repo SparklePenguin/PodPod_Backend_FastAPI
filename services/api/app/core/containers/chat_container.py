@@ -18,9 +18,7 @@ def _get_connection_manager(ws: WebSocketService | None) -> ConnectionManager | 
     return ws.get_connection_manager() if ws else None
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class ChatRepoContainer(containers.DeclarativeContainer):
     """채팅 Repository 컨테이너"""
 
@@ -65,9 +63,7 @@ class ChatPodRepoContainer(containers.DeclarativeContainer):
     pod_repo = providers.Factory(PodRepository, session=core.session)
 
 
-# ===================
-# Service Containers
-# ===================
+# MARK: - Service Containers
 class ChatMessageServiceContainer(containers.DeclarativeContainer):
     """채팅 메시지 Service 컨테이너"""
 
@@ -125,9 +121,7 @@ class ChatNotificationServiceContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class ChatRoomUseCaseContainer(containers.DeclarativeContainer):
     """채팅방 UseCase 컨테이너"""
 
@@ -172,9 +166,7 @@ class ChatUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class ChatContainer(containers.DeclarativeContainer):
     """채팅 통합 컨테이너"""
 

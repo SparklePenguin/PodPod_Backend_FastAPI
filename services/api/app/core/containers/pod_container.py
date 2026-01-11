@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class PodRepoContainer(containers.DeclarativeContainer):
     """파티 Repository 컨테이너"""
 
@@ -63,9 +61,7 @@ class PodUserRepoContainer(containers.DeclarativeContainer):
     user_repo = providers.Factory(UserRepository, session=core.session)
 
 
-# ===================
-# Service Containers
-# ===================
+# MARK: - Service Containers
 class ReviewDtoServiceContainer(containers.DeclarativeContainer):
     """리뷰 DTO Service 컨테이너"""
 
@@ -209,9 +205,7 @@ class PodEnrichmentServiceContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class ApplicationUseCaseContainer(containers.DeclarativeContainer):
     """신청 UseCase 컨테이너"""
 
@@ -324,17 +318,19 @@ class PodUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class PodContainer(containers.DeclarativeContainer):
     """파티 통합 컨테이너"""
 
     from app.core.containers.core_container import CoreContainer
-    from app.core.containers.follow_container import FollowContainer
+    from app.core.containers.follow_container import FollowUseCaseContainer
 
     core: CoreContainer = providers.DependenciesContainer()
-    follow: FollowContainer = providers.DependenciesContainer()
+
+    # FollowUseCaseContainer를 직접 생성
+    follow_use_case: FollowUseCaseContainer = providers.Container(
+        FollowUseCaseContainer, core=core
+    )
 
     # Repositories
     pod_repo: PodRepoContainer = providers.Container(PodRepoContainer, core=core)
@@ -424,7 +420,7 @@ class PodContainer(containers.DeclarativeContainer):
         pod_repo=pod_repo,
         user_repo=user_repo,
         enrichment_service=pod_enrichment_service,
-        follow_use_case=follow.use_case,
+        follow_use_case=follow_use_case,
     )
     pod_use_case: PodUseCaseContainer = providers.Container(
         PodUseCaseContainer,
@@ -432,5 +428,5 @@ class PodContainer(containers.DeclarativeContainer):
         pod_repo=pod_repo,
         enrichment_service=pod_enrichment_service,
         notification_service=pod_notification_service,
-        follow_use_case=follow.use_case,
+        follow_use_case=follow_use_case,
     )

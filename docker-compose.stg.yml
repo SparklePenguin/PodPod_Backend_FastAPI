@@ -1,4 +1,22 @@
 services:
+  # Redis (스테이징 환경)
+  redis:
+    image: redis:7-alpine
+    container_name: podpod-redis-stg
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_stg_data:/data
+    networks:
+      - podpod-network-stg
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # FastAPI 애플리케이션 (스테이징 환경)
   api:
     image: ${DOCKER_USERNAME}/podpod-backend:stg-latest
@@ -32,6 +50,10 @@ services:
 
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8001:8000"
     volumes:
@@ -47,6 +69,14 @@ services:
       retries: 3
       start_period: 40s
 
+    depends_on:
+      redis:
+        condition: service_healthy
+
 networks:
   podpod-network-stg:
     driver: bridge
+
+volumes:
+  redis_stg_data:
+    driver: local

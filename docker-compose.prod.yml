@@ -1,4 +1,22 @@
 services:
+  # Redis (프로덕션 환경)
+  redis:
+    image: redis:7-alpine
+    container_name: podpod-redis-prod
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - podpod-network-prod
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # FastAPI 애플리케이션 (프로덕션 환경)
   api:
     image: ${DOCKER_USERNAME}/podpod-backend:prod-latest
@@ -32,6 +50,10 @@ services:
 
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8000:8000"
     volumes:
@@ -57,6 +79,14 @@ services:
           cpus: '0.5'
           memory: 512M
 
+    depends_on:
+      redis:
+        condition: service_healthy
+
 networks:
   podpod-network-prod:
     driver: bridge
+
+volumes:
+  redis_prod_data:
+    driver: local

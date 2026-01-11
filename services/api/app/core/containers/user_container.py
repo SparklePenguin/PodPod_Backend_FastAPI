@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class UserRepoContainer(containers.DeclarativeContainer):
     """사용자 Repository 컨테이너"""
 
@@ -63,9 +61,7 @@ class UserReportRepoContainer(containers.DeclarativeContainer):
     user_report_repo = providers.Factory(UserReportRepository, session=core.session)
 
 
-# ===================
-# Service Containers
-# ===================
+# MARK: - Service Containers
 class UserDtoServiceContainer(containers.DeclarativeContainer):
     """사용자 DTO Service 컨테이너"""
 
@@ -82,9 +78,7 @@ class UserStateServiceContainer(containers.DeclarativeContainer):
     user_state_service = providers.Singleton(UserStateService)
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class UserUseCaseContainer(containers.DeclarativeContainer):
     """사용자 UseCase 컨테이너"""
 
@@ -194,25 +188,41 @@ class UserArtistUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class UserContainer(containers.DeclarativeContainer):
     """사용자 통합 컨테이너"""
 
-    from app.core.containers.artist_container import ArtistContainer
+    from app.core.containers.artist_container import ArtistRepoContainer
     from app.core.containers.core_container import CoreContainer
-    from app.core.containers.follow_container import FollowContainer
-    from app.core.containers.notification_container import NotificationContainer
-    from app.core.containers.pod_container import PodContainer
-    from app.core.containers.tendency_container import TendencyContainer
+    from app.core.containers.follow_container import (
+        FollowRepoContainer,
+        FollowUseCaseContainer,
+    )
+    from app.core.containers.notification_container import (
+        NotificationDtoServiceContainer,
+        NotificationRepoContainer,
+    )
+    from app.core.containers.pod_container import PodRepoContainer
+    from app.core.containers.tendency_container import TendencyRepoContainer
 
     core: CoreContainer = providers.DependenciesContainer()
-    follow: FollowContainer = providers.DependenciesContainer()
-    notification: NotificationContainer = providers.DependenciesContainer()
-    tendency: TendencyContainer = providers.DependenciesContainer()
-    pod: PodContainer = providers.DependenciesContainer()
-    artist: ArtistContainer = providers.DependenciesContainer()
+
+    # 외부 컨테이너들 직접 생성
+    follow_repo: FollowRepoContainer = providers.Container(FollowRepoContainer, core=core)
+    follow_use_case_container: FollowUseCaseContainer = providers.Container(
+        FollowUseCaseContainer, core=core
+    )
+    notification_repo: NotificationRepoContainer = providers.Container(
+        NotificationRepoContainer, core=core
+    )
+    tendency_repo: TendencyRepoContainer = providers.Container(
+        TendencyRepoContainer, core=core
+    )
+    pod_repo: PodRepoContainer = providers.Container(PodRepoContainer, core=core)
+    artist_repo: ArtistRepoContainer = providers.Container(ArtistRepoContainer, core=core)
+    notification_service: NotificationDtoServiceContainer = providers.Container(
+        NotificationDtoServiceContainer, tendency_repo=tendency_repo
+    )
 
     # Repositories
     user_repo: UserRepoContainer = providers.Container(UserRepoContainer, core=core)
@@ -242,11 +252,11 @@ class UserContainer(containers.DeclarativeContainer):
         user_repo=user_repo,
         user_artist_repo=user_artist_repo,
         user_notification_repo=user_notification_repo,
-        follow_repo=follow.repo,
-        follow_use_case=follow.use_case,
-        notification_repo=notification.repo,
-        tendency_repo=tendency.repo,
-        pod_repo=pod.pod_repo,
+        follow_repo=follow_repo,
+        follow_use_case=follow_use_case_container,
+        notification_repo=notification_repo,
+        tendency_repo=tendency_repo,
+        pod_repo=pod_repo,
         user_state_service=user_state_service,
         user_dto_service=user_dto_service,
     )
@@ -256,20 +266,20 @@ class UserContainer(containers.DeclarativeContainer):
         core=core,
         user_repo=user_repo,
         block_user_repo=block_user_repo,
-        follow_repo=follow.repo,
-        tendency_repo=tendency.repo,
+        follow_repo=follow_repo,
+        tendency_repo=tendency_repo,
     )
 
     user_notification_use_case: UserNotificationUseCaseContainer = providers.Container(
         UserNotificationUseCaseContainer,
         core=core,
         user_notification_repo=user_notification_repo,
-        notification_service=notification.service,
+        notification_service=notification_service,
     )
 
     user_artist_use_case: UserArtistUseCaseContainer = providers.Container(
         UserArtistUseCaseContainer,
         core=core,
         user_artist_repo=user_artist_repo,
-        artist_repo=artist.repo,
+        artist_repo=artist_repo,
     )

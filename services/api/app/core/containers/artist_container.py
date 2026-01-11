@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class ArtistRepoContainer(containers.DeclarativeContainer):
     """아티스트 Repository 컨테이너"""
 
@@ -17,9 +15,7 @@ class ArtistRepoContainer(containers.DeclarativeContainer):
     artist_repo = providers.Factory(ArtistRepository, session=core.session)
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class GetArtistUseCaseContainer(containers.DeclarativeContainer):
     """아티스트 조회 UseCase 컨테이너"""
 
@@ -141,9 +137,7 @@ class GetSuggestionsByArtistNameUseCaseContainer(containers.DeclarativeContainer
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class ArtistContainer(containers.DeclarativeContainer):
     """아티스트 통합 컨테이너"""
 

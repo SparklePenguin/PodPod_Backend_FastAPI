@@ -13,6 +13,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
+      - mysql_dev_data:/var/lib/mysql
       - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
     networks:
       - podpod-network
@@ -28,16 +29,10 @@ services:
     image: redis:7-alpine
     container_name: podpod-redis-dev
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: podpod_dev
-      MYSQL_CHARACTER_SET_SERVER: utf8mb4
-      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "6379:6379"
     volumes:
-      - mysql_dev_data:/var/lib/mysql
-      - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
+      - redis_dev_data:/data
     networks:
       - podpod-network
     healthcheck:
@@ -45,7 +40,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 10s
 
   # FastAPI 애플리케이션
   api:
@@ -87,6 +82,10 @@ services:
 
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
+
+      # Redis (도커 컨테이너 내부에서는 서비스명으로 접근)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8000:8000"
     volumes:
@@ -100,6 +99,8 @@ services:
       - podpod-network
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
@@ -115,4 +116,6 @@ networks:
 
 volumes:
   mysql_dev_data:
+    driver: local
+  redis_dev_data:
     driver: local

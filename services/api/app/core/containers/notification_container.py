@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class NotificationRepoContainer(containers.DeclarativeContainer):
     """알림 Repository 컨테이너"""
 
@@ -19,9 +17,7 @@ class NotificationRepoContainer(containers.DeclarativeContainer):
     notification_repo = providers.Factory(NotificationRepository, session=core.session)
 
 
-# ===================
-# Service Containers
-# ===================
+# MARK: - Service Containers
 class NotificationDtoServiceContainer(containers.DeclarativeContainer):
     """알림 DTO Service 컨테이너"""
 
@@ -38,9 +34,7 @@ class NotificationDtoServiceContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class NotificationUseCaseContainer(containers.DeclarativeContainer):
     """알림 UseCase 컨테이너"""
 
@@ -64,14 +58,12 @@ class NotificationUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class NotificationContainer(containers.DeclarativeContainer):
     """알림 통합 컨테이너"""
 
     from app.core.containers.core_container import CoreContainer
-    from app.core.containers.tendency_container import TendencyContainer
+    from app.core.containers.tendency_container import TendencyRepoContainer
     from app.features.notifications.repositories.notification_repository import (
         NotificationRepository,
     )
@@ -83,7 +75,11 @@ class NotificationContainer(containers.DeclarativeContainer):
     )
 
     core: CoreContainer = providers.DependenciesContainer()
-    tendency: TendencyContainer = providers.DependenciesContainer()
+
+    # TendencyRepoContainer를 직접 생성
+    tendency_repo: TendencyRepoContainer = providers.Container(
+        TendencyRepoContainer, core=core
+    )
 
     # Repositories
     repo: NotificationRepoContainer = providers.Container(
@@ -93,7 +89,7 @@ class NotificationContainer(containers.DeclarativeContainer):
     # Services
     service: NotificationDtoServiceContainer = providers.Container(
         NotificationDtoServiceContainer,
-        tendency_repo=tendency.repo,
+        tendency_repo=tendency_repo,
     )
 
     # UseCases
@@ -101,7 +97,7 @@ class NotificationContainer(containers.DeclarativeContainer):
         NotificationUseCaseContainer,
         core=core,
         notification_repo=repo,
-        tendency_repo=tendency.repo,
+        tendency_repo=tendency_repo,
         dto_service=service,
     )
 

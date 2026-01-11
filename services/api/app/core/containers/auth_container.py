@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Service Containers
-# ===================
+# MARK: - Service Containers
 class AuthServiceContainer(containers.DeclarativeContainer):
     """인증 Service 컨테이너"""
 
@@ -49,9 +47,7 @@ class NaverOAuthServiceContainer(containers.DeclarativeContainer):
     naver_oauth_service = providers.Singleton(NaverOAuthService)
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class OAuthUseCaseContainer(containers.DeclarativeContainer):
     """OAuth UseCase 컨테이너"""
 
@@ -84,17 +80,74 @@ class OAuthUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class AuthContainer(containers.DeclarativeContainer):
     """인증 통합 컨테이너"""
 
     from app.core.containers.core_container import CoreContainer
-    from app.core.containers.user_container import UserContainer
+    from app.core.containers.follow_container import (
+        FollowRepoContainer,
+        FollowUseCaseContainer,
+    )
+    from app.core.containers.notification_container import (
+        NotificationDtoServiceContainer,
+        NotificationRepoContainer,
+    )
+    from app.core.containers.pod_container import PodRepoContainer
+    from app.core.containers.tendency_container import TendencyRepoContainer
+    from app.core.containers.user_container import (
+        UserArtistRepoContainer,
+        UserDtoServiceContainer,
+        UserNotificationRepoContainer,
+        UserRepoContainer,
+        UserStateServiceContainer,
+        UserUseCaseContainer,
+    )
 
     core: CoreContainer = providers.DependenciesContainer()
-    user: UserContainer = providers.DependenciesContainer()
+
+    # User 관련 컨테이너들 직접 생성
+    user_repo: UserRepoContainer = providers.Container(UserRepoContainer, core=core)
+    user_artist_repo: UserArtistRepoContainer = providers.Container(
+        UserArtistRepoContainer, core=core
+    )
+    user_notification_repo: UserNotificationRepoContainer = providers.Container(
+        UserNotificationRepoContainer, core=core
+    )
+    follow_repo: FollowRepoContainer = providers.Container(FollowRepoContainer, core=core)
+    follow_use_case_container: FollowUseCaseContainer = providers.Container(
+        FollowUseCaseContainer, core=core
+    )
+    notification_repo: NotificationRepoContainer = providers.Container(
+        NotificationRepoContainer, core=core
+    )
+    tendency_repo: TendencyRepoContainer = providers.Container(
+        TendencyRepoContainer, core=core
+    )
+    pod_repo: PodRepoContainer = providers.Container(PodRepoContainer, core=core)
+    notification_service: NotificationDtoServiceContainer = providers.Container(
+        NotificationDtoServiceContainer, tendency_repo=tendency_repo
+    )
+    user_dto_service: UserDtoServiceContainer = providers.Container(UserDtoServiceContainer)
+    user_state_service: UserStateServiceContainer = providers.Container(
+        UserStateServiceContainer
+    )
+
+    # UserUseCaseContainer 생성
+    user_use_case: UserUseCaseContainer = providers.Container(
+        UserUseCaseContainer,
+        core=core,
+        user_repo=user_repo,
+        user_artist_repo=user_artist_repo,
+        user_notification_repo=user_notification_repo,
+        follow_repo=follow_repo,
+        follow_use_case=follow_use_case_container,
+        notification_repo=notification_repo,
+        tendency_repo=tendency_repo,
+        pod_repo=pod_repo,
+        user_state_service=user_state_service,
+        user_dto_service=user_dto_service,
+    )
 
     # Services
     auth_service: AuthServiceContainer = providers.Container(AuthServiceContainer, core=core)
@@ -115,8 +168,8 @@ class AuthContainer(containers.DeclarativeContainer):
     oauth_use_case: OAuthUseCaseContainer = providers.Container(
         OAuthUseCaseContainer,
         core=core,
-        user_repo=user.user_repo,
-        user_use_case=user.user_use_case,
+        user_repo=user_repo,
+        user_use_case=user_use_case,
         auth_service=auth_service,
         kakao_service=kakao_oauth_service,
         google_service=google_oauth_service,

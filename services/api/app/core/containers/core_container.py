@@ -27,20 +27,14 @@ class CoreContainer(containers.DeclarativeContainer):
     from redis.asyncio import Redis
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    # ===================
-    # Configuration
-    # ===================
+    # MARK: - Configuration
     config = providers.Configuration()
 
-    # ===================
-    # External Dependencies
-    # ===================
+    # MARK: - External Dependencies
     session = providers.Dependency(instance_of=AsyncSession)
     redis = providers.Dependency(instance_of=Redis)
 
-    # ===================
-    # Services
-    # ===================
+    # MARK: - Services
     from app.features.notifications.services.fcm_service import FCMService
     from app.features.users.services.random_profile_image_service import (
         RandomProfileImageService,

@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class FollowRepoContainer(containers.DeclarativeContainer):
     """팔로우 Repository 컨테이너"""
 
@@ -17,9 +15,7 @@ class FollowRepoContainer(containers.DeclarativeContainer):
     follow_repo = providers.Factory(FollowRepository, session=core.session)
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class FollowUseCaseContainer(containers.DeclarativeContainer):
     """팔로우 UseCase 컨테이너"""
 
@@ -35,9 +31,7 @@ class FollowUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class FollowContainer(containers.DeclarativeContainer):
     """팔로우 통합 컨테이너"""
 

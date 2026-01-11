@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class TendencyRepoContainer(containers.DeclarativeContainer):
     """성향 Repository 컨테이너"""
 
@@ -19,9 +17,7 @@ class TendencyRepoContainer(containers.DeclarativeContainer):
     tendency_repo = providers.Factory(TendencyRepository, session=core.session)
 
 
-# ===================
-# Service Containers
-# ===================
+# MARK: - Service Containers
 class TendencyCalculationServiceContainer(containers.DeclarativeContainer):
     """성향 계산 Service 컨테이너"""
 
@@ -32,9 +28,7 @@ class TendencyCalculationServiceContainer(containers.DeclarativeContainer):
     tendency_calculation_service = providers.Singleton(TendencyCalculationService)
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class TendencyUseCaseContainer(containers.DeclarativeContainer):
     """성향 UseCase 컨테이너"""
 
@@ -53,9 +47,7 @@ class TendencyUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class TendencyContainer(containers.DeclarativeContainer):
     """성향 통합 컨테이너"""
 

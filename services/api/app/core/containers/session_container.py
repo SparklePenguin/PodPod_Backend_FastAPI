@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# Repository Containers
-# ===================
+# MARK: - Repository Containers
 class SessionRepoContainer(containers.DeclarativeContainer):
     """세션 Repository 컨테이너"""
 
@@ -17,9 +15,7 @@ class SessionRepoContainer(containers.DeclarativeContainer):
     session_repo = providers.Factory(SessionRepository, session=core.session)
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class SessionUseCaseContainer(containers.DeclarativeContainer):
     """세션 UseCase 컨테이너"""
 
@@ -36,9 +32,7 @@ class SessionUseCaseContainer(containers.DeclarativeContainer):
     )
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class SessionContainer(containers.DeclarativeContainer):
     """세션 통합 컨테이너"""
 

@@ -3,9 +3,7 @@
 from dependency_injector import containers, providers
 
 
-# ===================
-# UseCase Containers
-# ===================
+# MARK: - UseCase Containers
 class LocationUseCaseContainer(containers.DeclarativeContainer):
     """위치 UseCase 컨테이너"""
 
@@ -17,9 +15,7 @@ class LocationUseCaseContainer(containers.DeclarativeContainer):
     location_use_case = providers.Factory(LocationUseCase, session=core.session)
 
 
-# ===================
-# Aggregate Container
-# ===================
+# MARK: - Aggregate Container
 class LocationContainer(containers.DeclarativeContainer):
     """위치 통합 컨테이너"""
 
