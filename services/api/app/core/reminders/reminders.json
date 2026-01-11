@@ -1,0 +1,104 @@
+{
+  "review_reminders": {
+    "REVIEW_REMINDER_DAY": {
+      "code": 101,
+      "trigger_hours": 24,
+      "trigger_type": "after_pod_completed",
+      "target": "participants",
+      "message_template": "😊 오늘 [party_name] 어떠셨나요? 소중한 리뷰를 남겨보세요!",
+      "placeholders": ["party_name"],
+      "related_id_key": "pod_id",
+      "notification_type": "REVIEW",
+      "notification_value": "REVIEW_REMINDER_DAY",
+      "category": "COMMUNITY",
+      "duplicate_check_hours": 24,
+      "description_ko": "모임 종료 1일 후 리뷰 작성 유도 알림",
+      "description_en": "Review reminder 1 day after pod completion",
+      "dev_note": "모든 참여자에게 전송, 중복 체크 24시간"
+    },
+    "REVIEW_REMINDER_WEEK": {
+      "code": 102,
+      "trigger_hours": 168,
+      "trigger_type": "after_pod_completed",
+      "target": "non_reviewers_except_owner",
+      "message_template": "💭 [party_name] 후기가 궁금해요. 어땠는지 들려주세요!",
+      "placeholders": ["party_name"],
+      "related_id_key": "pod_id",
+      "notification_type": "REVIEW",
+      "notification_value": "REVIEW_REMINDER_WEEK",
+      "category": "COMMUNITY",
+      "duplicate_check_hours": 24,
+      "description_ko": "모임 종료 1주일 후 리뷰 미작성자 리마인드 알림",
+      "description_en": "Review reminder 1 week after pod completion for non-reviewers",
+      "dev_note": "리뷰 미작성 참여자에게만 전송 (파티장 제외)"
+    }
+  },
+  "pod_reminders": {
+    "POD_START_SOON": {
+      "code": 201,
+      "trigger_hours": 1,
+      "trigger_type": "before_pod_start",
+      "target": "participants_with_owner",
+      "message_template": "⏰ [party_name] 모임이 한 시간 뒤 시작돼요. 준비되셨나요?",
+      "placeholders": ["party_name"],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "notification_value": "POD_START_SOON",
+      "category": "POD",
+      "duplicate_check_hours": 24,
+      "description_ko": "파티 시작 1시간 전 알림",
+      "description_en": "Reminder 1 hour before pod starts",
+      "dev_note": "확정된 파티의 모든 참여자에게 전송"
+    },
+    "POD_LOW_ATTENDANCE": {
+      "code": 202,
+      "trigger_hours": 24,
+      "trigger_type": "before_deadline",
+      "target": "owner_only",
+      "message_template": "😢 [party_name] 오늘 파티가 확정되지 않으면 취소돼요. 시간이 더 필요하다면 일정을 수정할 수 있어요!",
+      "placeholders": ["party_name"],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "notification_value": "POD_LOW_ATTENDANCE",
+      "category": "POD",
+      "duplicate_check_hours": 24,
+      "description_ko": "파티 마감 24시간 전 인원 부족 알림",
+      "description_en": "Low attendance reminder 24 hours before deadline",
+      "dev_note": "모집 중인 파티의 파티장에게만 전송"
+    },
+    "POD_CANCELED_SOON": {
+      "code": 203,
+      "trigger_hours": 1,
+      "trigger_type": "before_pod_start_recruiting",
+      "target": "owner_only",
+      "message_template": "😢 [party_name] 팟티가 곧 취소돼요!",
+      "placeholders": ["party_name"],
+      "related_id_key": "pod_id",
+      "notification_type": "POD",
+      "notification_value": "POD_CANCELED_SOON",
+      "category": "POD",
+      "duplicate_check_hours": 24,
+      "description_ko": "파티 시작 1시간 전 취소 임박 알림",
+      "description_en": "Pod cancellation warning 1 hour before start",
+      "dev_note": "1시간 이내 시작하는 모집 중 파티의 파티장에게 전송"
+    }
+  },
+  "saved_pod_reminders": {
+    "SAVED_POD_DEADLINE": {
+      "code": 301,
+      "trigger_hours": 24,
+      "trigger_type": "before_deadline",
+      "target": "liked_users",
+      "message_template": "🚨 [party_name] 곧 마감돼요! 신청 놓칠지도 몰라요 😥",
+      "placeholders": ["party_name"],
+      "related_id_key": "pod_id",
+      "notification_type": "RECOMMEND",
+      "notification_value": "SAVED_POD_DEADLINE",
+      "category": "POD",
+      "duplicate_check_hours": 24,
+      "description_ko": "좋아요한 파티 마감 24시간 전 알림",
+      "description_en": "Saved pod deadline reminder 24 hours before",
+      "dev_note": "좋아요한 사용자에게 전송, 내일 마감되는 모집 중 파티"
+    }
+  }
+}

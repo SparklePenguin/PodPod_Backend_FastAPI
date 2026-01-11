@@ -1,9 +1,12 @@
-"""리마인더 feature - 스케줄러에서 실행되는 백그라운드 작업들"""
+"""
+PodPod Backend API 리마인더 타입 레지스트리
 
-from .tasks import register_scheduler_tasks
+리마인더 타입은 reminders.json에서 도메인별로 관리됩니다.
+동기화는 scripts/sync_reminder_types_to_sheet.py로 수행합니다.
+"""
 
-# core/reminders에서 re-export (하위 호환성)
-from app.core.reminders import (
+from .registry import (
+    REMINDER_TYPES,
     ReminderInfo,
     get_all_reminder_keys,
     get_reminder_by_notification_value,
@@ -14,8 +17,7 @@ from app.core.reminders import (
 )
 
 __all__ = [
-    "register_scheduler_tasks",
-    # Registry (from core/reminders)
+    "REMINDER_TYPES",
     "ReminderInfo",
     "get_reminder_info",
     "get_reminder_types",
