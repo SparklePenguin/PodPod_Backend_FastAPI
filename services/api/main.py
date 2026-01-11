@@ -21,7 +21,7 @@ from app.core.exceptions import (  # noqa: E402
     validation_exception_handler,
     value_error_handler,
 )
-from app.core.logging_config import setup_logging  # noqa: E402
+from app.core.logger import setup_logging  # noqa: E402
 from app.core.startup import startup_events, sync_startup_events  # noqa: E402
 from app.middleware.logging_middleware import LoggingMiddleware  # noqa: E402
 from fastapi import FastAPI, HTTPException  # noqa: E402
