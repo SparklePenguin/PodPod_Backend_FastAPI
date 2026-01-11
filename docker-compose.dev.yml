@@ -1,4 +1,28 @@
 services:
+  # MySQL 데이터베이스 (개발 환경 전용)
+
+  db:
+    image: mysql:8.0
+    container_name: podpod-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: podpod_dev
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
+    networks:
+      - podpod-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   # Redis (개발 환경)
   redis:
     image: redis:7-alpine
@@ -12,7 +36,7 @@ services:
       - podpod-network
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,7 +69,10 @@ services:
       # OAuth 설정
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET : ${GOOGLE_CLIENT_SECRET}
+
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
       APPLE_TEAM_ID: ${APPLE_TEAM_ID}
       APPLE_KEY_ID: ${APPLE_KEY_ID}
@@ -78,7 +105,7 @@ services:
         condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
