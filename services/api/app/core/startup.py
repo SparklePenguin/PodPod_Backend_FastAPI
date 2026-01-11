@@ -14,14 +14,15 @@ async def startup_events():
     # WebSocketService에 Redis 설정
     await initialize_websocket_redis()
 
-    # 스케줄러 시작
-    from app.core.services.scheduler_service import start_scheduler
+    # 스케줄러 설정 및 시작
+    from app.core.scheduler import get_scheduler, start_scheduler
+    from app.features.reminders import register_scheduler_tasks
+
+    scheduler = get_scheduler()
+    register_scheduler_tasks(scheduler)
 
     asyncio.create_task(start_scheduler())
     print("스케줄러 시작됨:")
-    print("- 매일 아침 10시: 리뷰 유도 알림")
-    print("- 5분마다: 파티 시작 임박 알림")
-    print("- 1시간마다: 마감 임박 알림")
 
     print("애플리케이션 시작 이벤트 완료")
 
