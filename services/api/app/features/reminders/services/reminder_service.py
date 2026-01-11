@@ -3,7 +3,7 @@
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from app.core.services.fcm_service import FCMService
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.notifications.models import Notification
 from app.features.pods.models import Pod, PodLike, PodMember, PodRating, PodStatus
 from app.features.users.models import User

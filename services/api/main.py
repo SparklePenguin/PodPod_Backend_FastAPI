@@ -12,8 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.api.v1.router import api_router  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import init_db  # noqa: E402
-from app.core.exception_loader import register_exception_handlers  # noqa: E402
 from app.core.exceptions import (  # noqa: E402
+    register_exception_handlers,
     BusinessException,
     business_exception_handler,
     general_exception_handler,

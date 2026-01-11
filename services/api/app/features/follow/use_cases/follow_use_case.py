@@ -1,7 +1,7 @@
 """Follow Use Case - 비즈니스 로직 처리"""
 
 from app.common.schemas import PageDto
-from app.core.services.fcm_service import FCMService
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.follow.exceptions import (
     FollowFailedException,
     FollowInvalidException,

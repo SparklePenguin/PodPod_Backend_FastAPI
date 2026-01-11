@@ -1,6 +1,6 @@
 import logging
 
-from app.core.services.fcm_service import FCMService
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.follow.repositories.follow_list_repository import (
     FollowListRepository,
 )

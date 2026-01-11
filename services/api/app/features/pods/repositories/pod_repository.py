@@ -993,7 +993,7 @@ class PodRepository:
     async def _check_views_threshold(self, pod_id: int) -> None:
         """조회수 10회 달성 시 파티장에게 알림 전송"""
         try:
-            from app.core.services.fcm_service import FCMService
+            from app.features.notifications.services.fcm_service import FCMService
             from app.features.pods.models import PodView
 
             # 현재 조회수 확인

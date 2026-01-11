@@ -1,6 +1,6 @@
 """Like 알림 서비스"""
 
-from app.core.services.fcm_service import FCMService
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.pods.repositories.like_repository import PodLikeRepository
 from app.features.pods.repositories.pod_repository import PodRepository
 from app.features.users.repositories import UserRepository

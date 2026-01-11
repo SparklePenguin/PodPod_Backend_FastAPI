@@ -41,7 +41,7 @@ class CoreContainer(containers.DeclarativeContainer):
     # ===================
     # Services
     # ===================
-    from app.core.services.fcm_service import FCMService
+    from app.features.notifications.services.fcm_service import FCMService
     from app.features.users.services.random_profile_image_service import (
         RandomProfileImageService,
     )
