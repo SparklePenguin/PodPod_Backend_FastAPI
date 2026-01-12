@@ -91,8 +91,7 @@ reminders.json ←→ Google Sheets
 ### 동기화 스크립트 실행
 
 ```bash
-cd services/api/scripts
-python sync_reminder_types_to_sheet.py
+python services/api/scripts/sync_reminder_types_to_sheet.py
 ```
 
 ### 필요한 환경변수

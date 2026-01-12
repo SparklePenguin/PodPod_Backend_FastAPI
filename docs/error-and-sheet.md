@@ -95,8 +95,7 @@ infisical login
 ## 사용법
 
 ```bash
-cd services/api
-python scripts/sync_error_codes_to_sheet.py
+python services/api/scripts/sync_error_codes_to_sheet.py
 ```
 
 ### 실행 예시

@@ -11,7 +11,7 @@ Google Sheets ↔ reminders.json 동기화 스크립트
     python sync_reminder_types_to_sheet.py
 
 Infisical 환경변수 (자동 로드):
-    REMINDER_SHEETS_ID: 리마인더 스프레드시트 ID
+    REMINDER_SHEETS_ID: 리마인더 타입 스프레드시트 ID
     GOOGLE_SHEETS_CREDENTIALS: Google 서비스 계정 JSON (문자열)
 """
 
@@ -319,10 +319,9 @@ def main():
     # Infisical에서 환경변수 로드
     load_infisical_secrets()
 
-    # 환경변수 확인 (REMINDER_SHEETS_ID 또는 GOOGLE_SHEETS_ID 사용)
-    spreadsheet_id = os.getenv("REMINDER_SHEETS_ID") or os.getenv("GOOGLE_SHEETS_ID")
+    spreadsheet_id = os.getenv("REMINDER_SHEETS_ID")
     if not spreadsheet_id:
-        print("오류: REMINDER_SHEETS_ID 또는 GOOGLE_SHEETS_ID 환경변수가 설정되지 않았습니다.")
+        print("오류: REMINDER_SHEETS_ID 환경변수가 설정되지 않았습니다.")
         sys.exit(1)
 
     try:

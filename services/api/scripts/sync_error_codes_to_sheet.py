@@ -11,7 +11,7 @@ Google Sheets ↔ errors.json 동기화 스크립트
     python sync_error_codes_to_sheet.py
 
 Infisical 환경변수 (자동 로드):
-    GOOGLE_SHEETS_ID: 스프레드시트 ID
+    ERROR_SHEETS_ID: 에러 코드 스프레드시트 ID
     GOOGLE_SHEETS_CREDENTIALS: Google 서비스 계정 JSON (문자열)
 """
 
@@ -292,9 +292,9 @@ def main():
     load_infisical_secrets()
 
     # 환경변수 확인
-    spreadsheet_id = os.getenv("GOOGLE_SHEETS_ID")
+    spreadsheet_id = os.getenv("ERROR_SHEETS_ID")
     if not spreadsheet_id:
-        print("오류: GOOGLE_SHEETS_ID 환경변수가 설정되지 않았습니다.")
+        print("오류: ERROR_SHEETS_ID 환경변수가 설정되지 않았습니다.")
         sys.exit(1)
 
     try:

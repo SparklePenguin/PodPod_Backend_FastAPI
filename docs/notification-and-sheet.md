@@ -97,8 +97,7 @@ notifications.json ←→ Google Sheets
 ### 동기화 스크립트 실행
 
 ```bash
-cd services/api/scripts
-python sync_notification_types_to_sheet.py
+python services/api/scripts/sync_notification_types_to_sheet.py
 ```
 
 ### 필요한 환경변수

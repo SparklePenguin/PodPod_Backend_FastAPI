@@ -6,7 +6,9 @@
       "trigger_type": "after_pod_completed",
       "target": "participants",
       "message_template": "😊 오늘 [party_name] 어떠셨나요? 소중한 리뷰를 남겨보세요!",
-      "placeholders": ["party_name"],
+      "placeholders": [
+        "party_name"
+      ],
       "related_id_key": "pod_id",
       "notification_type": "REVIEW",
       "notification_value": "REVIEW_REMINDER_DAY",
@@ -22,7 +24,9 @@
       "trigger_type": "after_pod_completed",
       "target": "non_reviewers_except_owner",
       "message_template": "💭 [party_name] 후기가 궁금해요. 어땠는지 들려주세요!",
-      "placeholders": ["party_name"],
+      "placeholders": [
+        "party_name"
+      ],
       "related_id_key": "pod_id",
       "notification_type": "REVIEW",
       "notification_value": "REVIEW_REMINDER_WEEK",
@@ -40,7 +44,9 @@
       "trigger_type": "before_pod_start",
       "target": "participants_with_owner",
       "message_template": "⏰ [party_name] 모임이 한 시간 뒤 시작돼요. 준비되셨나요?",
-      "placeholders": ["party_name"],
+      "placeholders": [
+        "party_name"
+      ],
       "related_id_key": "pod_id",
       "notification_type": "POD",
       "notification_value": "POD_START_SOON",
@@ -56,7 +62,9 @@
       "trigger_type": "before_deadline",
       "target": "owner_only",
       "message_template": "😢 [party_name] 오늘 파티가 확정되지 않으면 취소돼요. 시간이 더 필요하다면 일정을 수정할 수 있어요!",
-      "placeholders": ["party_name"],
+      "placeholders": [
+        "party_name"
+      ],
       "related_id_key": "pod_id",
       "notification_type": "POD",
       "notification_value": "POD_LOW_ATTENDANCE",
@@ -72,7 +80,9 @@
       "trigger_type": "before_pod_start_recruiting",
       "target": "owner_only",
       "message_template": "😢 [party_name] 팟티가 곧 취소돼요!",
-      "placeholders": ["party_name"],
+      "placeholders": [
+        "party_name"
+      ],
       "related_id_key": "pod_id",
       "notification_type": "POD",
       "notification_value": "POD_CANCELED_SOON",
@@ -90,7 +100,9 @@
       "trigger_type": "before_deadline",
       "target": "liked_users",
       "message_template": "🚨 [party_name] 곧 마감돼요! 신청 놓칠지도 몰라요 😥",
-      "placeholders": ["party_name"],
+      "placeholders": [
+        "party_name"
+      ],
       "related_id_key": "pod_id",
       "notification_type": "RECOMMEND",
       "notification_value": "SAVED_POD_DEADLINE",
