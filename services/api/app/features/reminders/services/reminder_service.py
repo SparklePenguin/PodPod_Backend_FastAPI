@@ -3,8 +3,9 @@
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from app.features.notifications.services.fcm_service import FCMService
+from app.features.notifications.event import NotificationEvent
 from app.features.notifications.models import Notification
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.pods.models import Pod, PodLike, PodMember, PodRating, PodStatus
 from app.features.users.models import User
 from sqlalchemy import and_, func, or_, select
@@ -13,18 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 
-# 상수 정의
+# 시간 상수 정의
 class ReminderConstants:
-    """리마인더 관련 상수"""
+    """리마인더 시간 관련 상수"""
 
-    REVIEW_REMINDER_DAY = "REVIEW_REMINDER_DAY"
-    REVIEW_REMINDER_WEEK = "REVIEW_REMINDER_WEEK"
-    POD_START_SOON = "POD_START_SOON"
-    POD_LOW_ATTENDANCE = "POD_LOW_ATTENDANCE"
-    POD_CANCELED_SOON = "POD_CANCELED_SOON"
-    SAVED_POD_DEADLINE = "SAVED_POD_DEADLINE"
-
-    # 시간 설정
     START_SOON_HOURS = 1  # 시작 임박 알림 (1시간 전)
     DEADLINE_HOURS = 24  # 마감 임박 알림 (24시간 전)
     DUPLICATE_CHECK_HOURS = 24  # 중복 체크 시간 (24시간)
@@ -147,7 +140,7 @@ class ReminderService:
 
         for pod in completed_pods:
             await self._send_review_to_participants(
-                db, pod, ReminderConstants.REVIEW_REMINDER_DAY
+                db, pod, NotificationEvent.REVIEW_REMINDER_DAY.value
             )
 
     async def _send_week_review_reminders(self, db: AsyncSession):
@@ -159,7 +152,7 @@ class ReminderService:
 
         for pod in completed_pods:
             await self._send_review_to_non_reviewers(
-                db, pod, ReminderConstants.REVIEW_REMINDER_WEEK
+                db, pod, NotificationEvent.REVIEW_REMINDER_WEEK.value
             )
 
     async def _send_review_to_participants(
@@ -235,7 +228,7 @@ class ReminderService:
 
             pod_title = getattr(pod, "title", "") or ""
 
-            if reminder_type == ReminderConstants.REVIEW_REMINDER_DAY:
+            if reminder_type == NotificationEvent.REVIEW_REMINDER_DAY.value:
                 await self.fcm_service.send_review_reminder_day(
                     token=fcm_token,
                     party_name=pod_title,
@@ -243,7 +236,7 @@ class ReminderService:
                     db=db,
                     user_id=user_id,
                 )
-            elif reminder_type == ReminderConstants.REVIEW_REMINDER_WEEK:
+            elif reminder_type == NotificationEvent.REVIEW_REMINDER_WEEK.value:
                 await self.fcm_service.send_review_reminder_week(
                     token=fcm_token,
                     party_name=pod_title,
@@ -311,7 +304,7 @@ class ReminderService:
 
             # 중복 체크
             if await self._has_sent_reminder(
-                db, user_id, pod_id, ReminderConstants.POD_START_SOON
+                db, user_id, pod_id, NotificationEvent.POD_STARTING_SOON.value
             ):
                 logger.info(
                     f"시작 임박 알림 이미 전송됨: user_id={user_id}, pod_id={pod_id}"
@@ -413,7 +406,7 @@ class ReminderService:
 
             # 중복 체크
             if await self._has_sent_reminder(
-                db, pod_owner_id, pod_id, ReminderConstants.POD_LOW_ATTENDANCE
+                db, pod_owner_id, pod_id, NotificationEvent.POD_LOW_ATTENDANCE.value
             ):
                 logger.info(
                     f"마감 임박 알림 이미 전송됨: owner_id={pod_owner_id}, pod_id={pod_id}"
@@ -499,7 +492,7 @@ class ReminderService:
 
                     # 중복 체크
                     if await self._has_sent_reminder(
-                        db, user_id, pod_id, ReminderConstants.SAVED_POD_DEADLINE
+                        db, user_id, pod_id, NotificationEvent.SYSTEM_SAVED_POD_DEADLINE.value
                     ):
                         continue
 
@@ -588,7 +581,7 @@ class ReminderService:
 
             # 중복 체크
             if await self._has_sent_reminder(
-                db, pod_owner_id, pod_id, ReminderConstants.POD_CANCELED_SOON
+                db, pod_owner_id, pod_id, NotificationEvent.POD_CANCELED_SOON.value
             ):
                 logger.info(
                     f"취소 임박 알림 이미 전송됨: owner_id={pod_owner_id}, pod_id={pod_id}"

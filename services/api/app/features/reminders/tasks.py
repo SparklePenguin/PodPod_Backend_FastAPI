@@ -25,33 +25,33 @@ def register_scheduler_tasks(scheduler: Scheduler) -> None:
     # 일일 작업 (매일 오전 10시)
     async def daily_tasks() -> None:
         """일일 작업: 상태 업데이트 + 리뷰 알림 + 마감 알림"""
-        async for db in get_session():
+        async for session in get_session():
             try:
-                await status_update_service.update_completed_pods_to_closed(db)
-                await reminder_service.send_review_reminders(db)
-                await reminder_service.send_deadline_reminders(db)
+                await status_update_service.update_completed_pods_to_closed(session)
+                await reminder_service.send_review_reminders(session)
+                await reminder_service.send_deadline_reminders(session)
             finally:
-                await db.close()
+                await session.close()
 
     # 시간별 작업 (1시간마다)
     async def hourly_tasks() -> None:
         """시간별 작업: 마감 알림"""
-        async for db in get_session():
+        async for session in get_session():
             try:
-                await reminder_service.send_deadline_reminders(db)
+                await reminder_service.send_deadline_reminders(session)
             finally:
-                await db.close()
+                await session.close()
 
     # 빈번한 작업 (5분마다)
     async def frequent_tasks() -> None:
         """빈번한 작업: 상태 업데이트 + 시작/취소 임박 알림"""
-        async for db in get_session():
+        async for session in get_session():
             try:
-                await status_update_service.run_all_updates(db)
-                await reminder_service.send_start_soon_reminders(db)
-                await reminder_service.send_canceled_soon_reminders(db)
+                await status_update_service.run_all_updates(session)
+                await reminder_service.send_start_soon_reminders(session)
+                await reminder_service.send_canceled_soon_reminders(session)
             finally:
-                await db.close()
+                await session.close()
 
     # 스케줄러에 등록
     scheduler.register_daily_task(daily_tasks)

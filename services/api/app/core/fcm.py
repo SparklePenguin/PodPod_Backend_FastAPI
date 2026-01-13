@@ -110,7 +110,7 @@ class FCMClient:
                 tokens=tokens,
             )
 
-            response = messaging.send_multicast(message)
+            response: messaging.BatchResponse = messaging.send_multicast(message)
 
             logger.info(
                 f"FCM 멀티캐스트 알림 전송 완료: "

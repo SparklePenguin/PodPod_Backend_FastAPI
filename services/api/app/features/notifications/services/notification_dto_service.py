@@ -4,10 +4,7 @@ from datetime import time
 from typing import TYPE_CHECKING
 
 from app.features.notifications.models import Notification
-from app.features.notifications.schemas import (
-    NotificationDto,
-    get_notification_main_type,
-)
+from app.features.notifications.schemas import NotificationDto
 from app.features.pods.services.pod_dto_service import PodDtoService
 from app.features.users.models import User, UserNotificationSettings
 from app.features.users.schemas import UserDto, UserNotificationSettingsDto
@@ -86,8 +83,7 @@ class NotificationDtoService:
             id=notification.id,
             title=notification.title,
             body=notification.body,
-            type=get_notification_main_type(notification.notification_type),
-            value=notification.notification_value,
+            event=notification.notification_value,  # event string (예: POD_JOIN_REQUESTED)
             related_id=related_id_int,
             category=notification.category,
             is_read=notification.is_read,

@@ -2,25 +2,6 @@
 
 from .tasks import register_scheduler_tasks
 
-# core/reminders에서 re-export (하위 호환성)
-from app.core.reminders import (
-    ReminderInfo,
-    get_all_reminder_keys,
-    get_reminder_by_notification_value,
-    get_reminder_info,
-    get_reminder_types,
-    get_reminders_by_domain,
-    reload_reminders,
-)
-
 __all__ = [
     "register_scheduler_tasks",
-    # Registry (from core/reminders)
-    "ReminderInfo",
-    "get_reminder_info",
-    "get_reminder_types",
-    "get_reminders_by_domain",
-    "get_reminder_by_notification_value",
-    "get_all_reminder_keys",
-    "reload_reminders",
 ]

@@ -1,30 +1,27 @@
-"""
-PodPod Backend API 알림 타입 레지스트리
+"""Core notifications module - runtime notification configuration loader"""
 
-알림 타입은 notifications.json에서 도메인별로 관리됩니다.
-동기화는 scripts/sync_notification_types_to_sheet.py로 수행합니다.
-"""
-
-from .registry import (
-    NOTIFICATION_TYPES,
-    NotificationTypeInfo,
-    get_all_notification_keys,
-    get_notification_type_info,
-    get_notification_types,
-    get_notifications_by_category,
-    get_notifications_by_domain,
-    get_notifications_by_type,
+from .notification_registry import (
+    NotificationInfo,
+    get_notification_info,
+    get_message_template,
+    render_message,
+    get_related_id_type,
+    get_category,
+    is_reminder_event,
     reload_notifications,
+    get_all_events,
+    get_all_notifications,
 )
 
 __all__ = [
-    "NOTIFICATION_TYPES",
-    "NotificationTypeInfo",
-    "get_notification_type_info",
-    "get_notification_types",
-    "get_notifications_by_domain",
-    "get_notifications_by_category",
-    "get_notifications_by_type",
-    "get_all_notification_keys",
+    "NotificationInfo",
+    "get_notification_info",
+    "get_message_template",
+    "render_message",
+    "get_related_id_type",
+    "get_category",
+    "is_reminder_event",
     "reload_notifications",
+    "get_all_events",
+    "get_all_notifications",
 ]

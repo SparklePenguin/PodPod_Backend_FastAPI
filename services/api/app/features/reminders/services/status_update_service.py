@@ -19,7 +19,7 @@ class StatusUpdateService:
     - RECRUITING → CANCELED (미팅 시간 지남)
     """
 
-    async def update_completed_pods_to_closed(self, db: AsyncSession):
+    async def update_completed_pods_to_closed(self, session: AsyncSession):
         """확정(COMPLETED) 파티를 종료(CLOSED)로 변경
 
         미팅일이 지난 확정 파티를 종료 상태로 변경합니다.
@@ -35,7 +35,7 @@ class StatusUpdateService:
                 )
             )
 
-            result = await db.execute(query)
+            result = await session.execute(query)
             completed_pods = result.scalars().all()
 
             if not completed_pods:
@@ -55,7 +55,7 @@ class StatusUpdateService:
                         .where(Pod.id == pod_id)
                         .values(status=PodStatus.CLOSED.value)
                     )
-                    await db.execute(stmt)
+                    await session.execute(stmt)
 
                     logger.info(
                         f"파티 상태 변경: pod_id={pod_id}, "
@@ -65,14 +65,14 @@ class StatusUpdateService:
                 except Exception as e:
                     logger.error(f"파티 상태 변경 실패: pod_id={pod.id}, error={e}")
 
-            await db.commit()
+            await session.commit()
             logger.info(f"파티 종료 처리 완료: {len(completed_pods)}개")
 
         except Exception as e:
             logger.error(f"파티 종료 처리 중 오류: {e}")
-            await db.rollback()
+            await session.rollback()
 
-    async def cancel_unconfirmed_pods(self, db: AsyncSession):
+    async def cancel_unconfirmed_pods(self, session: AsyncSession):
         """미확정 파티 취소 처리
 
         미팅 시간이 지난 모집 중(RECRUITING) 파티를 취소(CANCELED)로 변경합니다.
@@ -85,7 +85,7 @@ class StatusUpdateService:
                 func.upper(Pod.status) == PodStatus.RECRUITING.value.upper()
             )
 
-            result = await db.execute(query)
+            result = await session.execute(query)
             recruiting_pods = result.scalars().all()
 
             # 미팅 시간이 지난 파티 필터링
@@ -138,12 +138,12 @@ class StatusUpdateService:
                 except Exception as e:
                     logger.error(f"파티 취소 처리 실패: pod_id={pod.id}, error={e}")
 
-            await db.commit()
+            await session.commit()
             logger.info(f"파티 취소 처리 완료: {len(unconfirmed_pods)}개")
 
         except Exception as e:
             logger.error(f"파티 취소 처리 중 오류: {e}")
-            await db.rollback()
+            await session.rollback()
 
     async def run_all_updates(self, db: AsyncSession):
         """모든 상태 업데이트 실행

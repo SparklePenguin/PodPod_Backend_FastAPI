@@ -7,22 +7,19 @@ Firebase Cloud Messaging을 통한 알림 전송 비즈니스 로직을 담당�
 
 import logging
 from datetime import datetime, timezone
-from typing import Union
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.fcm import FCMClient, get_fcm_client
+from app.features.notifications.event import NotificationEvent
+from app.core.notifications import (
+    get_category,
+    get_notification_info,
+    get_related_id_type,
+    render_message,
+)
 from app.features.notifications.repositories.notification_repository import (
     NotificationRepository,
-)
-from app.features.notifications.schemas import (
-    FollowNotiSubType,
-    PodNotiSubType,
-    PodStatusNotiSubType,
-    RecommendNotiSubType,
-    ReviewNotiSubType,
-    get_notification_category,
-    get_notification_main_type,
 )
 from app.features.users.repositories import UserNotificationRepository
 
@@ -66,11 +63,7 @@ class FCMService:
         # 사용자 알림 설정 확인
         if db and user_id:
             settings_crud = UserNotificationRepository(db)
-            category = (
-                get_notification_category(data.get("type", "UNKNOWN"))
-                if data
-                else "POD"
-            )
+            category = data.get("type", "POD") if data else "POD"
             should_send = await settings_crud.should_send_notification(
                 user_id, category
             )
@@ -81,8 +74,8 @@ class FCMService:
                 )
                 return True  # 설정에 의해 전송하지 않았지만 성공으로 처리
 
-            # 개인 대 개인 팔로우 알림 설정 확인 (FOLLOW 타입인 경우)
-            if category == "COMMUNITY" and data and data.get("type") == "FOLLOW":
+            # 개인 대 개인 팔로우 알림 설정 확인 (USER_FOLLOWED 이벤트인 경우)
+            if category == "USER" and data and data.get("value") == "USER_FOLLOWED":
                 from app.features.follow.repositories.follow_repository import (
                     FollowRepository,
                 )
@@ -172,7 +165,7 @@ class FCMService:
                 )
                 return
 
-            category = get_notification_category(notification_type)
+            category = notification_type  # notification_type is already the category
 
             before_create = datetime.now(timezone.utc)
             logger.info(
@@ -249,40 +242,32 @@ class FCMService:
 
     def _format_message(
         self,
-        notification_type: Union[
-            PodNotiSubType,
-            PodStatusNotiSubType,
-            RecommendNotiSubType,
-            ReviewNotiSubType,
-            FollowNotiSubType,
-        ],
+        event: NotificationEvent,
         **kwargs,
     ) -> tuple[str, dict]:
         """
         알림 메시지 포맷팅
 
         Args:
-            notification_type: 알림 타입 (Enum)
+            event: 알림 이벤트 (NotificationEvent)
             **kwargs: 메시지 템플릿에 사용될 변수들
 
         Returns:
             (formatted_message, data_dict)
         """
-        message_template, placeholders, related_id_key = notification_type.value
+        # notification_registry 사용 (notifications.json 기반)
+        formatted_message = render_message(event, **kwargs)
 
-        formatted_message = message_template
-        for placeholder in placeholders:
-            value = kwargs.get(placeholder, "")
-            formatted_message = formatted_message.replace(f"[{placeholder}]", str(value))
-
-        notification_type_class = notification_type.__class__.__name__
-        main_type = get_notification_main_type(notification_type_class)
+        # 카테고리 가져오기
+        category = get_category(event)
 
         data = {
-            "type": main_type,
-            "value": notification_type.name,
+            "type": category.value,
+            "value": event.value,
         }
 
+        # related_id 처리
+        related_id_key = get_related_id_type(event)
         if related_id_key and related_id_key in kwargs:
             data["relatedId"] = str(kwargs[related_id_key])
 
@@ -302,7 +287,7 @@ class FCMService:
     ) -> bool:
         """파티 참여 요청 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_JOIN_REQUEST, nickname=nickname, pod_id=pod_id
+            NotificationEvent.POD_JOIN_REQUESTED, nickname=nickname, pod_id=pod_id
         )
         data["target_user_id"] = str(user_id) if user_id else ""
 
@@ -329,7 +314,7 @@ class FCMService:
     ) -> bool:
         """파티 참여 요청 승인 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_REQUEST_APPROVED, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_JOIN_APPROVED, party_name=party_name, pod_id=pod_id
         )
         data["target_user_id"] = str(user_id) if user_id else ""
 
@@ -356,7 +341,7 @@ class FCMService:
     ) -> bool:
         """파티 참여 요청 거절 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_REQUEST_REJECTED, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_JOIN_REJECTED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -381,7 +366,7 @@ class FCMService:
     ) -> bool:
         """파티 새 멤버 참여 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_NEW_MEMBER,
+            NotificationEvent.POD_MEMBER_JOINED,
             nickname=nickname,
             party_name=party_name,
             pod_id=pod_id,
@@ -408,7 +393,7 @@ class FCMService:
     ) -> bool:
         """파티 정보 수정 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_UPDATED, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_UPDATED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -432,7 +417,7 @@ class FCMService:
     ) -> bool:
         """파티 확정 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_CONFIRMED, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_CONFIRMED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -456,7 +441,7 @@ class FCMService:
     ) -> bool:
         """파티 취소 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_CANCELED, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_CANCELED, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -480,7 +465,7 @@ class FCMService:
     ) -> bool:
         """파티 시작 1시간 전 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_START_SOON, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_STARTING_SOON, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -504,7 +489,7 @@ class FCMService:
     ) -> bool:
         """파티 마감 임박 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_LOW_ATTENDANCE, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_LOW_ATTENDANCE, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -528,7 +513,7 @@ class FCMService:
     ) -> bool:
         """파티 취소 임박 알림 전송"""
         body, data = self._format_message(
-            PodNotiSubType.POD_CANCELED_SOON, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_CANCELED_SOON, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -554,7 +539,7 @@ class FCMService:
     ) -> bool:
         """파티 좋아요 10개 달성 알림 전송"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_LIKES_THRESHOLD,
+            NotificationEvent.POD_LIKES_THRESHOLD,
             party_name=party_name,
             pod_id=pod_id,
         )
@@ -580,7 +565,7 @@ class FCMService:
     ) -> bool:
         """파티 조회수 10회 달성 알림 전송"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_VIEWS_THRESHOLD,
+            NotificationEvent.POD_VIEWS_THRESHOLD,
             party_name=party_name,
             pod_id=pod_id,
         )
@@ -606,7 +591,7 @@ class FCMService:
     ) -> bool:
         """파티 정원 가득 참 알림 전송 (파티장에게)"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_CAPACITY_FULL, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_CAPACITY_FULL, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -632,7 +617,7 @@ class FCMService:
     ) -> bool:
         """좋아요한 파티 마감 임박 알림 전송"""
         body, data = self._format_message(
-            RecommendNotiSubType.SAVED_POD_DEADLINE,
+            NotificationEvent.SYSTEM_SAVED_POD_DEADLINE,
             party_name=party_name,
             pod_id=pod_id,
         )
@@ -658,7 +643,7 @@ class FCMService:
     ) -> bool:
         """좋아요한 파티에 자리 생김 알림 전송"""
         body, data = self._format_message(
-            RecommendNotiSubType.SAVED_POD_SPOT_OPENED,
+            NotificationEvent.SYSTEM_SAVED_POD_SPOT_OPENED,
             party_name=party_name,
             pod_id=pod_id,
         )
@@ -688,7 +673,7 @@ class FCMService:
     ) -> bool:
         """리뷰 등록 알림 전송"""
         body, data = self._format_message(
-            ReviewNotiSubType.REVIEW_CREATED,
+            NotificationEvent.REVIEW_CREATED,
             nickname=nickname,
             party_name=party_name,
             review_id=review_id,
@@ -714,7 +699,7 @@ class FCMService:
     ) -> bool:
         """리뷰 작성 유도 알림 (1일 후) 전송"""
         body, data = self._format_message(
-            ReviewNotiSubType.REVIEW_REMINDER_DAY, party_name=party_name, pod_id=pod_id
+            NotificationEvent.REVIEW_REMINDER_DAY, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -736,7 +721,7 @@ class FCMService:
     ) -> bool:
         """리뷰 작성 리마인드 알림 (1주일 후) 전송"""
         body, data = self._format_message(
-            ReviewNotiSubType.REVIEW_REMINDER_WEEK, party_name=party_name, pod_id=pod_id
+            NotificationEvent.REVIEW_REMINDER_WEEK, party_name=party_name, pod_id=pod_id
         )
         return await self.send_notification(
             token=token,
@@ -760,7 +745,7 @@ class FCMService:
     ) -> bool:
         """다른 참여자 리뷰 작성 알림 전송"""
         body, data = self._format_message(
-            ReviewNotiSubType.REVIEW_OTHERS_CREATED,
+            NotificationEvent.REVIEW_OTHERS_CREATED,
             nickname=nickname,
             review_id=review_id,
         )
@@ -786,7 +771,7 @@ class FCMService:
     ) -> bool:
         """파티 완료 알림 전송"""
         body, data = self._format_message(
-            PodStatusNotiSubType.POD_COMPLETED, party_name=party_name, pod_id=pod_id
+            NotificationEvent.POD_COMPLETED, party_name=party_name, pod_id=pod_id
         )
 
         return await self.send_notification(
@@ -813,7 +798,7 @@ class FCMService:
     ) -> bool:
         """팔로우 알림 전송"""
         body, data = self._format_message(
-            FollowNotiSubType.FOLLOWED_BY_USER,
+            NotificationEvent.USER_FOLLOWED,
             nickname=nickname,
             follow_user_id=follow_user_id,
         )
@@ -840,7 +825,7 @@ class FCMService:
     ) -> bool:
         """팔로우한 유저의 파티 생성 알림 전송"""
         body, data = self._format_message(
-            FollowNotiSubType.FOLLOWED_USER_CREATED_POD,
+            NotificationEvent.USER_FOLLOWED_USER_CREATED_POD,
             nickname=nickname,
             party_name=party_name,
             pod_id=pod_id,
