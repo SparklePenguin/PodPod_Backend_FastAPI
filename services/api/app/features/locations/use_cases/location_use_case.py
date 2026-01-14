@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 class LocationUseCase:
     """지역 정보 Use Case"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, location_repo: LocationRepository):
         self._session = session
-        self._location_repo = LocationRepository(session)
+        self._location_repo = location_repo
 
     # - MARK: 모든 지역 정보 조회
     async def get_all_locations(self) -> List[LocationDto]:

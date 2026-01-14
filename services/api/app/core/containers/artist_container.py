@@ -2,13 +2,28 @@
 
 from dependency_injector import containers, providers
 
+from app.core.containers.core_container import CoreContainer
+from app.features.artists.repositories.artist_repository import ArtistRepository
+from app.features.artists.use_cases.artist_schedule_use_cases import (
+    GetScheduleByIdUseCase,
+    GetSchedulesUseCase,
+)
+from app.features.artists.use_cases.artist_suggestion_use_cases import (
+    CreateArtistSuggestionUseCase,
+    GetArtistRankingUseCase,
+    GetSuggestionByIdUseCase,
+    GetSuggestionsByArtistNameUseCase,
+    GetSuggestionsUseCase,
+)
+from app.features.artists.use_cases.artist_use_cases import (
+    GetArtistUseCase,
+    GetArtistsUseCase,
+)
+
 
 # MARK: - Repository Containers
 class ArtistRepoContainer(containers.DeclarativeContainer):
     """아티스트 Repository 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.repositories.artist_repository import ArtistRepository
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -19,9 +34,6 @@ class ArtistRepoContainer(containers.DeclarativeContainer):
 class GetArtistUseCaseContainer(containers.DeclarativeContainer):
     """아티스트 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_use_cases import GetArtistUseCase
-
     core: CoreContainer = providers.DependenciesContainer()
 
     get_artist_use_case = providers.Factory(GetArtistUseCase, session=core.session)
@@ -29,9 +41,6 @@ class GetArtistUseCaseContainer(containers.DeclarativeContainer):
 
 class GetArtistsUseCaseContainer(containers.DeclarativeContainer):
     """아티스트 목록 조회 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_use_cases import GetArtistsUseCase
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -41,11 +50,6 @@ class GetArtistsUseCaseContainer(containers.DeclarativeContainer):
 class GetScheduleByIdUseCaseContainer(containers.DeclarativeContainer):
     """스케줄 단일 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_schedule_use_cases import (
-        GetScheduleByIdUseCase,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
 
     get_schedule_by_id_use_case = providers.Factory(GetScheduleByIdUseCase, session=core.session)
@@ -54,11 +58,6 @@ class GetScheduleByIdUseCaseContainer(containers.DeclarativeContainer):
 class GetSchedulesUseCaseContainer(containers.DeclarativeContainer):
     """스케줄 목록 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_schedule_use_cases import (
-        GetSchedulesUseCase,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
 
     get_schedules_use_case = providers.Factory(GetSchedulesUseCase, session=core.session)
@@ -66,11 +65,6 @@ class GetSchedulesUseCaseContainer(containers.DeclarativeContainer):
 
 class CreateArtistSuggestionUseCaseContainer(containers.DeclarativeContainer):
     """아티스트 건의 생성 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_suggestion_use_cases import (
-        CreateArtistSuggestionUseCase,
-    )
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -82,11 +76,6 @@ class CreateArtistSuggestionUseCaseContainer(containers.DeclarativeContainer):
 class GetSuggestionByIdUseCaseContainer(containers.DeclarativeContainer):
     """건의 단일 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_suggestion_use_cases import (
-        GetSuggestionByIdUseCase,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
 
     get_suggestion_by_id_use_case = providers.Factory(
@@ -97,11 +86,6 @@ class GetSuggestionByIdUseCaseContainer(containers.DeclarativeContainer):
 class GetSuggestionsUseCaseContainer(containers.DeclarativeContainer):
     """건의 목록 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_suggestion_use_cases import (
-        GetSuggestionsUseCase,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
 
     get_suggestions_use_case = providers.Factory(GetSuggestionsUseCase, session=core.session)
@@ -109,11 +93,6 @@ class GetSuggestionsUseCaseContainer(containers.DeclarativeContainer):
 
 class GetArtistRankingUseCaseContainer(containers.DeclarativeContainer):
     """아티스트 랭킹 조회 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_suggestion_use_cases import (
-        GetArtistRankingUseCase,
-    )
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -125,11 +104,6 @@ class GetArtistRankingUseCaseContainer(containers.DeclarativeContainer):
 class GetSuggestionsByArtistNameUseCaseContainer(containers.DeclarativeContainer):
     """아티스트 이름별 건의 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.use_cases.artist_suggestion_use_cases import (
-        GetSuggestionsByArtistNameUseCase,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
 
     get_suggestions_by_artist_name_use_case = providers.Factory(
@@ -140,9 +114,6 @@ class GetSuggestionsByArtistNameUseCaseContainer(containers.DeclarativeContainer
 # MARK: - Aggregate Container
 class ArtistContainer(containers.DeclarativeContainer):
     """아티스트 통합 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.artists.repositories.artist_repository import ArtistRepository
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -177,6 +148,3 @@ class ArtistContainer(containers.DeclarativeContainer):
     get_suggestions_by_artist_name_use_case: GetSuggestionsByArtistNameUseCaseContainer = (
         providers.Container(GetSuggestionsByArtistNameUseCaseContainer, core=core)
     )
-
-    # 편의를 위한 alias
-    artist_repo: providers.Factory[ArtistRepository] = repo.artist_repo

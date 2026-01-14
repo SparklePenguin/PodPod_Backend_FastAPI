@@ -5,8 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from dependency_injector import containers, providers
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.features.notifications.services.fcm_service import FCMService
+from app.features.users.services.random_profile_image_service import (
+    RandomProfileImageService,
+)
 
 if TYPE_CHECKING:
     from app.features.chat.services.websocket_service import WebSocketService
@@ -24,9 +30,6 @@ def _create_websocket_service() -> WebSocketService | None:
 class CoreContainer(containers.DeclarativeContainer):
     """핵심 인프라 의존성 컨테이너"""
 
-    from redis.asyncio import Redis
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     # MARK: - Configuration
     config = providers.Configuration()
 
@@ -35,11 +38,6 @@ class CoreContainer(containers.DeclarativeContainer):
     redis = providers.Dependency(instance_of=Redis)
 
     # MARK: - Services
-    from app.features.notifications.services.fcm_service import FCMService
-    from app.features.users.services.random_profile_image_service import (
-        RandomProfileImageService,
-    )
-
     fcm_service = providers.Singleton(FCMService)
     random_profile_image_service = providers.Singleton(RandomProfileImageService)
 

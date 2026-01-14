@@ -11,6 +11,11 @@ class UserStateService:
         user: User, has_preferred_artists: bool, has_tendency_result: bool
     ) -> UserState:
         """사용자 온보딩 상태 결정"""
+        # 0. 약관 동의하지 않았으면 TERMS_AGREEMENT
+        terms_accepted = user.detail.terms_accepted if user.detail else False
+        if not terms_accepted:
+            return UserState.TERMS_AGREEMENT
+
         # 1. 선호 아티스트가 없으면 PREFERRED_ARTISTS
         if not has_preferred_artists:
             return UserState.PREFERRED_ARTISTS

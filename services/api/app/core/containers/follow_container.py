@@ -2,13 +2,14 @@
 
 from dependency_injector import containers, providers
 
+from app.core.containers.core_container import CoreContainer
+from app.features.follow.repositories.follow_repository import FollowRepository
+from app.features.follow.use_cases.follow_use_case import FollowUseCase
+
 
 # MARK: - Repository Containers
 class FollowRepoContainer(containers.DeclarativeContainer):
     """팔로우 Repository 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.follow.repositories.follow_repository import FollowRepository
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -18,9 +19,6 @@ class FollowRepoContainer(containers.DeclarativeContainer):
 # MARK: - UseCase Containers
 class FollowUseCaseContainer(containers.DeclarativeContainer):
     """팔로우 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.follow.use_cases.follow_use_case import FollowUseCase
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -35,10 +33,6 @@ class FollowUseCaseContainer(containers.DeclarativeContainer):
 class FollowContainer(containers.DeclarativeContainer):
     """팔로우 통합 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.follow.repositories.follow_repository import FollowRepository
-    from app.features.follow.use_cases.follow_use_case import FollowUseCase
-
     core: CoreContainer = providers.DependenciesContainer()
 
     # Repositories
@@ -46,7 +40,3 @@ class FollowContainer(containers.DeclarativeContainer):
 
     # UseCases
     use_case: FollowUseCaseContainer = providers.Container(FollowUseCaseContainer, core=core)
-
-    # 편의를 위한 alias
-    follow_repo: providers.Factory[FollowRepository] = repo.follow_repo
-    follow_use_case: providers.Factory[FollowUseCase] = use_case.follow_use_case

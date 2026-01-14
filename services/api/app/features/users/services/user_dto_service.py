@@ -2,14 +2,11 @@
 
 import datetime
 from datetime import timezone
-from typing import TYPE_CHECKING
 
 from app.features.follow.schemas import FollowStatsDto
 from app.features.users.models import User, UserDetail
 from app.features.users.schemas import UserDto
-
-if TYPE_CHECKING:
-    from app.features.users.services.user_state_service import UserStateService
+from app.features.users.services.user_state_service import UserStateService
 
 
 class UserDtoService:
@@ -60,7 +57,7 @@ class UserDtoService:
         has_tendency_result: bool,
         tendency_type: str | None,
         follow_stats: FollowStatsDto | None,
-        user_state_service: "UserStateService",
+        user_state_service: UserStateService,
     ) -> dict:
         """UserDetailDto 생성을 위한 데이터 준비"""
         # 기본 사용자 정보

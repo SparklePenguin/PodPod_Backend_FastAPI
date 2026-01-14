@@ -71,7 +71,7 @@ def discover_exception_handlers(
         logger.info(f"No exception_handlers.py files found in {base_path}")
         return handlers
 
-    logger.info(f"Found {len(handler_files)} exception_handlers.py files")
+    logger.debug(f"Found {len(handler_files)} exception_handlers.py files")
 
     for handler_file in handler_files:
         # 상대 경로를 모듈 경로로 변환
@@ -124,8 +124,8 @@ def discover_exception_handlers(
 
                     handlers[exc_class] = handler_func
 
-                logger.info(
-                    f"✓ Loaded {len(module_handlers)} handler(s) from {module_path}"
+                logger.debug(
+                    f"Loaded {len(module_handlers)} handler(s) from {module_path}"
                 )
             else:
                 logger.debug(f"No EXCEPTION_HANDLERS found in {module_path}")
@@ -140,22 +140,14 @@ def discover_exception_handlers(
     return handlers
 
 
-def register_exception_handlers(
-    app: FastAPI, base_path: str | None = None, verbose: bool = True
-):
+def register_exception_handlers(app: FastAPI, base_path: str | None = None):
     """
     앱에 도메인별 exception handler를 자동으로 등록합니다.
 
     Args:
         app: FastAPI 애플리케이션 인스턴스
         base_path: features 디렉토리 경로 (기본값: None, 자동으로 app/features 찾기)
-        verbose: 상세 로그 출력 여부
     """
-    if verbose:
-        logger.info("=" * 60)
-        logger.info("Starting domain exception handler registration...")
-        logger.info("=" * 60)
-
     handlers = discover_exception_handlers(base_path)
 
     if not handlers:
@@ -171,19 +163,15 @@ def register_exception_handlers(
             app.add_exception_handler(exception_class, cast(Any, handler_func))
             registered_count += 1
 
-            if verbose:
-                logger.info(
-                    f"✓ Registered handler for {exception_class.__name__}: {handler_func.__name__}"
-                )
+            logger.debug(
+                f"Registered handler for {exception_class.__name__}: {handler_func.__name__}"
+            )
 
         except Exception as e:
             logger.error(
                 f"Failed to register handler for {exception_class.__name__}: {str(e)}"
             )
 
-    if verbose:
-        logger.info("=" * 60)
-        logger.info(
-            f"Domain exception handler registration complete: {registered_count}/{len(handlers)} handlers registered"
-        )
-        logger.info("=" * 60)
+    logger.info(
+        f"Domain exception handlers registered: {registered_count}/{len(handlers)}"
+    )

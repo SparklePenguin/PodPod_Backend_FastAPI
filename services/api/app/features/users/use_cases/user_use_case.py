@@ -133,7 +133,7 @@ class UserUseCase:
         """사용자 생성 (커밋 포함)"""
         user = await self._user_repo.create(user_data)
         await self._session.commit()
-        await self._session.refresh(user)
+        await self._session.refresh(user, ["detail"])  # detail 관계도 함께 로드
         return user
 
     # - MARK: 사용자 조회

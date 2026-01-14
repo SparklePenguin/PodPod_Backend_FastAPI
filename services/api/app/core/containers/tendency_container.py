@@ -2,15 +2,19 @@
 
 from dependency_injector import containers, providers
 
+from app.core.containers.core_container import CoreContainer
+from app.features.tendencies.repositories.tendency_repository import (
+    TendencyRepository,
+)
+from app.features.tendencies.services.tendency_calculation_service import (
+    TendencyCalculationService,
+)
+from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
+
 
 # MARK: - Repository Containers
 class TendencyRepoContainer(containers.DeclarativeContainer):
     """성향 Repository 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.tendencies.repositories.tendency_repository import (
-        TendencyRepository,
-    )
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -21,19 +25,12 @@ class TendencyRepoContainer(containers.DeclarativeContainer):
 class TendencyCalculationServiceContainer(containers.DeclarativeContainer):
     """성향 계산 Service 컨테이너"""
 
-    from app.features.tendencies.services.tendency_calculation_service import (
-        TendencyCalculationService,
-    )
-
     tendency_calculation_service = providers.Singleton(TendencyCalculationService)
 
 
 # MARK: - UseCase Containers
 class TendencyUseCaseContainer(containers.DeclarativeContainer):
     """성향 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 
     core: CoreContainer = providers.DependenciesContainer()
     tendency_repo: TendencyRepoContainer = providers.DependenciesContainer()
@@ -50,15 +47,6 @@ class TendencyUseCaseContainer(containers.DeclarativeContainer):
 # MARK: - Aggregate Container
 class TendencyContainer(containers.DeclarativeContainer):
     """성향 통합 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.tendencies.repositories.tendency_repository import (
-        TendencyRepository,
-    )
-    from app.features.tendencies.services.tendency_calculation_service import (
-        TendencyCalculationService,
-    )
-    from app.features.tendencies.use_cases.tendency_use_case import TendencyUseCase
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -77,10 +65,3 @@ class TendencyContainer(containers.DeclarativeContainer):
         tendency_repo=repo,
         calculation_service=service,
     )
-
-    # 편의를 위한 alias
-    tendency_repo: providers.Factory[TendencyRepository] = repo.tendency_repo
-    tendency_calculation_service: providers.Singleton[TendencyCalculationService] = (
-        service.tendency_calculation_service
-    )
-    tendency_use_case: providers.Factory[TendencyUseCase] = use_case.tendency_use_case

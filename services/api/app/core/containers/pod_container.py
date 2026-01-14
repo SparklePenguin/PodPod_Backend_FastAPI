@@ -2,13 +2,34 @@
 
 from dependency_injector import containers, providers
 
+from app.core.containers.core_container import CoreContainer
+from app.core.containers.follow_container import FollowUseCaseContainer
+from app.features.pods.repositories.application_repository import ApplicationRepository
+from app.features.pods.repositories.like_repository import PodLikeRepository
+from app.features.pods.repositories.pod_repository import PodRepository
+from app.features.pods.repositories.review_repository import PodReviewRepository
+from app.features.pods.services.application_dto_service import ApplicationDtoService
+from app.features.pods.services.application_notification_service import (
+    ApplicationNotificationService,
+)
+from app.features.pods.services.like_notification_service import LikeNotificationService
+from app.features.pods.services.pod_enrichment_service import PodEnrichmentService
+from app.features.pods.services.pod_notification_service import PodNotificationService
+from app.features.pods.services.review_dto_service import ReviewDtoService
+from app.features.pods.services.review_notification_service import (
+    ReviewNotificationService,
+)
+from app.features.pods.use_cases.application_use_case import ApplicationUseCase
+from app.features.pods.use_cases.like_use_case import LikeUseCase
+from app.features.pods.use_cases.pod_query_use_case import PodQueryUseCase
+from app.features.pods.use_cases.pod_use_case import PodUseCase
+from app.features.pods.use_cases.review_use_case import ReviewUseCase
+from app.features.users.repositories import UserRepository
+
 
 # MARK: - Repository Containers
 class PodRepoContainer(containers.DeclarativeContainer):
     """파티 Repository 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.repositories.pod_repository import PodRepository
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -18,11 +39,6 @@ class PodRepoContainer(containers.DeclarativeContainer):
 class ApplicationRepoContainer(containers.DeclarativeContainer):
     """파티 신청 Repository 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.repositories.application_repository import (
-        ApplicationRepository,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
 
     application_repo = providers.Factory(ApplicationRepository, session=core.session)
@@ -30,9 +46,6 @@ class ApplicationRepoContainer(containers.DeclarativeContainer):
 
 class PodLikeRepoContainer(containers.DeclarativeContainer):
     """파티 좋아요 Repository 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.repositories.like_repository import PodLikeRepository
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -42,9 +55,6 @@ class PodLikeRepoContainer(containers.DeclarativeContainer):
 class PodReviewRepoContainer(containers.DeclarativeContainer):
     """파티 리뷰 Repository 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.repositories.review_repository import PodReviewRepository
-
     core: CoreContainer = providers.DependenciesContainer()
 
     pod_review_repo = providers.Factory(PodReviewRepository, session=core.session)
@@ -52,9 +62,6 @@ class PodReviewRepoContainer(containers.DeclarativeContainer):
 
 class PodUserRepoContainer(containers.DeclarativeContainer):
     """파티용 사용자 Repository 컨테이너 (순환 참조 방지)"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.users.repositories import UserRepository
 
     core: CoreContainer = providers.DependenciesContainer()
 
@@ -64,9 +71,6 @@ class PodUserRepoContainer(containers.DeclarativeContainer):
 # MARK: - Service Containers
 class ReviewDtoServiceContainer(containers.DeclarativeContainer):
     """리뷰 DTO Service 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.services.review_dto_service import ReviewDtoService
 
     core: CoreContainer = providers.DependenciesContainer()
     user_repo: PodUserRepoContainer = providers.DependenciesContainer()
@@ -81,9 +85,6 @@ class ReviewDtoServiceContainer(containers.DeclarativeContainer):
 class ApplicationDtoServiceContainer(containers.DeclarativeContainer):
     """신청 DTO Service 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.services.application_dto_service import ApplicationDtoService
-
     core: CoreContainer = providers.DependenciesContainer()
     user_repo: PodUserRepoContainer = providers.DependenciesContainer()
 
@@ -96,11 +97,6 @@ class ApplicationDtoServiceContainer(containers.DeclarativeContainer):
 
 class LikeNotificationServiceContainer(containers.DeclarativeContainer):
     """좋아요 알림 Service 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.services.like_notification_service import (
-        LikeNotificationService,
-    )
 
     core: CoreContainer = providers.DependenciesContainer()
     user_repo: PodUserRepoContainer = providers.DependenciesContainer()
@@ -120,11 +116,6 @@ class LikeNotificationServiceContainer(containers.DeclarativeContainer):
 class ReviewNotificationServiceContainer(containers.DeclarativeContainer):
     """리뷰 알림 Service 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.services.review_notification_service import (
-        ReviewNotificationService,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
     user_repo: PodUserRepoContainer = providers.DependenciesContainer()
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
@@ -140,11 +131,6 @@ class ReviewNotificationServiceContainer(containers.DeclarativeContainer):
 
 class ApplicationNotificationServiceContainer(containers.DeclarativeContainer):
     """신청 알림 Service 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.services.application_notification_service import (
-        ApplicationNotificationService,
-    )
 
     core: CoreContainer = providers.DependenciesContainer()
     user_repo: PodUserRepoContainer = providers.DependenciesContainer()
@@ -164,11 +150,6 @@ class ApplicationNotificationServiceContainer(containers.DeclarativeContainer):
 class PodNotificationServiceContainer(containers.DeclarativeContainer):
     """파티 알림 Service 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.services.pod_notification_service import (
-        PodNotificationService,
-    )
-
     core: CoreContainer = providers.DependenciesContainer()
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
 
@@ -182,8 +163,6 @@ class PodNotificationServiceContainer(containers.DeclarativeContainer):
 
 class PodEnrichmentServiceContainer(containers.DeclarativeContainer):
     """파티 enrichment Service 컨테이너"""
-
-    from app.features.pods.services.pod_enrichment_service import PodEnrichmentService
 
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
     application_repo: ApplicationRepoContainer = providers.DependenciesContainer()
@@ -209,9 +188,6 @@ class PodEnrichmentServiceContainer(containers.DeclarativeContainer):
 class ApplicationUseCaseContainer(containers.DeclarativeContainer):
     """신청 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.use_cases.application_use_case import ApplicationUseCase
-
     core: CoreContainer = providers.DependenciesContainer()
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
     application_repo: ApplicationRepoContainer = providers.DependenciesContainer()
@@ -233,9 +209,6 @@ class ApplicationUseCaseContainer(containers.DeclarativeContainer):
 class LikeUseCaseContainer(containers.DeclarativeContainer):
     """좋아요 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.use_cases.like_use_case import LikeUseCase
-
     core: CoreContainer = providers.DependenciesContainer()
     pod_like_repo: PodLikeRepoContainer = providers.DependenciesContainer()
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
@@ -252,9 +225,6 @@ class LikeUseCaseContainer(containers.DeclarativeContainer):
 
 class ReviewUseCaseContainer(containers.DeclarativeContainer):
     """리뷰 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.features.pods.use_cases.review_use_case import ReviewUseCase
 
     core: CoreContainer = providers.DependenciesContainer()
     pod_review_repo: PodReviewRepoContainer = providers.DependenciesContainer()
@@ -275,10 +245,6 @@ class ReviewUseCaseContainer(containers.DeclarativeContainer):
 class PodQueryUseCaseContainer(containers.DeclarativeContainer):
     """파티 조회 UseCase 컨테이너"""
 
-    from app.core.containers.core_container import CoreContainer
-    from app.core.containers.follow_container import FollowUseCaseContainer
-    from app.features.pods.use_cases.pod_query_use_case import PodQueryUseCase
-
     core: CoreContainer = providers.DependenciesContainer()
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
     user_repo: PodUserRepoContainer = providers.DependenciesContainer()
@@ -297,10 +263,6 @@ class PodQueryUseCaseContainer(containers.DeclarativeContainer):
 
 class PodUseCaseContainer(containers.DeclarativeContainer):
     """파티 UseCase 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.core.containers.follow_container import FollowUseCaseContainer
-    from app.features.pods.use_cases.pod_use_case import PodUseCase
 
     core: CoreContainer = providers.DependenciesContainer()
     pod_repo: PodRepoContainer = providers.DependenciesContainer()
@@ -321,9 +283,6 @@ class PodUseCaseContainer(containers.DeclarativeContainer):
 # MARK: - Aggregate Container
 class PodContainer(containers.DeclarativeContainer):
     """파티 통합 컨테이너"""
-
-    from app.core.containers.core_container import CoreContainer
-    from app.core.containers.follow_container import FollowUseCaseContainer
 
     core: CoreContainer = providers.DependenciesContainer()
 
