@@ -11,7 +11,7 @@ services:
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_dev_data:/var/lib/mysql
       - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
@@ -30,7 +30,7 @@ services:
     container_name: podpod-redis-dev
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_dev_data:/data
     networks:
@@ -95,6 +95,7 @@ services:
       - ./uploads/dev:/app/uploads/dev  # 개발 환경 업로드 파일
       - ./logs/dev:/app/logs/dev  # 개발 환경 로그 파일
       - ./shared:/app/shared  # 공유 모델
+      - ./database:/app/database  # 마이그레이션 스크립트
     networks:
       - podpod-network
     depends_on:
