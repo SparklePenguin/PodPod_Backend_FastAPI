@@ -269,22 +269,22 @@ class Settings(BaseSettings):
     @property
     def KAKAO_REDIRECT_URI(self) -> str:
         """카카오 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/kakao/callback"
+        return f"{self.base_url}/api/v1/oauth/kakao/callback"
 
     @property
     def NAVER_REDIRECT_URI(self) -> str:
         """네이버 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/naver/callback"
+        return f"{self.base_url}/api/v1/oauth/naver/callback"
 
     @property
     def GOOGLE_REDIRECT_URI(self) -> str:
         """구글 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/google/callback"
+        return f"{self.base_url}/api/v1/oauth/google/callback"
 
     @property
     def APPLE_REDIRECT_URI(self) -> str:
         """애플 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/apple/callback"
+        return f"{self.base_url}/api/v1/oauth/apple/callback"
 
     # MARK: - OAuth URLs (상수)
 
