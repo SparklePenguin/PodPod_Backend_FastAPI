@@ -62,15 +62,16 @@ def upgrade() -> None:
             sa.Column("tendency_type", sa.String(50), nullable=True),
         )
 
-    # 3. 기존 users 데이터를 user_details로 마이그레이션
-    op.execute(
-        """
-        INSERT INTO user_details (user_id, username, email, fcm_token, terms_accepted, updated_at)
-        SELECT id, username, email, fcm_token, COALESCE(terms_accepted, FALSE), updated_at
-        FROM users
-        WHERE id NOT IN (SELECT user_id FROM user_details)
-        """
-    )
+    # 3. 기존 users 데이터를 user_details로 마이그레이션 (컬럼이 존재하는 경우에만)
+    if "username" in user_columns:
+        op.execute(
+            """
+            INSERT INTO user_details (user_id, username, email, fcm_token, terms_accepted, updated_at)
+            SELECT id, username, email, fcm_token, COALESCE(terms_accepted, FALSE), updated_at
+            FROM users
+            WHERE id NOT IN (SELECT user_id FROM user_details)
+            """
+        )
 
     # 4. user_tendency_results의 tendency_type을 users로 복사
     if "user_tendency_results" in existing_tables:

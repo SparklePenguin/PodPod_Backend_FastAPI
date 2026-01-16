@@ -11,8 +11,9 @@ services:
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
+      - mysql_dev_data:/var/lib/mysql
       - ./init-db:/docker-entrypoint-initdb.d  # 초기화 스크립트 (선택사항)
     networks:
       - podpod-network
@@ -29,12 +30,11 @@ services:
     container_name: podpod-redis-dev
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_dev_data:/data
     networks:
       - podpod-network
-    command: redis-server --appendonly yes
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
@@ -53,15 +53,12 @@ services:
       # 환경 설정 파일 지정
       CONFIG_FILE: config.dev.yaml
 
-      # 데이터베이스 연결 (호스트 로컬 MySQL)
-      MYSQL_HOST: host.docker.internal
+      # 데이터베이스 연결 (도커 컨테이너 내부에서는 서비스명으로 접근)
+      MYSQL_HOST: db
       MYSQL_PORT: 3306
       MYSQL_DATABASE: podpod_dev
       MYSQL_USER: root
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
-      # Redis 연결 (Docker 컨테이너)
-      REDIS_URL: redis://redis:6379/0
 
       # 보안 관련 (Infisical에서 주입된 환경 변수 전달)
       SECRET_KEY: ${SECRET_KEY}
@@ -83,12 +80,12 @@ services:
       SENDBIRD_APP_ID: ${SENDBIRD_APP_ID}
       SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN}
 
-      # Google Sheets
-      GOOGLE_SHEETS_ID: ${GOOGLE_SHEETS_ID}
-      GOOGLE_SHEETS_CREDENTIALS: ${GOOGLE_SHEETS_CREDENTIALS}
-
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
+
+      # Redis (도커 컨테이너 내부에서는 서비스명으로 접근)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - "8000:8000"
     volumes:
@@ -98,9 +95,12 @@ services:
       - ./uploads/dev:/app/uploads/dev  # 개발 환경 업로드 파일
       - ./logs/dev:/app/logs/dev  # 개발 환경 로그 파일
       - ./shared:/app/shared  # 공유 모델
+      - ./database:/app/database  # 마이그레이션 스크립트
     networks:
       - podpod-network
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -116,5 +116,7 @@ networks:
     driver: bridge
 
 volumes:
+  mysql_dev_data:
+    driver: local
   redis_dev_data:
     driver: local

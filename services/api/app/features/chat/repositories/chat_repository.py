@@ -6,6 +6,8 @@ import logging
 from datetime import datetime
 from typing import List
 
+from redis import Redis
+
 from app.features.chat.enums import MessageType
 from app.features.chat.models.chat_models import ChatMessage
 from sqlalchemy import desc, func, select
@@ -18,8 +20,9 @@ logger = logging.getLogger(__name__)
 class ChatRepository:
     """채팅 메시지 Repository"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, redis:Redis):
         self._session = session
+        self._redis = redis
 
     # - MARK: 메시지 생성
     async def create_message(

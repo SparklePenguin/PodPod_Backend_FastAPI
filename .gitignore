@@ -354,10 +354,9 @@ pip-selfcheck.json
 .vscode
 
 # Uploaded files
-services/api/uploads/*
+services/api/uploads/
 
-# 중간 디렉토리는 다시 포함
-!services/api/uploads/dev/
+# 예외: dev 환경의 artists와 profile_random_images는 Git에 포함
 !services/api/uploads/dev/artists/
 !services/api/uploads/dev/profile_random_images/
 
@@ -365,4 +364,8 @@ services/api/uploads/*
 data/
 prometheus.log
 
+# Dependencies markers
+scripts/.setup
+
 logs/*
+*.log.*

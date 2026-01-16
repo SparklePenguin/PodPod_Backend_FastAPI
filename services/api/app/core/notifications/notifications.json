@@ -1,0 +1,385 @@
+{
+  "POD_JOIN_REQUESTED": {
+    "category": "POD",
+    "message_template": "[nickname]님이 모임에 참여를 요청했어요. 확인해 보세요!",
+    "placeholders": [
+      "nickname",
+      "user_id"
+    ],
+    "related_id_type": "user_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "UserRef"
+    ],
+    "target": "파티장",
+    "description": "파티 참가 신청 알림"
+  },
+  "POD_JOIN_APPROVED": {
+    "category": "POD",
+    "message_template": "👋 [party_name] 참여가 확정되었어요! 채팅방에서 인사 나눠보세요.",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "신청자",
+    "description": "파티 참가 승인 알림"
+  },
+  "POD_JOIN_REJECTED": {
+    "category": "POD",
+    "message_template": "😢 아쉽게도 [party_name] 참여가 어렵게 되었어요. 다른 모임도 둘러보세요.",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "신청자",
+    "description": "파티 참가 거절 알림"
+  },
+  "POD_MEMBER_JOINED": {
+    "category": "POD",
+    "message_template": "👋 새로운 파티원 [nickname]님이 [party_name] 모임에 함께하게 되었어요!",
+    "placeholders": [
+      "nickname",
+      "party_name",
+      "pod_id",
+      "user_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef",
+      "UserRef"
+    ],
+    "target": "파티원",
+    "description": "새 파티원 참여 알림"
+  },
+  "POD_UPDATED": {
+    "category": "POD",
+    "message_template": "🛠️ [party_name] 모임 정보가 변경되었어요. 지금 확인해 보세요.",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티원",
+    "description": "파티 정보 변경 알림"
+  },
+  "POD_CONFIRMED": {
+    "category": "POD",
+    "message_template": "✅ 모임이 드디어 확정! [party_name]에 함께할 준비 되셨죠?",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티원",
+    "description": "파티 확정 알림"
+  },
+  "POD_CANCELED": {
+    "category": "POD",
+    "message_template": "😢 [party_name] 모임이 취소되었어요.",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티원",
+    "description": "파티 취소 알림"
+  },
+  "POD_STARTING_SOON": {
+    "category": "POD",
+    "message_template": "⏰ [party_name] 모임이 한 시간 뒤 시작돼요. 준비되셨나요?",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": true
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티원",
+    "description": "파티 시작 임박 리마인더"
+  },
+  "POD_LOW_ATTENDANCE": {
+    "category": "POD",
+    "message_template": "😢 [party_name] 오늘 파티가 확정되지 않으면 취소돼요. 시간이 더 필요하다면 일정을 수정할 수 있어요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": true
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티장",
+    "description": "파티 마감 임박 리마인더"
+  },
+  "POD_CANCELED_SOON": {
+    "category": "POD",
+    "message_template": "😢 [party_name] 팟티가 곧 취소돼요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": true
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티장",
+    "description": "파티 취소 임박 알림"
+  },
+  "POD_COMPLETED": {
+    "category": "POD",
+    "message_template": "🎉 [party_name] 모임이 완료되었습니다! 즐거운 시간 보내셨나요?",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티원",
+    "description": "파티 완료 알림"
+  },
+  "POD_LIKES_THRESHOLD": {
+    "category": "POD",
+    "message_template": "🎉 [party_name] 모임에 좋아요가 10개 이상 쌓였어요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티장",
+    "description": "좋아요 10개 달성 알림"
+  },
+  "POD_VIEWS_THRESHOLD": {
+    "category": "POD",
+    "message_template": "🔥 [party_name]에 관심이 몰리고 있어요. 인기 모임이 될지도 몰라요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티장",
+    "description": "조회수 달성 알림"
+  },
+  "POD_CAPACITY_FULL": {
+    "category": "POD",
+    "message_template": "👋 [party_name] 참여 인원이 모두 모였어요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티장",
+    "description": "정원 마감 알림"
+  },
+  "REVIEW_CREATED": {
+    "category": "REVIEW",
+    "message_template": "📝 [nickname]님이 [party_name]에 대한 리뷰를 남겼어요!",
+    "placeholders": [
+      "nickname",
+      "party_name",
+      "pod_id",
+      "user_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef",
+      "UserRef"
+    ],
+    "target": "파티장",
+    "description": "리뷰 작성 알림"
+  },
+  "REVIEW_REMINDER_DAY": {
+    "category": "REVIEW",
+    "message_template": "😊 오늘 [party_name] 어떠셨나요? 소중한 리뷰를 남겨보세요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": true
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "파티원",
+    "description": "리뷰 작성 D-day 리마인더"
+  },
+  "REVIEW_REMINDER_WEEK": {
+    "category": "REVIEW",
+    "message_template": "💭 [party_name] 후기가 궁금해요. 어땠는지 들려주세요!",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": true
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "리뷰 미작성자",
+    "description": "리뷰 작성 D-7 리마인더"
+  },
+  "REVIEW_OTHERS_CREATED": {
+    "category": "REVIEW",
+    "message_template": "👀 같은 모임에 참여한 [nickname]님의 후기가 도착했어요!",
+    "placeholders": [
+      "nickname",
+      "user_id"
+    ],
+    "related_id_type": "user_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "UserRef"
+    ],
+    "target": "파티원",
+    "description": "다른 파티원 리뷰 작성 알림"
+  },
+  "USER_FOLLOWED": {
+    "category": "USER",
+    "message_template": "👋 [nickname]님이 당신을 팔로우했어요! 새로운 만남을 기대해 볼까요?",
+    "placeholders": [
+      "nickname",
+      "user_id"
+    ],
+    "related_id_type": "user_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "UserRef"
+    ],
+    "target": "팔로우 받은 유저",
+    "description": "팔로우 알림"
+  },
+  "USER_FOLLOWED_USER_CREATED_POD": {
+    "category": "USER",
+    "message_template": "🎉 [nickname]님이 새로운 모임 [party_name]을 만들었어요!",
+    "placeholders": [
+      "nickname",
+      "party_name",
+      "pod_id",
+      "user_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef",
+      "UserRef"
+    ],
+    "target": "팔로워",
+    "description": "팔로잉 유저 파티 생성 알림"
+  },
+  "SYSTEM_SAVED_POD_DEADLINE": {
+    "category": "SYSTEM",
+    "message_template": "🚨 [party_name] 곧 마감돼요! 신청 놓칠지도 몰라요 😥",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": true
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "저장한 유저",
+    "description": "저장한 파티 마감 임박 알림"
+  },
+  "SYSTEM_SAVED_POD_SPOT_OPENED": {
+    "category": "SYSTEM",
+    "message_template": "🎉 [party_name]에 자리가 생겼어요! 지금 신청해 보세요.",
+    "placeholders": [
+      "party_name",
+      "pod_id"
+    ],
+    "related_id_type": "pod_id",
+    "meta": {
+      "is_reminder": false
+    },
+    "ref": [
+      "PodRef"
+    ],
+    "target": "저장한 유저",
+    "description": "저장한 파티 자리 오픈 알림"
+  }
+}

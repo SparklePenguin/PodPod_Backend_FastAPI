@@ -465,7 +465,10 @@ HEAD_REV=$(alembic heads 2>&1 | grep -oE '[a-f0-9]{12}' | head -1)
 
 # 리비전 비교
 NEED_MIGRATION="n"
-if [ -z "$CURRENT_REV" ]; then
+if [ -z "$HEAD_REV" ]; then
+    # 마이그레이션 파일이 없으면 건너뛰기
+    echo "ℹ️  마이그레이션 파일이 없습니다. 건너뜁니다."
+elif [ -z "$CURRENT_REV" ]; then
     echo "⚠️  데이터베이스에 마이그레이션이 적용되지 않았습니다."
     echo "   최신 리비전: ${HEAD_REV}"
     echo ""

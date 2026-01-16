@@ -4,6 +4,7 @@ from typing import Any, Dict
 from app.features.users.models import User, UserDetail
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
 class UserRepository:
@@ -12,13 +13,18 @@ class UserRepository:
 
     # - MARK: 사용자 ID로 조회
     async def get_by_id(self, user_id: int) -> User | None:
-        result = await self._session.execute(select(User).where(User.id == user_id))
+        result = await self._session.execute(
+            select(User)
+            .options(selectinload(User.detail))  # detail 관계 eager load
+            .where(User.id == user_id)
+        )
         return result.scalar_one_or_none()
 
     # - MARK: 이메일로 사용자 조회
     async def get_by_email(self, email: str) -> User | None:
         result = await self._session.execute(
             select(User)
+            .options(selectinload(User.detail))  # detail 관계 eager load
             .join(UserDetail, User.id == UserDetail.user_id)
             .where(UserDetail.email == email)
         )
@@ -33,6 +39,7 @@ class UserRepository:
             # OAuth 로그인인 경우: email + provider 조합으로 조회
             result = await self._session.execute(
                 select(User)
+                .options(selectinload(User.detail))  # detail 관계 eager load
                 .join(UserDetail, User.id == UserDetail.user_id)
                 .where(
                     and_(UserDetail.email == email, User.auth_provider == auth_provider)
@@ -42,6 +49,7 @@ class UserRepository:
             # 일반 로그인인 경우: email만으로 조회 (auth_provider가 NULL인 사용자)
             result = await self._session.execute(
                 select(User)
+                .options(selectinload(User.detail))  # detail 관계 eager load
                 .join(UserDetail, User.id == UserDetail.user_id)
                 .where(
                     and_(UserDetail.email == email, User.auth_provider.is_(None))
@@ -54,7 +62,9 @@ class UserRepository:
         self, auth_provider: str, auth_provider_id: str
     ) -> User | None:
         result = await self._session.execute(
-            select(User).where(
+            select(User)
+            .options(selectinload(User.detail))  # detail 관계 eager load
+            .where(
                 and_(
                     User.auth_provider == auth_provider,
                     User.auth_provider_id == auth_provider_id,

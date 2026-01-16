@@ -1,0 +1,514 @@
+{
+  "common": {
+    "BAD_REQUEST": {
+      "code": 1,
+      "http_status": 400,
+      "message_ko": "잘못된 요청입니다.",
+      "message_en": "Bad request.",
+      "dev_note": "클라이언트 요청이 올바르지 않습니다."
+    },
+    "INTERNAL_SERVER_ERROR": {
+      "code": 2,
+      "http_status": 500,
+      "message_ko": "내부 서버 오류가 발생했습니다.",
+      "message_en": "Internal server error.",
+      "dev_note": "서버 로그 및 예외 스택 추적"
+    },
+    "DATABASE_CONNECTION_FAILED": {
+      "code": 3,
+      "http_status": 500,
+      "message_ko": "데이터베이스 연결에 실패했습니다.",
+      "message_en": "Database connection failed.",
+      "dev_note": "DB 연결 설정 및 네트워크 점검"
+    },
+    "EXTERNAL_API_CALL_FAILED": {
+      "code": 4,
+      "http_status": 500,
+      "message_ko": "외부 API 호출에 실패했습니다.",
+      "message_en": "External API call failed.",
+      "dev_note": "외부 API 응답 로그 및 네트워크 점검"
+    },
+    "FILE_UPLOAD_FAILED": {
+      "code": 5,
+      "http_status": 500,
+      "message_ko": "파일 업로드에 실패했습니다.",
+      "message_en": "File upload failed.",
+      "dev_note": "스토리지/S3 설정 및 업로드 로직 점검"
+    },
+    "EMAIL_SENDING_FAILED": {
+      "code": 6,
+      "http_status": 500,
+      "message_ko": "이메일 발송에 실패했습니다.",
+      "message_en": "Email sending failed.",
+      "dev_note": "메일 서버 설정 및 SMTP 로그 점검"
+    },
+    "NOT_FOUND": {
+      "code": 7,
+      "http_status": 404,
+      "message_ko": "요청한 리소스를 찾을 수 없습니다.",
+      "message_en": "Requested resource not found.",
+      "dev_note": "요청 경로 및 리소스 ID 확인"
+    }
+  },
+  "auth": {
+    "INVALID_CREDENTIALS": {
+      "code": 1001,
+      "http_status": 401,
+      "message_ko": "아이디 또는 비밀번호가 올바르지 않습니다.",
+      "message_en": "Invalid username or password.",
+      "dev_note": "입력값 검증 후 로그인 실패 처리"
+    },
+    "TOKEN_EXPIRED": {
+      "code": 1002,
+      "http_status": 401,
+      "message_ko": "인증 토큰이 만료되었습니다.",
+      "message_en": "Authentication token has expired.",
+      "dev_note": "Refresh 토큰 발급 유도"
+    },
+    "INVALID_TOKEN": {
+      "code": 1003,
+      "http_status": 401,
+      "message_ko": "토큰이 유효하지 않습니다.",
+      "message_en": "Invalid token.",
+      "dev_note": "토큰 파싱 및 검증 로직 확인"
+    },
+    "AUTHENTICATION_REQUIRED": {
+      "code": 1004,
+      "http_status": 401,
+      "message_ko": "인증이 필요합니다.",
+      "message_en": "Authentication required.",
+      "dev_note": "인증 미들웨어 적용 여부 확인"
+    }
+  },
+  "oauth": {
+    "OAUTH_AUTHENTICATION_FAILED": {
+      "code": 2001,
+      "http_status": 401,
+      "message_ko": "OAuth 인증에 실패했습니다.",
+      "message_en": "OAuth authentication failed.",
+      "dev_note": "OAuth provider 설정 및 토큰 검증 로직 점검"
+    },
+    "OAUTH_TOKEN_INVALID": {
+      "code": 2002,
+      "http_status": 401,
+      "message_ko": "OAuth 토큰이 유효하지 않습니다.",
+      "message_en": "OAuth token is invalid.",
+      "dev_note": "OAuth 토큰 검증 로직 확인"
+    },
+    "OAUTH_USER_INFO_FAILED": {
+      "code": 2003,
+      "http_status": 401,
+      "message_ko": "OAuth 사용자 정보를 가져올 수 없습니다.",
+      "message_en": "Failed to fetch OAuth user info.",
+      "dev_note": "OAuth API 호출 및 권한 설정 확인"
+    },
+    "OAUTH_STATE_INVALID": {
+      "code": 2004,
+      "http_status": 401,
+      "message_ko": "OAuth state가 유효하지 않습니다.",
+      "message_en": "OAuth state is invalid.",
+      "dev_note": "CSRF 방지용 state 검증 로직 확인"
+    },
+    "OAUTH_PROVIDER_NOT_SUPPORTED": {
+      "code": 2005,
+      "http_status": 400,
+      "message_ko": "지원하지 않는 OAuth 제공자입니다.",
+      "message_en": "OAuth provider not supported.",
+      "dev_note": "허용된 provider 목록 및 설정 확인"
+    }
+  },
+  "users": {
+    "USER_NOT_FOUND": {
+      "code": 3001,
+      "http_status": 404,
+      "message_ko": "사용자를 찾을 수 없습니다.",
+      "message_en": "User not found.",
+      "dev_note": "사용자 ID/이메일 조회 쿼리 확인"
+    },
+    "EMAIL_REQUIRED": {
+      "code": 3002,
+      "http_status": 400,
+      "message_ko": "이메일이 필요합니다.",
+      "message_en": "Email is required.",
+      "dev_note": "이메일 필수 입력 검증"
+    },
+    "EMAIL_ALREADY_EXISTS": {
+      "code": 3003,
+      "http_status": 400,
+      "message_ko": "이메일이 이미 등록되어 있습니다.",
+      "message_en": "Email already exists.",
+      "dev_note": "이메일 중복 체크 로직 및 unique 제약 확인"
+    },
+    "USERNAME_ALREADY_TAKEN": {
+      "code": 3004,
+      "http_status": 400,
+      "message_ko": "사용자명이 이미 사용 중입니다.",
+      "message_en": "Username already taken.",
+      "dev_note": "사용자명 중복 체크 로직 확인"
+    },
+    "NICKNAME_ALREADY_TAKEN": {
+      "code": 3005,
+      "http_status": 400,
+      "message_ko": "닉네임이 이미 사용 중입니다.",
+      "message_en": "Nickname already taken.",
+      "dev_note": "닉네임 중복 체크 로직 확인"
+    },
+    "PASSWORD_TOO_SHORT": {
+      "code": 3006,
+      "http_status": 400,
+      "message_ko": "비밀번호가 너무 짧습니다.",
+      "message_en": "Password too short.",
+      "dev_note": "비밀번호 길이 정책 강화"
+    },
+    "PASSWORD_TOO_WEAK": {
+      "code": 3007,
+      "http_status": 400,
+      "message_ko": "비밀번호가 너무 약합니다.",
+      "message_en": "Password too weak.",
+      "dev_note": "비밀번호 강도 검사 로직 보강"
+    },
+    "INVALID_EMAIL_FORMAT": {
+      "code": 3008,
+      "http_status": 400,
+      "message_ko": "이메일 형식이 올바르지 않습니다.",
+      "message_en": "Invalid email format.",
+      "dev_note": "이메일 정규식 검증 확인"
+    },
+    "INVALID_USERNAME_FORMAT": {
+      "code": 3009,
+      "http_status": 400,
+      "message_ko": "사용자명 형식이 올바르지 않습니다.",
+      "message_en": "Invalid username format.",
+      "dev_note": "사용자명 정규식 검증 확인"
+    },
+    "INVALID_NICKNAME_FORMAT": {
+      "code": 3010,
+      "http_status": 400,
+      "message_ko": "닉네임 형식이 올바르지 않습니다.",
+      "message_en": "Invalid nickname format.",
+      "dev_note": "닉네임 정규식 검증 확인"
+    },
+    "PROFILE_IMAGE_UPLOAD_FAILED": {
+      "code": 3011,
+      "http_status": 400,
+      "message_ko": "프로필 이미지 업로드에 실패했습니다.",
+      "message_en": "Profile image upload failed.",
+      "dev_note": "S3/스토리지 설정 및 업로드 로직 확인"
+    },
+    "SAME_OAUTH_PROVIDER_EXISTS": {
+      "code": 3012,
+      "http_status": 400,
+      "message_ko": "같은 OAuth 제공자의 계정이 이미 존재합니다.",
+      "message_en": "Account with same OAuth provider already exists.",
+      "dev_note": "소셜 연동 시 동일 provider 계정 중복 로직 확인"
+    },
+    "DIFFERENT_OAUTH_PROVIDER_EXISTS": {
+      "code": 3013,
+      "http_status": 400,
+      "message_ko": "다른 OAuth 제공자의 계정이 이미 존재합니다.",
+      "message_en": "Account with different OAuth provider already exists.",
+      "dev_note": "이메일 동일·provider 상이 시 계정 연결/안내 처리"
+    },
+    "IMAGE_UPLOAD_ERROR": {
+      "code": 3014,
+      "http_status": 400,
+      "message_ko": "이미지 업로드에 실패했습니다.",
+      "message_en": "Image upload error.",
+      "dev_note": "이미지 업로드 로직 확인"
+    },
+    "CANNOT_BLOCK_SELF": {
+      "code": 3015,
+      "http_status": 400,
+      "message_ko": "자기 자신을 차단할 수 없습니다.",
+      "message_en": "Cannot block yourself.",
+      "dev_note": "차단 대상 검증 로직 확인"
+    },
+    "BLOCK_NOT_FOUND": {
+      "code": 3016,
+      "http_status": 404,
+      "message_ko": "차단 관계를 찾을 수 없습니다.",
+      "message_en": "Block relationship not found.",
+      "dev_note": "차단 관계 조회 로직 확인"
+    }
+  },
+  "pods": {
+    "POD_NOT_FOUND": {
+      "code": 4001,
+      "http_status": 404,
+      "message_ko": "파티를 찾을 수 없습니다.",
+      "message_en": "Pod not found.",
+      "dev_note": "pod id 조회 쿼리 및 캐시 확인"
+    },
+    "NO_POD_ACCESS_PERMISSION": {
+      "code": 4002,
+      "http_status": 403,
+      "message_ko": "파티에 접근할 권한이 없습니다.",
+      "message_en": "No permission to access pod.",
+      "dev_note": "권한 체크 로직 점검"
+    },
+    "POD_ALREADY_CLOSED": {
+      "code": 4003,
+      "http_status": 400,
+      "message_ko": "파티가 이미 마감되었습니다.",
+      "message_en": "Pod is already closed.",
+      "dev_note": "모집 상태 업데이트 로직 확인"
+    },
+    "POD_IS_FULL": {
+      "code": 4004,
+      "http_status": 400,
+      "message_ko": "파티 정원이 가득 찼습니다.",
+      "message_en": "Pod is full.",
+      "dev_note": "capacity 검사 로직 보강"
+    },
+    "ALREADY_JOINED_POD": {
+      "code": 4005,
+      "http_status": 400,
+      "message_ko": "이미 참여한 파티입니다.",
+      "message_en": "Already joined pod.",
+      "dev_note": "중복 참여 방지 로직 확인"
+    },
+    "POD_JOIN_FAILED": {
+      "code": 4006,
+      "http_status": 400,
+      "message_ko": "파티 참여에 실패했습니다.",
+      "message_en": "Failed to join pod.",
+      "dev_note": "트랜잭션 및 DB 오류 로그 점검"
+    },
+    "POD_LEAVE_FAILED": {
+      "code": 4007,
+      "http_status": 400,
+      "message_ko": "파티에서 나가기에 실패했습니다.",
+      "message_en": "Failed to leave pod.",
+      "dev_note": "트랜잭션 및 DB 오류 로그 점검"
+    },
+    "ALREADY_APPLIED": {
+      "code": 4008,
+      "http_status": 400,
+      "message_ko": "이미 신청한 파티입니다.",
+      "message_en": "Already applied to this pod.",
+      "dev_note": "중복 신청 방지 로직 확인"
+    },
+    "ALREADY_MEMBER": {
+      "code": 4009,
+      "http_status": 400,
+      "message_ko": "이미 참여한 파티입니다.",
+      "message_en": "Already a member of this pod.",
+      "dev_note": "중복 참여 방지 로직 확인"
+    },
+    "POD_ACCESS_DENIED": {
+      "code": 4010,
+      "http_status": 403,
+      "message_ko": "파티 접근이 거부되었습니다.",
+      "message_en": "Pod access denied.",
+      "dev_note": "접근 권한 검증 로직 확인"
+    },
+    "REVIEW_ALREADY_EXISTS": {
+      "code": 4011,
+      "http_status": 400,
+      "message_ko": "이미 후기를 작성했습니다.",
+      "message_en": "Review already exists.",
+      "dev_note": "후기 중복 작성 방지 로직 확인"
+    },
+    "REVIEW_NOT_FOUND": {
+      "code": 4012,
+      "http_status": 404,
+      "message_ko": "후기를 찾을 수 없습니다.",
+      "message_en": "Review not found.",
+      "dev_note": "후기 조회 로직 확인"
+    },
+    "REVIEW_PERMISSION_DENIED": {
+      "code": 4013,
+      "http_status": 403,
+      "message_ko": "후기 수정/삭제 권한이 없습니다.",
+      "message_en": "No permission to modify review.",
+      "dev_note": "후기 권한 검증 로직 확인"
+    },
+    "INVALID_IMAGE": {
+      "code": 4014,
+      "http_status": 400,
+      "message_ko": "이미지가 유효하지 않습니다.",
+      "message_en": "Invalid image.",
+      "dev_note": "이미지 검증 로직 확인"
+    },
+    "INVALID_POD_STATUS": {
+      "code": 4015,
+      "http_status": 400,
+      "message_ko": "파티 상태 값이 유효하지 않습니다.",
+      "message_en": "Invalid pod status.",
+      "dev_note": "상태 값 검증 로직 확인"
+    },
+    "INVALID_DATE": {
+      "code": 4016,
+      "http_status": 400,
+      "message_ko": "날짜 형식이 유효하지 않습니다.",
+      "message_en": "Invalid date format.",
+      "dev_note": "날짜 파싱 로직 확인"
+    },
+    "MISSING_STATUS": {
+      "code": 4017,
+      "http_status": 400,
+      "message_ko": "상태 필드가 누락되었습니다.",
+      "message_en": "Status field is missing.",
+      "dev_note": "필수 필드 검증 로직 확인"
+    },
+    "POD_UPDATE_FAILED": {
+      "code": 4018,
+      "http_status": 400,
+      "message_ko": "파티 업데이트에 실패했습니다.",
+      "message_en": "Failed to update pod.",
+      "dev_note": "업데이트 로직 및 DB 오류 확인"
+    },
+    "SELECTED_ARTIST_ID_REQUIRED": {
+      "code": 4019,
+      "http_status": 400,
+      "message_ko": "아티스트 선택이 필요합니다.",
+      "message_en": "Selected artist ID is required.",
+      "dev_note": "아티스트 선택 검증 로직 확인"
+    },
+    "INVALID_POD_TYPE": {
+      "code": 4020,
+      "http_status": 400,
+      "message_ko": "파티 타입이 유효하지 않습니다.",
+      "message_en": "Invalid pod type.",
+      "dev_note": "파티 타입 검증 로직 확인"
+    }
+  },
+  "artists": {
+    "ARTIST_NOT_FOUND": {
+      "code": 5001,
+      "http_status": 404,
+      "message_ko": "아티스트를 찾을 수 없습니다.",
+      "message_en": "Artist not found.",
+      "dev_note": "artist id 조회 로직 확인"
+    },
+    "ARTIST_SCHEDULE_NOT_FOUND": {
+      "code": 5002,
+      "http_status": 404,
+      "message_ko": "아티스트 스케줄을 찾을 수 없습니다.",
+      "message_en": "Artist schedule not found.",
+      "dev_note": "스케줄 조회 로직 확인"
+    },
+    "ARTIST_SUGGESTION_NOT_FOUND": {
+      "code": 5003,
+      "http_status": 404,
+      "message_ko": "아티스트 추천을 찾을 수 없습니다.",
+      "message_en": "Artist suggestion not found.",
+      "dev_note": "추천 조회 로직 확인"
+    },
+    "ARTIST_ALREADY_EXISTS": {
+      "code": 5004,
+      "http_status": 400,
+      "message_ko": "이미 존재하는 아티스트입니다.",
+      "message_en": "Artist already exists.",
+      "dev_note": "아티스트 중복 체크 로직 확인"
+    }
+  },
+  "tendencies": {
+    "TENDENCY_RESULT_NOT_FOUND": {
+      "code": 6001,
+      "http_status": 404,
+      "message_ko": "성향 테스트 결과를 찾을 수 없습니다.",
+      "message_en": "Tendency test result not found.",
+      "dev_note": "결과 저장/조회 로직 점검"
+    },
+    "TENDENCY_SURVEY_NOT_FOUND": {
+      "code": 6002,
+      "http_status": 404,
+      "message_ko": "성향 테스트 설문을 찾을 수 없습니다.",
+      "message_en": "Tendency survey not found.",
+      "dev_note": "설문 조회 로직 점검"
+    },
+    "TENDENCY_TEST_NOT_COMPLETED": {
+      "code": 6003,
+      "http_status": 400,
+      "message_ko": "성향 테스트가 완료되지 않았습니다.",
+      "message_en": "Tendency test not completed.",
+      "dev_note": "진행 상태 체크 로직 보강"
+    }
+  },
+  "chat": {
+    "CHAT_ROOM_NOT_FOUND": {
+      "code": 7001,
+      "http_status": 404,
+      "message_ko": "채팅방을 찾을 수 없습니다.",
+      "message_en": "Chat room not found.",
+      "dev_note": "채팅방 조회 로직 확인"
+    },
+    "CHAT_ROOM_ACCESS_DENIED": {
+      "code": 7002,
+      "http_status": 403,
+      "message_ko": "채팅방 접근 권한이 없습니다.",
+      "message_en": "Chat room access denied.",
+      "dev_note": "채팅방 권한 검증 로직 확인"
+    },
+    "CHAT_MEMBER_NOT_FOUND": {
+      "code": 7003,
+      "http_status": 404,
+      "message_ko": "채팅방 멤버를 찾을 수 없습니다.",
+      "message_en": "Chat member not found.",
+      "dev_note": "멤버 조회 로직 확인"
+    },
+    "CHAT_MESSAGE_NOT_FOUND": {
+      "code": 7004,
+      "http_status": 404,
+      "message_ko": "채팅 메시지를 찾을 수 없습니다.",
+      "message_en": "Chat message not found.",
+      "dev_note": "메시지 조회 로직 확인"
+    },
+    "ALREADY_CHAT_MEMBER": {
+      "code": 7005,
+      "http_status": 400,
+      "message_ko": "이미 채팅방 멤버입니다.",
+      "message_en": "Already a chat member.",
+      "dev_note": "중복 멤버 체크 로직 확인"
+    }
+  },
+  "follow": {
+    "FOLLOW_FAILED": {
+      "code": 8001,
+      "http_status": 400,
+      "message_ko": "팔로우에 실패했습니다.",
+      "message_en": "Follow failed.",
+      "dev_note": "팔로우 로직 및 DB 오류 확인"
+    },
+    "FOLLOW_INVALID": {
+      "code": 8002,
+      "http_status": 400,
+      "message_ko": "팔로우 정보가 올바르지 않습니다.",
+      "message_en": "Invalid follow information.",
+      "dev_note": "팔로우 데이터 검증 로직 확인"
+    },
+    "FOLLOW_NOT_FOUND": {
+      "code": 8003,
+      "http_status": 404,
+      "message_ko": "팔로우 관계를 찾을 수 없습니다.",
+      "message_en": "Follow relationship not found.",
+      "dev_note": "팔로우 관계 조회 로직 확인"
+    }
+  },
+  "notifications": {
+    "NOTIFICATION_NOT_FOUND": {
+      "code": 9001,
+      "http_status": 404,
+      "message_ko": "알림을 찾을 수 없습니다.",
+      "message_en": "Notification not found.",
+      "dev_note": "알림 조회 로직 확인"
+    },
+    "NOTIFICATION_SENDING_FAILED": {
+      "code": 9002,
+      "http_status": 500,
+      "message_ko": "알림 발송에 실패했습니다.",
+      "message_en": "Notification sending failed.",
+      "dev_note": "푸시/메시징 서버 설정 및 로그 점검"
+    }
+  },
+  "reports": {
+    "CANNOT_REPORT_SELF": {
+      "code": 10001,
+      "http_status": 400,
+      "message_ko": "자기 자신을 신고할 수 없습니다.",
+      "message_en": "Cannot report yourself.",
+      "dev_note": "신고 대상 검증 로직 확인"
+    }
+  }
+}

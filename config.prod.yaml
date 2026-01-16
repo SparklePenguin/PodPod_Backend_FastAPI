@@ -30,11 +30,6 @@ jwt:
 # Note: OAuth Redirect URI는 base_url로부터 자동 생성됩니다
 # Note: OAuth URLs는 config.py에 상수로 정의되어 있습니다
 
-# Google Sheets 설정
-google_sheets:
-  credentials_path: "credentials.json"
-  range: "1xxx: 인증/로그인 관련 오류!A:F"
-
 # 로깅 설정
 logging:
   level: "WARNING"    # 프로덕션에서는 WARNING 이상만 기록
@@ -51,4 +46,4 @@ app:
 
 # 채팅 서비스 설정
 chat:
-  use_websocket: true  # WebSocket 사용 (Sendbird는 더 이상 사용하지 않음)
+  use_websocket: true  # WebSocket 사용

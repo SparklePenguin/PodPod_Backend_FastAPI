@@ -73,7 +73,7 @@ class BaseResponse(BaseModel, Generic[T]):
         additional_data: Dict[str, Any] | None = None,
     ) -> "BaseResponse[T]":
         """에러 코드 시스템을 사용한 에러 응답 생성"""
-        from app.core.error_codes import get_error_info, get_error_response
+        from app.core.exceptions import get_error_info, get_error_response
 
         error_info = get_error_info(error_key, language)
         error_response = get_error_response(error_key, additional_data=additional_data)

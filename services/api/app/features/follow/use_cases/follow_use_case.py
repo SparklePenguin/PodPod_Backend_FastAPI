@@ -1,7 +1,7 @@
 """Follow Use Case - 비즈니스 로직 처리"""
 
 from app.common.schemas import PageDto
-from app.core.services.fcm_service import FCMService
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.follow.exceptions import (
     FollowFailedException,
     FollowInvalidException,
@@ -39,20 +39,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 class FollowUseCase:
     """팔로우 Use Case - 비즈니스 로직 통합"""
 
-    def __init__(self, session: AsyncSession, fcm_service: FCMService | None = None):
+    def __init__(
+        self,
+        session: AsyncSession,
+        follow_repo: FollowRepository,
+        follow_list_repo: FollowListRepository,
+        follow_stats_repo: FollowStatsRepository,
+        follow_notification_repo: FollowNotificationRepository,
+        follow_pod_repo: FollowPodRepository,
+        pod_repo: PodRepository,
+        like_repo: PodLikeRepository,
+        review_repo: PodReviewRepository,
+        user_repo: UserRepository,
+        follow_notification_service: FollowNotificationService,
+    ):
         self._session = session
-        self._follow_repo = FollowRepository(session)
-        self._follow_list_repo = FollowListRepository(session)
-        self._follow_stats_repo = FollowStatsRepository(session)
-        self._follow_notification_repo = FollowNotificationRepository(session)
-        self._follow_pod_repo = FollowPodRepository(session)
-        self._pod_repo = PodRepository(session)
-        self._like_repo = PodLikeRepository(session)
-        self._review_repo = PodReviewRepository(session)
-        self._user_repo = UserRepository(session)
-        self._follow_notification_service = FollowNotificationService(
-            session, fcm_service
-        )
+        self._follow_repo = follow_repo
+        self._follow_list_repo = follow_list_repo
+        self._follow_stats_repo = follow_stats_repo
+        self._follow_notification_repo = follow_notification_repo
+        self._follow_pod_repo = follow_pod_repo
+        self._pod_repo = pod_repo
+        self._like_repo = like_repo
+        self._review_repo = review_repo
+        self._user_repo = user_repo
+        self._follow_notification_service = follow_notification_service
 
     # - MARK: 사용자 팔로우
     async def follow_user(self, follower_id: int, following_id: int) -> FollowInfoDto:

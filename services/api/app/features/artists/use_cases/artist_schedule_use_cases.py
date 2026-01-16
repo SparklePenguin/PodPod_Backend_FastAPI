@@ -1,6 +1,5 @@
 """아티스트 스케줄 관련 Use Cases"""
 
-from app.common.schemas import PageDto
 from app.features.artists.exceptions import ArtistScheduleNotFoundException
 from app.features.artists.repositories.artist_schedule_repository import (
     ArtistScheduleRepository,
@@ -36,23 +35,19 @@ class GetSchedulesUseCase:
 
     async def execute(
         self,
-        page: int = 1,
-        size: int = 20,
+        year: int,
+        month: int,
         artist_id: int | None = None,
         unit_id: int | None = None,
         schedule_type: int | None = None,
-    ) -> PageDto[ArtistScheduleDto]:
-        """스케줄 목록 조회"""
-        schedules, total_count = await self.schedule_repo.get_schedules(
-            page=page,
-            size=size,
+    ) -> list[ArtistScheduleDto]:
+        """스케줄 목록 조회 (월별)"""
+        schedules = await self.schedule_repo.get_schedules(
+            year=year,
+            month=month,
             artist_id=artist_id,
             unit_id=unit_id,
             schedule_type=schedule_type,
         )
 
-        schedule_dtos = self.dto_service.to_schedule_dtos(schedules)
-
-        return PageDto.create(
-            items=schedule_dtos, page=page, size=size, total_count=total_count
-        )
+        return self.dto_service.to_schedule_dtos(schedules)

@@ -3,10 +3,6 @@ API v1 Router
 모든 feature router를 통합하는 메인 라우터
 """
 
-# Admin routers
-from app.features.admin.routers.error_codes import router as error_codes_router
-from app.features.admin.routers.fcm import router as fcm_router
-
 # Artists routers
 from app.features.artists.routers.artist_router import router as artists_router
 from app.features.artists.routers.artist_schedule_router import (
@@ -123,7 +119,3 @@ api_router.include_router(chat_websocket_router)
 
 # 시스템 관련 라우터 (system)
 api_router.include_router(health_router)
-
-# 관리자 관련 라우터 (admin)
-api_router.include_router(error_codes_router)
-api_router.include_router(fcm_router)

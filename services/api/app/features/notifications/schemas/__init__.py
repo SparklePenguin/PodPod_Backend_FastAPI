@@ -1,44 +1,41 @@
 """Notifications feature schemas"""
 
 from .notification_schemas import (
-    FollowNotificationType,
-    FollowNotiSubType,
-    NotificationCategory,
+    # Schemas
+    NotificationBase,
     NotificationDto,
-    NotificationType,
     NotificationUnreadCountResponse,
-    PodNotificationType,
-    PodNotiSubType,
-    PodStatusNotificationType,
-    PodStatusNotiSubType,
-    RecommendNotificationType,
-    RecommendNotiSubType,
-    ReviewNotificationType,
-    ReviewNotiSubType,
-    get_notification_category,
-    get_notification_main_type,
+    # Category
+    NotificationCategory,
+    # Event
+    NotificationEvent,
+    PodEvent,
+    ReviewEvent,
+    UserEvent,
+    SystemEvent,
+    # Category mapping
+    get_category,
+    get_category_from_event_value,
+    # Utils
+    to_upper_camel_case,
 )
 
 __all__ = [
-    # Notification Types
-    "NotificationType",
-    "NotificationCategory",
-    # Notification Sub Types
-    "PodNotiSubType",
-    "PodStatusNotiSubType",
-    "RecommendNotiSubType",
-    "ReviewNotiSubType",
-    "FollowNotiSubType",
-    # Legacy Names (하위 호환성)
-    "PodNotificationType",
-    "PodStatusNotificationType",
-    "RecommendNotificationType",
-    "ReviewNotificationType",
-    "FollowNotificationType",
-    # Responses
+    # Schemas
+    "NotificationBase",
     "NotificationDto",
     "NotificationUnreadCountResponse",
+    # Category
+    "NotificationCategory",
+    # Event
+    "NotificationEvent",
+    "PodEvent",
+    "ReviewEvent",
+    "UserEvent",
+    "SystemEvent",
+    # Category mapping
+    "get_category",
+    "get_category_from_event_value",
     # Utils
-    "get_notification_category",
-    "get_notification_main_type",
+    "to_upper_camel_case",
 ]

@@ -5,7 +5,7 @@
 자동으로 FastAPI 앱에 등록합니다.
 
 Usage:
-    from app.core.exception_loader import register_exception_handlers
+    from app.core.exceptions.loader import register_exception_handlers
 
     app = FastAPI()
     register_exception_handlers(app)
@@ -52,11 +52,10 @@ def discover_exception_handlers(
 
     # 현재 파일 기준으로 app 디렉토리 계산 (항상 필요)
     current_file = Path(__file__).resolve()
-    app_dir = current_file.parent.parent  # app/ 디렉토리
+    app_dir = current_file.parent.parent.parent  # app/ 디렉토리
 
     # base_path가 None이면 현재 파일 기준으로 절대 경로 계산
     if base_path is None:
-        # exception_loader.py -> app/core/ -> app/ -> features/
         features_path = app_dir / "features"
     else:
         features_path = Path(base_path)
@@ -72,19 +71,15 @@ def discover_exception_handlers(
         logger.info(f"No exception_handlers.py files found in {base_path}")
         return handlers
 
-    logger.info(f"Found {len(handler_files)} exception_handlers.py files")
+    logger.debug(f"Found {len(handler_files)} exception_handlers.py files")
 
     for handler_file in handler_files:
         # 상대 경로를 모듈 경로로 변환
-        # 예: app/features/pods/exception_handlers.py -> app.features.pods.exception_handlers
-        # 절대 경로에서 app/ 이후 부분만 추출
         handler_path = handler_file.resolve()
 
         try:
             # app/ 디렉토리를 기준으로 상대 경로 계산
             relative_path = handler_path.relative_to(app_dir)
-            # .py 확장자 제거하고 / 를 . 으로 변환
-            # app. 접두사 추가
             module_path = "app." + str(relative_path.with_suffix("")).replace("/", ".")
         except ValueError:
             # 상대 경로 계산 실패 시 절대 경로에서 직접 추출 시도
@@ -129,8 +124,8 @@ def discover_exception_handlers(
 
                     handlers[exc_class] = handler_func
 
-                logger.info(
-                    f"✓ Loaded {len(module_handlers)} handler(s) from {module_path}"
+                logger.debug(
+                    f"Loaded {len(module_handlers)} handler(s) from {module_path}"
                 )
             else:
                 logger.debug(f"No EXCEPTION_HANDLERS found in {module_path}")
@@ -145,40 +140,14 @@ def discover_exception_handlers(
     return handlers
 
 
-def register_exception_handlers(
-    app: FastAPI, base_path: str | None = None, verbose: bool = True
-):
+def register_exception_handlers(app: FastAPI, base_path: str | None = None):
     """
     앱에 도메인별 exception handler를 자동으로 등록합니다.
-
-    이 함수는 main.py에서 호출되며, features 디렉토리의 모든 도메인에서
-    exception_handlers.py를 찾아 자동으로 등록합니다.
 
     Args:
         app: FastAPI 애플리케이션 인스턴스
         base_path: features 디렉토리 경로 (기본값: None, 자동으로 app/features 찾기)
-        verbose: 상세 로그 출력 여부
-
-    Example:
-        ```python
-        # main.py
-        from app.core.exception_loader import register_exception_handlers
-
-        app = FastAPI()
-
-        # 공통 핸들러 등록
-        app.add_exception_handler(HTTPException, http_exception_handler)
-        # ...
-
-        # 도메인별 핸들러 자동 등록
-        register_exception_handlers(app)
-        ```
     """
-    if verbose:
-        logger.info("=" * 60)
-        logger.info("Starting domain exception handler registration...")
-        logger.info("=" * 60)
-
     handlers = discover_exception_handlers(base_path)
 
     if not handlers:
@@ -189,26 +158,20 @@ def register_exception_handlers(
     registered_count = 0
     for exception_class, handler_func in handlers.items():
         try:
-            # FastAPI에 핸들러 등록
-            # 타입 체크를 위한 Any 캐스팅
             from typing import cast
 
             app.add_exception_handler(exception_class, cast(Any, handler_func))
             registered_count += 1
 
-            if verbose:
-                logger.info(
-                    f"✓ Registered handler for {exception_class.__name__}: {handler_func.__name__}"
-                )
+            logger.debug(
+                f"Registered handler for {exception_class.__name__}: {handler_func.__name__}"
+            )
 
         except Exception as e:
             logger.error(
                 f"Failed to register handler for {exception_class.__name__}: {str(e)}"
             )
 
-    if verbose:
-        logger.info("=" * 60)
-        logger.info(
-            f"Domain exception handler registration complete: {registered_count}/{len(handlers)} handlers registered"
-        )
-        logger.info("=" * 60)
+    logger.info(
+        f"Domain exception handlers registered: {registered_count}/{len(handlers)}"
+    )

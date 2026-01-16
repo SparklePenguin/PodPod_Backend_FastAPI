@@ -60,7 +60,7 @@ echo
 MIGRATION_SUCCESS=true
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🔄 Running Alembic migrations..."
-    docker exec podpod-api-dev alembic upgrade head
+    docker exec podpod-api-dev alembic -c database/alembic.ini upgrade head
 
     if [ $? -eq 0 ]; then
         echo "✅ 마이그레이션 완료"
