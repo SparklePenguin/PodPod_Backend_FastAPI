@@ -42,7 +42,7 @@ logging:
 app:
   name: "PodPod API (Dev)"
   version: "1.0.0"
-  base_url: "http://dev.sp-podpod.com"  # OAuth 리다이렉트 URL 생성에 사용
+  base_url: "https://dev.sp-podpod.com"  # OAuth 리다이렉트 URL 생성에 사용
 
 # 채팅 서비스 설정
 chat:
