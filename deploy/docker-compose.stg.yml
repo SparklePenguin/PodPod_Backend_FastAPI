@@ -1,0 +1,64 @@
+services:
+  # FastAPI 애플리케이션 (스테이징 환경)
+  api:
+    image: ${DOCKER_USERNAME}/podpod-backend:stg-latest
+    container_name: podpod-api-stg
+    restart: unless-stopped
+    environment:
+      # 환경 설정 파일 지정
+      CONFIG_FILE: ./deploy/config/config.stg.yaml
+
+      # 데이터베이스 연결 (Infisical에서 주입)
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_DATABASE: podpod_staging
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+      # 보안 관련
+      SECRET_KEY: ${SECRET_KEY}
+
+      # OAuth 설정
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID}
+      APPLE_KEY_ID: ${APPLE_KEY_ID}
+      APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
+      APPLE_SCHEME: ${APPLE_SCHEME}
+
+      # Sendbird
+      SENDBIRD_APP_ID: ${SENDBIRD_APP_ID}
+      SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN}
+
+      # Firebase
+      FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8001:8000"
+    volumes:
+      - /Users/Shared/Projects/PodPod/uploads/stg:/Users/Shared/Projects/PodPod/uploads/stg  # 스테이징 업로드 파일
+      - /Users/Shared/Projects/PodPod/logs/stg:/Users/Shared/Projects/PodPod/logs/stg  # 스테이징 로그 파일
+    networks:
+      - podpod-network-stg
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  podpod-network-stg:
+    driver: bridge
+
+volumes:
+  redis_stg_data:
+    driver: local

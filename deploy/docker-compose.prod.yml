@@ -1,34 +1,17 @@
 services:
-  # Redis (스테이징 환경)
-  redis:
-    image: redis:7-alpine
-    container_name: podpod-redis-stg
-    restart: unless-stopped
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_stg_data:/data
-    networks:
-      - podpod-network-stg
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
-  # FastAPI 애플리케이션 (스테이징 환경)
+  # FastAPI 애플리케이션 (프로덕션 환경)
   api:
-    image: ${DOCKER_USERNAME}/podpod-backend:stg-latest
-    container_name: podpod-api-stg
-    restart: unless-stopped
+    image: ${DOCKER_USERNAME}/podpod-backend:prod-latest
+    container_name: podpod-api-prod
+    restart: always
     environment:
       # 환경 설정 파일 지정
-      CONFIG_FILE: config.stg.yaml
+      CONFIG_FILE: ./deploy/config/config.prod.yaml
 
       # 데이터베이스 연결 (Infisical에서 주입)
       MYSQL_HOST: host.docker.internal
-      MYSQL_DATABASE: podpod_staging
+      MYSQL_DATABASE: podpod
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
       # 보안 관련
@@ -55,28 +38,38 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
     ports:
-      - "8001:8000"
+      - "8000:8000"
     volumes:
-      - /Users/Shared/Projects/PodPod/uploads/stg:/Users/Shared/Projects/PodPod/uploads/stg  # 스테이징 업로드 파일
-      - /Users/Shared/Projects/PodPod/logs/stg:/Users/Shared/Projects/PodPod/logs/stg  # 스테이징 로그 파일
+      - /Users/Shared/Projects/PodPod/uploads/prod:/Users/Shared/Projects/PodPod/uploads/prod  # 프로덕션 업로드 파일
+      - /Users/Shared/Projects/PodPod/logs/prod:/Users/Shared/Projects/PodPod/logs/prod  # 프로덕션 로그 파일
     networks:
-      - podpod-network-stg
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
+      - podpod-network-prod
+    # 프로덕션에서는 worker 수를 증가시켜 성능 향상
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    # 리소스 제한 (프로덕션 환경)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
     depends_on:
       redis:
         condition: service_healthy
 
 networks:
-  podpod-network-stg:
+  podpod-network-prod:
     driver: bridge
 
 volumes:
-  redis_stg_data:
+  redis_prod_data:
     driver: local
