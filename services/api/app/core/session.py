@@ -148,7 +148,7 @@ def create_access_token(user_id: int, expires_delta: timedelta | None = None) ->
         type=_TokenType.ACCESS,
     )
     return jwt.encode(
-        payload.model_dump(), settings.secret_key, algorithm=settings.ALGORITHM
+        payload.model_dump(), settings.jwt.secret_key, algorithm=settings.jwt.ALGORITHM
     )
 
 
