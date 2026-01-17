@@ -11,13 +11,8 @@ services:
       CONFIG_FILE: /app/config/config.dev.yaml
 
       PROFILE: DEV
-      DNS: https://dev.sp-podpod.com
 
       # 데이터베이스 연결
-      MYSQL_HOST: host.docker.internal # 127.0.0.1
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: podpod_dev
-      MYSQL_USER: root
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
       # 보안 관련 (Infisical에서 주입된 환경 변수 전달)
@@ -43,8 +38,6 @@ services:
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
 
-      # Redis (도커 컨테이너 내부에서는 서비스명으로 접근)
-      REDIS_HOST: host.docker.internal
     volumes:
       - ./config/config.dev.yaml:/app/config/config.dev.yaml
       - ../shared:/app/shared

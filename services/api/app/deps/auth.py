@@ -25,7 +25,7 @@ async def get_current_user_id(
 
     try:
         # Access Token 검증
-        payload = jwt.decode(access_token, settings.secret_key, algorithms=["HS256"])
+        payload = jwt.decode(access_token, settings.jwt.secret_key, algorithms=["HS256"])
         subject = payload.get("sub")
         if subject is None:
             raise ValueError("Missing subject")

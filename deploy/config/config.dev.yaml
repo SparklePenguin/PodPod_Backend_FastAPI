@@ -1,26 +1,28 @@
 # PodPod FastAPI 개발 환경 설정
-
-# 환경 식별
-environment: "development"
-
-# 데이터베이스 설정 (비밀번호는 Infisical에서 주입)
-database:
-  host: "localhost"
-  port: 3306
-  name: "podpod_dev"
-  user: "root"
-
-redis:
-  port: 6379
-  db: 3
-
-
-# 서버 설정
-server:
+# 앱 설정
+app:
+  profile: "dev"
+  name: "PodPod API (Dev)"
+  description: "소셜 로그인을 지원하는 FASTAPI 백엔드(DEV)"
+  version: "1.0.0"
+  base_url: "https://dev.sp-podpod.com"  # OAuth 리다이렉트 URL 생성에 사용
+  root_path: ""
   host: "127.0.0.1"  # 로컬에서만 접근
   port: 8000
   reload: true        # 자동 리로드 활성화
   debug: true         # 디버그 모드
+
+redis:
+  host: host.docker.internal # 127.0.0.1
+  port: 6379
+  db: 3
+
+database:
+  host: host.docker.internal # 127.0.0.1
+  port: 3306
+  name: podpod_dev
+  user: root
+
 
 # Infisical 설정
 infisical:
@@ -43,11 +45,6 @@ logging:
   retention_days: 7        # 개발 환경에서는 짧게 보관
   max_file_size: "10MB"
 
-# 앱 설정
-app:
-  name: "PodPod API (Dev)"
-  version: "1.0.0"
-  base_url: "https://dev.sp-podpod.com"  # OAuth 리다이렉트 URL 생성에 사용
 
 # 채팅 서비스 설정
 chat:

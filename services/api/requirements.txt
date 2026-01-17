@@ -54,4 +54,3 @@ prometheus-fastapi-instrumentator==7.0.0
 
 # Redis (캐시 및 세션 관리)
 redis==5.2.0
-

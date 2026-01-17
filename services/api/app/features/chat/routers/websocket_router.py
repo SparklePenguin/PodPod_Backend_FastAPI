@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 async def get_user_id_from_token(token: str) -> int | None:
     """WebSocket 연결에서 토큰으로 사용자 ID 추출"""
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        payload = jwt.decode(token, settings.jwt.secret_key, algorithms=["HS256"])
         subject = payload.get("sub")
         if subject is None:
             return None

@@ -52,7 +52,7 @@ async def health_check(db: AsyncSession = Depends(get_session)):
         status="healthy" if db_status == "connected" else "unhealthy",
         timestamp=datetime.now(timezone.utc).isoformat(),
         database=db_status,
-        version=settings.APP_VERSION,
+        version=settings.app.version,
     )
 
     return BaseResponse.ok(

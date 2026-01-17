@@ -62,11 +62,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION,
-    description="소셜 로그인을 지원하는 FastAPI 백엔드",
+    title=settings.app.name,
+    version=settings.app.version,
+    description=settings.app.description,
     lifespan=lifespan,
-    root_path=settings.ROOT_PATH if hasattr(settings, "ROOT_PATH") else "",
+    root_path=settings.app.root_path if hasattr(settings, "ROOT_PATH") else "",
 )
 
 # Prometheus 메트릭 수집 설정
