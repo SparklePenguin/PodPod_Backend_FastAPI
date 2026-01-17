@@ -10,8 +10,7 @@ def load_config_file(config_path: str | None = None) -> dict:
     """YAML 설정 파일을 로드합니다."""
     if config_path is None:
         # 환경변수로 config 파일 지정 가능
-        config_path = os.getenv("CONFIG_FILE",
-                                "/Users/jako/private/git-organization/PodPod_Backend_FastAPI/deploy/config/config.dev.yaml")
+        config_path = os.getenv("CONFIG_FILE", "")
 
     config_file = Path(config_path)
 
