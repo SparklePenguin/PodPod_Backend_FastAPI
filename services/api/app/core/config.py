@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # MARK: - Redis
 
-    REDIS_URL : str # Infisical에서 주입
+    redis_url : str # Infisical에서 주입
 
     # MARK: - JWT
 
@@ -131,7 +131,7 @@ class Settings(BaseSettings):
             # Redis 설정
             redis_config = config.get("redis", {})
             kwargs.setdefault(
-                "redis_url", redis_config.get("url", "redis://127.0.0.1:6379/0")
+                "redis_url", redis_config.get("host", "redis://127.0.0.1:6379/3")
             )
 
             # JWT 설정

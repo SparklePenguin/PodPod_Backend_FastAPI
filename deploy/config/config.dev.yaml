@@ -10,6 +10,10 @@ database:
   name: "podpod_dev"
   user: "root"
 
+redis:
+  host: "redis://127.0.0.1:6379/3"
+
+
 # 서버 설정
 server:
   host: "127.0.0.1"  # 로컬에서만 접근
