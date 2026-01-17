@@ -279,6 +279,9 @@ class Settings(BaseSettings):
     @property
     def GOOGLE_REDIRECT_URI(self) -> str:
         """구글 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
+        if os.getenv("PROFILE") == "DEV":
+            return f"{os.getenv('DOMAIN')}/api/v1/oauth/google/callback"
+
         return f"{self.base_url}/api/v1/oauth/google/callback"
 
     @property
