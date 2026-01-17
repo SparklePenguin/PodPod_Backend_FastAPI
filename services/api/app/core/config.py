@@ -130,7 +130,7 @@ class Settings(BaseSettings):
             # Redis 설정
             redis_config = config.get("redis", {})
             redis_host = redis_config.get("REDIS_HOST")
-            redis_port = redis_config.get("REDIS_PORT")
+            redis_port = redis_config.get("port")
             redis_db = redis_config.get("db")
             print(f"redis://{redis_host}:{redis_port}/{redis_db}")
             kwargs.setdefault(

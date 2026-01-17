@@ -45,7 +45,6 @@ services:
 
       # Redis (도커 컨테이너 내부에서는 서비스명으로 접근)
       REDIS_HOST: host.docker.internal
-      REDIS_PORT: 6379
     volumes:
       - ./config/config.dev.yaml:/app/config/config.dev.yaml
       - ../shared:/app/shared
