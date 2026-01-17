@@ -11,8 +11,6 @@ database:
   user: "root"
 
 redis:
-  host: "localhost"
-  port: 6379
   db: 3
 
 
