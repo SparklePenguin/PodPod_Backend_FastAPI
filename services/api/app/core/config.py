@@ -130,7 +130,7 @@ class Settings(BaseSettings):
             # Redis 설정
             redis_config = config.get("redis", {})
             kwargs.setdefault(
-                "redis_url", redis_config.get("host", "redis://127.0.0.1:6379/3")
+                "REDIS_URL", redis_config.get("host", "redis://127.0.0.1:6379/3")
             )
 
             # JWT 설정
