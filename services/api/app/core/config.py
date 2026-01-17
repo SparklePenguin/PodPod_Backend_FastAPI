@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     MYSQL_DATABASE: str = "podpod"
 
     # MARK: - Redis
-    redis_url: str  # Infisical에서 주입
+    REDIS_URL: str  # Infisical에서 주입
 
     # MARK: - JWT
 
