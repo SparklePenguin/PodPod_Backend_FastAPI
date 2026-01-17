@@ -10,7 +10,7 @@ services:
       # 환경 설정 파일 지정
       CONFIG_FILE: ./config/config.dev.yaml
 
-      PROFILE: dev
+      PROFILE: DEV
       DNS: dev.sp-podpod.com
 
       # 데이터베이스 연결
