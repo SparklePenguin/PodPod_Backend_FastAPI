@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # MARK: - Redis
 
-    redis_url: str = "redis://127.0.0.1:6379/0"
+    REDIS_URL : str # Infisical에서 주입
 
     # MARK: - JWT
 
