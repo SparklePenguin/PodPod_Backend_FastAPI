@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     MYSQL_DATABASE: str = "podpod"
 
     # MARK: - Redis
-    REDIS_URL: str  # Infisical에서 주입
+    REDIS_URL: str
 
     # MARK: - JWT
 
@@ -129,8 +129,12 @@ class Settings(BaseSettings):
 
             # Redis 설정
             redis_config = config.get("redis", {})
+            redis_host = redis_config.get("host")
+            redis_port = redis_config.get("port")
+            redis_db = redis_config.get("db")
+
             kwargs.setdefault(
-                "REDIS_URL", redis_config.get("host", "redis://127.0.0.1:6379/3")
+                "REDIS_URL", f"redis://{redis_host}:{redis_port}/{redis_db}"
             )
 
             # JWT 설정
