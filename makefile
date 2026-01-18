@@ -1,3 +1,6 @@
+deploy.local:
+	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.local.yml up --build
+
 deploy.dev:
 	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
 
