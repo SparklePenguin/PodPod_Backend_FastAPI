@@ -114,10 +114,6 @@ class Settings(BaseSettings):
     UPLOADS_DIR: str | None = None  # 환경별로 다르게 설정됨
     LOGS_DIR: str | None = None  # 환경별로 다르게 설정됨
 
-    # MARK: - Chat Service
-
-    USE_WEBSOCKET_CHAT: bool = False  # True면 WebSocket 사용, False면 Sendbird 사용
-
     # MARK: - OAuth (Infisical)
     # Note: REDIRECT_URI는 base_url을 사용해 자동 생성됩니다 (@property 참고)
 
@@ -143,7 +139,8 @@ class Settings(BaseSettings):
     # Firebase Cloud Messaging
     FIREBASE_SERVICE_ACCOUNT_KEY: str | None = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
 
-    USE_WEBSOCKET_CHAT: bool | None = os.getenv("USE_WEBSOCKET_CHAT")
+    # MARK: - Chat Service
+    USE_WEBSOCKET_CHAT: bool | None = os.getenv("USE_WEBSOCKET_CHAT", False) # True면 WebSocket 사용, False면 Sendbird 사용
 
     @classmethod
     def load(cls):
@@ -155,6 +152,8 @@ class Settings(BaseSettings):
 
         self.set_uploads()
         self.set_logs()
+
+        self.ENVIRONMENT = os.getenv("PROFILE")
 
         print(f"환경 설정 완료: {self.ENVIRONMENT}")
         print(

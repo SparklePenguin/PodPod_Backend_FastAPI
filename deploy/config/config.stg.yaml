@@ -1,26 +1,33 @@
-# PodPod FastAPI 스테이징 환경 설정
+# PodPod FastAPI 개발 환경 설정
+# 앱 설정
+app:
+  profile: "stg"
+  name: "PodPod API (STG)"
+  description: "소셜 로그인을 지원하는 FASTAPI 백엔드(STG)"
+  version: "1.0.0"
+  base_url: "https://stg.sp-podpod.com"  # OAuth 리다이렉트 URL 생성에 사용
+  root_path: ""
+  host: "127.0.0.1"  # 로컬에서만 접근
+  port: 8001
+  reload: true        # 자동 리로드 활성화
+  debug: true         # 디버그 모드
 
-# 환경 식별
-environment: "staging"
+redis:
+  host: host.docker.internal # 127.0.0.1
+  port: 6379
+  db: 2
 
-# 데이터베이스 설정 (비밀번호는 Infisical에서 주입)
 database:
-  host: "host.docker.internal"  # Docker 컨테이너에서 호스트 MySQL 접속
+  host: host.docker.internal # 127.0.0.1
   port: 3306
-  name: "podpod_staging"
-  user: "root"
+  name: podpod_staging
+  user: root
 
-# 서버 설정
-server:
-  host: "0.0.0.0"    # 외부 접근 허용
-  port: 8000
-  reload: false       # 자동 리로드 비활성화
-  debug: false        # 디버그 모드 비활성화
 
 # Infisical 설정
 infisical:
   enabled: true
-  env: "staging"
+  env: "stg"
 
 # JWT 설정
 jwt:
@@ -32,19 +39,13 @@ jwt:
 
 # 로깅 설정
 logging:
-  level: "INFO"
+  level: "DEBUG"           # 개발 환경에서는 상세 로그
   console: true
   file_rotation: true
-  retention_days: 30
+  retention_days: 7        # 개발 환경에서는 짧게 보관
   max_file_size: "10MB"
 
-# 앱 설정
-app:
-  name: "PodPod API (Staging)"
-  version: "1.0.0"
-  base_url: "https://sp-podpod.com/stg"  # OAuth 리다이렉트 URL 생성에 사용
-  root_path: "/stg"  # Nginx 프록시 경로
 
 # 채팅 서비스 설정
 chat:
-  use_websocket: true  # WebSocket 사용
+  use_websocket: false  # true면 WebSocket 사용, false면 Sendbird 사용
