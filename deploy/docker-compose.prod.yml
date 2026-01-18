@@ -2,16 +2,16 @@ services:
 
   # FastAPI 애플리케이션 (프로덕션 환경)
   api:
-    image: ${DOCKER_USERNAME}/podpod-backend:prod-latest
+    build:
+      context: ../services/api
+      dockerfile: Dockerfile
     container_name: podpod-api-prod
     restart: always
     environment:
       # 환경 설정 파일 지정
-      CONFIG_FILE: ./deploy/config/config.prod.yaml
+      CONFIG_FILE: /app/config/config.prod.yaml
 
-      # 데이터베이스 연결 (Infisical에서 주입)
-      MYSQL_HOST: host.docker.internal
-      MYSQL_DATABASE: podpod
+      # 데이터베이스 연결
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
       # 보안 관련
@@ -20,7 +20,10 @@ services:
       # OAuth 설정
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
       APPLE_TEAM_ID: ${APPLE_TEAM_ID}
       APPLE_KEY_ID: ${APPLE_KEY_ID}
@@ -40,10 +43,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ../shared:/app/shared
+      - ./config/config.prod.yaml:/app/config/config.prod.yaml
       - /Users/Shared/Projects/PodPod/uploads/prod:/Users/Shared/Projects/PodPod/uploads/prod  # 프로덕션 업로드 파일
       - /Users/Shared/Projects/PodPod/logs/prod:/Users/Shared/Projects/PodPod/logs/prod  # 프로덕션 로그 파일
-    networks:
-      - podpod-network-prod
+
     # 프로덕션에서는 worker 수를 증가시켜 성능 향상
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
     healthcheck:
@@ -52,6 +56,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
     # 리소스 제한 (프로덕션 환경)
     deploy:
       resources:
@@ -61,15 +66,3 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-
-    depends_on:
-      redis:
-        condition: service_healthy
-
-networks:
-  podpod-network-prod:
-    driver: bridge
-
-volumes:
-  redis_prod_data:
-    driver: local
