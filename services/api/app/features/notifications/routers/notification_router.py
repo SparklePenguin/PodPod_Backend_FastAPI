@@ -1,22 +1,22 @@
 from app.common.schemas import BaseResponse, PageDto
 from app.deps.auth import get_current_user_id
-from app.deps.service import get_notification_service
+from app.deps.providers import get_notification_use_case
 from app.features.notifications.schemas import (
-    NotificationResponse,
+    NotificationDto,
     NotificationUnreadCountResponse,
 )
-from app.features.notifications.services.notification_service import (
-    NotificationService,
+from app.features.notifications.use_cases.notification_use_case import (
+    NotificationUseCase,
 )
 from fastapi import APIRouter, Depends, Query
 
-router = APIRouter()
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 # - MARK: 알림 목록 조회
 @router.get(
     "",
-    response_model=BaseResponse[PageDto[NotificationResponse]],
+    response_model=BaseResponse[PageDto[NotificationDto]],
     description="알림 목록 조회 (페이지네이션 지원)",
 )
 async def get_notifications(
@@ -27,9 +27,9 @@ async def get_notifications(
         None, description="카테고리 필터 (pod, community, notice)"
     ),
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.get_notifications(
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[PageDto[NotificationDto]]:
+    result = await use_case.get_notifications(
         user_id=current_user_id,
         page=page,
         size=size,
@@ -47,24 +47,24 @@ async def get_notifications(
 )
 async def get_unread_count(
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.get_unread_count(current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[NotificationUnreadCountResponse]:
+    result = await use_case.get_unread_count(current_user_id)
     return BaseResponse.ok(data=result)
 
 
 # - MARK: 알림 읽음 처리
 @router.put(
     "/{notification_id}",
-    response_model=BaseResponse[NotificationResponse],
+    response_model=BaseResponse[NotificationDto],
     description="알림 읽음 처리",
 )
 async def mark_notification_as_read(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    notification = await service.mark_as_read(notification_id, current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[NotificationDto]:
+    notification = await use_case.mark_as_read(notification_id, current_user_id)
     return BaseResponse.ok(data=notification)
 
 
@@ -76,9 +76,23 @@ async def mark_notification_as_read(
 )
 async def mark_all_notifications_as_read(
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.mark_all_as_read(current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[dict[str, int]]:
+    result = await use_case.mark_all_as_read(current_user_id)
+    return BaseResponse.ok(data=result)
+
+
+# - MARK: 읽은 알림 전체 삭제
+@router.delete(
+    "/read",
+    response_model=BaseResponse[dict],
+    description="읽은 알림 전체 삭제",
+)
+async def delete_all_read_notifications(
+    current_user_id: int = Depends(get_current_user_id),
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[dict[str, int]]:
+    result = await use_case.delete_all_read_notifications(current_user_id)
     return BaseResponse.ok(data=result)
 
 
@@ -91,21 +105,7 @@ async def mark_all_notifications_as_read(
 async def delete_notification(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.delete_notification(notification_id, current_user_id)
-    return BaseResponse.ok(data=result)
-
-
-# - MARK: 읽은 알림 전체 삭제
-@router.delete(
-    "/read",
-    response_model=BaseResponse[dict],
-    description="읽은 알림 전체 삭제",
-)
-async def delete_all_read_notifications(
-    current_user_id: int = Depends(get_current_user_id),
-    service: NotificationService = Depends(get_notification_service),
-):
-    result = await service.delete_all_read_notifications(current_user_id)
+    use_case: NotificationUseCase = Depends(get_notification_use_case),
+) -> BaseResponse[dict[str, bool]]:
+    result = await use_case.delete_notification(notification_id, current_user_id)
     return BaseResponse.ok(data=result)

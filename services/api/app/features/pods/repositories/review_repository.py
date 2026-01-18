@@ -1,8 +1,6 @@
 from typing import List, Tuple
 
-from app.features.pods.models.pod import Pod
-from app.features.pods.models.pod.pod_member import PodMember
-from app.features.pods.models.pod_review import PodReview
+from app.features.pods.models import Pod, PodMember, PodReview
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,7 +20,7 @@ class PodReviewRepository:
             pod_id=pod_id, user_id=user_id, rating=rating, content=content
         )
         self._session.add(review)
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(review)
 
         # 관계 로딩을 위해 다시 조회
@@ -87,6 +85,20 @@ class PodReviewRepository:
         result = await self._session.execute(query)
         return list(result.scalars().all())
 
+    async def get_reviews_by_pod_ids(self, pod_ids: List[int]) -> List[PodReview]:
+        """여러 파티의 후기를 한 번에 조회 (배치 로딩)"""
+        if not pod_ids:
+            return []
+
+        query = (
+            select(PodReview)
+            .options(selectinload(PodReview.pod), selectinload(PodReview.user))
+            .where(PodReview.pod_id.in_(pod_ids))
+            .order_by(desc(PodReview.created_at))
+        )
+        result = await self._session.execute(query)
+        return list(result.scalars().all())
+
     async def get_reviews_by_user(
         self, user_id: int, page: int = 1, size: int = 20
     ) -> Tuple[List[PodReview], int]:
@@ -125,7 +137,7 @@ class PodReviewRepository:
         if review:
             setattr(review, "rating", rating)
             setattr(review, "content", content)
-            await self._session.commit()
+            await self._session.flush()
             await self._session.refresh(review)
             return review
         return None
@@ -138,7 +150,7 @@ class PodReviewRepository:
 
         if review:
             await self._session.delete(review)
-            await self._session.commit()
+            await self._session.flush()
             return True
         return False
 

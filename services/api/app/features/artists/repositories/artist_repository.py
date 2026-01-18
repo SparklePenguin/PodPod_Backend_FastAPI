@@ -40,6 +40,23 @@ class ArtistRepository:
         )
         return result.scalar_one_or_none()
 
+    # - MARK: ID 목록으로 아티스트 조회
+    async def get_by_ids(self, artist_ids: List[int]) -> List[Artist]:
+        """ID 목록으로 아티스트 목록 조회"""
+        if not artist_ids:
+            return []
+        
+        # 관계 데이터를 미리 로드하여 lazy loading 방지
+        query = (
+            select(Artist)
+            .options(selectinload(Artist.images), selectinload(Artist.names))
+            .where(Artist.id.in_(artist_ids))
+        )
+        result = await self._session.execute(query)
+        # scalars().all()은 동기 메서드이지만 이미 비동기 실행 후이므로 블로킹되지 않음
+        # 명시적으로 리스트로 변환하여 반환
+        return list(result.scalars().all())
+
     # - MARK: 아티스트 목록 조회
     async def get_all(
         self, page: int = 1, size: int = 20, is_active: bool = True

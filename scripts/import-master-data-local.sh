@@ -105,7 +105,7 @@ echo ""
 # 마스터 데이터 import
 echo "🔄 마스터 데이터 import 중..."
 
-if mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$MASTER_DATA_FILE" 2>&1 | grep -v "Warning"; then
+if mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$MASTER_DATA_FILE" 2>&1 | tee ./mysql.log; then
     echo ""
     echo "✅ 마스터 데이터 import 완료!"
     echo ""

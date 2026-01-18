@@ -45,29 +45,24 @@ class TendencyRepository:
         )
         return result.scalar_one_or_none()
 
-    # - MARK: 사용자 성향 결과 저장
-    async def save_user_tendency_result(
+    # - MARK: 사용자 성향 결과 생성 (커밋 없음)
+    async def create_user_tendency_result(
         self, user_id: int, tendency_type: str, answers: dict
     ) -> UserTendencyResult:
-        """사용자의 성향 테스트 결과 저장 (기존 결과가 있으면 업데이트, 없으면 생성)"""
-        existing_result = await self.get_user_tendency_result(user_id)
+        """사용자의 성향 테스트 결과 생성 (커밋은 use_case에서 처리)"""
+        new_result = UserTendencyResult(
+            user_id=user_id, tendency_type=tendency_type, answers=answers
+        )
+        self._session.add(new_result)
+        return new_result
 
-        if existing_result:
-            # 기존 결과 업데이트
-            await self._session.execute(
-                update(UserTendencyResult)
-                .where(UserTendencyResult.user_id == user_id)
-                .values(tendency_type=tendency_type, answers=answers)
-            )
-            await self._session.commit()
-            await self._session.refresh(existing_result)
-            return existing_result
-        else:
-            # 새 결과 생성
-            new_result = UserTendencyResult(
-                user_id=user_id, tendency_type=tendency_type, answers=answers
-            )
-            self._session.add(new_result)
-            await self._session.commit()
-            await self._session.refresh(new_result)
-            return new_result
+    # - MARK: 사용자 성향 결과 업데이트 (커밋 없음)
+    async def update_user_tendency_result(
+        self, user_id: int, tendency_type: str, answers: dict
+    ) -> None:
+        """사용자의 성향 테스트 결과 업데이트 (커밋은 use_case에서 처리)"""
+        await self._session.execute(
+            update(UserTendencyResult)
+            .where(UserTendencyResult.user_id == user_id)
+            .values(tendency_type=tendency_type, answers=answers)
+        )

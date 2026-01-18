@@ -1,6 +1,6 @@
 import logging
 
-from app.core.services.fcm_service import FCMService
+from app.features.notifications.services.fcm_service import FCMService
 from app.features.follow.repositories.follow_list_repository import (
     FollowListRepository,
 )
@@ -10,8 +10,7 @@ from app.features.follow.repositories.follow_notification_repository import (
 from app.features.follow.repositories.follow_repository import FollowRepository
 from app.features.follow.schemas import FollowNotificationStatusDto
 from app.features.pods.repositories.pod_repository import PodRepository
-from app.features.users.models import User
-from sqlalchemy import select
+from app.features.users.repositories import UserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -20,13 +19,23 @@ logger = logging.getLogger(__name__)
 class FollowNotificationService:
     """팔로우 알림 서비스"""
 
-    def __init__(self, session: AsyncSession, fcm_service: FCMService | None = None):
+    def __init__(
+        self,
+        session: AsyncSession,
+        follow_noti_repo: FollowNotificationRepository,
+        follow_repo: FollowRepository,
+        follow_list_repo: FollowListRepository,
+        pod_repo: PodRepository,
+        user_repo: UserRepository,
+        fcm_service: FCMService,
+    ):
         self._session = session
-        self._follow_noti_repo = FollowNotificationRepository(session)
-        self._follow_repo = FollowRepository(session)
-        self._follow_list_repo = FollowListRepository(session)
-        self._pod_repo = PodRepository(session)
-        self._fcm_service = fcm_service or FCMService()
+        self._follow_noti_repo = follow_noti_repo
+        self._follow_repo = follow_repo
+        self._follow_list_repo = follow_list_repo
+        self._pod_repo = pod_repo
+        self._user_repo = user_repo
+        self._fcm_service = fcm_service
 
     # - MARK: 특정 팔로우 관계의 알림 설정 상태 조회
     async def get_notification_status(
@@ -67,16 +76,10 @@ class FollowNotificationService:
         """팔로우 알림 전송"""
         try:
             # 팔로우한 사용자 정보 조회
-            follower_result = await self._session.execute(
-                select(User).where(User.id == follower_id)
-            )
-            follower = follower_result.scalar_one_or_none()
+            follower = await self._user_repo.get_by_id(follower_id)
 
             # 팔로우받은 사용자 정보 조회
-            following_result = await self._session.execute(
-                select(User).where(User.id == following_id)
-            )
-            following = following_result.scalar_one_or_none()
+            following = await self._user_repo.get_by_id(following_id)
 
             if not follower or not following:
                 logger.warning(
@@ -85,7 +88,9 @@ class FollowNotificationService:
                 return
 
             # 팔로우받은 사용자의 FCM 토큰 확인
-            following_fcm_token = following.fcm_token
+            following_fcm_token = (
+                following.detail.fcm_token if following.detail else None
+            )
             follower_nickname = follower.nickname or ""
 
             if following_fcm_token:
@@ -124,10 +129,7 @@ class FollowNotificationService:
                 return
 
             # 파티 생성자 정보 조회
-            pod_owner_result = await self._session.execute(
-                select(User).where(User.id == pod_owner_id)
-            )
-            pod_owner = pod_owner_result.scalar_one_or_none()
+            pod_owner = await self._user_repo.get_by_id(pod_owner_id)
             if not pod_owner:
                 logger.warning(
                     f"파티 생성자 정보를 찾을 수 없음: pod_owner_id={pod_owner_id}"
@@ -152,7 +154,9 @@ class FollowNotificationService:
                     if follower_user.id is None:
                         continue
                     follower_user_id = follower_user.id
-                    follower_fcm_token = follower_user.fcm_token
+                    follower_fcm_token = (
+                        follower_user.detail.fcm_token if follower_user.detail else None
+                    )
 
                     if follower_fcm_token:
                         await self._fcm_service.send_followed_user_created_pod(

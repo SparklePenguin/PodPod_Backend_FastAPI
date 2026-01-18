@@ -1,7 +1,5 @@
-from typing import Tuple
-
-from app.features.artists.models.artist_schedule import ArtistSchedule
-from sqlalchemy import and_, desc, func, select
+from app.features.artists.models import ArtistSchedule
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -28,20 +26,32 @@ class ArtistScheduleRepository:
     # - MARK: 스케줄 목록 조회
     async def get_schedules(
         self,
-        page: int = 1,
-        size: int = 20,
+        year: int,
+        month: int,
         artist_id: int | None = None,
         unit_id: int | None = None,
         schedule_type: int | None = None,
-    ) -> Tuple[list[ArtistSchedule], int]:
-        """스케줄 목록 조회 (페이지네이션)"""
+    ) -> list[ArtistSchedule]:
+        """스케줄 목록 조회 (월별)"""
+        from datetime import datetime
+
+        # 해당 월의 시작일과 종료일 계산
+        start_of_month = datetime(year, month, 1)
+        if month == 12:
+            end_of_month = datetime(year + 1, 1, 1)
+        else:
+            end_of_month = datetime(year, month + 1, 1)
+
         # 기본 쿼리
         query = select(ArtistSchedule).options(
             selectinload(ArtistSchedule.members), selectinload(ArtistSchedule.contents)
         )
 
         # 필터 조건 추가
-        conditions = []
+        conditions = [
+            ArtistSchedule.start_time >= start_of_month,
+            ArtistSchedule.start_time < end_of_month,
+        ]
         if artist_id is not None:
             conditions.append(ArtistSchedule.artist_id == artist_id)
         if unit_id is not None:
@@ -49,24 +59,12 @@ class ArtistScheduleRepository:
         if schedule_type is not None:
             conditions.append(ArtistSchedule.type == schedule_type)
 
-        if conditions:
-            query = query.where(and_(*conditions))
+        query = query.where(and_(*conditions))
 
-        # 정렬 (최신순)
-        query = query.order_by(desc(ArtistSchedule.start_time))
-
-        # 전체 개수 조회
-        count_query = select(func.count(ArtistSchedule.id))
-        if conditions:
-            count_query = count_query.where(and_(*conditions))
-
-        total_count = await self._session.scalar(count_query)
-
-        # 페이지네이션
-        offset = (page - 1) * size
-        query = query.offset(offset).limit(size)
+        # 정렬 (시간순)
+        query = query.order_by(ArtistSchedule.start_time)
 
         result = await self._session.execute(query)
         schedules = list(result.scalars().all())
 
-        return (schedules, total_count or 0)
+        return schedules

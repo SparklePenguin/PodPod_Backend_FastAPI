@@ -27,3 +27,11 @@ class Artist(Base):
         back_populates="artist",
         cascade="all, delete-orphan",
     )
+    preferred_artists = relationship(
+        "PreferredArtist",
+        back_populates="artist",
+    )
+    schedules = relationship(
+        "ArtistSchedule",
+        back_populates="artist",
+    )

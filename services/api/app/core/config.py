@@ -1,3 +1,4 @@
+import json
 import os
 import urllib.parse
 from pathlib import Path
@@ -10,7 +11,7 @@ def load_config_file(config_path: str | None = None) -> dict:
     """YAML 설정 파일을 로드합니다."""
     if config_path is None:
         # 환경변수로 config 파일 지정 가능
-        config_path = os.getenv("CONFIG_FILE", "config.dev.yaml")
+        config_path = os.getenv("CONFIG_FILE", "")
 
     config_file = Path(config_path)
 
@@ -35,42 +36,76 @@ def load_config_file(config_path: str | None = None) -> dict:
         return {}
 
 
+class AppConfig(BaseSettings):
+    profile: str
+    name: str
+    description: str
+    version: str
+    base_url: str
+    root_path: str
+    host: str
+    port: int
+    reload: bool
+    debug: bool
+
+
+class DataBaseConfig(BaseSettings):
+    host: str
+    port: int
+    name: str
+    user: str
+    password: str = os.getenv("MYSQL_PASSWORD")
+
+    def get_url(self):
+        encoded_password = urllib.parse.quote(self.password, safe="")
+        return f"mysql+aiomysql://{self.user}:{encoded_password}@{self.host}:{self.port}/{self.name}"
+
+
+class JwtConfig(BaseSettings):
+    secret_key: str = os.getenv("SECRET_KEY")  # Infisical에서 주입
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+
+
+class RedisConfig(BaseSettings):
+    host: str
+    port: int
+    db: int
+
+    def get_url(self):
+        return f"redis://{self.host}:{self.port}/{self.db}"
+
+
+class LoggingConfig(BaseSettings):
+    level: str
+    console: bool
+    file_rotation: bool
+    retention_days: int  # 개발 환경에서는 짧게 보관
+    max_file_size: str
+
+
+class ChatConfig(BaseSettings):
+    use_websocket: bool
+
+
+class InfisicalConfig(BaseSettings):
+    enabled: bool
+    env: str
+
+
 class Settings(BaseSettings):
     # Config 파일에서 로드할 설정
     _config: dict = {}
 
-    # MARK: - Environment
-
     # 환경 식별
     ENVIRONMENT: str = "development"
-
-    # MARK: - Database
-
-    # MySQL 데이터베이스 설정
-    MYSQL_USER: str = "root"
-    MYSQL_PASSWORD: str  # 필수: Infisical에서 주입
-    MYSQL_HOST: str = "localhost"
-    MYSQL_PORT: int = 3306
-    MYSQL_DATABASE: str = "podpod"
-
-    # MARK: - Redis
-
-    redis_url: str = "redis://localhost:6379/0"
-
-    # MARK: - JWT
-
-    secret_key: str  # Infisical에서 주입
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-    # MARK: - App
-
-    APP_NAME: str = "PodPod API"
-    APP_VERSION: str = "1.0.0"
-    ROOT_PATH: str = ""  # Nginx 프록시 경로 (예: /stg, /prod)
-    base_url: str = "http://localhost:8000"  # OAuth 리다이렉트 URL 생성에 사용
-
-    # MARK: - Server
+    database: DataBaseConfig | None = None  # MySQL 데이터베이스 설정
+    redis: RedisConfig | None = None  # MARK: - Redis
+    jwt: JwtConfig | None = None  # MARK: - JWT
+    app: AppConfig | None = None  # MARK: - App, Server
+    logging: LoggingConfig | None = None
+    chat: ChatConfig | None = None
+    infisical: InfisicalConfig | None = None
 
     DEBUG: bool = False
 
@@ -79,235 +114,119 @@ class Settings(BaseSettings):
     UPLOADS_DIR: str | None = None  # 환경별로 다르게 설정됨
     LOGS_DIR: str | None = None  # 환경별로 다르게 설정됨
 
-    # MARK: - Chat Service
-
-    USE_WEBSOCKET_CHAT: bool = False  # True면 WebSocket 사용, False면 Sendbird 사용
-    SENDBIRD_APP_ID: str | None = None
-    SENDBIRD_API_TOKEN: str | None = None
-
     # MARK: - OAuth (Infisical)
     # Note: REDIRECT_URI는 base_url을 사용해 자동 생성됩니다 (@property 참고)
 
     # 카카오 OAuth
-    KAKAO_CLIENT_ID: str | None = None
-    KAKAO_CLIENT_SECRET: str | None = None
+    KAKAO_CLIENT_ID: str | None = os.getenv("KAKAO_CLIENT_ID")
+    KAKAO_CLIENT_SECRET: str | None = os.getenv("KAKAO_CLIENT_SECRET")
 
     # 네이버 OAuth
-    NAVER_CLIENT_ID: str | None = None
-    NAVER_CLIENT_SECRET: str | None = None
+    NAVER_CLIENT_ID: str | None = os.getenv("NAVER_CLIENT_ID")
+    NAVER_CLIENT_SECRET: str | None = os.getenv("NAVER_CLIENT_SECRET")
 
     # 구글 OAuth
-    GOOGLE_CLIENT_ID: str | None = None
-    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
 
     # 애플 OAuth
-    APPLE_CLIENT_ID: str | None = None
-    APPLE_TEAM_ID: str | None = None
-    APPLE_KEY_ID: str | None = None
-    APPLE_PRIVATE_KEY: str | None = None
-    APPLE_SCHEME: str | None = None
-
-    # MARK: - External Services (Infisical)
+    APPLE_CLIENT_ID: str | None = os.getenv("APPLE_CLIENT_ID")
+    APPLE_TEAM_ID: str | None = os.getenv("APPLE_TEAM_ID")
+    APPLE_KEY_ID: str | None = os.getenv("APPLE_KEY_ID")
+    APPLE_PRIVATE_KEY: str | None = os.getenv("APPLE_PRIVATE_KEY")
+    APPLE_SCHEME: str | None = os.getenv("APPLE_SCHEME")
 
     # Firebase Cloud Messaging
-    FIREBASE_SERVICE_ACCOUNT_KEY: str | None = None
+    FIREBASE_SERVICE_ACCOUNT_KEY: str | None = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
 
-    # Google Sheets
-    GOOGLE_SHEETS_ID: str | None = None
-    GOOGLE_SHEETS_CREDENTIALS: str | None = None
-    GOOGLE_CREDENTIALS_PATH: str = "credentials.json"
-    GOOGLE_SHEETS_RANGE: str = "1xxx: 인증/로그인 관련 오류!A:F"
+    # MARK: - Chat Service
+    USE_WEBSOCKET_CHAT: bool | None = os.getenv("USE_WEBSOCKET_CHAT", False) # True면 WebSocket 사용, False면 Sendbird 사용
 
-    def __init__(self, config_path: str | None = None, **kwargs):
-        # Config 파일 로드
-        config = load_config_file(config_path)
+    @classmethod
+    def load(cls):
+        return cls(**load_config_file())
 
-        # Config 파일에서 값 추출하여 kwargs에 병합
-        if config:
-            self._config = config
-            kwargs.setdefault("ENVIRONMENT", config.get("environment", "development"))
-
-            # 데이터베이스 설정
-            db_config = config.get("database", {})
-            kwargs.setdefault("MYSQL_HOST", db_config.get("host", "localhost"))
-            kwargs.setdefault("MYSQL_PORT", db_config.get("port", 3306))
-            kwargs.setdefault("MYSQL_DATABASE", db_config.get("name", "podpod"))
-            kwargs.setdefault("MYSQL_USER", db_config.get("user", "root"))
-
-            # Redis 설정
-            redis_config = config.get("redis", {})
-            kwargs.setdefault(
-                "redis_url", redis_config.get("url", "redis://localhost:6379/0")
-            )
-
-            # JWT 설정
-            jwt_config = config.get("jwt", {})
-            kwargs.setdefault("ALGORITHM", jwt_config.get("algorithm", "HS256"))
-            kwargs.setdefault(
-                "ACCESS_TOKEN_EXPIRE_MINUTES",
-                jwt_config.get("access_token_expire_minutes", 30),
-            )
-
-            # 앱 설정
-            app_config = config.get("app", {})
-            kwargs.setdefault("APP_NAME", app_config.get("name", "PodPod API"))
-            kwargs.setdefault("APP_VERSION", app_config.get("version", "1.0.0"))
-            kwargs.setdefault("ROOT_PATH", app_config.get("root_path", ""))
-            kwargs.setdefault(
-                "base_url", app_config.get("base_url", "http://localhost:8000")
-            )
-
-            # 서버 설정
-            server_config = config.get("server", {})
-            kwargs.setdefault("DEBUG", server_config.get("debug", False))
-
-            # 채팅 서비스 설정
-            chat_config = config.get("chat", {})
-            kwargs.setdefault(
-                "USE_WEBSOCKET_CHAT", chat_config.get("use_websocket", False)
-            )
-
-            # Google Sheets 설정
-            sheets_config = config.get("google_sheets", {})
-            kwargs.setdefault(
-                "GOOGLE_CREDENTIALS_PATH",
-                sheets_config.get("credentials_path", "credentials.json"),
-            )
-            kwargs.setdefault(
-                "GOOGLE_SHEETS_RANGE",
-                sheets_config.get("range", "1xxx: 인증/로그인 관련 오류!A:F"),
-            )
-
-        # 환경변수에서 민감한 정보 로드 (환경변수가 우선순위)
-        # USE_WEBSOCKET_CHAT도 환경변수로 오버라이드 가능
-        use_websocket_env = os.getenv("USE_WEBSOCKET_CHAT")
-        if use_websocket_env:
-            kwargs["USE_WEBSOCKET_CHAT"] = use_websocket_env.lower() == "true"
-
-        # MYSQL_HOST도 환경 변수로 오버라이드 가능하도록 (도커 환경 지원)
-        if os.getenv("MYSQL_HOST"):
-            kwargs["MYSQL_HOST"] = os.getenv("MYSQL_HOST")
-
-        # base_url 환경변수 override
-        if os.getenv("BASE_URL"):
-            kwargs["base_url"] = os.getenv("BASE_URL")
-
-        # 데이터베이스
-        kwargs.setdefault("MYSQL_PASSWORD", os.getenv("MYSQL_PASSWORD"))
-
-        # JWT
-        kwargs.setdefault("secret_key", os.getenv("SECRET_KEY", "your-secret-key-here"))
-
-        # Sendbird
-        kwargs.setdefault("SENDBIRD_APP_ID", os.getenv("SENDBIRD_APP_ID"))
-        kwargs.setdefault("SENDBIRD_API_TOKEN", os.getenv("SENDBIRD_API_TOKEN"))
-
-        # OAuth (Infisical)
-        kwargs.setdefault("KAKAO_CLIENT_ID", os.getenv("KAKAO_CLIENT_ID"))
-        kwargs.setdefault("KAKAO_CLIENT_SECRET", os.getenv("KAKAO_CLIENT_SECRET"))
-        kwargs.setdefault("NAVER_CLIENT_ID", os.getenv("NAVER_CLIENT_ID"))
-        kwargs.setdefault("NAVER_CLIENT_SECRET", os.getenv("NAVER_CLIENT_SECRET"))
-        kwargs.setdefault("GOOGLE_CLIENT_ID", os.getenv("GOOGLE_CLIENT_ID"))
-        kwargs.setdefault("GOOGLE_CLIENT_SECRET", os.getenv("GOOGLE_CLIENT_SECRET"))
-        kwargs.setdefault("APPLE_CLIENT_ID", os.getenv("APPLE_CLIENT_ID"))
-        kwargs.setdefault("APPLE_TEAM_ID", os.getenv("APPLE_TEAM_ID"))
-        kwargs.setdefault("APPLE_KEY_ID", os.getenv("APPLE_KEY_ID"))
-        kwargs.setdefault("APPLE_PRIVATE_KEY", os.getenv("APPLE_PRIVATE_KEY"))
-        kwargs.setdefault("APPLE_SCHEME", os.getenv("APPLE_SCHEME"))
-
-        # External Services
-        kwargs.setdefault("GOOGLE_SHEETS_ID", os.getenv("GOOGLE_SHEETS_ID"))
-        kwargs.setdefault(
-            "GOOGLE_SHEETS_CREDENTIALS", os.getenv("GOOGLE_SHEETS_CREDENTIALS")
-        )
-        kwargs.setdefault(
-            "FIREBASE_SERVICE_ACCOUNT_KEY", os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
-        )
+    def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
 
-        # 필수 환경변수 검증
-        if not self.MYSQL_PASSWORD:
-            raise ValueError(
-                "MYSQL_PASSWORD 환경변수가 설정되지 않았습니다. "
-                "Infisical을 사용하여 환경변수를 주입해주세요."
-            )
+        self.set_uploads()
+        self.set_logs()
 
-        # 환경별 uploads 디렉토리 설정
-        if self.ENVIRONMENT in ["local", "development"]:
-            # 로컬/개발 환경: 서비스 내부/uploads/local 또는 uploads/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            env_suffix = "local" if self.ENVIRONMENT == "local" else "dev"
-            self.UPLOADS_DIR = str(service_root / "uploads" / env_suffix)
-        elif self.ENVIRONMENT in ["staging", "stg"]:
-            # 스테이징 환경: /srv/uploads/podpod/stg/
-            self.UPLOADS_DIR = "/srv/uploads/podpod/stg"
-        elif self.ENVIRONMENT in ["production", "prod"]:
-            # 프로덕션 환경: /srv/uploads/podpod/prod/
-            self.UPLOADS_DIR = "/srv/uploads/podpod/prod"
-        else:
-            # 기본값: 서비스 내부/uploads/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            self.UPLOADS_DIR = str(service_root / "uploads" / "dev")
-
-        # uploads 디렉토리가 없으면 생성
-        Path(self.UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
-
-        # 환경별 logs 디렉토리 설정
-        if self.ENVIRONMENT in ["local", "development"]:
-            # 로컬/개발 환경: 서비스 내부/logs/local 또는 logs/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            env_suffix = "local" if self.ENVIRONMENT == "local" else "dev"
-            self.LOGS_DIR = str(service_root / "logs" / env_suffix)
-        elif self.ENVIRONMENT in ["staging", "stg"]:
-            # 스테이징 환경: /srv/logs/podpod/stg/
-            self.LOGS_DIR = "/srv/logs/podpod/stg"
-        elif self.ENVIRONMENT in ["production", "prod"]:
-            # 프로덕션 환경: /srv/logs/podpod/prod/
-            self.LOGS_DIR = "/srv/logs/podpod/prod"
-        else:
-            # 기본값: 서비스 내부/logs/dev
-            service_root = Path(__file__).resolve().parent.parent.parent.parent
-            self.LOGS_DIR = str(service_root / "logs" / "dev")
-
-        # logs 디렉토리가 없으면 생성
-        Path(self.LOGS_DIR).mkdir(parents=True, exist_ok=True)
+        self.ENVIRONMENT = os.getenv("PROFILE")
 
         print(f"환경 설정 완료: {self.ENVIRONMENT}")
         print(
-            f"데이터베이스: {self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+            f"Config: {json.dumps(self.model_dump(), indent=4, ensure_ascii=False)}"
         )
-        print(f"Base URL: {self.base_url}")
+        print(f"Base URL: {self.app.base_url}")
         print(f"Uploads 디렉토리: {self.UPLOADS_DIR}")
         print(f"Logs 디렉토리: {self.LOGS_DIR}")
+
+    def set_uploads(self):
+        # 환경별 uploads 디렉토리 설정
+        if self.ENVIRONMENT in ["local", "development"]:
+            # 로컬/개발 환경: services/api/uploads/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.UPLOADS_DIR = str(api_root / "uploads" / "dev")
+        elif self.ENVIRONMENT in ["staging", "stg"]:
+            # 스테이징 환경: /Users/Shared/Projects/PodPod/uploads/stg
+            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/stg"
+        elif self.ENVIRONMENT in ["production", "prod"]:
+            # 프로덕션 환경: /Users/Shared/Projects/PodPod/uploads/prod
+            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/prod"
+        else:
+            # 기본값: services/api/uploads/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.UPLOADS_DIR = str(api_root / "uploads" / "dev")
+        # uploads 디렉토리가 없으면 생성
+        Path(self.UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
+
+    def set_logs(self):
+        # 환경별 logs 디렉토리 설정
+        if self.ENVIRONMENT in ["local", "development"]:
+            # 로컬/개발 환경: services/api/logs/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.LOGS_DIR = str(api_root / "logs" / "dev")
+        elif self.ENVIRONMENT in ["staging", "stg"]:
+            # 스테이징 환경: /Users/Shared/Projects/PodPod/logs/stg
+            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/stg"
+        elif self.ENVIRONMENT in ["production", "prod"]:
+            # 프로덕션 환경: /Users/Shared/Projects/PodPod/logs/prod
+            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/prod"
+        else:
+            # 기본값: services/api/logs/dev
+            api_root = Path(__file__).resolve().parent.parent.parent
+            self.LOGS_DIR = str(api_root / "logs" / "dev")
+        # logs 디렉토리가 없으면 생성
+        Path(self.LOGS_DIR).mkdir(parents=True, exist_ok=True)
 
     @property
     def DATABASE_URL(self) -> str:
         """데이터베이스 URL을 생성합니다."""
-        encoded_password = urllib.parse.quote(self.MYSQL_PASSWORD, safe="")
-        return f"mysql+aiomysql://{self.MYSQL_USER}:{encoded_password}@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+        return self.database.get_url()
 
     # MARK: - OAuth Redirect URIs (자동 생성)
 
     @property
     def KAKAO_REDIRECT_URI(self) -> str:
         """카카오 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/kakao/callback"
+        return f"{self.app.base_url}/api/v1/oauth/kakao/callback"
 
     @property
     def NAVER_REDIRECT_URI(self) -> str:
         """네이버 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/naver/callback"
+        return f"{self.app.base_url}/api/v1/oauth/naver/callback"
 
     @property
     def GOOGLE_REDIRECT_URI(self) -> str:
         """구글 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/google/callback"
+        return f"{self.app.base_url}/api/v1/oauth/google/callback"
 
     @property
     def APPLE_REDIRECT_URI(self) -> str:
         """애플 OAuth 리다이렉트 URI를 base_url로부터 생성합니다."""
-        return f"{self.base_url}/auth/apple/callback"
+        return f"{self.app.base_url}/api/v1/oauth/apple/callback"
 
     # MARK: - OAuth URLs (상수)
 
@@ -333,4 +252,4 @@ class Settings(BaseSettings):
 
 
 # 전역 settings 인스턴스
-settings = Settings()
+settings = Settings.load()

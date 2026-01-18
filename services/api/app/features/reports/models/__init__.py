@@ -1,5 +1,5 @@
 """Reports feature models"""
 
-from .report_reason import ReportReason
+from .report_models import ReportReason
 
 __all__ = ["ReportReason"]

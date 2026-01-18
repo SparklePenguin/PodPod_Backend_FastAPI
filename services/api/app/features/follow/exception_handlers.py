@@ -10,15 +10,14 @@ Follow 도메인 전용 Exception Handler
 
 import logging
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
 from app.common.schemas import BaseResponse
 from app.features.follow.exceptions import (
     FollowFailedException,
     FollowInvalidException,
     FollowNotFoundException,
 )
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 """Follow feature models"""
 
-from .follow import Follow
+from .follow_models import Follow
 
 __all__ = ["Follow"]

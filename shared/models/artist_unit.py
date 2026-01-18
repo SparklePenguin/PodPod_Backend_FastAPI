@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -24,3 +25,9 @@ class ArtistUnit(Base):
     # BLIP/연동 관련 식별자
     blip_unit_id = Column(Integer, nullable=False, index=True)
     blip_artist_id = Column(Integer, nullable=False, index=True)
+
+    # 관계
+    schedules = relationship(
+        "ArtistSchedule",
+        back_populates="unit",
+    )

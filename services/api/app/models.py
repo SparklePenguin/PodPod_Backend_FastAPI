@@ -11,6 +11,13 @@ from app.features.artists.models import (
     ArtistUnit,
 )
 
+# Chat
+from app.features.chat.models import (
+    ChatMember,
+    ChatMessage,
+    ChatRoom,
+)
+
 # Follow
 from app.features.follow.models import Follow
 
@@ -21,16 +28,17 @@ from app.features.locations.models import Location
 from app.features.notifications.models import Notification
 
 # Pods
-from app.features.pods.models.pod import (
+from app.features.pods.models import (
+    Application,
     Pod,
-    PodApplication,
+    PodDetail,
     PodImage,
     PodLike,
     PodMember,
     PodRating,
+    PodReview,
     PodView,
 )
-from app.features.pods.models.pod_review import PodReview
 
 # Tendencies
 from app.features.tendencies.models import (
@@ -60,15 +68,20 @@ __all__ = [
     "Location",
     # Notifications
     "Notification",
+    # Chat
+    "ChatMember",
+    "ChatMessage",
+    "ChatRoom",
     # Pods
+    "Application",
     "Pod",
-    "PodApplication",
+    "PodDetail",
     "PodImage",
     "PodLike",
     "PodMember",
     "PodRating",
-    "PodView",
     "PodReview",
+    "PodView",
     # Tendencies
     "TendencyResult",
     "TendencySurvey",

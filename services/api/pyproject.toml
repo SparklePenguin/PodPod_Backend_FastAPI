@@ -25,6 +25,9 @@ dependencies = [
     "pydantic-settings==2.2.1",
     "email-validator==2.1.0",
 
+    # 의존성 주입
+    "dependency-injector==4.48.3",
+
     # HTTP 클라이언트
     "httpx==0.28.1",
     "requests==2.31.0",
@@ -47,9 +50,6 @@ dependencies = [
 
     # 이미지 처리
     "Pillow==10.4.0",
-
-    # Sendbird Platform SDK
-    "sendbird-platform-sdk==2.1.0",
 
     # Firebase Cloud Messaging (푸시 알림)
     "firebase-admin==6.5.0",

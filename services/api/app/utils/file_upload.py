@@ -32,7 +32,7 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
         # 파일 포인터를 다시 처음으로 되돌리기
         await upload_file.seek(0)
 
-        # 파일 URL 반환 (uploads 경로 기준)
+        # 파일 URL 반환 (환경별 nginx 설정에 맞춰 경로 생성)
         # destination에서 uploads 이후 경로 추출
         upload_dir_path = Path(destination)
         uploads_dir_path = Path(settings.UPLOADS_DIR)
@@ -40,10 +40,25 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> str:
         # 상대 경로 계산 (uploads 디렉토리 기준)
         try:
             relative_path = upload_dir_path.relative_to(uploads_dir_path)
-            return f"/uploads/{relative_path}/{unique_filename}"
+            
+            # 환경별 nginx 경로 설정
+            if settings.ENVIRONMENT in ["staging", "stg"]:
+                # staging: /stg/uploads/...
+                return f"/stg/uploads/{relative_path}/{unique_filename}"
+            elif settings.ENVIRONMENT in ["production", "prod"]:
+                # production: /uploads/...
+                return f"/uploads/{relative_path}/{unique_filename}"
+            else:
+                # local/development: /uploads/...
+                return f"/uploads/{relative_path}/{unique_filename}"
         except ValueError:
             # 상대 경로 계산 실패 시 기본 경로 사용
-            return f"/uploads/{unique_filename}"
+            if settings.ENVIRONMENT in ["staging", "stg"]:
+                return f"/stg/uploads/{unique_filename}"
+            elif settings.ENVIRONMENT in ["production", "prod"]:
+                return f"/uploads/{unique_filename}"
+            else:
+                return f"/uploads/{unique_filename}"
 
     except Exception as e:
         raise Exception(f"파일 업로드 실패: {str(e)}")
@@ -169,7 +184,7 @@ async def upload_profile_image(image: UploadFile) -> str:
     await image.seek(0)
 
     # 파일 저장 (환경별 uploads 디렉토리 사용)
-    profiles_dir = Path(settings.UPLOADS_DIR) / "profiles"
+    profiles_dir = Path(settings.UPLOADS_DIR) / "users" / "profiles"
     file_path = await save_upload_file(image, str(profiles_dir))
 
     return file_path
