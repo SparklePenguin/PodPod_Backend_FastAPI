@@ -1,11 +1,10 @@
 services:
 
   # FastAPI 애플리케이션 (프로덕션 환경)
-  api:
+  podpod-api-prod:
     build:
       context: ../services/api
       dockerfile: Dockerfile
-    container_name: podpod-api-prod
     restart: always
     environment:
       # 환경 설정 파일 지정
