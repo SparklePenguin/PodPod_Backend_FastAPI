@@ -27,22 +27,26 @@ K-POP 아티스트 기반 소셜 플랫폼 백엔드
 
 - STRUCTURE
   ```text
-  ╰─$ tree -L 2 -I venv -I *.log -I scripts -I __pycache__
+  $ tree -L 2 -I venv -I *.log -I scripts -I __pycache__
   .
   ├── commit-prompt.txt # 일관된 커밋 컨벤션 작성을 위한 prompt 파일
   ├── deploy
   │   ├── config
   │   ├── docker-compose.dev.yml
+  │   ├── docker-compose.local.yml # 로컬에서 환경 구성 시 사용
   │   ├── docker-compose.prod.yml
   │   ├── docker-compose.stg.yml
+  │   ├── nginx.conf
   │   ├── prometheus
   │   ├── services
   │   └── shared
   ├── docker
-  │   └── docker-compose.local.yml # 로컬에서 환경 구성 시 사용
-  ├── docs # 문서
-  │   ├── *.md
-  ├── makefile # 배포 관련 명령
+  │   └── docker-compose.local.yml
+  ├── docs
+  │   ├── _legacy
+  │   └── 1_enviornment.md
+  ├── init-db
+  ├── makefile
   ├── README.md
   ├── services
   │   ├── api # 메인 API 서비스 (8000)
