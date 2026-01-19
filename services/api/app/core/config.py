@@ -140,7 +140,7 @@ class Settings(BaseSettings):
     FIREBASE_SERVICE_ACCOUNT_KEY: str | None = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
 
     # MARK: - Chat Service
-    USE_WEBSOCKET_CHAT: bool | None = os.getenv("USE_WEBSOCKET_CHAT", False) # True면 WebSocket 사용, False면 Sendbird 사용
+    USE_WEBSOCKET_CHAT: bool | None = os.getenv("USE_WEBSOCKET_CHAT", False)  # True면 WebSocket 사용, False면 Sendbird 사용
 
     @classmethod
     def load(cls):
@@ -166,15 +166,14 @@ class Settings(BaseSettings):
     def set_uploads(self):
         # 환경별 uploads 디렉토리 설정
         if self.ENVIRONMENT in ["local", "development"]:
-            # 로컬/개발 환경: services/api/uploads/dev
-            api_root = Path(__file__).resolve().parent.parent.parent
-            self.UPLOADS_DIR = str(api_root / "uploads" / "dev")
+            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/dev"
+
         elif self.ENVIRONMENT in ["staging", "stg"]:
-            # 스테이징 환경: /Users/Shared/Projects/PodPod/uploads/stg
             self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/stg"
+
         elif self.ENVIRONMENT in ["production", "prod"]:
-            # 프로덕션 환경: /Users/Shared/Projects/PodPod/uploads/prod
             self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/prod"
+
         else:
             # 기본값: services/api/uploads/dev
             api_root = Path(__file__).resolve().parent.parent.parent

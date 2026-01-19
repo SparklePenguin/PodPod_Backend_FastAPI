@@ -40,7 +40,7 @@ services:
     volumes:
       - ./config/config.dev.yaml:/app/config/config.dev.yaml
       - ../shared:/app/shared
-      - /Users/Shared/Projects/PodPod/uploads/dev:/Users/Shared/Projects/PodPod/uploads/dev  # 스테이징 업로드 파일
+      - /Users/Shared/Projects/PodPod/uploads/dev:/Users/Shared/Projects/PodPod/uploads/dev  # dev 업로드 파일
       - /Users/Shared/Projects/PodPod/logs/dev:/Users/Shared/Projects/PodPod/logs/dev  # 스테이징 로그 파일
     ports:
       - "8002:8000"
