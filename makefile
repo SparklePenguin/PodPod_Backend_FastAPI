@@ -17,8 +17,6 @@ infra.connect:
 	ssh  -i ${SSH_KEY_PATH} -fN -L $(DB_PORT):127.0.0.1:$(DB_PORT) ${SSH_USER}@${SERVER_IP};
 	ssh  -i ${SSH_KEY_PATH} -fN -L $(REDIS_PORT):127.0.0.1:$(REDIS_PORT) ${SSH_USER}@${SERVER_IP};
 
-
-
 deploy.local:
 	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.local.yml up --build
 
