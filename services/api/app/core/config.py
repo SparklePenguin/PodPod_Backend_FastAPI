@@ -184,7 +184,7 @@ class Settings(BaseSettings):
     def set_logs(self):
         # 환경별 logs 디렉토리 설정
         if self.ENVIRONMENT in ["local", "development", "DEV"]:
-            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/logs/dev"
+            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/dev"
 
         elif self.ENVIRONMENT in ["staging", "stg", "STG"]:
             self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/stg"
