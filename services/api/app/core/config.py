@@ -165,13 +165,13 @@ class Settings(BaseSettings):
 
     def set_uploads(self):
         # 환경별 uploads 디렉토리 설정
-        if self.ENVIRONMENT in ["local", "development"]:
+        if self.ENVIRONMENT in ["local", "development", "DEV"]:
             self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/dev"
 
-        elif self.ENVIRONMENT in ["staging", "stg"]:
+        elif self.ENVIRONMENT in ["staging", "stg", "STG"]:
             self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/stg"
 
-        elif self.ENVIRONMENT in ["production", "prod"]:
+        elif self.ENVIRONMENT in ["production", "prod", "PROD"]:
             self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/prod"
 
         else:
