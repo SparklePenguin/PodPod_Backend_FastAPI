@@ -150,10 +150,10 @@ class Settings(BaseSettings):
 
         super().__init__(**kwargs)
 
+        self.ENVIRONMENT = os.getenv("PROFILE")
+
         self.set_uploads()
         self.set_logs()
-
-        self.ENVIRONMENT = os.getenv("PROFILE")
 
         print(f"환경 설정 완료: {self.ENVIRONMENT}")
         print(
@@ -183,20 +183,15 @@ class Settings(BaseSettings):
 
     def set_logs(self):
         # 환경별 logs 디렉토리 설정
-        if self.ENVIRONMENT in ["local", "development"]:
-            # 로컬/개발 환경: services/api/logs/dev
-            api_root = Path(__file__).resolve().parent.parent.parent
-            self.LOGS_DIR = str(api_root / "logs" / "dev")
-        elif self.ENVIRONMENT in ["staging", "stg"]:
-            # 스테이징 환경: /Users/Shared/Projects/PodPod/logs/stg
+        if self.ENVIRONMENT in ["local", "development", "DEV"]:
+            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/dev"
+
+        elif self.ENVIRONMENT in ["staging", "stg", "STG"]:
             self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/stg"
-        elif self.ENVIRONMENT in ["production", "prod"]:
-            # 프로덕션 환경: /Users/Shared/Projects/PodPod/logs/prod
+
+        elif self.ENVIRONMENT in ["production", "prod", "PROD"]:
             self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/prod"
-        else:
-            # 기본값: services/api/logs/dev
-            api_root = Path(__file__).resolve().parent.parent.parent
-            self.LOGS_DIR = str(api_root / "logs" / "dev")
+
         # logs 디렉토리가 없으면 생성
         Path(self.LOGS_DIR).mkdir(parents=True, exist_ok=True)
 
