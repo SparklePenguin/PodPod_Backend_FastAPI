@@ -1,0 +1,51 @@
+# PodPod FastAPI 개발 환경 설정
+# 앱 설정
+app:
+  profile: "LOCAL"
+  name: "PodPod API (LOCAL)"
+  description: "소셜 로그인을 지원하는 FASTAPI 백엔드(LOCAL)"
+  version: "1.0.0"
+  base_url: "http://localhost:8000"  # OAuth 리다이렉트 URL 생성에 사용
+  root_path: ""
+  host: "localhost:8000"  # 로컬에서만 접근
+  port: 8000
+  reload: true        # 자동 리로드 활성화
+  debug: true         # 디버그 모드
+
+redis:
+  host: host.docker.internal # 127.0.0.1
+  port: 6379
+  db: 3
+
+database:
+  host: host.docker.internal # 127.0.0.1
+  port: 3306
+  name: podpod_dev
+  user: root
+
+
+# Infisical 설정
+infisical:
+  enabled: true
+  env: "dev"
+
+# JWT 설정
+jwt:
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# Note: OAuth Redirect URI는 base_url로부터 자동 생성됩니다
+# Note: OAuth URLs는 config.py에 상수로 정의되어 있습니다
+
+# 로깅 설정
+logging:
+  level: "DEBUG"           # 개발 환경에서는 상세 로그
+  console: true
+  file_rotation: true
+  retention_days: 7        # 개발 환경에서는 짧게 보관
+  max_file_size: "10MB"
+
+
+# 채팅 서비스 설정
+chat:
+  use_websocket: false  # true면 WebSocket 사용, false면 Sendbird 사용

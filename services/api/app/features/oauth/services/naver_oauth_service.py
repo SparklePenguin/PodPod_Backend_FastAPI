@@ -4,6 +4,9 @@ import secrets
 from typing import Any, Dict
 
 import httpx
+from fastapi import HTTPException, status
+from typing_extensions import deprecated
+
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.core.session import save_oauth_state
@@ -12,10 +15,9 @@ from app.features.oauth.schemas import (
     NaverTokenResponse,
     OAuthUserInfo,
 )
-from fastapi import HTTPException, status
-from redis.asyncio import Redis
 
 
+@deprecated("This class is no longer used.")
 class NaverOAuthService:
     """네이버 OAuth 서비스 (Stateless)"""
 
@@ -24,20 +26,22 @@ class NaverOAuthService:
         self._naver_token_url = "https://nid.naver.com/oauth2.0/token"
         self._naver_user_info_url = "https://openapi.naver.com/v1/nid/me"
 
-    # - MARK: 네이버 액세스 토큰 조회
+        self._client_id = settings.NAVER_CLIENT_ID
+        self._client_secret = settings.NAVER_CLIENT_SECRET
+        self._redirect_url = settings.NAVER_REDIRECT_URI
+
+        # - MARK: 네이버 액세스 토큰 조회
+
     async def get_naver_token(
-        self, code: str, state: str | None = None
+            self, code: str, state: str | None = None
     ) -> NaverTokenResponse:
         """네이버 인가 코드를 통해 액세스 토큰 조회"""
-
-        # 설정에서 네이버 정보 가져오기
-        client_id = settings.NAVER_CLIENT_ID
-        client_secret = settings.NAVER_CLIENT_SECRET
-
         print(f"🔍 DEBUG - code: {code}, state: {state}")
-
         token_params = GetNaverTokenRequest(
-            client_id=client_id, client_secret=client_secret, code=code, state=state
+            client_id=self._client_id,
+            client_secret=self._client_secret,
+            code=code,
+            state=state
         )
 
         async with httpx.AsyncClient() as client:
@@ -93,7 +97,7 @@ class NaverOAuthService:
                 return OAuthUserInfo(
                     id=str(user_id),
                     username=naver_response.get("name")
-                    or naver_response.get("nickname"),
+                             or naver_response.get("nickname"),
                     email=naver_response.get("email"),
                     image_url=naver_response.get("profile_image"),
                 )
@@ -105,19 +109,19 @@ class NaverOAuthService:
                 ) from e
 
     # - MARK: 네이버 인증 URL 생성
-    async def get_auth_url(self, redis: Redis) -> str:
+    async def get_auth_url(self) -> str:
         """네이버 인증 URL 생성"""
         # CSRF 방지용 state 값 생성
         state = secrets.token_urlsafe(16)
 
         # Redis에 state 저장 (10분 유효)
-        await save_oauth_state(state, redis, expire_seconds=600)
+        await save_oauth_state(state, expire_seconds=600)
 
         # 네이버 인증 URL 생성
         return (
             f"https://nid.naver.com/oauth2.0/authorize?"
             f"response_type=code&"
-            f"client_id={settings.NAVER_CLIENT_ID}&"
-            f"redirect_uri={settings.NAVER_REDIRECT_URI}&"
+            f"client_id={self._client_id}&"
+            f"redirect_uri={self._redirect_url}&"
             f"state={state}"
         )

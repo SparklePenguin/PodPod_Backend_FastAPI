@@ -1,6 +1,8 @@
 """카카오 OAuth 서비스"""
 
 import httpx
+from fastapi import HTTPException, status
+
 from app.common.schemas.base_response import BaseResponse
 from app.core.config import settings
 from app.features.oauth.schemas import (
@@ -8,41 +10,36 @@ from app.features.oauth.schemas import (
     KakaoTokenResponse,
     OAuthUserInfo,
 )
-from fastapi import HTTPException, status
 
 
 class KakaoOAuthService:
     """카카오 OAuth 서비스 (Stateless)"""
+
+    KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"
+    KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me"
 
     def __init__(self) -> None:
         """서비스 초기화"""
         self._redirect_uri = settings.KAKAO_REDIRECT_URI
         self._client_id = settings.KAKAO_CLIENT_ID
         self._client_secret = settings.KAKAO_CLIENT_SECRET
-        self._kakao_token_url = "https://kauth.kakao.com/oauth/token"
-        self._kakao_user_info_url = "https://kapi.kakao.com/v2/user/me"
+
 
     # - MARK: 카카오 액세스 토큰 조회
     async def get_kakao_token(self, code: str) -> KakaoTokenResponse:
         """카카오 인가 코드을 통해 액세스 토큰을 조회"""
-
-        # 설정에서 카카오 정보 가져오기
-        redirect_uri = settings.KAKAO_REDIRECT_URI
-        client_id = settings.KAKAO_CLIENT_ID
-        client_secret = settings.KAKAO_CLIENT_SECRET
-
         print(f"🔍 DEBUG - code: {code}")
 
         token_params = GetKakaoTokenRequest(
-            client_id=client_id,
-            redirect_uri=redirect_uri,
+            client_id=self._client_id,
+            redirect_uri=self._redirect_uri,
             code=code,
-            client_secret=client_secret,
+            client_secret=self._client_secret,
         )
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                self._kakao_token_url,
+                self.KAKAO_TOKEN_URL,
                 data=token_params.model_dump(exclude_none=True),
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"
@@ -65,7 +62,6 @@ class KakaoOAuthService:
 
             return KakaoTokenResponse(**response.json())
 
-    # - MARK: 카카오 사용자 정보 조회
     async def get_kakao_user_info(self, access_token: str) -> OAuthUserInfo:
         """카카오 액세스 토큰으로 사용자 정보 조회"""
         from typing import Any, Dict
@@ -74,8 +70,10 @@ class KakaoOAuthService:
             try:
                 # property_keys 파라미터로 이메일 정보 요청
                 response = await client.get(
-                    self._kakao_user_info_url,
-                    params={"property_keys": '["kakao_account.email"]'},
+                    self.KAKAO_USER_INFO_URL,
+                    params={
+                        "property_keys": '["kakao_account.email"]'
+                    },
                     headers={
                         "Authorization": f"Bearer {access_token}",
                         "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
@@ -108,13 +106,12 @@ class KakaoOAuthService:
                     detail=f"Kakao API request failed: {str(e)}",
                 ) from e
 
-    # - MARK: 카카오 인증 URL 생성
     def get_auth_url(self) -> str:
         """카카오 인증 URL 생성"""
         return (
             f"https://kauth.kakao.com/oauth/authorize?"
-            f"client_id={settings.KAKAO_CLIENT_ID}&"
-            f"redirect_uri={settings.KAKAO_REDIRECT_URI}&"
+            f"client_id={self._client_id}&"
+            f"redirect_uri={self._redirect_uri}&"
             f"response_type=code&"
             # f"scope=account_email"
         )

@@ -1,32 +1,33 @@
 """Session Use Case - 비즈니스 로직 처리"""
 
+from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions.token_exception import (
+    TokenInvalidError
+)
 from app.core.security import verify_password
 from app.core.session import (
-    TokenInvalidError,
     add_token_to_blacklist,
-    create_access_token,
-    create_refresh_token,
-    revoke_refresh_token,
-    verify_refresh_token,
+    TokenManager
 )
 from app.features.auth.schemas import CredentialDto, LoginInfoDto
 from app.features.session.repositories import SessionRepository
 from app.features.session.schemas import LoginRequest
 from app.features.users.schemas import UserDetailDto
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SessionUseCase:
     """세션 관련 비즈니스 로직을 처리하는 Use Case"""
 
     def __init__(
-        self,
-        session: AsyncSession,
-        session_repo: SessionRepository,
+            self,
+            session: AsyncSession,
+            session_repo: SessionRepository,
     ):
         self._session = session
         self._session_repo = session_repo
+        self._token_manager = TokenManager()
 
     # - MARK: 이메일 로그인
     async def login(self, login_data: LoginRequest) -> LoginInfoDto:
@@ -72,7 +73,7 @@ class SessionUseCase:
     async def refresh_token(self, refresh_token: str) -> CredentialDto:
         """토큰 갱신"""
         # 1. Refresh token 검증 (Redis 확인 포함)
-        user_id = await verify_refresh_token(refresh_token)
+        user_id = await self._token_manager.verify_refresh_token(refresh_token)
 
         # 2. 유저 존재 및 상태 확인
         user = await self._session_repo.get_user_by_id(user_id)
@@ -83,17 +84,17 @@ class SessionUseCase:
             raise TokenInvalidError("User account has been deleted")
 
         # 3. 기존 리프레시 토큰 무효화 (Redis에서 삭제)
-        await revoke_refresh_token(refresh_token)
+        await self._token_manager.revoke_refresh_token(refresh_token)
 
         # 4. 새 토큰 발급
         return await self._create_token(user_id)
 
     # - MARK: 로그아웃
     async def logout(
-        self,
-        access_token: str,
-        refresh_token: str | None = None,
-        user_id: int | None = None,
+            self,
+            access_token: str,
+            refresh_token: str | None = None,
+            user_id: int | None = None,
     ) -> None:
         """로그아웃 (토큰 무효화 및 FCM 토큰 삭제)"""
         # 액세스 토큰을 블랙리스트에 추가하여 무효화 (TTL: 30분)
@@ -101,7 +102,7 @@ class SessionUseCase:
 
         # 리프레시 토큰 무효화 (Redis에서 삭제)
         if refresh_token:
-            await revoke_refresh_token(refresh_token)
+            await self._token_manager.revoke_refresh_token(refresh_token)
 
         # FCM 토큰 삭제
         if user_id:
@@ -111,8 +112,8 @@ class SessionUseCase:
     async def _create_token(self, user_id: int) -> CredentialDto:
         """토큰 생성"""
         return CredentialDto(
-            access_token=create_access_token(user_id),
-            refresh_token=await create_refresh_token(user_id),
+            accessToken=self._token_manager.create_access_token(user_id),
+            refreshToken=await self._token_manager.create_refresh_token(user_id)
         )
 
     # - MARK: FCM 토큰 업데이트 (커밋 포함)
