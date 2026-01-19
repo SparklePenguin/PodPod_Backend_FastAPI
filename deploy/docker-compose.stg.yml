@@ -41,7 +41,7 @@ services:
     volumes:
       - ./config/config.stg.yaml:/app/config/config.stg.yaml
       - ../shared:/app/shared
-      - /Users/Shared/Projects/PodPod/uploads/stg:/Users/Shared/Projects/PodPod/uploads/stg  # 스테이징 업로드 파일
+      - /Users/Shared/Projects/PodPod/uploads/staging:/Users/Shared/Projects/PodPod/uploads/staging  # 스테이징 업로드 파일
       - /Users/Shared/Projects/PodPod/logs/stg:/Users/Shared/Projects/PodPod/logs/stg  # 스테이징 로그 파일
 
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2
