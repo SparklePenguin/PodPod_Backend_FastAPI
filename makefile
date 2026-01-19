@@ -21,10 +21,10 @@ deploy.local:
 	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.local.yml up --build
 
 deploy.dev:
-	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
+	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d --remove-orphans
 
 deploy.stg:
-	infisical run --env=staging --path=/backend -- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d
+	infisical run --env=staging --path=/backend -- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d --remove-orphans
 
 deploy.prd:
-	infisical run --env=prod --path=/backend -- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d
+	infisical run --env=prod --path=/backend -- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d --remove-orphans

@@ -10,7 +10,7 @@ services:
       # 환경 설정 파일 지정
       CONFIG_FILE: /app/config/config.prod.yaml
 
-      PROFILE: PROD
+      PROFILE: production
 
       # 데이터베이스 연결
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}

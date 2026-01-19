@@ -1,3 +1,4 @@
+import enum
 import json
 import os
 import urllib.parse
@@ -34,6 +35,20 @@ def load_config_file(config_path: str | None = None) -> dict:
     except Exception as e:
         print(f"설정 파일 로드 중 오류 발생: {e}")
         return {}
+
+
+class Profile(enum.Enum):
+    local = "local"
+    DEV = "development"
+    STG = "staging"
+    PRD = "production"
+
+    @classmethod
+    def convert(cls, value):
+        for e in cls:
+            if value == e.value:
+                return e
+        raise Exception("허용되지 않는 Profile")
 
 
 class AppConfig(BaseSettings):
@@ -147,13 +162,10 @@ class Settings(BaseSettings):
         return cls(**load_config_file())
 
     def __init__(self, **kwargs):
-
         super().__init__(**kwargs)
 
         self.ENVIRONMENT = os.getenv("PROFILE")
-
-        self.set_uploads()
-        self.set_logs()
+        self.set_dirs()
 
         print(f"환경 설정 완료: {self.ENVIRONMENT}")
         print(
@@ -163,34 +175,14 @@ class Settings(BaseSettings):
         print(f"Uploads 디렉토리: {self.UPLOADS_DIR}")
         print(f"Logs 디렉토리: {self.LOGS_DIR}")
 
-    def set_uploads(self):
-        # 환경별 uploads 디렉토리 설정
-        if self.ENVIRONMENT in ["local", "development", "DEV"]:
-            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/dev"
+    def set_dirs(self):
+        profile = Profile.convert(self.ENVIRONMENT)
 
-        elif self.ENVIRONMENT in ["staging", "stg", "STG"]:
-            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/stg"
+        self.UPLOADS_DIR = f"/Users/Shared/Projects/PodPod/uploads/{profile.value}"
+        self.LOGS_DIR = f"/Users/Shared/Projects/PodPod/logs/{profile.value}"
 
-        elif self.ENVIRONMENT in ["production", "prod", "PROD"]:
-            self.UPLOADS_DIR = "/Users/Shared/Projects/PodPod/uploads/prod"
-
-        else:
-            # 기본값: services/api/uploads/dev
-            api_root = Path(__file__).resolve().parent.parent.parent
-            self.UPLOADS_DIR = str(api_root / "uploads" / "dev")
         # uploads 디렉토리가 없으면 생성
         Path(self.UPLOADS_DIR).mkdir(parents=True, exist_ok=True)
-
-    def set_logs(self):
-        # 환경별 logs 디렉토리 설정
-        if self.ENVIRONMENT in ["local", "development", "DEV"]:
-            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/dev"
-
-        elif self.ENVIRONMENT in ["staging", "stg", "STG"]:
-            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/stg"
-
-        elif self.ENVIRONMENT in ["production", "prod", "PROD"]:
-            self.LOGS_DIR = "/Users/Shared/Projects/PodPod/logs/prod"
 
         # logs 디렉토리가 없으면 생성
         Path(self.LOGS_DIR).mkdir(parents=True, exist_ok=True)
