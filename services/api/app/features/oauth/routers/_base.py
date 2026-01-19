@@ -3,8 +3,8 @@ from enum import Enum
 
 class OAuthRouterLabel(Enum):
     PREFIX = "/oauth"
-    TAG = "Oauth"
-    DESCRIPTION = "OAuth 인증 API"
+    TAG = "OAUTH"
+    DESCRIPTION = "OAUTH 인증 API"
 
     @classmethod
     def to_dict(cls):

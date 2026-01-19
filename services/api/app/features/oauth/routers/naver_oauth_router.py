@@ -25,6 +25,7 @@ class NaverOauthRouter:
     @staticmethod
     @router.get(
         "/naver/login",
+        deprecated=True,
         response_class=RedirectResponse,
         status_code=307,
         description="네이버 로그인 시작 - 네이버 인증 페이지로 리다이렉트",

@@ -3,18 +3,15 @@
 import json
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.session import verify_oauth_state
 from app.features.auth.schemas import LoginInfoDto
 from app.features.oauth.exceptions import (
     OAuthAuthenticationFailedException,
     OAuthProviderNotSupportedException,
-    OAuthStateInvalidException,
     OAuthTokenInvalidException,
 )
 from app.features.oauth.schemas import (
@@ -28,7 +25,6 @@ from app.features.oauth.schemas import (
 from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
-from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.users.repositories import UserRepository
 
 if TYPE_CHECKING:
@@ -40,15 +36,14 @@ class OAuthUseCase:
     """OAuth 관련 비즈니스 로직을 처리하는 Use Case"""
 
     def __init__(
-        self,
-        session: AsyncSession,
-        user_repo: UserRepository,
-        user_use_case: "UserUseCase",
-        auth_service: "AuthService",
-        kakao_service: KakaoOAuthService,
-        google_service: GoogleOAuthService,
-        apple_service: AppleOAuthService,
-        naver_service: NaverOAuthService,
+            self,
+            session: AsyncSession,
+            user_repo: UserRepository,
+            user_use_case: "UserUseCase",
+            auth_service: "AuthService",
+            kakao_service: KakaoOAuthService,
+            google_service: GoogleOAuthService,
+            apple_service: AppleOAuthService,
     ) -> None:
         """
         Args:
@@ -59,7 +54,6 @@ class OAuthUseCase:
             kakao_service: 카카오 OAuth 서비스
             google_service: 구글 OAuth 서비스
             apple_service: 애플 OAuth 서비스
-            naver_service: 네이버 OAuth 서비스
         """
         self._session = session
         self._user_repo = user_repo
@@ -68,7 +62,6 @@ class OAuthUseCase:
         self._kakao_service = kakao_service
         self._google_service = google_service
         self._apple_service = apple_service
-        self._naver_service = naver_service
 
     # MARK: - 구글 로그인
     async def sign_in_with_google(self, request: GoogleLoginRequest) -> LoginInfoDto:
@@ -143,15 +136,14 @@ class OAuthUseCase:
 
     # MARK: - OAuth 콜백 처리
     async def handle_oauth_callback(
-        self,
-        provider: OAuthProvider,
-        code: str | None,
-        state: str | None = None,
-        error: str | None = None,
-        error_description: str | None = None,
-        redis: Redis | None = None,
-        id_token: str | None = None,
-        user: str | None = None,
+            self,
+            provider: OAuthProvider,
+            code: str | None,
+            state: str | None = None,
+            error: str | None = None,
+            error_description: str | None = None,
+            id_token: str | None = None,
+            user: str | None = None,
     ) -> LoginInfoDto | RedirectResponse:
         """통합 OAuth 콜백 처리"""
         try:
@@ -164,41 +156,25 @@ class OAuthUseCase:
                     id_token=id_token,
                     user=user,
                 )
-
-            # 1. State 검증 (Naver만)
-            if provider == OAuthProvider.NAVER:
-                if not state:
-                    raise OAuthAuthenticationFailedException(
-                        provider="naver", reason="State 파라미터가 누락되었습니다."
-                    )
-                if not redis:
-                    raise OAuthAuthenticationFailedException(
-                        provider="naver", reason="Redis 연결이 필요합니다."
-                    )
-
-                is_valid = await verify_oauth_state(state, redis)
-                if not is_valid:
-                    raise OAuthStateInvalidException()
-
-            # 2. 에러 처리
+            #  에러 처리
             if error:
                 raise OAuthAuthenticationFailedException(
                     provider=provider.value,
                     reason=f"인가 코드 요청 실패: {error} - {error_description}",
                 )
 
-            # 3. 인가 코드 확인
+            # 인가 코드 확인
             if not code:
                 raise OAuthAuthenticationFailedException(
                     provider=provider.value, reason="인가 코드 값 누락"
                 )
 
-            # 4. 토큰 요청
+            # 토큰 요청
             oauth_user_info = await self._get_oauth_user_info_by_code(
                 provider, code, state
             )
 
-            # 5. OAuth 로그인 처리
+            # OAuth 로그인 처리
             result = await self._handle_oauth_login(
                 oauth_provider=provider.value,
                 oauth_provider_id=str(oauth_user_info.id),
@@ -212,22 +188,17 @@ class OAuthUseCase:
 
     # MARK: - OAuth 인증 URL 생성
     async def get_auth_url(
-        self,
-        provider: OAuthProvider,
-        redis: Redis | None = None,
-        base_url: str | None = None,
+            self,
+            provider: OAuthProvider,
+            base_url: str | None = None,
     ) -> str:
         """OAuth 인증 URL 생성"""
         if provider == OAuthProvider.KAKAO:
             return self._kakao_service.get_auth_url()
+
         elif provider == OAuthProvider.GOOGLE:
             return self._google_service.get_auth_url()
-        elif provider == OAuthProvider.NAVER:
-            if not redis:
-                raise OAuthAuthenticationFailedException(
-                    provider="naver", reason="Redis 연결이 필요합니다."
-                )
-            return await self._naver_service.get_auth_url(redis)
+
         elif provider == OAuthProvider.APPLE:
             return self._apple_service.get_auth_url(base_url=base_url)
         else:
@@ -235,12 +206,12 @@ class OAuthUseCase:
 
     # MARK: - Private 메서드
     async def _handle_apple_callback(
-        self,
-        code: str | None,
-        error: str | None,
-        error_description: str | None,
-        id_token: str | None,
-        user: str | None,
+            self,
+            code: str | None,
+            error: str | None,
+            error_description: str | None,
+            id_token: str | None,
+            user: str | None,
     ) -> RedirectResponse:
         """Apple OAuth 콜백 처리"""
         # user 파라미터를 dict로 변환 (JSON 문자열인 경우)
@@ -280,23 +251,18 @@ class OAuthUseCase:
         # Android Deep Link로 리다이렉트
         return RedirectResponse(
             url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
-            "#Intent;package=sparkle_penguin.podpod;"
-            f"scheme={settings.APPLE_SCHEME};end"
+                "#Intent;package=sparkle_penguin.podpod;"
+                f"scheme={settings.APPLE_SCHEME};end"
         )
 
     async def _get_oauth_user_info_by_code(
-        self, provider: OAuthProvider, code: str, state: str | None
+            self, provider: OAuthProvider, code: str, state: str | None
     ) -> OAuthUserInfo:
         """인가 코드로 OAuth 사용자 정보 조회"""
         if provider == OAuthProvider.KAKAO:
             token_response = await self._kakao_service.get_kakao_token(code=code)
             return await self._kakao_service.get_kakao_user_info(
                 token_response.access_token
-            )
-        elif provider == OAuthProvider.NAVER:
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="Naver OAuth는 아직 구현되지 않았습니다.",
             )
         elif provider == OAuthProvider.GOOGLE:
             token_response = await self._google_service.get_google_token(code=code)
@@ -307,11 +273,11 @@ class OAuthUseCase:
             raise OAuthProviderNotSupportedException(provider=provider.value)
 
     async def _handle_oauth_login(
-        self,
-        oauth_provider: str,
-        oauth_provider_id: str,
-        oauth_user_info: OAuthUserInfo,
-        fcm_token: str | None = None,
+            self,
+            oauth_provider: str,
+            oauth_provider_id: str,
+            oauth_user_info: OAuthUserInfo,
+            fcm_token: str | None = None,
     ) -> LoginInfoDto:
         """OAuth 로그인 통합 처리"""
         # 1. 기존 사용자 확인
