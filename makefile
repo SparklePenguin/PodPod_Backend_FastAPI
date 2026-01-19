@@ -18,13 +18,17 @@ infra.connect:
 	ssh  -i ${SSH_KEY_PATH} -fN -L $(REDIS_PORT):127.0.0.1:$(REDIS_PORT) ${SSH_USER}@${SERVER_IP};
 
 deploy.local:
+	docker-compose -f ./deploy/docker-compose.local.yml down;
 	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.local.yml up --build
 
 deploy.dev:
-	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d --remove-orphans
+	docker-compose -f ./deploy/docker-compose.dev.yml down;
+	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
 
 deploy.stg:
-	infisical run --env=staging --path=/backend -- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d --remove-orphans
+	docker-compose -f ./deploy/docker-compose.stg.yml down;
+	infisical run --env=staging --path=/backend -- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d
 
 deploy.prd:
-	infisical run --env=prod --path=/backend -- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d --remove-orphans
+	docker-compose -f ./deploy/docker-compose.prod.yml down;
+	infisical run --env=prod --path=/backend -- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d
