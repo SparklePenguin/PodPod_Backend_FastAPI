@@ -483,7 +483,6 @@ class AuthFeatureContainer(containers.DeclarativeContainer):
     kakao_oauth_service = providers.Singleton(KakaoOAuthService)
     google_oauth_service = providers.Singleton(GoogleOAuthService)
     apple_oauth_service = providers.Singleton(AppleOAuthService)
-    naver_oauth_service = providers.Singleton(NaverOAuthService)
 
     # UseCase
     oauth_use_case = providers.Factory(
@@ -494,8 +493,7 @@ class AuthFeatureContainer(containers.DeclarativeContainer):
         auth_service=auth_service,
         kakao_service=kakao_oauth_service,
         google_service=google_oauth_service,
-        apple_service=apple_oauth_service,
-        naver_service=naver_oauth_service,
+        apple_service=apple_oauth_service
     )
 
 
