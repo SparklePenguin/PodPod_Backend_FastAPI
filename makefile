@@ -26,12 +26,24 @@ deploy.local:
 
 deploy.dev:
 	docker-compose -f ./deploy/docker-compose.dev.yml down;
-	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
+	infisical run \
+		--projectId=$(INFISICAL_PROJECT_ID) \
+		--env=dev \
+		--path=/backend \
+		-- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
 
 deploy.stg:
 	docker-compose -f ./deploy/docker-compose.stg.yml down;
-	infisical run --env=staging --path=/backend -- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d
+	infisical run \
+		--projectId=$(INFISICAL_PROJECT_ID) \
+		--env=staging \
+		--path=/backend \
+		-- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d
 
 deploy.prd:
 	docker-compose -f ./deploy/docker-compose.prod.yml down;
-	infisical run --env=prod --path=/backend -- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d
+	infisical run \
+		--projectId=$(INFISICAL_PROJECT_ID) \
+		--env=prod \
+		--path=/backend \
+		-- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d
