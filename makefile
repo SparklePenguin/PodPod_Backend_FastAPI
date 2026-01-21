@@ -3,7 +3,9 @@
 export SSH_USER
 export SSH_KEY_PATH
 export SERVER_IP
+
 export INFISICAL_TOKEN
+export INFISICAL_PROJECT_ID
 
 export BASE_YAML=./deploy/config/config.local.yaml
 
