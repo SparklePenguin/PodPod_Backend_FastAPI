@@ -63,6 +63,8 @@ class OAuthUseCase:
         self._google_service = google_service
         self._apple_service = apple_service
 
+        self._ANDROID_PACKAGE_NAME = settings.ANDROID_PACKAGE_NAME
+
     # MARK: - 구글 로그인
     async def sign_in_with_google(self, request: GoogleLoginRequest) -> LoginInfoDto:
         """Google 로그인 처리"""
@@ -244,14 +246,16 @@ class OAuthUseCase:
         # Apple 로그인 처리
         sign_in_response = await self.sign_in_with_apple(
             AppleLoginRequest(
-                identity_token=id_token, authorization_code=code, user=user_dict
+                identityToken=id_token,
+                authorizationCode=code,
+                user=user_dict
             )
         )
 
         # Android Deep Link로 리다이렉트
         return RedirectResponse(
             url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
-                "#Intent;package=sparkle_penguin.podpod;"
+                f"#Intent;package={self._ANDROID_PACKAGE_NAME};"
                 f"scheme={settings.APPLE_SCHEME};end"
         )
 

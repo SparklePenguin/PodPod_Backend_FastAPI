@@ -31,16 +31,15 @@ services:
       APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
       APPLE_SCHEME: ${APPLE_SCHEME}
 
+      # ANDROID
+      ANDROID_PACKAGE_NAME: ${ANDROID_PACKAGE_NAME}
+
       # Sendbird
       SENDBIRD_APP_ID: ${SENDBIRD_APP_ID}
       SENDBIRD_API_TOKEN: ${SENDBIRD_API_TOKEN}
 
       # Firebase
       FIREBASE_SERVICE_ACCOUNT_KEY: ${FIREBASE_SERVICE_ACCOUNT_KEY}
-
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
     ports:
       - "8000:8000"
     volumes:

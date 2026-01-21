@@ -3,6 +3,7 @@ import json
 import os
 import urllib.parse
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from pydantic_settings import BaseSettings
@@ -150,6 +151,9 @@ class Settings(BaseSettings):
     APPLE_KEY_ID: str | None = os.getenv("APPLE_KEY_ID")
     APPLE_PRIVATE_KEY: str | None = os.getenv("APPLE_PRIVATE_KEY")
     APPLE_SCHEME: str | None = os.getenv("APPLE_SCHEME")
+
+    # 안드로이드 패키지명
+    ANDROID_PACKAGE_NAME: Optional[str] = os.getenv("ANDROID_PACKAGE_NAME")
 
     # Firebase Cloud Messaging
     FIREBASE_SERVICE_ACCOUNT_KEY: str | None = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY")
