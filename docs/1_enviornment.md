@@ -93,7 +93,11 @@ Infisical은 다음과 같은 **고보안 환경변수**를 관리하기 위해 
 Infisical을 사용하여 Docker Compose를 실행할 경우 다음 명령어를 사용합니다.
 
 ```shell
-$ infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.local.yml up --build
+infisical run \
+		--projectId=$(INFISICAL_PROJECT_ID) \
+		--env=dev \
+		--path=/backend \
+		-- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
 ```
 
 ---
@@ -118,18 +122,23 @@ $ infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-c
 SSH_USER=
 SSH_KEY_PATH=
 SERVER_IP=
+
+INFISICAL_PROJECT_ID=
+INFISICAL_TOKEN= 
 ```
 
 각 항목의 의미는 다음과 같습니다.
 
 * **SSH_USER**
-  배포 대상 서버에 접속할 사용자 계정
-
+    - 배포 대상 서버에 접속할 사용자 계정
 * **SSH_KEY_PATH**
-  SSH 인증에 사용되는 개인 키 파일의 로컬 경로
-
+    - SSH 인증에 사용되는 개인 키 파일의 로컬 경로
 * **SERVER_IP**
-  배포 대상 서버의 IP 주소
+    - 배포 대상 서버의 IP 주소
+* **INFISICAL_PROJECT_ID**
+    - INFISICAL의 환경변수가 설정된 프로젝트 ID
+* **INFISICAL_TOKEN**
+    - INFISICAL의 서비스 토큰
 
 ---
 
