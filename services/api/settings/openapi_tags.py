@@ -1,4 +1,7 @@
 from app.features.oauth.routers import GoogleOauthController, KaKoOauthController, AppleOauthController
+from app.features.session.routers import (
+    SessionController
+)
 from app.features.users.routers import (
     UserController,
     UserPreferredArtistsController,
@@ -9,6 +12,13 @@ from app.features.users.routers import (
 )
 
 API_TAGS = []
+
+# SESSION ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        SessionController
+    ]
+])
 
 # OAUTH ROUTER
 API_TAGS.extend([
@@ -31,10 +41,6 @@ API_TAGS.extend([
 ])
 
 API_TAGS.extend([
-    {
-        "name": "session",
-        "description": "세션 관리 API (로그인/로그아웃)",
-    },
     {
         "name": "artists",
         "description": "아티스트 관리 API",
