@@ -10,13 +10,13 @@ from app.core.session import (
 )
 from app.deps.auth import get_current_user_id
 from app.deps.providers import get_session_use_case
-from app.features.session.routers._base import SessionController
-from app.features.session.schemas import (
+from app.features.auth.routers._base import AuthController
+from app.features.auth.schemas import (
     LoginRequest,
     LogoutRequest,
     TokenRefreshRequest,
 )
-from app.features.session.use_cases.session_use_case import SessionUseCase
+from app.features.auth.use_cases.session_use_case import SessionUseCase
 
 security = HTTPBearer()
 
@@ -24,7 +24,7 @@ security = HTTPBearer()
 class SessionRouter:
 
     @staticmethod
-    @SessionController.ROUTER.post(
+    @AuthController.ROUTER.post(
         "",
         response_model=BaseResponse[dict],
         description="세션 생성 (이메일 로그인 + 소셜 로그인 통합)",
@@ -37,7 +37,7 @@ class SessionRouter:
         return BaseResponse.ok(data=result.model_dump(by_alias=True))
 
     @staticmethod
-    @SessionController.ROUTER.delete(
+    @AuthController.ROUTER.delete(
         "",
         status_code=status.HTTP_204_NO_CONTENT,
         description="로그아웃 (세션 삭제, 리프레시 토큰 무효화, FCM 토큰 삭제)",
@@ -57,7 +57,7 @@ class SessionRouter:
         return BaseResponse.ok(http_status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod
-    @SessionController.ROUTER.put(
+    @AuthController.ROUTER.put(
         "",
         response_model=BaseResponse[dict],
         description="토큰 갱신"

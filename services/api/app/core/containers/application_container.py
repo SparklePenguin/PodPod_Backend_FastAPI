@@ -12,6 +12,8 @@
 - 레벨 의존성이 코드에 명시적으로 표현됨
 """
 
+from app.features.auth.repositories.session_repository import SessionRepository
+from app.features.auth.use_cases.session_use_case import SessionUseCase
 from dependency_injector import containers, providers
 
 from app.core.containers.core_container import CoreContainer
@@ -64,7 +66,6 @@ from app.features.notifications.use_cases.notification_use_case import (
 from app.features.oauth.services.apple_oauth_service import AppleOAuthService
 from app.features.oauth.services.google_oauth_service import GoogleOAuthService
 from app.features.oauth.services.kakao_oauth_service import KakaoOAuthService
-from app.features.oauth.services.naver_oauth_service import NaverOAuthService
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
 from app.features.pods.repositories.application_repository import ApplicationRepository
 from app.features.pods.repositories.like_repository import PodLikeRepository
@@ -87,8 +88,6 @@ from app.features.pods.use_cases.pod_query_use_case import PodQueryUseCase
 from app.features.pods.use_cases.pod_use_case import PodUseCase
 from app.features.pods.use_cases.review_use_case import ReviewUseCase
 from app.features.reports.use_cases.report_use_case import ReportUseCase
-from app.features.session.repositories.session_repository import SessionRepository
-from app.features.session.use_cases.session_use_case import SessionUseCase
 from app.features.tendencies.repositories.tendency_repository import TendencyRepository
 from app.features.tendencies.services.tendency_calculation_service import (
     TendencyCalculationService,

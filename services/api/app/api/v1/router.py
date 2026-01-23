@@ -45,8 +45,8 @@ from app.features.pods.routers.review_router import (
 )
 # Reports router
 from app.features.reports.routers.report_router import router as reports_router
-# Session APIS
-from app.features.session.routers import SessionController
+# Auth APIS
+from app.features.auth.routers import AuthController
 # System routers
 from app.features.system.routers.health import router as health_router
 # Tendencies routers
@@ -70,7 +70,7 @@ api_router = APIRouter()
 for router in chain.from_iterable([
     # 인증 관련 라우터 (features/auth)
     [
-        SessionController.ROUTER
+        AuthController.ROUTER
     ],
 
     # 인증 관련 라우터 (features/auth)

@@ -1,6 +1,6 @@
 from app.features.oauth.routers import GoogleOauthController, KaKoOauthController, AppleOauthController
-from app.features.session.routers import (
-    SessionController
+from app.features.auth.routers import (
+    AuthController
 )
 from app.features.users.routers import (
     UserController,
@@ -16,7 +16,7 @@ API_TAGS = []
 # SESSION ROUTER
 API_TAGS.extend([
     router.to_dict() for router in [
-        SessionController
+        AuthController
     ]
 ])
 
