@@ -54,16 +54,18 @@ from app.features.system.routers.health import router as health_router
 from app.features.tendencies.routers.survey_router import router as surveys_router
 from app.features.tendencies.routers.tendency_router import router as tendencies_router
 # Users routers
-from app.features.users.routers.block_user_router import (
-    router as block_user_router,
+from app.features.users.routers import (
+    UserCommonRouter,
+    UserUpdateRouter,
+    UserDeleteRouter,
+    UserRegistRouter,
+    UserSearchRouter,
+    UserPreferredArtistsRouter,
+    UserFollowingsRouter,
+    UserNotificationRouter,
+    BlockUserRouter,
+    ProfileImageRouter
 )
-from app.features.users.routers.profile_image_router import (
-    router as profile_images_router,
-)
-from app.features.users.routers.user_notification_router import (
-    router as user_notification_router,
-)
-from app.features.users.routers.user_router import router as users_router
 
 # 메인 API 라우터 생성
 # 구체적인 경로를 먼저 등록해야 함 (FastAPI는 등록 순서대로 매칭)
@@ -71,7 +73,18 @@ api_router = APIRouter()
 
 for router in chain.from_iterable([
     # 사용자 관련 라우터 (features/users)
-    [block_user_router, users_router, user_notification_router],
+    [
+        UserCommonRouter.router,
+        UserUpdateRouter.router,
+        UserDeleteRouter.router,
+        UserRegistRouter.router,
+        UserSearchRouter.router,
+        UserPreferredArtistsRouter.router,
+        UserFollowingsRouter.router,
+        BlockUserRouter.router,
+        UserNotificationRouter.router,
+        ProfileImageRouter.router  # 랜덤 프로필 이미지 라우터 (users)
+    ],
 
     # 인증 관련 라우터 (features/auth)
     [sessions_router],
@@ -105,9 +118,6 @@ for router in chain.from_iterable([
 
     # 신고 관련 라우터 (features/reports)
     [reports_router],
-
-    # 랜덤 프로필 이미지 라우터 (users)
-    [profile_images_router],
 
     # 채팅 라우터 (chat)
     [chat_router, chat_websocket_router],

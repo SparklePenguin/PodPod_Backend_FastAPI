@@ -1,10 +1,8 @@
 from app.features.oauth.routers import OAuthRouterLabel
+from app.features.users.routers import UserRouterRootLabel, UserPreferredArtistsRouterLabel
 
 API_TAGS = [
-    {
-        "name": "users",
-        "description": "사용자 관리 API",
-    },
+    UserRouterRootLabel.to_dict(),
     {
         "name": "session",
         "description": "세션 관리 API (로그인/로그아웃)",
