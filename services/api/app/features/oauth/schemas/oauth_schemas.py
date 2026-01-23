@@ -20,7 +20,7 @@ class OAuthUserInfo(BaseModel):
 
     id: str  # OAuth 제공자의 사용자 고유 ID
     username: str | None = None
-    nickname: str | None = None
+    nickname: str | None = None  # Note,260123 - 시스템에서 자체적으로 설정한 nickname을 사용함
     email: str | None = None
     image_url: str | None = None
 

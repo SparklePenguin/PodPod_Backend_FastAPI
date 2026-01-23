@@ -20,13 +20,13 @@ class UserPreferredArtistsRouterLabel(AbstractApiLabel):
 
 
 class UserNotificationRouterLabel(AbstractApiLabel):
-    PREFIX = "/me/notifications"
+    PREFIX = "/notifications"
     TAG = "Users [NOTIFICATIONS]"
     DESCRIPTION = "사용자 알림 API"
 
 
 class UserFollowingsRouterLabel(AbstractApiLabel):
-    PREFIX = "/me/followings"
+    PREFIX = "/followings"
     TAG = "Users [FOLLOWINGS]"
     DESCRIPTION = "사용자 팔로잉 API"
 
