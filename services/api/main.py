@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 
-from app.features.oauth.routers import OAuthRouterLabel
+from app.features.oauth.routers import OAuthRouterRootLabel
 from settings.openapi_tags import API_TAGS
 
 # 프로젝트 루트를 Python 경로에 추가 (shared 모듈 import를 위해)

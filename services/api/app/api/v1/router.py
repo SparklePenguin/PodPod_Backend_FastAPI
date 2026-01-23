@@ -63,7 +63,8 @@ from app.features.users.routers import (
     UserFollowingsRouter,
     UserNotificationRouter,
     BlockUserRouter,
-    ProfileImageRouter, UserTermsAgreementRouter
+    ProfileImageRouter,
+    UserTermsAgreementRouter
 )
 
 # 메인 API 라우터 생성

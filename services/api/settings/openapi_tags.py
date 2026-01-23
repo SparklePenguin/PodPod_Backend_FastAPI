@@ -1,4 +1,4 @@
-from app.features.oauth.routers import OAuthRouterLabel
+from app.features.oauth.routers import GoogleOauthRouterLabel, KaKoOauthRouterLabel, AppleOauthRouterLabel
 from app.features.users.routers import (
     UserRouterRootLabel,
     UserPreferredArtistsRouterLabel,
@@ -8,22 +8,28 @@ from app.features.users.routers import (
     BlockUserRouterLabel
 )
 
-USER_API_INFO = [
-    UserRouterRootLabel,
-    UserCommonRouterLabel,
-    UserPreferredArtistsRouterLabel,
-    UserNotificationRouterLabel,
-    UserFollowingsRouterLabel,
-    BlockUserRouterLabel
-]
-
-OAUTH_API_INFO = [
-    OAuthRouterLabel.to_dict(),
-]
-
 API_TAGS = []
-API_TAGS.extend([user_api.to_dict() for user_api in USER_API_INFO])
-API_TAGS.extend(OAUTH_API_INFO)
+
+# OAUTH ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        GoogleOauthRouterLabel,
+        KaKoOauthRouterLabel,
+        AppleOauthRouterLabel
+    ]
+])
+# USER ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        UserRouterRootLabel,
+        UserCommonRouterLabel,
+        UserPreferredArtistsRouterLabel,
+        UserNotificationRouterLabel,
+        UserFollowingsRouterLabel,
+        BlockUserRouterLabel
+    ]
+])
+
 API_TAGS.extend([
     {
         "name": "session",

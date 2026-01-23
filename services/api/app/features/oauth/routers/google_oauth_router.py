@@ -10,20 +10,20 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
-from ._base import OAuthRouterLabel
+from ._base import OAuthRouterRootLabel, GoogleOauthRouterLabel
 
 security = HTTPBearer()
 
 
 class GoogleOauthRouter:
     router = APIRouter(
-        prefix=OAuthRouterLabel.PREFIX.value,
-        tags={OAuthRouterLabel.TAG.value}
+        prefix=OAuthRouterRootLabel.PREFIX,
+        tags={GoogleOauthRouterLabel.TAG}
     )
 
     @staticmethod
     @router.get(
-        "/google/login",
+        f"{GoogleOauthRouterLabel.PREFIX}" + "/login",
         response_class=RedirectResponse,
         status_code=307,
         description="구글 로그인 시작 - 구글 인증 페이지로 리다이렉트",
@@ -37,7 +37,7 @@ class GoogleOauthRouter:
     # - MARK: Google ID 토큰 로그인
     @staticmethod
     @router.post(
-        "/google",
+        f"{GoogleOauthRouterLabel.PREFIX}",
         response_model=BaseResponse[LoginInfoDto],
         description="구글 ID 토큰을 통한 구글 로그인",
     )
@@ -51,7 +51,7 @@ class GoogleOauthRouter:
     # - MARK: Google OAuth 콜백
     @staticmethod
     @router.get(
-        "/google/callback",
+        f"{GoogleOauthRouterLabel.PREFIX}" + "/callback",
         include_in_schema=False,
         description="구글 OAuth 콜백의 인가코드를 통한 구글 로그인",
     )

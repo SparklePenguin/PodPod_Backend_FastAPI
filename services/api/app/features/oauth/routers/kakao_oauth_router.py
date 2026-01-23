@@ -12,20 +12,20 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
-from ._base import OAuthRouterLabel
+from ._base import OAuthRouterRootLabel, KaKoOauthRouterLabel
 
 security = HTTPBearer()
 
 
 class KaKaoOauthRouter:
     router = APIRouter(
-        prefix=OAuthRouterLabel.PREFIX.value,
-        tags=[OAuthRouterLabel.TAG.value]
+        prefix=OAuthRouterRootLabel.PREFIX,
+        tags=[KaKoOauthRouterLabel.TAG]
     )
 
     @staticmethod
     @router.post(
-        path="/kakao",
+        path=f"{KaKoOauthRouterLabel.PREFIX}",
         response_model=BaseResponse[LoginInfoDto],
         description="카카오 액세스 토큰을 통한 카카오 로그인",
     )
@@ -39,7 +39,7 @@ class KaKaoOauthRouter:
 
     @staticmethod
     @router.get(
-        path="/kakao/login",
+        path=f"{KaKoOauthRouterLabel.PREFIX}" + "/login",
         response_class=RedirectResponse,
         status_code=307,
         description="카카오 로그인 시작 - 카카오 인증 페이지로 리다이렉트",
@@ -52,7 +52,7 @@ class KaKaoOauthRouter:
 
     @staticmethod
     @router.get(
-        path="/kakao/callback",
+        path=f"{KaKoOauthRouterLabel.PREFIX}" + "/callback",
         include_in_schema=False,  # Swagger에서는 노출되지 않음
         description="카카오 OAuth 콜백의 인가코드를 통한 카카오 로그인",
     )

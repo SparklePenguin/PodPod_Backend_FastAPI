@@ -10,20 +10,20 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
-from ._base import OAuthRouterLabel
+from ._base import OAuthRouterRootLabel, AppleOauthRouterLabel
 
 security = HTTPBearer()
 
 
 class AppleOauthRouter:
     router = APIRouter(
-        prefix=OAuthRouterLabel.PREFIX.value,
-        tags=[OAuthRouterLabel.TAG.value]
+        prefix=OAuthRouterRootLabel.PREFIX,
+        tags=[AppleOauthRouterLabel.TAG]
     )
 
     @staticmethod
     @router.get(
-        "/apple/login",
+        f"/{AppleOauthRouterLabel.PREFIX}/login",
         response_class=RedirectResponse,
         status_code=307,
         description="Apple 로그인 시작 - Apple 인증 페이지로 리다이렉트",
@@ -38,7 +38,7 @@ class AppleOauthRouter:
     # - MARK: Apple ID 토큰 로그인
     @staticmethod
     @router.post(
-        "/apple",
+        AppleOauthRouterLabel.PREFIX,
         response_model=BaseResponse[LoginInfoDto],
         description="Apple ID 토큰을 통한 Apple 로그인",
     )
@@ -52,7 +52,7 @@ class AppleOauthRouter:
     # - MARK: Apple OAuth 콜백
     @staticmethod
     @router.post(
-        "/apple/callback",
+        f"/{AppleOauthRouterLabel.PREFIX}/callback",
         include_in_schema=False,
         response_model=None,
         description="Apple OAuth 콜백 처리 (form_post)",

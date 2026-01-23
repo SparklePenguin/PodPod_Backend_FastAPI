@@ -1,14 +1,25 @@
-from enum import Enum
+from app.common.abstract_router import AbstractApiLabel
 
 
-class OAuthRouterLabel(Enum):
+class OAuthRouterRootLabel(AbstractApiLabel):
     PREFIX = "/oauth"
     TAG = "OAUTH"
     DESCRIPTION = "OAUTH 인증 API"
 
-    @classmethod
-    def to_dict(cls):
-        return {
-            "name": cls.TAG.value,
-            "description": cls.DESCRIPTION.value
-        }
+
+class GoogleOauthRouterLabel(AbstractApiLabel):
+    PREFIX = "/google"
+    TAG = "OAuth [Google]"
+    DESCRIPTION = "Google OAUTH 인증 API"
+
+
+class KaKoOauthRouterLabel(AbstractApiLabel):
+    PREFIX = "/kakao"
+    TAG = "OAuth [KaKao]"
+    DESCRIPTION = "KaKao OAUTH 인증 API"
+
+
+class AppleOauthRouterLabel(AbstractApiLabel):
+    PREFIX = "/apple"
+    TAG = "OAuth [Apple]"
+    DESCRIPTION = "Apple OAUTH 인증 API"
