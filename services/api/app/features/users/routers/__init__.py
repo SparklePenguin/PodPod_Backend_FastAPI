@@ -11,7 +11,9 @@ from app.features.users.routers._base import (
     BlockUserController,
     UserNotificationController
 )
+
 # Export for Swagger
+from .block_user_router import BlockUserRouter
 from .profile_image_router import ProfileImageRouter
 from .user_commons_router import UserCommonRouter
 from .user_followings_router import UserFollowingsRouter

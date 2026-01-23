@@ -27,10 +27,9 @@ from app.features.notifications.routers.notification_router import (
 )
 # Auth routers
 from app.features.oauth.routers import (
-    KaKaoOauthRouter,
-    NaverOauthRouter,
-    GoogleOauthRouter,
-    AppleOauthRouter
+    KaKoOauthController,
+    GoogleOauthController,
+    AppleOauthController
 )
 # from app.features.oauth.routers.oauth_router import router as oauths_router
 # Pods routers
@@ -61,7 +60,6 @@ from app.features.users.routers import (
     BlockUserController,
     UserFollowingsController,
     UserNotificationController,
-
     ProfileImageRouter,
 )
 
@@ -70,6 +68,13 @@ from app.features.users.routers import (
 api_router = APIRouter()
 
 for router in chain.from_iterable([
+    # 인증 관련 라우터 (features/auth)
+    [
+        KaKoOauthController.ROUTER,
+        GoogleOauthController.ROUTER,
+        AppleOauthController.ROUTER
+    ],
+
     # 사용자 관련 라우터 (features/users)
     [
         UserCommonController.ROUTER,
@@ -84,12 +89,6 @@ for router in chain.from_iterable([
 
     # 인증 관련 라우터 (features/auth)
     [sessions_router],
-
-    # 인증 관련 라우터 (features/auth)
-    [
-        KaKaoOauthRouter.router, NaverOauthRouter.router,
-        GoogleOauthRouter.router, AppleOauthRouter.router
-    ],
 
     # 아티스트 관련 라우터 (features/artists)
     [artists_router, schedules_router, suggestions_router],

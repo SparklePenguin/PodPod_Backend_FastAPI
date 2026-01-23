@@ -1,9 +1,11 @@
 from fastapi import APIRouter
 
-from app.common.abstract_router import AbstractApiLabel
+from functools import cached_property
+
+from app.common.abstract_router import AbstractController
 
 
-class UserController(AbstractApiLabel):
+class UserController(AbstractController):
     PREFIX = "/users"
     TAG = "Users [BASE]"
     DESCRIPTION = "사용자 관리 API"
@@ -14,7 +16,7 @@ class UserController(AbstractApiLabel):
     )
 
 
-class UserCommonController(AbstractApiLabel):
+class UserCommonController(UserController):
     PREFIX = "/users"
     TAG = "Users [Common]"
     DESCRIPTION = "사용자 공통 API"
@@ -25,7 +27,7 @@ class UserCommonController(AbstractApiLabel):
     )
 
 
-class UserPreferredArtistsController(AbstractApiLabel):
+class UserPreferredArtistsController(UserController):
     PREFIX = "/preferred-artists"
     TAG = "Users [PREFERRED-ARTISTS]"
     DESCRIPTION = "사용자 선호 아티스트 API"
@@ -36,7 +38,7 @@ class UserPreferredArtistsController(AbstractApiLabel):
     )
 
 
-class UserNotificationController(AbstractApiLabel):
+class UserNotificationController(UserController):
     PREFIX = "/notifications"
     TAG = "Users [NOTIFICATIONS]"
     DESCRIPTION = "사용자 알림 API"
@@ -47,7 +49,7 @@ class UserNotificationController(AbstractApiLabel):
     )
 
 
-class UserFollowingsController(AbstractApiLabel):
+class UserFollowingsController(UserController):
     PREFIX = "/followings"
     TAG = "Users [FOLLOWINGS]"
     DESCRIPTION = "사용자 팔로잉 API"
@@ -58,7 +60,7 @@ class UserFollowingsController(AbstractApiLabel):
     )
 
 
-class BlockUserController(AbstractApiLabel):
+class BlockUserController(UserController):
     PREFIX = "/blocks"
     TAG = "Users [BLOCKS]"
     DESCRIPTION = "사용자 차단 API"

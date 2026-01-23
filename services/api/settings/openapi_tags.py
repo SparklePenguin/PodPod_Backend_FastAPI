@@ -1,4 +1,4 @@
-from app.features.oauth.routers import GoogleOauthRouterLabel, KaKoOauthRouterLabel, AppleOauthRouterLabel
+from app.features.oauth.routers import GoogleOauthController, KaKoOauthController, AppleOauthController
 from app.features.users.routers import (
     UserController,
     UserPreferredArtistsController,
@@ -13,9 +13,9 @@ API_TAGS = []
 # OAUTH ROUTER
 API_TAGS.extend([
     router.to_dict() for router in [
-        GoogleOauthRouterLabel,
-        KaKoOauthRouterLabel,
-        AppleOauthRouterLabel
+        GoogleOauthController,
+        KaKoOauthController,
+        AppleOauthController
     ]
 ])
 # USER ROUTER

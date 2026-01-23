@@ -11,15 +11,15 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
-from ._base import OAuthRouterRootLabel
+from ._base import OAuthController
 
 security = HTTPBearer()
 
 
 class NaverOauthRouter:
     router = APIRouter(
-        prefix=OAuthRouterRootLabel.PREFIX,
-        tags=[OAuthRouterRootLabel.TAG]
+        prefix=OAuthController.PREFIX,
+        tags=[OAuthController.TAG]
     )
 
     @staticmethod
