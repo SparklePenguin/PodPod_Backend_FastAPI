@@ -31,89 +31,8 @@ from app.features.users.use_cases.user_use_case import UserUseCase
 from app.utils.file_upload import upload_profile_image
 
 
-class UserCommonRouter:
+class UserBaseRouter:
     router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
-
-    @staticmethod
-    @router.get(
-        "/types",
-        response_model=BaseResponse[dict],
-        description="사용자 조회 가능한 타입 목록",
-    )
-    async def get_user_types():
-        """사용 가능한 사용자 조회 타입 목록"""
-        types = {
-            "types": [
-                {
-                    "value": "recommended",
-                    "label_ko": "추천 사용자",
-                    "label_en": "Recommended Users",
-                    "description_ko": "추천 사용자 목록",
-                    "description_en": "List of recommended users",
-                },
-                {
-                    "value": "followings",
-                    "label_ko": "팔로우하는 사용자",
-                    "label_en": "Following Users",
-                    "description_ko": "내가 팔로우하는 사용자 목록",
-                    "description_en": "List of users I follow",
-                },
-                {
-                    "value": "followers",
-                    "label_ko": "팔로워",
-                    "label_en": "Followers",
-                    "description_ko": "나를 팔로우하는 사용자 목록",
-                    "description_en": "List of users who follow me",
-                },
-                {
-                    "value": "blocks",
-                    "label_ko": "차단된 사용자",
-                    "label_en": "Blocked Users",
-                    "description_ko": "차단한 사용자 목록",
-                    "description_en": "List of blocked users",
-                },
-            ]
-        }
-        return BaseResponse.ok(
-            data=types,
-            message_ko="사용자 조회 타입 목록을 조회했습니다.",
-            message_en="Successfully retrieved user types.",
-        )
-
-
-class UserSearchRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
-
-    @staticmethod
-    @router.get(
-        "/me",
-        response_model=BaseResponse[UserDetailDto],
-        summary="본인 정보 조회",
-        description="현재 로그인한 사용자 정보 조회",
-    )
-    async def get_my_info(
-            current_user_id: int = Depends(get_current_user_id),
-            use_case: UserUseCase = Depends(get_user_use_case),
-    ):
-        """본인 정보 조회"""
-        user = await use_case.get_user(current_user_id)
-        return BaseResponse.ok(data=user)
-
-    @staticmethod
-    @router.get(
-        "/{user_id}",
-        response_model=BaseResponse[UserDetailDto],
-        summary="사용자 정보 조회",
-        description="사용자 정보 조회 (팔로우 통계 포함)",
-    )
-    async def get_user_info(
-            user_id: int,
-            current_user_id: int = Depends(get_current_user_id),
-            use_case: UserUseCase = Depends(get_user_use_case),
-    ):
-        """다른 사용자 정보 조회 (팔로우 통계 포함)"""
-        user = await use_case.get_user_with_follow_stats(user_id, current_user_id)
-        return BaseResponse.ok(data=user)
 
     @staticmethod
     @router.get(
@@ -170,10 +89,6 @@ class UserSearchRouter:
 
         return BaseResponse.ok(data=users, message_ko=message_ko, message_en=message_en)
 
-
-class UserRegistRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
-
     @staticmethod
     @router.post(
         "",
@@ -196,10 +111,6 @@ class UserRegistRouter:
             password=user_data.password,
         )
         return BaseResponse.ok(data=result, http_status=status.HTTP_201_CREATED)
-
-
-class UserUpdateRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
 
     @staticmethod
     @router.put(
@@ -237,6 +148,10 @@ class UserUpdateRouter:
         user = await use_case.update_profile(current_user_id, profile_data)
         return BaseResponse.ok(data=user)
 
+
+class UserFcmTokenUpdateRouter:
+    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
+
     @staticmethod
     @router.put(
         "/fcm-token",
@@ -256,7 +171,10 @@ class UserUpdateRouter:
             message_en="FCM token updated successfully.",
         )
 
-    # - MARK: 약관 동의
+
+class UserTermsAgreementRouter:
+    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
+
     @staticmethod
     @router.post(
         "/terms",
@@ -277,8 +195,39 @@ class UserUpdateRouter:
         )
 
 
-class UserDeleteRouter:
+class UserRetreiveRouter:
     router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
+
+    @staticmethod
+    @router.get(
+        "/{user_id}",
+        response_model=BaseResponse[UserDetailDto],
+        summary="사용자 정보 조회",
+        description="사용자 정보 조회 (팔로우 통계 포함)",
+    )
+    async def get_user_info(
+            user_id: int,
+            current_user_id: int = Depends(get_current_user_id),
+            use_case: UserUseCase = Depends(get_user_use_case),
+    ):
+        """다른 사용자 정보 조회 (팔로우 통계 포함)"""
+        user = await use_case.get_user_with_follow_stats(user_id, current_user_id)
+        return BaseResponse.ok(data=user)
+
+    @staticmethod
+    @router.get(
+        "/me",
+        response_model=BaseResponse[UserDetailDto],
+        summary="본인 정보 조회",
+        description="현재 로그인한 사용자 정보 조회",
+    )
+    async def get_my_info(
+            current_user_id: int = Depends(get_current_user_id),
+            use_case: UserUseCase = Depends(get_user_use_case),
+    ):
+        """본인 정보 조회"""
+        user = await use_case.get_user(current_user_id)
+        return BaseResponse.ok(data=user)
 
     @staticmethod
     @router.delete(
@@ -301,5 +250,3 @@ class UserDeleteRouter:
                 return Response(status_code=status.HTTP_204_NO_CONTENT)
             # 다른 오류는 그대로 전파
             raise e
-
-

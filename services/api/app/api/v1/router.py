@@ -56,15 +56,14 @@ from app.features.tendencies.routers.tendency_router import router as tendencies
 # Users routers
 from app.features.users.routers import (
     UserCommonRouter,
-    UserUpdateRouter,
-    UserDeleteRouter,
-    UserRegistRouter,
-    UserSearchRouter,
+    UserFcmTokenUpdateRouter,
+    UserRetreiveRouter,
+    UserBaseRouter,
     UserPreferredArtistsRouter,
     UserFollowingsRouter,
     UserNotificationRouter,
     BlockUserRouter,
-    ProfileImageRouter
+    ProfileImageRouter, UserTermsAgreementRouter
 )
 
 # 메인 API 라우터 생성
@@ -75,10 +74,11 @@ for router in chain.from_iterable([
     # 사용자 관련 라우터 (features/users)
     [
         UserCommonRouter.router,
-        UserUpdateRouter.router,
-        UserDeleteRouter.router,
-        UserRegistRouter.router,
-        UserSearchRouter.router,
+        UserBaseRouter.router,
+
+        UserFcmTokenUpdateRouter.router,
+        UserRetreiveRouter.router,
+        UserTermsAgreementRouter.router,
         UserPreferredArtistsRouter.router,
         UserFollowingsRouter.router,
         BlockUserRouter.router,

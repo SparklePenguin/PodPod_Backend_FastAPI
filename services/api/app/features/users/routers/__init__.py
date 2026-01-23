@@ -9,6 +9,12 @@ from app.features.users.routers._base import (
 from .block_user_router import (
     BlockUserRouter
 )
+from .profile_image_router import (
+    ProfileImageRouter
+)
+from .user_commons_router import (
+    UserCommonRouter
+)
 from .user_followings_router import (
     UserFollowingsRouter
 )
@@ -19,19 +25,8 @@ from .user_preferred_artist_router import (
     UserPreferredArtistsRouter
 )
 from .user_router import (
-    UserCommonRouter,
-    UserUpdateRouter,
-    UserDeleteRouter,
-    UserRegistRouter,
-    UserSearchRouter
+    UserFcmTokenUpdateRouter,
+    UserRetreiveRouter,
+    UserBaseRouter,
+    UserTermsAgreementRouter
 )
-from .profile_image_router import (
-    ProfileImageRouter
-)
-
-# from app.features.users.routers.profile_image_router import (
-#     router as profile_image_router,
-# )
-# from app.features.users.routers.user_router import router as user_router
-#
-# from .user_preferred_artist_router import UserPreferredArtistsRouter

@@ -15,13 +15,13 @@ from app.features.users.use_cases.user_notification_use_case import (
 
 class UserNotificationRouter:
     router = APIRouter(
-        prefix=f"{UserRouterRootLabel.PREFIX}/me/notification-settings",
+        prefix=f"{UserRouterRootLabel.PREFIX}",
         tags=[UserRouterRootLabel.TAG]
     )
 
     @staticmethod
     @router.get(
-        "",
+        "/me/notification-settings",
         response_model=BaseResponse[UserNotificationSettingsDto],
         description="사용자의 알림 설정을 조회합니다.",
     )
@@ -39,7 +39,7 @@ class UserNotificationRouter:
 
     @staticmethod
     @router.patch(
-        "",
+        "/me/notification-settings",
         response_model=BaseResponse[UserNotificationSettingsDto],
         description="사용자 알림 설정 수정",
     )
