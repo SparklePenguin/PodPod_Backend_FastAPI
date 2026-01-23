@@ -23,7 +23,7 @@ class AppleOauthRouter:
 
     @staticmethod
     @router.get(
-        f"/{AppleOauthRouterLabel.PREFIX}/login",
+        f"{AppleOauthRouterLabel.PREFIX}/login",
         response_class=RedirectResponse,
         status_code=307,
         description="Apple 로그인 시작 - Apple 인증 페이지로 리다이렉트",
@@ -49,10 +49,9 @@ class AppleOauthRouter:
         result = await use_case.sign_in_with_apple(payload)
         return BaseResponse.ok(data=result)
 
-    # - MARK: Apple OAuth 콜백
     @staticmethod
     @router.post(
-        f"/{AppleOauthRouterLabel.PREFIX}/callback",
+        f"{AppleOauthRouterLabel.PREFIX}/callback",
         include_in_schema=False,
         response_model=None,
         description="Apple OAuth 콜백 처리 (form_post)",

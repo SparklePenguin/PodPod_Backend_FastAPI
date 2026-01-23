@@ -17,8 +17,8 @@ infra.connect:
 	@lsof -ti tcp:$(REDIS_PORT) | xargs -r kill -9 || true
 
 	@echo "Open SSH Tunnels..."
-	ssh  -i ${SSH_KEY_PATH} -fN -L $(DB_PORT):127.0.0.1:$(DB_PORT) ${SSH_USER}@${SERVER_IP};
-	ssh  -i ${SSH_KEY_PATH} -fN -L $(REDIS_PORT):127.0.0.1:$(REDIS_PORT) ${SSH_USER}@${SERVER_IP};
+	ssh  -p ${SSH_PORT} -i ${SSH_KEY_PATH} -fN -L $(DB_PORT):127.0.0.1:$(DB_PORT) ${SSH_USER}@${SERVER_IP};
+	ssh  -p ${SSH_PORT} -i ${SSH_KEY_PATH} -fN -L $(REDIS_PORT):127.0.0.1:$(REDIS_PORT) ${SSH_USER}@${SERVER_IP};
 
 deploy.local:
 	docker-compose -f ./deploy/docker-compose.local.yml down;
