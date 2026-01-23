@@ -1,11 +1,11 @@
 from app.features.oauth.routers import GoogleOauthRouterLabel, KaKoOauthRouterLabel, AppleOauthRouterLabel
 from app.features.users.routers import (
-    UserRouterRootLabel,
-    UserPreferredArtistsRouterLabel,
-    UserCommonRouterLabel,
-    UserNotificationRouterLabel, \
-    UserFollowingsRouterLabel,
-    BlockUserRouterLabel
+    UserController,
+    UserPreferredArtistsController,
+    UserCommonController,
+    UserNotificationController, \
+    UserFollowingsController,
+    BlockUserController
 )
 
 API_TAGS = []
@@ -21,12 +21,12 @@ API_TAGS.extend([
 # USER ROUTER
 API_TAGS.extend([
     router.to_dict() for router in [
-        UserRouterRootLabel,
-        UserCommonRouterLabel,
-        UserPreferredArtistsRouterLabel,
-        UserNotificationRouterLabel,
-        UserFollowingsRouterLabel,
-        BlockUserRouterLabel
+        UserController,
+        UserCommonController,
+        UserPreferredArtistsController,
+        UserNotificationController,
+        UserFollowingsController,
+        BlockUserController
     ]
 ])
 

@@ -53,18 +53,16 @@ from app.features.system.routers.health import router as health_router
 # Tendencies routers
 from app.features.tendencies.routers.survey_router import router as surveys_router
 from app.features.tendencies.routers.tendency_router import router as tendencies_router
-# Users routers
+# Users Apis
 from app.features.users.routers import (
-    UserCommonRouter,
-    UserFcmTokenUpdateRouter,
-    UserRetreiveRouter,
-    UserBaseRouter,
-    UserPreferredArtistsRouter,
-    UserFollowingsRouter,
-    UserNotificationRouter,
-    BlockUserRouter,
+    UserCommonController,
+    UserController,
+    UserPreferredArtistsController,
+    BlockUserController,
+    UserFollowingsController,
+    UserNotificationController,
+
     ProfileImageRouter,
-    UserTermsAgreementRouter
 )
 
 # 메인 API 라우터 생성
@@ -74,16 +72,13 @@ api_router = APIRouter()
 for router in chain.from_iterable([
     # 사용자 관련 라우터 (features/users)
     [
-        UserCommonRouter.router,
-        UserBaseRouter.router,
+        UserCommonController.ROUTER,
+        UserController.ROUTER,
+        UserPreferredArtistsController.ROUTER,
+        UserFollowingsController.ROUTER,
+        BlockUserController.ROUTER,
+        UserNotificationController.ROUTER,
 
-        UserFcmTokenUpdateRouter.router,
-        UserRetreiveRouter.router,
-        UserTermsAgreementRouter.router,
-        UserPreferredArtistsRouter.router,
-        UserFollowingsRouter.router,
-        BlockUserRouter.router,
-        UserNotificationRouter.router,
         ProfileImageRouter.router  # 랜덤 프로필 이미지 라우터 (users)
     ],
 

@@ -19,7 +19,7 @@ from app.deps.providers import (
 from app.features.auth.schemas import SignUpRequest
 from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.users.exceptions import ImageUploadException
-from app.features.users.routers import UserRouterRootLabel
+from app.features.users.routers import UserController
 from app.features.users.schemas import (
     AcceptTermsRequest,
     UpdateProfileRequest,
@@ -32,10 +32,9 @@ from app.utils.file_upload import upload_profile_image
 
 
 class UserBaseRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
 
     @staticmethod
-    @router.get(
+    @UserController.ROUTER.get(
         "",
         response_model=BaseResponse[PageDto[UserDto]],
         summary="사용자 목록 조회 (type: recommended, followings, followers, blocks)",
@@ -90,7 +89,7 @@ class UserBaseRouter:
         return BaseResponse.ok(data=users, message_ko=message_ko, message_en=message_en)
 
     @staticmethod
-    @router.post(
+    @UserController.ROUTER.post(
         "",
         summary="사용자 생성 (회원가입)",
         description="사용자 생성 (회원가입)",
@@ -113,7 +112,7 @@ class UserBaseRouter:
         return BaseResponse.ok(data=result, http_status=status.HTTP_201_CREATED)
 
     @staticmethod
-    @router.put(
+    @UserController.ROUTER.put(
         "",
         response_model=BaseResponse[UserDetailDto],
         description="사용자 정보 업데이트",
@@ -150,10 +149,9 @@ class UserBaseRouter:
 
 
 class UserFcmTokenUpdateRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
 
     @staticmethod
-    @router.put(
+    @UserController.ROUTER.put(
         "/fcm-token",
         response_model=BaseResponse[UserDetailDto],
         description="FCM 토큰 업데이트 (토큰 필요)",
@@ -173,10 +171,9 @@ class UserFcmTokenUpdateRouter:
 
 
 class UserTermsAgreementRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
 
     @staticmethod
-    @router.post(
+    @UserController.ROUTER.post(
         "/terms",
         response_model=BaseResponse[UserDetailDto],
         description="사용자 약관 동의",
@@ -196,10 +193,9 @@ class UserTermsAgreementRouter:
 
 
 class UserRetreiveRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
 
     @staticmethod
-    @router.get(
+    @UserController.ROUTER.get(
         "/{user_id}",
         response_model=BaseResponse[UserDetailDto],
         summary="사용자 정보 조회",
@@ -215,7 +211,7 @@ class UserRetreiveRouter:
         return BaseResponse.ok(data=user)
 
     @staticmethod
-    @router.get(
+    @UserController.ROUTER.get(
         "/me",
         response_model=BaseResponse[UserDetailDto],
         summary="본인 정보 조회",
@@ -230,7 +226,7 @@ class UserRetreiveRouter:
         return BaseResponse.ok(data=user)
 
     @staticmethod
-    @router.delete(
+    @UserController.ROUTER.delete(
         "/me",
         summary="본인 계정 삭제",
         description="현재 로그인한 사용자 삭제",

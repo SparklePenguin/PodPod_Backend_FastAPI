@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.api.v1.router import api_router  # noqa: E402
+from app.api.v1.router import api_router, UserCommonController  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import init_db  # noqa: E402
 from app.core.exceptions import (  # noqa: E402

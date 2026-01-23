@@ -1,17 +1,11 @@
-from fastapi import (
-    APIRouter,
-)
-
 from app.common.schemas import BaseResponse
-from app.features.users.routers import UserRouterRootLabel
-from app.features.users.routers._base import UserCommonRouterLabel
+from app.features.users.routers._base import UserCommonController
 
 
 class UserCommonRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserCommonRouterLabel.TAG])
 
     @staticmethod
-    @router.get(
+    @UserCommonController.ROUTER.get(
         "/types",
         response_model=BaseResponse[dict],
         description="사용자 조회 가능한 타입 목록",

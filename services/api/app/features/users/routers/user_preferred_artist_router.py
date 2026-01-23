@@ -1,8 +1,7 @@
 from typing import List
 
 from fastapi import (
-    Depends, APIRouter,
-)
+    Depends, )
 
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
@@ -12,8 +11,7 @@ from app.deps.providers import (
 from app.features.artists.schemas import ArtistDto
 from app.features.users.routers import (
 
-    UserRouterRootLabel,
-    UserPreferredArtistsRouterLabel,
+    UserPreferredArtistsController,
 )
 from app.features.users.schemas import (
     UpdatePreferredArtistsRequest,
@@ -22,11 +20,10 @@ from app.features.users.use_cases.user_artist_use_case import UserArtistUseCase
 
 
 class UserPreferredArtistsRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserPreferredArtistsRouterLabel.TAG])
 
     @staticmethod
-    @router.get(
-        path=UserPreferredArtistsRouterLabel.PREFIX,
+    @UserPreferredArtistsController.ROUTER.get(
+        path=UserPreferredArtistsController.PREFIX,
         summary="선호 아티스트 조회",
         response_model=BaseResponse[List[ArtistDto]],
         description="사용자 선호 아티스트 조회 (토큰 필요)",
@@ -39,8 +36,8 @@ class UserPreferredArtistsRouter:
         return BaseResponse.ok(data=artists)
 
     @staticmethod
-    @router.put(
-        UserPreferredArtistsRouterLabel.PREFIX,
+    @UserPreferredArtistsController.ROUTER.put(
+        path=UserPreferredArtistsController.PREFIX,
         summary="선호 아티스트 업데이트",
         response_model=BaseResponse[dict],
         description="현재 사용자의 선호 아티스트 목록을 업데이트합니다.",
