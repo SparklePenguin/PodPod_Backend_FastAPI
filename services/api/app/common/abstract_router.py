@@ -1,6 +1,6 @@
 from abc import ABCMeta
 
-class AbstractRouterLabel(ABCMeta):
+class AbstractApiLabel(ABCMeta):
     PREFIX: str
     TAG: str
     DESCRIPTION: str

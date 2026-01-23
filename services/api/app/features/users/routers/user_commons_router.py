@@ -4,10 +4,11 @@ from fastapi import (
 
 from app.common.schemas import BaseResponse
 from app.features.users.routers import UserRouterRootLabel
+from app.features.users.routers._base import UserCommonRouterLabel
 
 
 class UserCommonRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
+    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserCommonRouterLabel.TAG])
 
     @staticmethod
     @router.get(

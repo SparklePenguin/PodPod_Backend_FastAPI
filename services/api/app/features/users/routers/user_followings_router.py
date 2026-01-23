@@ -12,14 +12,15 @@ from app.deps.providers import (
 from app.features.follow.exceptions import FollowNotFoundException
 from app.features.follow.use_cases.follow_use_case import FollowUseCase
 from app.features.users.routers import UserRouterRootLabel
+from app.features.users.routers._base import UserFollowingsRouterLabel
 
 
 class UserFollowingsRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
+    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserFollowingsRouterLabel.TAG])
 
     @staticmethod
     @router.get(
-        "/me/followings/{following_id}/mute",
+        f"{UserFollowingsRouterLabel.PREFIX}/" + "{following_id}/mute",
         response_model=BaseResponse[dict],
         summary="팔로우한 사용자 알림 음소거 설정 조회",
         description="팔로우한 사용자의 알림 음소거 설정 조회",
@@ -48,7 +49,7 @@ class UserFollowingsRouter:
 
     @staticmethod
     @router.put(
-        "/me/followings/{following_id}/mute",
+        f"{UserFollowingsRouterLabel.PREFIX}/" + "{following_id}/mute",
         response_model=BaseResponse[dict],
         summary=" 팔로우한 사용자 알림 음소거 설정 변경",
         description="팔로우한 사용자의 알림 음소거 설정 변경",

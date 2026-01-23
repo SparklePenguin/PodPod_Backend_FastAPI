@@ -4,6 +4,7 @@ from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
 from app.deps.providers import get_user_notification_use_case
 from app.features.users.routers import UserRouterRootLabel
+from app.features.users.routers._base import UserNotificationRouterLabel
 from app.features.users.schemas import (
     UpdateUserNotificationSettingsRequest,
     UserNotificationSettingsDto,
@@ -16,13 +17,14 @@ from app.features.users.use_cases.user_notification_use_case import (
 class UserNotificationRouter:
     router = APIRouter(
         prefix=f"{UserRouterRootLabel.PREFIX}",
-        tags=[UserRouterRootLabel.TAG]
+        tags=[UserNotificationRouterLabel.TAG]
     )
 
     @staticmethod
     @router.get(
-        "/me/notification-settings",
+        UserNotificationRouterLabel.PREFIX,
         response_model=BaseResponse[UserNotificationSettingsDto],
+        summary="사용자의 알림 설정을 조회합니다.",
         description="사용자의 알림 설정을 조회합니다.",
     )
     async def get_notification_settings(
@@ -39,8 +41,9 @@ class UserNotificationRouter:
 
     @staticmethod
     @router.patch(
-        "/me/notification-settings",
+        UserNotificationRouterLabel.PREFIX,
         response_model=BaseResponse[UserNotificationSettingsDto],
+        summary="사용자 알림 설정 수정",
         description="사용자 알림 설정 수정",
     )
     async def update_notification_settings(

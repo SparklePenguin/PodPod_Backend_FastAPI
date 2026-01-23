@@ -22,7 +22,7 @@ from app.features.users.use_cases.user_artist_use_case import UserArtistUseCase
 
 
 class UserPreferredArtistsRouter:
-    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserRouterRootLabel.TAG])
+    router = APIRouter(prefix=UserRouterRootLabel.PREFIX, tags=[UserPreferredArtistsRouterLabel.TAG])
 
     @staticmethod
     @router.get(

@@ -1,13 +1,34 @@
 from app.features.oauth.routers import OAuthRouterLabel
-from app.features.users.routers import UserRouterRootLabel, UserPreferredArtistsRouterLabel
+from app.features.users.routers import (
+    UserRouterRootLabel,
+    UserPreferredArtistsRouterLabel,
+    UserCommonRouterLabel,
+    UserNotificationRouterLabel, \
+    UserFollowingsRouterLabel,
+    BlockUserRouterLabel
+)
 
-API_TAGS = [
-    UserRouterRootLabel.to_dict(),
+USER_API_INFO = [
+    UserRouterRootLabel,
+    UserCommonRouterLabel,
+    UserPreferredArtistsRouterLabel,
+    UserNotificationRouterLabel,
+    UserFollowingsRouterLabel,
+    BlockUserRouterLabel
+]
+
+OAUTH_API_INFO = [
+    OAuthRouterLabel.to_dict(),
+]
+
+API_TAGS = []
+API_TAGS.extend([user_api.to_dict() for user_api in USER_API_INFO])
+API_TAGS.extend(OAUTH_API_INFO)
+API_TAGS.extend([
     {
         "name": "session",
         "description": "세션 관리 API (로그인/로그아웃)",
     },
-    OAuthRouterLabel.to_dict(),
     {
         "name": "artists",
         "description": "아티스트 관리 API",
@@ -71,5 +92,6 @@ API_TAGS = [
     {
         "name": "artist-suggestions",
         "description": "아티스트 추천 API",
-    },
+    }
 ]
+)

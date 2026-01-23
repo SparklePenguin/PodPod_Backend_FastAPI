@@ -4,7 +4,9 @@ Users routers
 
 from app.features.users.routers._base import (
     UserRouterRootLabel,
-    UserPreferredArtistsRouterLabel
+    UserPreferredArtistsRouterLabel,
+UserCommonRouterLabel, UserNotificationRouterLabel, \
+    UserFollowingsRouterLabel, BlockUserRouterLabel
 )
 from .block_user_router import (
     BlockUserRouter

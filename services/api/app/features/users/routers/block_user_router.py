@@ -1,18 +1,20 @@
+from fastapi import APIRouter, Depends, status
+
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
 from app.deps.providers import get_block_user_use_case
 from app.features.users.routers import UserRouterRootLabel
+from app.features.users.routers._base import BlockUserRouterLabel
 from app.features.users.schemas import BlockInfoDto
 from app.features.users.use_cases.block_user_use_case import BlockUserUseCase
-from fastapi import APIRouter, Depends, status
 
 
 class BlockUserRouter:
-    router = APIRouter(prefix=f"/{UserRouterRootLabel.PREFIX}/blocks", tags=[UserRouterRootLabel.TAG])
+    router = APIRouter(prefix=f"{UserRouterRootLabel.PREFIX}", tags=[BlockUserRouterLabel.TAG])
 
     @staticmethod
     @router.post(
-        "/{user_id}",
+        f"{BlockUserRouterLabel.PREFIX}" + "/{user_id}",
         response_model=BaseResponse[BlockInfoDto],
         description="사용자 차단 - 팔로우 관계도 함께 삭제됨",
     )
@@ -31,7 +33,7 @@ class BlockUserRouter:
 
     @staticmethod
     @router.delete(
-        "/{user_id}",
+        f"{BlockUserRouterLabel.PREFIX}" + "/{user_id}",
         response_model=BaseResponse[bool],
         description="사용자 차단 해제",
     )
