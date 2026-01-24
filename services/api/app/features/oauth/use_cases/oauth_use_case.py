@@ -2,6 +2,7 @@
 
 import json
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 from fastapi import HTTPException
 from fastapi.responses import RedirectResponse
@@ -254,7 +255,7 @@ class OAuthUseCase:
 
         # Android Deep Link로 리다이렉트
         return RedirectResponse(
-            url=f"intent://callback?{sign_in_response.model_dump(by_alias=True)}"
+            url=f"intent://callback?data={quote(sign_in_response.model_dump_json(by_alias=True))}"
                 f"#Intent;package={self._ANDROID_PACKAGE_NAME};"
                 f"scheme={settings.APPLE_SCHEME};end"
         )

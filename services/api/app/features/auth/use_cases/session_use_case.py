@@ -12,8 +12,8 @@ from app.core.session import (
     TokenManager
 )
 from app.features.auth.schemas import CredentialDto, LoginInfoDto
-from app.features.session.repositories import SessionRepository
-from app.features.session.schemas import LoginRequest
+from app.features.auth.repositories import SessionRepository
+from app.features.auth.schemas import LoginRequest
 from app.features.users.schemas import UserDetailDto
 
 

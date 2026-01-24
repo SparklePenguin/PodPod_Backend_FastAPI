@@ -1,6 +1,6 @@
 """OAuth Router"""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import Depends, Query
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer
 
@@ -12,20 +12,16 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
-from ._base import OAuthRouterLabel
+from ._base import KaKoOauthController
 
 security = HTTPBearer()
 
 
 class KaKaoOauthRouter:
-    router = APIRouter(
-        prefix=OAuthRouterLabel.PREFIX.value,
-        tags=[OAuthRouterLabel.TAG.value]
-    )
 
     @staticmethod
-    @router.post(
-        path="/kakao",
+    @KaKoOauthController.ROUTER.post(
+        path=f"{KaKoOauthController.PREFIX}",
         response_model=BaseResponse[LoginInfoDto],
         description="카카오 액세스 토큰을 통한 카카오 로그인",
     )
@@ -38,8 +34,8 @@ class KaKaoOauthRouter:
         return BaseResponse.ok(data=result)
 
     @staticmethod
-    @router.get(
-        path="/kakao/login",
+    @KaKoOauthController.ROUTER.get(
+        path=f"{KaKoOauthController.PREFIX}" + "/login",
         response_class=RedirectResponse,
         status_code=307,
         description="카카오 로그인 시작 - 카카오 인증 페이지로 리다이렉트",
@@ -51,8 +47,8 @@ class KaKaoOauthRouter:
         return RedirectResponse(url=kakao_auth_url)
 
     @staticmethod
-    @router.get(
-        path="/kakao/callback",
+    @KaKoOauthController.ROUTER.get(
+        path=f"{KaKoOauthController.PREFIX}" + "/callback",
         include_in_schema=False,  # Swagger에서는 노출되지 않음
         description="카카오 OAuth 콜백의 인가코드를 통한 카카오 로그인",
     )

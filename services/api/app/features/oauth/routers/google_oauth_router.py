@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import Depends, Query
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBearer
 
@@ -10,20 +10,16 @@ from app.features.oauth.schemas import (
     OAuthProvider,
 )
 from app.features.oauth.use_cases.oauth_use_case import OAuthUseCase
-from ._base import OAuthRouterLabel
+from ._base import GoogleOauthController
 
 security = HTTPBearer()
 
 
 class GoogleOauthRouter:
-    router = APIRouter(
-        prefix=OAuthRouterLabel.PREFIX.value,
-        tags={OAuthRouterLabel.TAG.value}
-    )
 
     @staticmethod
-    @router.get(
-        "/google/login",
+    @GoogleOauthController.ROUTER.get(
+        f"{GoogleOauthController.PREFIX}" + "/login",
         response_class=RedirectResponse,
         status_code=307,
         description="구글 로그인 시작 - 구글 인증 페이지로 리다이렉트",
@@ -34,10 +30,9 @@ class GoogleOauthRouter:
         google_auth_url = await use_case.get_auth_url(OAuthProvider.GOOGLE)
         return RedirectResponse(url=google_auth_url)
 
-    # - MARK: Google ID 토큰 로그인
     @staticmethod
-    @router.post(
-        "/google",
+    @GoogleOauthController.ROUTER.post(
+        f"{GoogleOauthController.PREFIX}",
         response_model=BaseResponse[LoginInfoDto],
         description="구글 ID 토큰을 통한 구글 로그인",
     )
@@ -48,10 +43,9 @@ class GoogleOauthRouter:
         result = await use_case.sign_in_with_google(payload)
         return BaseResponse.ok(data=result)
 
-    # - MARK: Google OAuth 콜백
     @staticmethod
-    @router.get(
-        "/google/callback",
+    @GoogleOauthController.ROUTER.get(
+        f"{GoogleOauthController.PREFIX}" + "/callback",
         include_in_schema=False,
         description="구글 OAuth 콜백의 인가코드를 통한 구글 로그인",
     )

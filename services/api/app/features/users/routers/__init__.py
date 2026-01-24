@@ -2,9 +2,26 @@
 Users routers
 """
 
-from app.features.users.routers.profile_image_router import (
-    router as profile_image_router,
+# Export Controller
+from app.features.users.routers._base import (
+    UserController,
+    UserPreferredArtistsController,
+    UserCommonController,
+    UserFollowingsController,
+    BlockUserController,
+    UserNotificationController
 )
-from app.features.users.routers.user_router import router as user_router
 
-__all__ = ["user_router", "profile_image_router"]
+# Export for Swagger
+from .block_user_router import BlockUserRouter
+from .profile_image_router import ProfileImageRouter
+from .user_commons_router import UserCommonRouter
+from .user_followings_router import UserFollowingsRouter
+from .user_notification_router import UserNotificationRouter
+from .user_preferred_artist_router import UserPreferredArtistsRouter
+from .user_router import (
+    UserBaseRouter,
+    UserRetreiveRouter,
+    UserTermsAgreementRouter,
+    UserFcmTokenUpdateRouter
+)

@@ -1,23 +1,59 @@
-from app.features.oauth.routers import OAuthRouterLabel
+from app.features.oauth.routers import GoogleOauthController, KaKoOauthController, AppleOauthController
+from app.features.auth.routers import (
+    AuthController
+)
+from app.features.users.routers import (
+    UserController,
+    UserPreferredArtistsController,
+    UserCommonController,
+    UserNotificationController, \
+    UserFollowingsController,
+    BlockUserController
+)
 
-API_TAGS = [
-    {
-        "name": "users",
-        "description": "사용자 관리 API",
-    },
-    {
-        "name": "session",
-        "description": "세션 관리 API (로그인/로그아웃)",
-    },
-    OAuthRouterLabel.to_dict(),
-    {
-        "name": "artists",
-        "description": "아티스트 관리 API",
-    },
-    {
-        "name": "artist-schedules",
-        "description": "아티스트 스케줄 API",
-    },
+from app.features.artists.routers import (
+    AritistRootController, ArtistSchedulerController, ArtistSuggestController
+)
+
+API_TAGS = []
+
+# SESSION ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        AuthController
+    ]
+])
+
+# OAUTH ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        GoogleOauthController,
+        KaKoOauthController,
+        AppleOauthController
+    ]
+])
+# USER ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        UserController,
+        UserCommonController,
+        UserPreferredArtistsController,
+        UserNotificationController,
+        UserFollowingsController,
+        BlockUserController
+    ]
+])
+
+# ARTIST ROUTER
+API_TAGS.extend([
+    router.to_dict() for router in [
+        AritistRootController,
+        ArtistSchedulerController,
+        ArtistSuggestController
+    ]
+])
+
+API_TAGS.extend([
     {
         "name": "tendencies",
         "description": "성향 테스트 API",
@@ -70,8 +106,9 @@ API_TAGS = [
         "name": "admin",
         "description": "관리자 API",
     },
-    {
-        "name": "artist-suggestions",
-        "description": "아티스트 추천 API",
-    },
+    # {
+    #     "name": "artist-suggestions",
+    #     "description": "아티스트 추천 API",
+    # }
 ]
+)

@@ -1,14 +1,47 @@
-from enum import Enum
+from fastapi import APIRouter
+
+from app.common.abstract_router import AbstractController
 
 
-class OAuthRouterLabel(Enum):
+class OAuthController(AbstractController):
     PREFIX = "/oauth"
     TAG = "OAUTH"
     DESCRIPTION = "OAUTH 인증 API"
 
-    @classmethod
-    def to_dict(cls):
-        return {
-            "name": cls.TAG.value,
-            "description": cls.DESCRIPTION.value
-        }
+    ROUTER = APIRouter(
+        prefix=PREFIX,
+        tags=[TAG]
+    )
+
+
+class GoogleOauthController(AbstractController):
+    PREFIX = "/google"
+    TAG = "OAuth [Google]"
+    DESCRIPTION = "Google OAUTH 인증 API"
+
+    ROUTER = APIRouter(
+        prefix=OAuthController.PREFIX,
+        tags=[TAG]
+    )
+
+
+class KaKoOauthController(AbstractController):
+    PREFIX = "/kakao"
+    TAG = "OAuth [KaKao]"
+    DESCRIPTION = "KaKao OAUTH 인증 API"
+
+    ROUTER = APIRouter(
+        prefix=OAuthController.PREFIX,
+        tags=[TAG]
+    )
+
+
+class AppleOauthController(AbstractController):
+    PREFIX = "/apple"
+    TAG = "OAuth [Apple]"
+    DESCRIPTION = "Apple OAUTH 인증 API"
+
+    ROUTER = APIRouter(
+        prefix=OAuthController.PREFIX,
+        tags=[TAG]
+    )

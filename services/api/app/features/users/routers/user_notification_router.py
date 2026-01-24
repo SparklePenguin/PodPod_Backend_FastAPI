@@ -1,6 +1,10 @@
+from fastapi import APIRouter, Depends, status
+
 from app.common.schemas import BaseResponse
 from app.deps.auth import get_current_user_id
 from app.deps.providers import get_user_notification_use_case
+from app.features.users.routers import UserController
+from app.features.users.routers._base import UserNotificationController
 from app.features.users.schemas import (
     UpdateUserNotificationSettingsRequest,
     UserNotificationSettingsDto,
@@ -8,47 +12,47 @@ from app.features.users.schemas import (
 from app.features.users.use_cases.user_notification_use_case import (
     UserNotificationUseCase,
 )
-from fastapi import APIRouter, Depends, status
-
-router = APIRouter(prefix="/users/me/notification-settings", tags=["users"])
 
 
-# - MARK: 알림 설정 조회
-@router.get(
-    "",
-    response_model=BaseResponse[UserNotificationSettingsDto],
-    description="사용자의 알림 설정을 조회합니다.",
-)
-async def get_notification_settings(
-    current_user_id: int = Depends(get_current_user_id),
-    use_case: UserNotificationUseCase = Depends(get_user_notification_use_case),
-):
-    settings_dto = await use_case.get_notification_settings(current_user_id)
+class UserNotificationRouter:
 
-    return BaseResponse.ok(
-        data=settings_dto,
-        message_ko="알림 설정을 조회했습니다.",
-        http_status=status.HTTP_200_OK,
+    @staticmethod
+    @UserNotificationController.ROUTER.get(
+        UserNotificationController.PREFIX,
+        response_model=BaseResponse[UserNotificationSettingsDto],
+        summary="사용자의 알림 설정을 조회합니다.",
+        description="사용자의 알림 설정을 조회합니다.",
     )
+    async def get_notification_settings(
+            current_user_id: int = Depends(get_current_user_id),
+            use_case: UserNotificationUseCase = Depends(get_user_notification_use_case),
+    ):
+        settings_dto = await use_case.get_notification_settings(current_user_id)
 
+        return BaseResponse.ok(
+            data=settings_dto,
+            message_ko="알림 설정을 조회했습니다.",
+            http_status=status.HTTP_200_OK,
+        )
 
-# - MARK: 알림 설정 수정
-@router.patch(
-    "",
-    response_model=BaseResponse[UserNotificationSettingsDto],
-    description="사용자 알림 설정 수정",
-)
-async def update_notification_settings(
-    update_data: UpdateUserNotificationSettingsRequest,
-    current_user_id: int = Depends(get_current_user_id),
-    use_case: UserNotificationUseCase = Depends(get_user_notification_use_case),
-):
-    settings_dto = await use_case.update_notification_settings(
-        current_user_id, update_data
+    @staticmethod
+    @UserNotificationController.ROUTER.patch(
+        UserNotificationController.PREFIX,
+        response_model=BaseResponse[UserNotificationSettingsDto],
+        summary="사용자 알림 설정 수정",
+        description="사용자 알림 설정 수정",
     )
+    async def update_notification_settings(
+            update_data: UpdateUserNotificationSettingsRequest,
+            current_user_id: int = Depends(get_current_user_id),
+            use_case: UserNotificationUseCase = Depends(get_user_notification_use_case),
+    ):
+        settings_dto = await use_case.update_notification_settings(
+            current_user_id, update_data
+        )
 
-    return BaseResponse.ok(
-        data=settings_dto,
-        message_ko="알림 설정을 수정했습니다.",
-        http_status=status.HTTP_200_OK,
-    )
+        return BaseResponse.ok(
+            data=settings_dto,
+            message_ko="알림 설정을 수정했습니다.",
+            http_status=status.HTTP_200_OK,
+        )
