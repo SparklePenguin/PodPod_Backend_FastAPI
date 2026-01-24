@@ -1,7 +1,5 @@
 from fastapi import APIRouter
 
-from functools import cached_property
-
 from app.common.abstract_router import AbstractController
 
 

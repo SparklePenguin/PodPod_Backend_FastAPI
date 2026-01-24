@@ -11,6 +11,10 @@ from app.features.users.routers import (
     BlockUserController
 )
 
+from app.features.artists.routers import (
+    AritistRootController, ArtistSchedulerController, ArtistSuggestController
+)
+
 API_TAGS = []
 
 # SESSION ROUTER
@@ -40,15 +44,16 @@ API_TAGS.extend([
     ]
 ])
 
+# ARTIST ROUTER
 API_TAGS.extend([
-    {
-        "name": "artists",
-        "description": "아티스트 관리 API",
-    },
-    {
-        "name": "artist-schedules",
-        "description": "아티스트 스케줄 API",
-    },
+    router.to_dict() for router in [
+        AritistRootController,
+        ArtistSchedulerController,
+        ArtistSuggestController
+    ]
+])
+
+API_TAGS.extend([
     {
         "name": "tendencies",
         "description": "성향 테스트 API",
@@ -101,9 +106,9 @@ API_TAGS.extend([
         "name": "admin",
         "description": "관리자 API",
     },
-    {
-        "name": "artist-suggestions",
-        "description": "아티스트 추천 API",
-    }
+    # {
+    #     "name": "artist-suggestions",
+    #     "description": "아티스트 추천 API",
+    # }
 ]
 )

@@ -7,13 +7,14 @@ from itertools import chain
 from fastapi import APIRouter
 
 # Artists routers
-from app.features.artists.routers.artist_router import router as artists_router
-from app.features.artists.routers.artist_schedule_router import (
-    router as schedules_router,
+# from app.features.artists.routers.artist_router import router as artists_router
+
+from app.features.artists.routers import (
+    AritistRootController,
+    ArtistSchedulerController,
+    ArtistSuggestController
 )
-from app.features.artists.routers.artist_suggestion_router import (
-    router as suggestions_router,
-)
+
 from app.features.chat.routers.chat_router import router as chat_router
 # Chat routers
 from app.features.chat.routers.websocket_router import router as chat_websocket_router
@@ -93,7 +94,11 @@ for router in chain.from_iterable([
     ],
 
     # 아티스트 관련 라우터 (features/artists)
-    [artists_router, schedules_router, suggestions_router],
+    [
+        AritistRootController.ROUTER,
+        ArtistSchedulerController.ROUTER,
+        ArtistSuggestController.ROUTER
+    ],
 
     # 성향 테스트 관련 라우터 (features/tendencies)
     [tendencies_router, surveys_router],

@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 
-from app.features.oauth.routers import OAuthController
 from settings.openapi_tags import API_TAGS
 
 # 프로젝트 루트를 Python 경로에 추가 (shared 모듈 import를 위해)
@@ -12,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.api.v1.router import api_router, UserCommonController  # noqa: E402
+from app.api.v1.router import api_router  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.database import init_db  # noqa: E402
 from app.core.exceptions import (  # noqa: E402
