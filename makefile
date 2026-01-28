@@ -8,7 +8,11 @@ export INFISICAL_TOKEN
 export INFISICAL_PROJECT_ID
 
 export BASE_YAML=./deploy/config/config.local.yaml
-export DOCKER_BUILDKIT=1
+
+# 🔑 BuildKit 관련 공통 옵션
+BUILDKIT_ENV = \
+	DOCKER_BUILDKIT=1 \
+	COMPOSE_DOCKER_CLI_BUILD=1
 
 infra.connect: DB_PORT := $(shell yq '.database.port' ${BASE_YAML})
 infra.connect: REDIS_PORT :=$(shell yq '.redis.port' ${BASE_YAML})
@@ -21,30 +25,26 @@ infra.connect:
 	ssh  -p ${SSH_PORT} -i ${SSH_KEY_PATH} -fN -L $(DB_PORT):127.0.0.1:$(DB_PORT) ${SSH_USER}@${SERVER_IP};
 	ssh  -p ${SSH_PORT} -i ${SSH_KEY_PATH} -fN -L $(REDIS_PORT):127.0.0.1:$(REDIS_PORT) ${SSH_USER}@${SERVER_IP};
 
+define deploy_with_infisical
+	docker-compose -f $(1) down;
+	infisical run \
+		--projectId=$(INFISICAL_PROJECT_ID) \
+		--env=$(2) \
+		--path=/backend \
+		-- \
+		$(BUILDKIT_ENV) \
+		docker-compose -f $(1) up --build -d
+endef
+
 deploy.local:
 	docker-compose -f ./deploy/docker-compose.local.yml down;
 	infisical run --env=dev --path=/backend -- docker-compose -f ./deploy/docker-compose.local.yml up --build
 
 deploy.dev:
-	docker-compose -f ./deploy/docker-compose.dev.yml down;
-	infisical run \
-		--projectId=$(INFISICAL_PROJECT_ID) \
-		--env=dev \
-		--path=/backend \
-		-- docker-compose -f ./deploy/docker-compose.dev.yml up --build -d
+	$(call deploy_with_infisical,./deploy/docker-compose.dev.yml,dev)
 
 deploy.stg:
-	docker-compose -f ./deploy/docker-compose.stg.yml down;
-	infisical run \
-		--projectId=$(INFISICAL_PROJECT_ID) \
-		--env=staging \
-		--path=/backend \
-		-- docker-compose -f ./deploy/docker-compose.stg.yml up --build -d
+	$(call deploy_with_infisical,./deploy/docker-compose.stg.yml,staging)
 
 deploy.prd:
-	docker-compose -f ./deploy/docker-compose.prod.yml down;
-	infisical run \
-		--projectId=$(INFISICAL_PROJECT_ID) \
-		--env=prod \
-		--path=/backend \
-		-- docker-compose -f ./deploy/docker-compose.prod.yml up --build -d
+	$(call deploy_with_infisical,./deploy/docker-compose.prod.yml,prod)
