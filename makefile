@@ -9,11 +9,6 @@ export INFISICAL_PROJECT_ID
 
 export BASE_YAML=./deploy/config/config.local.yaml
 
-# 🔑 BuildKit 관련 공통 옵션
-BUILDKIT_ENV = \
-	DOCKER_BUILDKIT=1 \
-	COMPOSE_DOCKER_CLI_BUILD=1
-
 infra.connect: DB_PORT := $(shell yq '.database.port' ${BASE_YAML})
 infra.connect: REDIS_PORT :=$(shell yq '.redis.port' ${BASE_YAML})
 infra.connect:
@@ -32,7 +27,7 @@ define deploy_with_infisical
 		--env=$(2) \
 		--path=/backend \
 		-- \
-		$(BUILDKIT_ENV) \
+		env DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 \
 		docker-compose -f $(1) up --build -d
 endef
 
