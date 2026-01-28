@@ -1,6 +1,5 @@
 services:
 
-  # FastAPI 애플리케이션 (프로덕션 환경)
   podpod-api-prod:
     build:
       context: ../services/api

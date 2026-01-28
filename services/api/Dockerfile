@@ -1,44 +1,40 @@
 # Python 3.11 slim 이미지 사용
 FROM python:3.11-slim
 
-# 작업 디렉토리 설정
 WORKDIR /app
 
-# 시스템 패키지 업데이트 및 필요한 패키지 설치
-RUN apt-get update && apt-get install -y \
+# 꼭 필요한 시스템 패키지만 설치
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    g++ \
     libpq-dev \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates
 
-# Python 환경 변수 설정
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    UV_NO_CACHE=1
 
-# requirements.txt 복사 및 의존성 설치
+# uv 설치
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+# 의존성 설치
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system -r requirements.txt
 
 # 애플리케이션 코드 복사
 COPY . .
 
-# 업로드 디렉토리 생성
-# 업로드 디렉토리 생성
+# 필요한 디렉토리만 생성
 RUN mkdir -p \
     uploads/pods/images \
     uploads/users/profiles \
     uploads/communities/images \
-    /app/config
 
-# 포트 노출
 EXPOSE 8000
 
-# 헬스체크 추가
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# 애플리케이션 실행
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
