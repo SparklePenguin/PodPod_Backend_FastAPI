@@ -8,6 +8,7 @@ export INFISICAL_TOKEN
 export INFISICAL_PROJECT_ID
 
 export BASE_YAML=./deploy/config/config.local.yaml
+export DOCKER_BUILDKIT=1
 
 infra.connect: DB_PORT := $(shell yq '.database.port' ${BASE_YAML})
 infra.connect: REDIS_PORT :=$(shell yq '.redis.port' ${BASE_YAML})

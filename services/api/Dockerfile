@@ -30,7 +30,7 @@ COPY . .
 RUN mkdir -p \
     uploads/pods/images \
     uploads/users/profiles \
-    uploads/communities/images \
+    uploads/communities/images
 
 EXPOSE 8000
 
